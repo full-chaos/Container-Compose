@@ -22,7 +22,7 @@
 import Foundation
 
 /// The condition under which a dependency is considered satisfied.
-public enum DependsOnCondition: String, Codable, Hashable {
+public enum DependsOnCondition: String, Codable, Hashable, CaseIterable {
     case serviceStarted = "service_started"
     case serviceHealthy = "service_healthy"
     case serviceCompletedSuccessfully = "service_completed_successfully"
