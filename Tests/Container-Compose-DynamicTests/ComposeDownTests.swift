@@ -22,7 +22,12 @@ import Testing
 
 @testable import ContainerComposeCore
 
-@Suite("Compose Down Tests", .containerDependent, .serialized)
+@Suite(
+    "Compose Down Tests",
+    .containerDependent,
+    .serialized,
+    .enabled(if: RuntimeAvailability.isAvailable(), "Apple container runtime not available")
+)
 struct ComposeDownTests {
 
     @Test("What goes up must come down - two containers")

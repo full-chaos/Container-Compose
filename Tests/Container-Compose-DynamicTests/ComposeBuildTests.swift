@@ -21,7 +21,12 @@ import ContainerAPIClient
 import TestHelpers
 @testable import ContainerComposeCore
 
-@Suite("Compose Build Tests", .containerDependent, .serialized)
+@Suite(
+    "Compose Build Tests",
+    .containerDependent,
+    .serialized,
+    .enabled(if: RuntimeAvailability.isAvailable(), "Apple container runtime not available")
+)
 struct ComposeBuildTests {
 
     // MARK: - Helpers
