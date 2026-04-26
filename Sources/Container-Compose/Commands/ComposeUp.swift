@@ -369,12 +369,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             throw ComposeError.imageNotFound(serviceName)
         }
         
-        // Set Run Platform
-        if let platform = service.platform {
-            runCommandArgs.append(contentsOf: ["--platform", "\(platform)"])
-        }
-
-        // Handle 'deploy' configuration (note that this tool doesn't fully support it)
+        // 'deploy' is parsed but mostly orchestrator-only — emit the same
+        // diagnostic the inline implementation used to. Resource limits from
+        // deploy.resources.limits are still applied via ResourceArgs below.
         if service.deploy != nil {
             print("Note: The 'deploy' configuration for service '\(serviceName)' was parsed successfully.")
             print(
@@ -383,36 +380,18 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("The service will be run as a single container based on other configurations.")
         }
 
-        // Add detach flag if specified on the CLI
-        if detach {
-            runCommandArgs.append("-d")
-        }
-
-        // Determine container name
+        // Determine container name (used in builder context and elsewhere).
         let containerName: String
         if let explicitContainerName = service.container_name {
             containerName = explicitContainerName
             print("Info: Using explicit container_name: \(containerName)")
         } else {
-            // Default container name based on project and service name
             containerName = "\(projectName)-\(serviceName)"
         }
-        runCommandArgs.append("--name")
-        runCommandArgs.append(containerName)
 
-        // REMOVED: Restart policy is not supported by `container run`
-        // if let restart = service.restart {
-        //     runCommandArgs.append("--restart")
-        //     runCommandArgs.append(restart)
-        // }
-
-        // Add user
-        if let user = service.user {
-            runCommandArgs.append("--user")
-            runCommandArgs.append(user)
-        }
-
-        // Add volume mounts
+        // Volume mounts: still inline because configVolume(_:) is async and
+        // mutates the filesystem (creates missing host dirs). Phase 2D will
+        // make the helper pure and move this into StorageArgs.
         if let volumes = service.volumes {
             for volume in volumes {
                 let args = try await configVolume(volume)
@@ -420,7 +399,8 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             }
         }
 
-        // Combine environment variables from .env files and service environment
+        // Build the merged env: .env files → service env_file paths → service
+        // environment map → ${VAR} substitution → service-name → IP rewrite.
         var combinedEnv: [String: String] = environmentVariables
 
         if let envFiles = service.env_file {
@@ -432,52 +412,49 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         if let serviceEnv = service.environment {
             combinedEnv.merge(serviceEnv) { (old, new) in
-                guard !new.contains("${") else {
-                    return old
-                }
+                guard !new.contains("${") else { return old }
                 return new
             }  // Service env overrides .env files
         }
 
-        // Fill in variables
         combinedEnv = combinedEnv.mapValues({ value in
             guard value.contains("${") else { return value }
-
             let variableName = String(value.replacingOccurrences(of: "${", with: "").dropLast())
             return combinedEnv[variableName] ?? value
         })
 
-        // Fill in IPs
         combinedEnv = combinedEnv.mapValues({ value in
             containerIps[value] ?? value
         })
 
-        // MARK: Spinning Spot
-        // Add environment variables to run command
         for (key, value) in combinedEnv {
-            runCommandArgs.append("-e")
-            runCommandArgs.append("\(key)=\(value)")
+            runCommandArgs.append(contentsOf: ["-e", "\(key)=\(value)"])
         }
 
-         if let ports = service.ports {
-             for port in ports {
-                 let resolvedPort = resolveVariable(port, with: environmentVariables)
-                 runCommandArgs.append("-p")
-                 runCommandArgs.append(composePortToRunArg(resolvedPort))
-             }
-         }
+        // Hand off the rest of the argv to the per-concern builders. They are
+        // intentionally pure; ordering across concerns doesn't matter to
+        // `container run` so we group by domain rather than by --flag.
+        let ctx = ArgsContext(
+            service: service,
+            serviceName: serviceName,
+            projectName: projectName,
+            containerName: containerName,
+            detach: detach,
+            environmentVariables: environmentVariables,
+            dockerCompose: dockerCompose,
+            composeFilename: composeFilename
+        )
+        runCommandArgs.append(contentsOf: LifecycleArgs.build(ctx))
+        runCommandArgs.append(contentsOf: SecurityArgs.build(ctx))
+        runCommandArgs.append(contentsOf: ResourceArgs.build(ctx))
+        runCommandArgs.append(contentsOf: NetworkingArgs.build(ctx))
+        runCommandArgs.append(contentsOf: StorageArgs.build(ctx))
 
-        // Connect to specified networks
+        // Networks diagnostic — kept inline because it's purely informational
+        // and references composeFilename in its message.
         if let serviceNetworks = service.networks {
-            for network in serviceNetworks {
-                let resolvedNetwork = resolveVariable(network, with: environmentVariables)
-                // Use the explicit network name from top-level definition if available, otherwise resolved name
-                let networkToConnect = dockerCompose.networks?[network]??.name ?? resolvedNetwork
-                runCommandArgs.append("--network")
-                runCommandArgs.append(networkToConnect)
-            }
             print(
-                "Info: Service '\(serviceName)' is configured to connect to networks: \(serviceNetworks.joined(separator: ", ")) ascertained from networks attribute in \(composeFilename)."
+                "Info: Service '\(serviceName)' is configured to connect to networks: \(serviceNetworks.joined(separator: ", ")) ascertained from networks attribute in \(composeFilename ?? "compose file")."
             )
             print(
                 "Note: This tool assumes custom networks are defined at the top-level 'networks' key or are pre-existing. This tool does not create implicit networks for services if not explicitly defined at the top-level."
@@ -486,39 +463,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("Note: Service '\(serviceName)' is not explicitly connected to any networks. It will likely use the default bridge network.")
         }
 
-        // Add hostname
-        if let hostname = service.hostname {
-            let resolvedHostname = resolveVariable(hostname, with: environmentVariables)
-            runCommandArgs.append("--hostname")
-            runCommandArgs.append(resolvedHostname)
-        }
-
-        // Add working directory
-        if let workingDir = service.working_dir {
-            let resolvedWorkingDir = resolveVariable(workingDir, with: environmentVariables)
-            runCommandArgs.append("--workdir")
-            runCommandArgs.append(resolvedWorkingDir)
-        }
-
-        // Add privileged flag
-        if service.privileged == true {
-            runCommandArgs.append("--privileged")
-        }
-
-        // Add read-only flag
-        if service.read_only == true {
-            runCommandArgs.append("--read-only")
-        }
-
-        // Add resource limits
-        if let cpus = service.deploy?.resources?.limits?.cpus {
-            runCommandArgs.append(contentsOf: ["--cpus", cpus])
-        }
-        if let memory = service.deploy?.resources?.limits?.memory {
-            runCommandArgs.append(contentsOf: ["--memory", memory])
-        }
-
-        // Handle service-level configs (note: still only parsing/logging, not attaching)
+        // Service-level configs / secrets are Swarm-only — diagnose and skip.
         if let serviceConfigs = service.configs {
             print(
                 "Note: Service '\(serviceName)' defines 'configs'. Docker Compose 'configs' are primarily used for Docker Swarm deployed stacks and are not directly translatable to 'container run' commands."
@@ -530,8 +475,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                 )
             }
         }
-        //
-        // Handle service-level secrets (note: still only parsing/logging, not attaching)
         if let serviceSecrets = service.secrets {
             print(
                 "Note: Service '\(serviceName)' defines 'secrets'. Docker Compose 'secrets' are primarily used for Docker Swarm deployed stacks and are not directly translatable to 'container run' commands."
@@ -542,14 +485,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                     "  - Secret: '\(serviceSecret.source)' (Target: \(serviceSecret.target ?? "default location"), UID: \(serviceSecret.uid ?? "default"), GID: \(serviceSecret.gid ?? "default"), Mode: \(serviceSecret.mode?.description ?? "default"))"
                 )
             }
-        }
-
-        // Add interactive and TTY flags
-        if service.stdin_open == true {
-            runCommandArgs.append("-i")  // --interactive
-        }
-        if service.tty == true {
-            runCommandArgs.append("-t")  // --tty
         }
 
         runCommandArgs.append(imageToRun)  // Add the image name as the final argument before command/entrypoint
