@@ -99,7 +99,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var fileManager: FileManager { FileManager.default }
-    private var projectName: String?
+    var projectName: String?
     private var environmentVariables: [String: String] = [:]
     private var containerIps: [String: String] = [:]
     private var containerConsoleColors: [String: NamedColor] = [:]
