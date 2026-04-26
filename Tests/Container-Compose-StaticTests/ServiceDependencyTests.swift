@@ -17,33 +17,34 @@
 import Testing
 import Foundation
 @testable import ContainerComposeCore
+import Yams
 
 @Suite("Service Dependency Resolution Tests")
 struct ServiceDependencyTests {
-    
+
     @Test("Simple dependency chain - web depends on db")
     func simpleDependencyChain() throws {
-        let web = Service(image: "nginx", depends_on: ["db"])
-        let db = Service(image: "postgres", depends_on: nil)
-        
+        let web = Service(image: "nginx", dependsOn: .list(["db"]))
+        let db = Service(image: "postgres", dependsOn: nil)
+
         let services: [(String, Service)] = [("web", web), ("db", db)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         // db should come before web
         #expect(sorted.count == 2)
         #expect(sorted[0].serviceName == "db")
         #expect(sorted[1].serviceName == "web")
     }
-    
+
     @Test("Multiple dependencies - app depends on db and redis")
     func multipleDependencies() throws {
-        let app = Service(image: "myapp", depends_on: ["db", "redis"])
-        let db = Service(image: "postgres", depends_on: nil)
-        let redis = Service(image: "redis", depends_on: nil)
-        
+        let app = Service(image: "myapp", dependsOn: .list(["db", "redis"]))
+        let db = Service(image: "postgres", dependsOn: nil)
+        let redis = Service(image: "redis", dependsOn: nil)
+
         let services: [(String, Service)] = [("app", app), ("db", db), ("redis", redis)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         #expect(sorted.count == 3)
         // app should be last
         #expect(sorted[2].serviceName == "app")
@@ -52,55 +53,55 @@ struct ServiceDependencyTests {
         #expect(firstTwo.contains("db"))
         #expect(firstTwo.contains("redis"))
     }
-    
+
     @Test("Complex dependency chain - web -> app -> db")
     func complexDependencyChain() throws {
-        let web = Service(image: "nginx", depends_on: ["app"])
-        let app = Service(image: "myapp", depends_on: ["db"])
-        let db = Service(image: "postgres", depends_on: nil)
-        
+        let web = Service(image: "nginx", dependsOn: .list(["app"]))
+        let app = Service(image: "myapp", dependsOn: .list(["db"]))
+        let db = Service(image: "postgres", dependsOn: nil)
+
         let services: [(String, Service)] = [("web", web), ("app", app), ("db", db)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         #expect(sorted.count == 3)
         #expect(sorted[0].serviceName == "db")
         #expect(sorted[1].serviceName == "app")
         #expect(sorted[2].serviceName == "web")
     }
-    
+
     @Test("No dependencies - services should maintain order")
     func noDependencies() throws {
-        let web = Service(image: "nginx", depends_on: nil)
-        let app = Service(image: "myapp", depends_on: nil)
-        let db = Service(image: "postgres", depends_on: nil)
-        
+        let web = Service(image: "nginx", dependsOn: nil)
+        let app = Service(image: "myapp", dependsOn: nil)
+        let db = Service(image: "postgres", dependsOn: nil)
+
         let services: [(String, Service)] = [("web", web), ("app", app), ("db", db)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         #expect(sorted.count == 3)
     }
-    
+
     @Test("Cyclic dependency should throw error")
     func cyclicDependency() throws {
-        let web = Service(image: "nginx", depends_on: ["app"])
-        let app = Service(image: "myapp", depends_on: ["web"])
-        
+        let web = Service(image: "nginx", dependsOn: .list(["app"]))
+        let app = Service(image: "myapp", dependsOn: .list(["web"]))
+
         let services: [(String, Service)] = [("web", web), ("app", app)]
-        
+
         #expect(throws: Error.self) {
             try Service.topoSortConfiguredServices(services)
         }
     }
-    
+
     @Test("Diamond dependency - web and api both depend on db")
     func diamondDependency() throws {
-        let web = Service(image: "nginx", depends_on: ["db"])
-        let api = Service(image: "api", depends_on: ["db"])
-        let db = Service(image: "postgres", depends_on: nil)
-        
+        let web = Service(image: "nginx", dependsOn: .list(["db"]))
+        let api = Service(image: "api", dependsOn: .list(["db"]))
+        let db = Service(image: "postgres", dependsOn: nil)
+
         let services: [(String, Service)] = [("web", web), ("api", api), ("db", db)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         #expect(sorted.count == 3)
         // db should be first
         #expect(sorted[0].serviceName == "db")
@@ -109,27 +110,46 @@ struct ServiceDependencyTests {
         #expect(lastTwo.contains("web"))
         #expect(lastTwo.contains("api"))
     }
-    
+
     @Test("Single service with no dependencies")
     func singleService() throws {
-        let web = Service(image: "nginx", depends_on: nil)
-        
+        let web = Service(image: "nginx", dependsOn: nil)
+
         let services: [(String, Service)] = [("web", web)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         #expect(sorted.count == 1)
         #expect(sorted[0].serviceName == "web")
     }
-    
+
     @Test("Service depends on non-existent service - should not crash")
     func dependsOnNonExistentService() throws {
-        let web = Service(image: "nginx", depends_on: ["nonexistent"])
-        
+        let web = Service(image: "nginx", dependsOn: .list(["nonexistent"]))
+
         let services: [(String, Service)] = [("web", web)]
         let sorted = try Service.topoSortConfiguredServices(services)
-        
+
         // Should complete without crashing
         #expect(sorted.count == 1)
     }
-}
 
+    @Test("Service decodes depends_on object form via DependsOn type")
+    func testObjectFormThroughService() throws {
+        let yaml = """
+        services:
+          api:
+            image: api
+            depends_on:
+              db:
+                condition: service_healthy
+                required: false
+                restart: true
+        """
+        let dc = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        let api = try #require(dc.services["api"]!)
+        let entry = try #require(api.dependsOn?.entries["db"])
+        #expect(entry.condition == .serviceHealthy)
+        #expect(entry.required == false)
+        #expect(entry.restart == true)
+    }
+}
