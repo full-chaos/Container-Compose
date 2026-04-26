@@ -352,8 +352,31 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private mutating func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
+        // Phase 1.4 — depends_on object-form gate. Topo-sort already orders
+        // dependencies before dependents, but for `condition: service_healthy`
+        // and `condition: service_completed_successfully` we must wait until
+        // each dependency reaches the declared state before starting this
+        // service. List-form depends_on (implicit `condition: service_started`)
+        // is also honored here; the wait is a no-op once the dep is running.
+        if let dependencies = service.dependsOn?.entries, !dependencies.isEmpty {
+            for (depName, entry) in dependencies {
+                do {
+                    try await waitForCondition(depName, condition: entry.condition)
+                } catch {
+                    if entry.required {
+                        throw error
+                    }
+                    print(
+                        "Warning: optional dependency '\(depName)' for service " +
+                        "'\(serviceName)' did not satisfy condition " +
+                        "'\(entry.condition.rawValue)': \(error.localizedDescription)"
+                    )
+                }
+            }
+        }
+
         var imageToRun: String
-        
+
         var runCommandArgs: [String] = []
 
         // Handle 'build' configuration
