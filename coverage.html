@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Container-Compose · compose-spec coverage</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232c;
+    --border: #2a313c;
+    --text: #e6edf3;
+    --muted: #9ba9b6;
+    --accent: #58a6ff;
+    --good: #2ea043;
+    --good-bg: rgba(46,160,67,.12);
+    --warn: #d29922;
+    --warn-bg: rgba(210,153,34,.14);
+    --bad: #f85149;
+    --bad-bg: rgba(248,81,73,.14);
+    --neutral: #6e7681;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa;
+      --panel: #ffffff;
+      --panel-2: #f0f3f6;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --muted: #57606a;
+      --accent: #0969da;
+      --good: #1a7f37;
+      --good-bg: rgba(26,127,55,.12);
+      --warn: #9a6700;
+      --warn-bg: rgba(154,103,0,.14);
+      --bad: #cf222e;
+      --bad-bg: rgba(207,34,46,.10);
+      --neutral: #6e7681;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header {
+    padding: 28px 32px 12px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header nav { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+  header nav a { font-size: 13px; }
+  main { padding: 24px 32px 60px; max-width: 1280px; margin: 0 auto; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+    gap: 12px; margin-bottom: 24px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); }
+  .stat .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .stat .pct  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .controls {
+    display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 14px;
+  }
+  .controls .group { display: flex; gap: 6px; align-items: center; }
+  .controls .group span.lbl { font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+  .chip {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; cursor: pointer; user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip[aria-pressed="true"] { background: var(--accent); color: white;
+    border-color: var(--accent); }
+  .controls input[type="search"] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; font: inherit; min-width: 220px; flex: 1;
+  }
+  .group-section { margin-top: 28px; }
+  .group-section h2 {
+    font-size: 16px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 10px;
+  }
+  .group-section h2 .meta {
+    font-size: 12px; color: var(--muted); font-weight: 400;
+  }
+  .group-section .note {
+    color: var(--muted); font-size: 12px; margin-bottom: 8px;
+  }
+  table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left; padding: 9px 12px; font-size: 13px;
+    border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  th {
+    background: var(--panel-2); color: var(--muted);
+    font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    cursor: pointer; user-select: none;
+  }
+  th[data-sort]::after { content: " ↕"; color: var(--neutral); font-size: 10px; }
+  th.sorted-asc::after  { content: " ↑"; color: var(--accent); }
+  th.sorted-desc::after { content: " ↓"; color: var(--accent); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.feature { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; }
+  td.notes { color: var(--muted); font-size: 12px; max-width: 480px; }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  }
+  .pill.ok      { color: var(--good); background: var(--good-bg); }
+  .pill.partial { color: var(--warn); background: var(--warn-bg); }
+  .pill.miss    { color: var(--bad);  background: var(--bad-bg);  }
+  .bar {
+    display: inline-block; width: 96px; height: 8px; background: var(--panel-2);
+    border-radius: 4px; overflow: hidden; vertical-align: middle; margin-right: 8px;
+  }
+  .bar > span { display: block; height: 100%; float: left; }
+  .bar .ok      { background: var(--good); }
+  .bar .partial { background: var(--warn); }
+  footer {
+    color: var(--muted); font-size: 12px; padding: 24px 32px;
+    border-top: 1px solid var(--border); text-align: center;
+  }
+  .empty { padding: 32px; text-align: center; color: var(--muted); display: none; }
+  .empty.shown { display: block; }
+  .anchor-callout {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 6px;
+    padding: 12px 16px; margin: 0 0 18px; font-size: 13px;
+  }
+  .anchor-callout strong { color: var(--accent); }
+  .anchor-callout code {
+    background: var(--panel-2); padding: 1px 5px; border-radius: 4px;
+    font-size: 12px;
+  }
+  #download-json { font-size: 12px; color: var(--accent); margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Container-Compose · compose-spec coverage</h1>
+  <div class="sub">
+    Feature-by-feature compliance audit of <code>Container-Compose</code> against
+    <a href="https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json">compose-spec.json</a>.
+    Anchored on <a href="https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json#L277-L310"><code>depends_on</code> (L277-L310)</a>.
+  </div>
+  <nav>
+    <a href="https://github.com/Mcrich23/Container-Compose">Repository</a>
+    <a href="./AGENTS.md">AGENTS.md</a>
+    <a href="https://github.com/compose-spec/compose-spec/blob/main/spec.md">Compose-spec docs</a>
+    <a href="https://github.com/apple/container">Apple Container</a>
+  </nav>
+</header>
+
+<main>
+  <div class="anchor-callout">
+    <strong>Anchor section: <code>depends_on</code> (compose-spec.json L277-L310)</strong>
+    Schema accepts either a list of service names or an object map with
+    <code>condition</code> ∈ {<code>service_started</code>, <code>service_healthy</code>,
+    <code>service_completed_successfully</code>}, <code>required</code> (bool),
+    <code>restart</code> (bool|string).
+    Container-Compose currently supports the <strong>list form only</strong>; the object form is rejected
+    by <code>Service.init(from:)</code> and no health/restart conditions gate startup.
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="controls" id="controls">
+    <div class="group">
+      <span class="lbl">Status</span>
+      <button class="chip" data-filter="status" data-value="all" aria-pressed="true">All</button>
+      <button class="chip" data-filter="status" data-value="ok">Implemented</button>
+      <button class="chip" data-filter="status" data-value="partial">Partial</button>
+      <button class="chip" data-filter="status" data-value="miss">Missing</button>
+    </div>
+    <div class="group">
+      <span class="lbl">Tested</span>
+      <button class="chip" data-filter="tested" data-value="all" aria-pressed="true">Any</button>
+      <button class="chip" data-filter="tested" data-value="yes">Yes</button>
+      <button class="chip" data-filter="tested" data-value="no">No</button>
+    </div>
+    <input id="search" type="search" placeholder="Search feature, notes…" autocomplete="off" />
+  </div>
+
+  <div id="groups"></div>
+  <div class="empty" id="empty">No features match the current filter.</div>
+</main>
+
+<footer>
+  Container-Compose · MIT License · Generated <span id="ts"></span>
+</footer>
+
+<script id="coverage-data" type="application/json">
+{
+  "anchor": "compose-spec.json#L277-L310",
+  "groups": [
+    {
+      "id": "depends_on",
+      "title": "depends_on (anchor — compose-spec.json L277-L310)",
+      "note": "User-anchored section. Object-form support is the largest gap.",
+      "rows": [
+        ["depends_on (list form)", "ok", "yes", "[String]? on Service; topologically sorted with cycle detection in Service.topoSortConfiguredServices."],
+        ["depends_on (object form)", "miss", "no", "Service.init(from:) only handles String or [String]; map shape rejected by Yams decoder."],
+        ["condition: service_started", "miss", "no", "Not modeled. Topo-sort imposes order, but no per-service condition is parsed."],
+        ["condition: service_healthy", "miss", "no", "Healthcheck struct exists but ComposeUp.waitUntilServiceIsRunning only checks status==.running."],
+        ["condition: service_completed_successfully", "miss", "no", "No exit-status awaiting in ComposeUp."],
+        ["required (bool, default true)", "miss", "no", "Unmodeled; all dependencies are effectively required today."],
+        ["restart (bool|string)", "miss", "no", "Unmodeled. Top-level service.restart is parsed but not applied (container run lacks --restart)."]
+      ]
+    },
+    {
+      "id": "top",
+      "title": "Top-level Compose keys",
+      "note": "Fields directly under the compose-file root.",
+      "rows": [
+        ["version", "ok", "yes", "Decoded; logged but otherwise ignored at runtime."],
+        ["name", "ok", "yes", "Used as project prefix for container names."],
+        ["services", "ok", "yes", "[String: Service?] map; service-by-service orchestration in ComposeUp."],
+        ["networks", "partial", "yes", "Parsed and created; many sub-fields warned-and-ignored (driver, ipv6, internal, labels, opts)."],
+        ["volumes", "partial", "yes", "Parsed; named volumes fall back to ~/.containers/Volumes/<project>/<name> hard-link directories."],
+        ["secrets", "partial", "no", "Parsed only; not attached to containers (Swarm-only). Warned at runtime."],
+        ["configs", "partial", "no", "Parsed only; not attached to containers (Swarm-only). Warned at runtime."],
+        ["include", "miss", "no", "Multi-file include is unmodeled."],
+        ["models", "miss", "no", "Compose-spec extension; unmodeled."]
+      ]
+    },
+    {
+      "id": "service",
+      "title": "Service properties (89 in spec)",
+      "note": "Implemented at parse-and-runtime, parse-only, or unmodeled.",
+      "rows": [
+        ["image", "ok", "yes", "Pulled via ClientImage.list / ImagePull before running."],
+        ["build", "ok", "yes", "Build struct (context, dockerfile, args). Routed to Application.BuildCommand."],
+        ["command", "ok", "yes", "Accepts string or [String]; appended after image in argv."],
+        ["container_name", "ok", "yes", "Overrides default <project>-<service>."],
+        ["depends_on", "partial", "yes", "List form only. See anchor section above."],
+        ["deploy", "partial", "yes", "Parsed; only deploy.resources.limits.cpus/memory honored at runtime."],
+        ["entrypoint", "ok", "yes", "Accepts string or [String]; passed via --entrypoint."],
+        ["env_file", "ok", "yes", "List of paths; loaded via loadEnvFile() and merged."],
+        ["environment", "ok", "yes", "Map; ${VAR} substitution; running container IPs replace bare service-name values."],
+        ["healthcheck", "partial", "yes", "Parsed (test/interval/timeout/retries/start_period). Not enforced — startup never waits on healthy state."],
+        ["hostname", "ok", "yes", "--hostname applied; ${VAR} resolved."],
+        ["platform", "ok", "yes", "--platform applied; split into --os/--arch for builds."],
+        ["ports", "ok", "yes", "Parsed via composePortToRunArg; supports IPv4/IPv6, protocol, host:container."],
+        ["privileged", "ok", "yes", "Adds --privileged."],
+        ["read_only", "ok", "yes", "Adds --read-only."],
+        ["restart", "partial", "yes", "Decoded but NOT applied — container run does not support --restart. Code path commented out."],
+        ["stdin_open", "ok", "yes", "Adds -i flag."],
+        ["tty", "ok", "yes", "Adds -t flag."],
+        ["user", "ok", "yes", "Adds --user."],
+        ["volumes", "ok", "yes", "[String] of source:dest[:mode]; bind mounts created if missing."],
+        ["working_dir", "ok", "yes", "Adds --workdir."],
+        ["configs", "partial", "no", "Service-level [ServiceConfig] parsed; not attached to containers."],
+        ["secrets", "partial", "no", "Service-level [ServiceSecret] parsed; not attached to containers."],
+        ["networks", "partial", "yes", "[String] only — service-network alias/IP-objects unsupported."],
+        ["annotations", "miss", "no", ""],
+        ["attach", "miss", "no", ""],
+        ["blkio_config", "miss", "no", ""],
+        ["cap_add", "miss", "no", ""],
+        ["cap_drop", "miss", "no", ""],
+        ["cgroup", "miss", "no", ""],
+        ["cgroup_parent", "miss", "no", ""],
+        ["cpu_count", "miss", "no", ""],
+        ["cpu_percent", "miss", "no", ""],
+        ["cpu_period", "miss", "no", ""],
+        ["cpu_quota", "miss", "no", ""],
+        ["cpu_rt_period", "miss", "no", ""],
+        ["cpu_rt_runtime", "miss", "no", ""],
+        ["cpu_shares", "miss", "no", ""],
+        ["cpus", "partial", "yes", "Reachable via deploy.resources.limits.cpus only — not the top-level service.cpus key."],
+        ["cpuset", "miss", "no", ""],
+        ["credential_spec", "miss", "no", ""],
+        ["develop", "miss", "no", ""],
+        ["device_cgroup_rules", "miss", "no", ""],
+        ["devices", "miss", "no", ""],
+        ["dns", "miss", "no", ""],
+        ["dns_opt", "miss", "no", ""],
+        ["dns_search", "miss", "no", ""],
+        ["domainname", "miss", "no", ""],
+        ["expose", "miss", "no", ""],
+        ["extends", "miss", "no", ""],
+        ["external_links", "miss", "no", ""],
+        ["extra_hosts", "miss", "no", ""],
+        ["gpus", "miss", "no", ""],
+        ["group_add", "miss", "no", ""],
+        ["init", "miss", "no", ""],
+        ["ipc", "miss", "no", ""],
+        ["isolation", "miss", "no", ""],
+        ["label_file", "miss", "no", ""],
+        ["labels", "miss", "no", ""],
+        ["links", "miss", "no", "(deprecated in compose-spec)"],
+        ["logging", "miss", "no", ""],
+        ["mac_address", "miss", "no", ""],
+        ["mem_limit", "partial", "yes", "Reachable via deploy.resources.limits.memory only."],
+        ["mem_reservation", "miss", "no", ""],
+        ["mem_swappiness", "miss", "no", ""],
+        ["memswap_limit", "miss", "no", ""],
+        ["models", "miss", "no", ""],
+        ["network_mode", "miss", "no", ""],
+        ["oom_kill_disable", "miss", "no", ""],
+        ["oom_score_adj", "miss", "no", ""],
+        ["pid", "miss", "no", ""],
+        ["pids_limit", "miss", "no", ""],
+        ["post_start", "miss", "no", ""],
+        ["pre_stop", "miss", "no", ""],
+        ["profiles", "miss", "no", ""],
+        ["provider", "miss", "no", ""],
+        ["pull_policy", "miss", "no", "Implicit always-pull-if-missing in pullImage() — but key isn't honored."],
+        ["pull_refresh_after", "miss", "no", ""],
+        ["runtime", "miss", "no", ""],
+        ["scale", "miss", "no", ""],
+        ["security_opt", "miss", "no", ""],
+        ["shm_size", "miss", "no", ""],
+        ["stop_grace_period", "miss", "no", ""],
+        ["stop_signal", "miss", "no", ""],
+        ["storage_opt", "miss", "no", ""],
+        ["sysctls", "miss", "no", ""],
+        ["tmpfs", "miss", "no", ""],
+        ["ulimits", "miss", "no", ""],
+        ["use_api_socket", "miss", "no", ""],
+        ["userns_mode", "miss", "no", ""],
+        ["uts", "miss", "no", ""],
+        ["volumes_from", "miss", "no", ""]
+      ]
+    },
+    {
+      "id": "build",
+      "title": "Service.build sub-properties",
+      "rows": [
+        ["context", "ok", "yes", "Resolved relative to compose file directory."],
+        ["dockerfile", "ok", "yes", "Defaults to ./Dockerfile if absent."],
+        ["args", "ok", "yes", "Map; ${VAR} substitution applied."],
+        ["dockerfile_inline", "miss", "no", ""],
+        ["entitlements", "miss", "no", ""],
+        ["cache_from", "miss", "no", ""],
+        ["cache_to", "miss", "no", ""],
+        ["labels", "miss", "no", ""],
+        ["network", "miss", "no", ""],
+        ["secrets", "miss", "no", ""],
+        ["ssh", "miss", "no", ""],
+        ["target", "miss", "no", ""],
+        ["platforms", "miss", "no", ""],
+        ["shm_size", "miss", "no", ""],
+        ["no_cache (--no-cache flag)", "ok", "yes", "Honored via CLI flag, not the build.no_cache key."]
+      ]
+    },
+    {
+      "id": "healthcheck",
+      "title": "Service.healthcheck",
+      "rows": [
+        ["test (CMD / CMD-SHELL / NONE / string)", "partial", "yes", "Decoded; not enforced before dependents start."],
+        ["interval", "partial", "yes", "Decoded only."],
+        ["timeout", "partial", "yes", "Decoded only."],
+        ["retries", "partial", "yes", "Decoded only."],
+        ["start_period", "partial", "yes", "Decoded only."],
+        ["start_interval", "miss", "no", ""],
+        ["disable", "miss", "no", ""]
+      ]
+    },
+    {
+      "id": "deploy",
+      "title": "Service.deploy",
+      "rows": [
+        ["mode", "partial", "no", "Parsed; not used (no orchestrator)."],
+        ["replicas", "partial", "no", "Parsed; not used."],
+        ["restart_policy", "partial", "no", "Parsed; not used."],
+        ["resources.limits.cpus", "ok", "yes", "Applied to container run --cpus and build --cpus."],
+        ["resources.limits.memory", "ok", "yes", "Applied to container run --memory and build --memory."],
+        ["resources.reservations.cpus", "partial", "no", "Parsed; not applied."],
+        ["resources.reservations.memory", "partial", "no", "Parsed; not applied."],
+        ["resources.reservations.devices", "partial", "no", "DeviceReservation parsed; not applied."],
+        ["labels", "miss", "no", ""],
+        ["placement", "miss", "no", ""],
+        ["rollback_config", "miss", "no", ""],
+        ["update_config", "miss", "no", ""],
+        ["endpoint_mode", "miss", "no", ""]
+      ]
+    },
+    {
+      "id": "network",
+      "title": "Top-level Network",
+      "rows": [
+        ["name", "ok", "yes", "Used as actual network name."],
+        ["external", "ok", "yes", "Boolean and {name: …} forms via ExternalNetwork; assumed pre-existing."],
+        ["driver", "partial", "yes", "Parsed; warned-and-ignored."],
+        ["driver_opts", "partial", "yes", "Parsed; warned-and-ignored."],
+        ["attachable", "partial", "yes", "Parsed; warned-and-ignored."],
+        ["enable_ipv6", "partial", "yes", "Parsed; warned-and-ignored."],
+        ["internal", "partial", "yes", "Parsed (as isInternal); warned-and-ignored."],
+        ["labels", "partial", "yes", "Parsed; warned-and-ignored."],
+        ["ipam", "miss", "no", ""]
+      ]
+    },
+    {
+      "id": "volume",
+      "title": "Top-level Volume",
+      "rows": [
+        ["name", "ok", "yes", "Used as actual volume name."],
+        ["external", "ok", "yes", "Bool and object form via ExternalVolume."],
+        ["driver", "partial", "no", "Parsed; not applied (named volumes use ~/.containers fallback)."],
+        ["driver_opts", "partial", "no", "Parsed; not applied."],
+        ["labels", "partial", "no", "Parsed; not applied."]
+      ]
+    },
+    {
+      "id": "secret",
+      "title": "Top-level Secret",
+      "rows": [
+        ["file", "partial", "no", "Parsed; not mounted at runtime."],
+        ["environment", "partial", "no", "Custom extension; parsed only."],
+        ["external", "ok", "no", "Bool and object form via ExternalSecret."],
+        ["name", "ok", "no", "Parsed."],
+        ["labels", "partial", "no", "Parsed only."],
+        ["driver", "miss", "no", ""],
+        ["driver_opts", "miss", "no", ""],
+        ["template_driver", "miss", "no", ""]
+      ]
+    },
+    {
+      "id": "config",
+      "title": "Top-level Config",
+      "rows": [
+        ["file", "partial", "no", "Parsed; not mounted."],
+        ["external", "ok", "no", "Bool and object form via ExternalConfig."],
+        ["name", "ok", "no", "Parsed."],
+        ["labels", "partial", "no", "Parsed only."],
+        ["content", "miss", "no", ""],
+        ["environment", "miss", "no", ""],
+        ["template_driver", "miss", "no", ""]
+      ]
+    },
+    {
+      "id": "cli",
+      "title": "Compose CLI subcommands",
+      "note": "Versus the canonical docker compose CLI surface.",
+      "rows": [
+        ["compose up", "ok", "yes", "Topo-sorted startup, network/volume creation, image pull/build."],
+        ["compose down", "ok", "yes", "Stops (and optionally removes) project containers."],
+        ["compose build", "ok", "yes", "Builds without running. Honors --no-cache, -f."],
+        ["compose version", "ok", "yes", "Prints tool version (0.11.0)."],
+        ["compose pull", "miss", "no", ""],
+        ["compose push", "miss", "no", ""],
+        ["compose logs", "miss", "no", "Inline streaming exists during `up`, but no standalone subcommand."],
+        ["compose ps", "miss", "no", ""],
+        ["compose run", "miss", "no", ""],
+        ["compose exec", "miss", "no", ""],
+        ["compose start", "miss", "no", ""],
+        ["compose stop", "miss", "no", ""],
+        ["compose restart", "miss", "no", ""],
+        ["compose kill", "miss", "no", ""],
+        ["compose rm", "miss", "no", ""],
+        ["compose create", "miss", "no", ""],
+        ["compose config", "miss", "no", ""],
+        ["compose port", "miss", "no", ""],
+        ["compose top", "miss", "no", ""],
+        ["compose events", "miss", "no", ""],
+        ["compose ls", "miss", "no", ""],
+        ["compose watch", "miss", "no", ""]
+      ]
+    }
+  ]
+}
+</script>
+
+<script>
+"use strict";
+
+/* -------- helpers: safe DOM construction -------- */
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === "class") node.className = attrs[k];
+      else if (k === "text") node.textContent = attrs[k];
+      else if (k.indexOf("data-") === 0) node.setAttribute(k, attrs[k]);
+      else if (k === "title" || k === "type" || k === "placeholder" ||
+               k === "id" || k === "href" || k === "download" ||
+               k === "autocomplete" || k === "value" || k === "role" ||
+               k === "aria-pressed") {
+        node.setAttribute(k, attrs[k]);
+      }
+    }
+  }
+  if (children) {
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i];
+      if (c == null) continue;
+      if (typeof c === "string") node.appendChild(document.createTextNode(c));
+      else node.appendChild(c);
+    }
+  }
+  return node;
+}
+
+/* -------- load static data from inline JSON script tag -------- */
+const dataNode = document.getElementById("coverage-data");
+const data = JSON.parse(dataNode.textContent);
+/* Each row is [feature, status, tested, notes] in JSON; expand for readability */
+const groups = data.groups.map(g => ({
+  id: g.id,
+  title: g.title,
+  note: g.note || "",
+  rows: g.rows.map(r => ({ f: r[0], s: r[1], t: r[2], n: r[3] || "" })),
+}));
+
+const labels = { ok: "Implemented", partial: "Partial", miss: "Missing" };
+function pct(n, total) { return total === 0 ? 0 : Math.round((n / total) * 100); }
+function counts(rows) {
+  const c = { ok: 0, partial: 0, miss: 0 };
+  for (let i = 0; i < rows.length; i++) c[rows[i].s]++;
+  return c;
+}
+
+/* -------- render summary -------- */
+function renderSummary() {
+  const all = groups.flatMap(g => g.rows);
+  const c = counts(all);
+  const total = all.length;
+  const tested = all.filter(r => r.t === "yes").length;
+  const stats = [
+    { label: "Features audited",  value: total, pct: "" },
+    { label: "Implemented",       value: c.ok,      pct: pct(c.ok, total) + "% of audited" },
+    { label: "Partial",           value: c.partial, pct: pct(c.partial, total) + "% of audited" },
+    { label: "Missing",           value: c.miss,    pct: pct(c.miss, total) + "% of audited" },
+    { label: "Has test coverage", value: tested,    pct: pct(tested, total) + "% of audited" },
+  ];
+  const root = document.getElementById("summary");
+  for (let i = 0; i < stats.length; i++) {
+    const s = stats[i];
+    root.appendChild(el("div", { class: "stat" }, [
+      el("div", { class: "label", text: s.label }),
+      el("div", { class: "value", text: String(s.value) }),
+      el("div", { class: "pct",   text: s.pct }),
+    ]));
+  }
+}
+
+/* -------- render grouped tables -------- */
+function renderGroups() {
+  const root = document.getElementById("groups");
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const c = counts(g.rows);
+    const total = g.rows.length;
+    const okPct = pct(c.ok, total);
+    const partialPct = pct(c.partial, total);
+
+    const bar = el("span", { class: "bar",
+      title: c.ok + " ok · " + c.partial + " partial · " + c.miss + " missing" }, [
+      Object.assign(el("span", { class: "ok" }), { style: "width:" + okPct + "%" }),
+      Object.assign(el("span", { class: "partial" }), { style: "width:" + partialPct + "%" }),
+    ]);
+    /* set inline width safely */
+    bar.children[0].style.width = okPct + "%";
+    bar.children[1].style.width = partialPct + "%";
+
+    const meta = el("span", { class: "meta" }, [
+      bar,
+      " " + c.ok + " / " + total + " implemented · " + c.partial + " partial · " + c.miss + " missing",
+    ]);
+
+    const h2 = el("h2", null, [g.title + "  ", meta]);
+    const section = el("section", { class: "group-section", "data-group-id": g.id }, [h2]);
+
+    if (g.note) section.appendChild(el("div", { class: "note", text: g.note }));
+
+    const thead = el("thead", null, [
+      el("tr", null, [
+        el("th", { "data-sort": "feature", text: "Feature" }),
+        el("th", { "data-sort": "status",  text: "Status" }),
+        el("th", { "data-sort": "tested",  text: "Tested" }),
+        el("th", { text: "Notes" }),
+      ]),
+    ]);
+
+    const tbody = el("tbody");
+    for (let ri = 0; ri < g.rows.length; ri++) {
+      const r = g.rows[ri];
+      const haystack = (r.f + " " + (r.n || "")).toLowerCase();
+      tbody.appendChild(el("tr", {
+        "data-status": r.s,
+        "data-tested": r.t,
+        "data-haystack": haystack,
+      }, [
+        el("td", { class: "feature", text: r.f }),
+        el("td", null, [el("span", { class: "pill " + r.s, text: labels[r.s] })]),
+        el("td", { text: r.t === "yes" ? "✓" : "—" }),
+        el("td", { class: "notes", text: r.n || "" }),
+      ]));
+    }
+
+    const table = el("table", { "data-table": "true" }, [thead, tbody]);
+    section.appendChild(table);
+    root.appendChild(section);
+  }
+}
+
+/* -------- filtering -------- */
+const filterState = { status: "all", tested: "all", q: "" };
+
+function applyFilters() {
+  const q = filterState.q.trim().toLowerCase();
+  let visible = 0;
+  const sections = document.querySelectorAll("section.group-section");
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    let groupVisible = 0;
+    const rows = section.querySelectorAll("tbody tr");
+    for (let j = 0; j < rows.length; j++) {
+      const tr = rows[j];
+      const matchStatus = filterState.status === "all" || tr.getAttribute("data-status") === filterState.status;
+      const matchTested = filterState.tested === "all" || tr.getAttribute("data-tested") === filterState.tested;
+      const matchQ = !q || tr.getAttribute("data-haystack").indexOf(q) !== -1;
+      const show = matchStatus && matchTested && matchQ;
+      tr.style.display = show ? "" : "none";
+      if (show) { groupVisible++; visible++; }
+    }
+    section.style.display = groupVisible === 0 ? "none" : "";
+  }
+  document.getElementById("empty").classList.toggle("shown", visible === 0);
+}
+
+function bindFilters() {
+  const chips = document.querySelectorAll(".chip");
+  for (let i = 0; i < chips.length; i++) {
+    const btn = chips[i];
+    btn.addEventListener("click", function() {
+      const f = btn.getAttribute("data-filter");
+      const v = btn.getAttribute("data-value");
+      const peers = document.querySelectorAll('.chip[data-filter="' + f + '"]');
+      for (let j = 0; j < peers.length; j++) peers[j].setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      filterState[f] = v;
+      applyFilters();
+    });
+  }
+  document.getElementById("search").addEventListener("input", function(e) {
+    filterState.q = e.target.value;
+    applyFilters();
+  });
+}
+
+/* -------- sorting -------- */
+const sortRank = { ok: 0, partial: 1, miss: 2 };
+function bindSorting() {
+  const tables = document.querySelectorAll("table[data-table]");
+  for (let ti = 0; ti < tables.length; ti++) {
+    const table = tables[ti];
+    const ths = table.querySelectorAll("th[data-sort]");
+    for (let hi = 0; hi < ths.length; hi++) {
+      const th = ths[hi];
+      th.addEventListener("click", function() {
+        const key = th.getAttribute("data-sort");
+        const tbody = table.querySelector("tbody");
+        const rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+        const isAsc = th.classList.contains("sorted-asc");
+        const next = isAsc ? "desc" : "asc";
+        const allTh = table.querySelectorAll("th");
+        for (let k = 0; k < allTh.length; k++) {
+          allTh[k].classList.remove("sorted-asc", "sorted-desc");
+        }
+        th.classList.add(next === "asc" ? "sorted-asc" : "sorted-desc");
+        rows.sort(function(a, b) {
+          let va, vb;
+          if (key === "feature") {
+            va = a.children[0].textContent.toLowerCase();
+            vb = b.children[0].textContent.toLowerCase();
+          } else if (key === "status") {
+            va = sortRank[a.getAttribute("data-status")];
+            vb = sortRank[b.getAttribute("data-status")];
+          } else if (key === "tested") {
+            va = a.getAttribute("data-tested") === "yes" ? 0 : 1;
+            vb = b.getAttribute("data-tested") === "yes" ? 0 : 1;
+          }
+          if (va < vb) return next === "asc" ? -1 : 1;
+          if (va > vb) return next === "asc" ?  1 : -1;
+          return 0;
+        });
+        for (let k = 0; k < rows.length; k++) tbody.appendChild(rows[k]);
+      });
+    }
+  }
+}
+
+/* -------- machine-readable JSON download -------- */
+function attachJson() {
+  const all = groups.map(g => ({
+    id: g.id, title: g.title, note: g.note || null,
+    counts: counts(g.rows),
+    rows: g.rows.map(r => ({ feature: r.f, status: r.s, tested: r.t === "yes", notes: r.n })),
+  }));
+  const summary = {
+    generated_at: new Date().toISOString(),
+    anchor: data.anchor,
+    counts: counts(groups.flatMap(g => g.rows)),
+    groups: all,
+  };
+  const json = JSON.stringify(summary, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { id: "download-json", href: url, download: "coverage.json", text: "Download JSON" });
+  document.getElementById("controls").appendChild(a);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("ts").textContent = new Date().toISOString().slice(0, 10);
+  renderSummary();
+  renderGroups();
+  bindFilters();
+  bindSorting();
+  attachJson();
+});
+</script>
+</body>
+</html>
