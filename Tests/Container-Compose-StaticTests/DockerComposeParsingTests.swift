@@ -177,9 +177,9 @@ struct DockerComposeParsingTests {
         let decoder = YAMLDecoder()
         let compose = try decoder.decode(DockerCompose.self, from: yaml)
         
-        #expect(compose.services["web"]??.depends_on?.contains("db") == true)
+        #expect(compose.services["web"]??.dependsOn?.serviceNames.contains("db") == true)
     }
-    
+
     @Test("Parse compose with build context")
     func parseComposeWithBuild() throws {
         let yaml = """
@@ -427,7 +427,7 @@ struct DockerComposeParsingTests {
         #expect(compose.services["wordpress"] != nil)
         #expect(compose.services["db"] != nil)
         #expect(compose.volumes?.count == 2)
-        #expect(compose.services["wordpress"]??.depends_on?.contains("db") == true)
+        #expect(compose.services["wordpress"]??.dependsOn?.serviceNames.contains("db") == true)
     }
     
     @Test("Parse three-tier web application")
@@ -451,7 +451,7 @@ struct DockerComposeParsingTests {
         let compose = try decoder.decode(DockerCompose.self, from: yaml)
         
         #expect(compose.services.count == 5)
-        #expect(compose.services["api-gateway"]??.depends_on?.count == 3)
+        #expect(compose.services["api-gateway"]??.dependsOn?.serviceNames.count == 3)
     }
     
     @Test("Parse development environment with build")

@@ -57,7 +57,7 @@ public struct Service: Codable, Hashable {
     public let command: [String]?
 
     /// Services this service depends on (for startup order)
-    public let depends_on: [String]?
+    public let dependsOn: DependsOn?
 
     /// User or UID to run the container as
     public let user: String?
@@ -103,8 +103,9 @@ public struct Service: Codable, Hashable {
     
     // Defines custom coding keys to map YAML keys to Swift properties
     enum CodingKeys: String, CodingKey {
-        case image, build, deploy, restart, healthcheck, volumes, environment, env_file, ports, command, depends_on, user,
+        case image, build, deploy, restart, healthcheck, volumes, environment, env_file, ports, command, user,
              container_name, networks, hostname, entrypoint, privileged, read_only, working_dir, configs, secrets, stdin_open, tty, platform
+        case dependsOn = "depends_on"
     }
     
     /// Public memberwise initializer for testing
@@ -119,7 +120,7 @@ public struct Service: Codable, Hashable {
         env_file: [String]? = nil,
         ports: [String]? = nil,
         command: [String]? = nil,
-        depends_on: [String]? = nil,
+        dependsOn: DependsOn? = nil,
         user: String? = nil,
         container_name: String? = nil,
         networks: [String]? = nil,
@@ -145,7 +146,7 @@ public struct Service: Codable, Hashable {
         self.env_file = env_file
         self.ports = ports
         self.command = command
-        self.depends_on = depends_on
+        self.dependsOn = dependsOn
         self.user = user
         self.container_name = container_name
         self.networks = networks
@@ -190,11 +191,7 @@ public struct Service: Codable, Hashable {
             command = nil
         }
         
-        if let dependsOnString = try? container.decodeIfPresent(String.self, forKey: .depends_on) {
-            depends_on = [dependsOnString]
-        } else {
-            depends_on = try container.decodeIfPresent([String].self, forKey: .depends_on)
-        }
+        self.dependsOn = try container.decodeIfPresent(DependsOn.self, forKey: .dependsOn)
         user = try container.decodeIfPresent(String.self, forKey: .user)
 
         container_name = try container.decodeIfPresent(String.self, forKey: .container_name)
@@ -220,7 +217,7 @@ public struct Service: Codable, Hashable {
         platform = try container.decodeIfPresent(String.self, forKey: .platform)
     }
     
-    /// Returns the services in topological order based on `depends_on` relationships.
+    /// Returns the services in topological order based on `dependsOn` relationships.
     public static func topoSortConfiguredServices(
         _ services: [(serviceName: String, service: Service)]
     ) throws -> [(serviceName: String, service: Service)] {
@@ -243,7 +240,7 @@ public struct Service: Codable, Hashable {
             guard !visited.contains(name) else { return }
 
             visiting.insert(name)
-            for depName in serviceTuple.service.depends_on ?? [] {
+            for depName in serviceTuple.service.dependsOn?.serviceNames ?? [] {
                 try visit(depName, from: name)
             }
             visiting.remove(name)
