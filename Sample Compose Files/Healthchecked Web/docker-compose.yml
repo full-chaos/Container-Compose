@@ -1,0 +1,34 @@
+# Demonstrates the depends_on object form (compose-spec L277-L310).
+# `app` only starts after `db` is healthy, with restart-on-failure semantics.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: example
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  cache:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 3
+
+  app:
+    image: nginx:alpine
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+        restart: true
+      cache:
+        condition: service_healthy
+        required: false   # app starts even if cache is degraded
+    ports:
+      - "8080:80"
