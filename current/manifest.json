@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "6d5b90abd472f94740b95e1e85e3054e3b97b948",
-  "short": "6d5b90a",
+  "commit": "f2cdb79b7f5d01e4337997749e1922650e060fb3",
+  "short": "f2cdb79",
   "target": "current",
-  "message": "feat: support pre-subcommand global flags (-f, -p, --profile, --env-file, --project-directory) (#4)",
-  "published_at": "2026-04-27T20:33:36.697875+00:00"
+  "message": "chore: add --verbose detail to 'compose build' empty-output message (#5)",
+  "published_at": "2026-04-27T20:36:22.435561+00:00"
 }
