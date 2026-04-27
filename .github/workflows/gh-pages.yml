@@ -1,0 +1,235 @@
+name: Publish to gh-pages
+
+# Publishes a per-branch view of the project's static artifacts
+# (coverage.html, AGENTS.md, docs/, the implementation plan) to the
+# gh-pages branch. Layout on gh-pages:
+#
+#   /current/...   ← latest commit of main
+#   /<sha>/...     ← latest commit of every other branch (short SHA, 7 chars)
+#
+# `keep_files: true` means older sub-directories are never pruned, so
+# every commit of every branch ever published remains permanently
+# linkable. The root index.html is regenerated on every run to list all
+# available versions.
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+# Don't pile up runs on the same ref — superseded commits should bow out.
+concurrency:
+  group: gh-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Compute target subdirectory
+        id: target
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "$BRANCH_NAME" = "main" ]; then
+            target="current"
+          else
+            target="$(git rev-parse --short=7 HEAD)"
+          fi
+          # Sanitize: a branch's short SHA is always 7 hex chars; "current"
+          # is the only special name. Refuse anything else to be safe.
+          case "$target" in
+            current) ;;
+            [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) ;;
+            *) echo "error: unexpected target '$target'" >&2; exit 1 ;;
+          esac
+          echo "dir=$target" >> "$GITHUB_OUTPUT"
+
+      - name: Stage publishable artifacts for this commit
+        env:
+          TARGET_DIR: ${{ steps.target.outputs.dir }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          out="_site/$TARGET_DIR"
+          mkdir -p "$out"
+
+          # Always copy the coverage report and orientation doc.
+          [ -f coverage.html ] && cp coverage.html "$out/"
+          [ -f AGENTS.md ]     && cp AGENTS.md     "$out/"
+          [ -d docs ]          && cp -r docs       "$out/"
+
+          # Each per-version directory gets a tiny landing page that
+          # redirects to coverage.html (the most useful artifact).
+          {
+            echo '<!doctype html>'
+            echo '<html lang="en"><head>'
+            echo '<meta charset="utf-8">'
+            echo '<meta http-equiv="refresh" content="0; url=coverage.html">'
+            printf '<title>Container-Compose · %s</title>\n' "$TARGET_DIR"
+            echo '</head><body>'
+            printf '<p>Redirecting to <a href="coverage.html">coverage.html</a> &mdash; '
+            printf 'branch <code>%s</code>, commit <code>%s</code>.</p>\n' "$BRANCH_NAME" "${COMMIT_SHA:0:7}"
+            echo '<p><a href="AGENTS.md">AGENTS.md</a></p>'
+            echo '<p><a href="docs/">docs/</a></p>'
+            echo '</body></html>'
+          } > "$out/index.html"
+
+          # Per-version manifest, useful for tooling.
+          # Use python3 to safely JSON-encode strings (handles quotes, newlines, unicode)
+          # rather than hand-quoting shell variables.
+          python3 - <<PY > "$out/manifest.json"
+          import json, os, datetime
+          json.dump({
+              "branch": os.environ["BRANCH_NAME"],
+              "commit": os.environ["COMMIT_SHA"],
+              "short": os.environ["COMMIT_SHA"][:7],
+              "target": os.environ["TARGET_DIR"],
+              "message": os.environ.get("COMMIT_MSG", "").splitlines()[0] if os.environ.get("COMMIT_MSG") else "",
+              "published_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+          }, fp=__import__("sys").stdout, indent=2)
+          PY
+          echo
+          echo "--- staged $out ---"
+          ls -la "$out"
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          keep_files: true
+          enable_jekyll: false
+          commit_message: "publish: ${{ github.ref_name }} @ ${{ steps.target.outputs.dir }}"
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Refresh root index listing all published versions
+        # After the deploy step has written the new sub-directory to gh-pages,
+        # we check it out, regenerate the root index from the actual directory
+        # contents, and push the regenerated index back. This keeps the
+        # listing in sync with whatever exists, regardless of how stale
+        # branches got cleaned up upstream.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Use a temp directory outside the worktree to avoid clobbering.
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+
+          # Shallow clone of the gh-pages branch (just to read + write the index).
+          git clone --branch gh-pages --depth 1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "$tmp/pages"
+          cd "$tmp/pages"
+
+          # Build the listing from the directories actually present.
+          python3 - <<'PY' > _index.tmp
+          import json, os
+          from pathlib import Path
+
+          versions = []
+          for entry in sorted(Path(".").iterdir(), key=lambda p: p.name):
+              if not entry.is_dir() or entry.name.startswith(".") or entry.name == "_site":
+                  continue
+              manifest = entry / "manifest.json"
+              if manifest.exists():
+                  try:
+                      with open(manifest) as f:
+                          data = json.load(f)
+                      data["dir"] = entry.name
+                      versions.append(data)
+                      continue
+                  except Exception:
+                      pass
+              # Fallback: directory exists but no manifest — list it anyway.
+              versions.append({
+                  "dir": entry.name,
+                  "branch": "?",
+                  "short": entry.name if entry.name != "current" else "main",
+                  "message": "",
+                  "published_at": "",
+              })
+
+          # Sort: "current" first, then by published_at descending.
+          versions.sort(key=lambda v: (
+              0 if v["dir"] == "current" else 1,
+              # Newer published_at sorts earlier within each bucket.
+              -1 if v.get("published_at", "") else 0,
+              v.get("published_at", ""),
+              v["dir"],
+          ), reverse=False)
+
+          import html
+          rows = []
+          for v in versions:
+              rows.append(
+                  f'<tr>'
+                  f'<td><a href="{html.escape(v["dir"])}/">{html.escape(v["dir"])}</a></td>'
+                  f'<td><code>{html.escape(v.get("branch","?"))}</code></td>'
+                  f'<td><code>{html.escape(v.get("short",""))}</code></td>'
+                  f'<td>{html.escape(v.get("message",""))[:120]}</td>'
+                  f'<td>{html.escape(v.get("published_at",""))}</td>'
+                  f'</tr>'
+              )
+
+          html_out = """<!doctype html>
+          <html lang="en"><head>
+          <meta charset="utf-8">
+          <title>Container-Compose &middot; published versions</title>
+          <style>
+            body{font:14px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;
+                 margin:2rem;max-width:1100px;color:#1f2328}
+            h1{font-size:20px;margin:0 0 4px}
+            .sub{color:#57606a;font-size:13px;margin-bottom:1.2rem}
+            table{width:100%;border-collapse:collapse;background:#fff;
+                  border:1px solid #d0d7de;border-radius:8px;overflow:hidden}
+            th,td{text-align:left;padding:8px 12px;font-size:13px;
+                  border-bottom:1px solid #d0d7de;vertical-align:top}
+            th{background:#f6f8fa;font-weight:600;font-size:11px;
+               text-transform:uppercase;letter-spacing:.06em;color:#57606a}
+            tr:last-child td{border-bottom:none}
+            tr:hover td{background:#f6f8fa}
+            a{color:#0969da;text-decoration:none}
+            a:hover{text-decoration:underline}
+            code{font-family:ui-monospace,SF Mono,Menlo,Consolas,monospace;font-size:12px}
+          </style>
+          </head><body>
+          <h1>Container-Compose &middot; published versions</h1>
+          <div class="sub">Branch <code>main</code> publishes to <code>current/</code>; every other branch publishes to its short SHA.</div>
+          <table>
+            <thead><tr><th>Path</th><th>Branch</th><th>Commit</th><th>Message</th><th>Published</th></tr></thead>
+            <tbody>__ROWS__</tbody>
+          </table>
+          </body></html>
+          """.replace("__ROWS__", "\n".join(rows))
+
+          with open("_index.tmp", "w") as f:
+              f.write(html_out)
+          print(f"wrote {len(versions)} versions to index")
+          PY
+
+          mv _index.tmp index.html
+
+          if git diff --quiet -- index.html; then
+            echo "index.html unchanged; nothing to push."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "publish: refresh root version listing"
+          git push origin gh-pages
