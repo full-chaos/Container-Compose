@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr2",
+  "commit": "5af107c5491f9dcf98768eae2ad70b45b1b434ac",
+  "short": "5af107c",
+  "target": "5af107c",
+  "message": "test: raise RuntimeArgvTests timeout to 60s for CI's slower path-to-runner",
+  "published_at": "2026-04-27T22:53:15.550330+00:00"
+}
