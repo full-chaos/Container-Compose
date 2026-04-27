@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "80af29a210fbd2235cbe544bc1c1177353918287",
-  "short": "80af29a",
+  "commit": "6d5b90abd472f94740b95e1e85e3054e3b97b948",
+  "short": "6d5b90a",
   "target": "current",
-  "message": "fix: --entrypoint placed after image in compose up (#3)",
-  "published_at": "2026-04-27T20:33:27.263153+00:00"
+  "message": "feat: support pre-subcommand global flags (-f, -p, --profile, --env-file, --project-directory) (#4)",
+  "published_at": "2026-04-27T20:33:36.697875+00:00"
 }
