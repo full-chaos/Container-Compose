@@ -65,8 +65,8 @@ public struct Service: Codable, Hashable {
     /// Explicit name for the container instance
     public let container_name: String?
 
-    /// List of networks the service will connect to
-    public let networks: [String]?
+    /// Networks the service will connect to (list or map form)
+    public let networks: ServiceNetworks?
 
     /// Container hostname
     public let hostname: String?
@@ -323,7 +323,7 @@ public struct Service: Codable, Hashable {
         dependsOn: DependsOn? = nil,
         user: String? = nil,
         container_name: String? = nil,
-        networks: [String]? = nil,
+        networks: ServiceNetworks? = nil,
         hostname: String? = nil,
         entrypoint: [String]? = nil,
         privileged: Bool? = nil,
@@ -505,7 +505,7 @@ public struct Service: Codable, Hashable {
         user = try container.decodeIfPresent(String.self, forKey: .user)
 
         container_name = try container.decodeIfPresent(String.self, forKey: .container_name)
-        networks = try container.decodeIfPresent([String].self, forKey: .networks)
+        networks = try container.decodeIfPresent(ServiceNetworks.self, forKey: .networks)
         hostname = try container.decodeIfPresent(String.self, forKey: .hostname)
         
         // Decode 'entrypoint' which can be either a single string or an array of strings.
