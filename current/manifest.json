@@ -1,0 +1,8 @@
+{
+  "branch": "main",
+  "commit": "03894ec61bbf237afc85c06e96459ae8a27739bf",
+  "short": "03894ec",
+  "target": "current",
+  "message": "feat: bring Container-Compose to ~67% compose-spec compliance (depends_on object form, 11 new subcommands, 50+ flags) (#1)",
+  "published_at": "2026-04-27T02:02:55.569505+00:00"
+}
