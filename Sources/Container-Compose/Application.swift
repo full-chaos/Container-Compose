@@ -39,6 +39,9 @@ public struct Main: AsyncParsableCommand {
             ComposeLogs.self,
             ComposePull.self,
             ComposeConfig.self,
+            ComposeKill.self,
+            ComposeRm.self,
+            ComposeCreate.self,
             Version.self
         ])
 
