@@ -37,11 +37,87 @@ extension ComposeUp {
             if ctx.service.stdin_open == true { args.append("-i") }
             if ctx.service.tty == true { args.append("-t") }
 
-            // NOTE: service.restart is parsed but not applied — `container run`
-            // doesn't expose --restart. Phase 2E will route this through the
-            // higher-level container restart manager when available.
+            // --init: only emitted when explicitly set to true
+            if ctx.service.init_ == true {
+                args.append("--init")
+            }
+
+            // --stop-signal: pass the raw signal name
+            if let stopSignal = ctx.service.stop_signal {
+                args.append(contentsOf: ["--stop-signal", stopSignal])
+            }
+
+            // --stop-timeout: parse Go duration format → integer seconds
+            if let gracePeriod = ctx.service.stop_grace_period {
+                if let seconds = parseGoDuration(gracePeriod) {
+                    args.append(contentsOf: ["--stop-timeout", "\(seconds)"])
+                } else {
+                    print("Warning: Could not parse 'stop_grace_period' value '\(gracePeriod)'; skipping --stop-timeout.")
+                }
+            }
+
+            // --runtime: pass the runtime name
+            if let runtime = ctx.service.runtime {
+                args.append(contentsOf: ["--runtime", runtime])
+            }
+
+            // restart: parsed but NOT emitted as a flag — `container run` does
+            // not expose --restart. Route through the Apple container restart
+            // manager when available.
+            if ctx.service.restart != nil {
+                print("Note: 'restart' policy not yet routed through Apple container restart manager.")
+            }
 
             return args
+        }
+
+        /// Parses a Go duration string (e.g. "30s", "1m", "1m30s") or a raw
+        /// integer string (e.g. "5") into an integer number of seconds.
+        ///
+        /// Supported units: `h` (hours), `m` (minutes), `s` (seconds).
+        /// Returns `nil` if the string cannot be parsed.
+        static func parseGoDuration(_ input: String) -> Int? {
+            let trimmed = input.trimmingCharacters(in: .whitespaces)
+
+            // Fast path: raw integer (no unit suffix)
+            if let raw = Int(trimmed) {
+                return raw
+            }
+
+            // Parse sequences of <digits><unit>
+            var total = 0
+            var remaining = trimmed[...]
+            var matched = false
+
+            let unitMultipliers: [(suffix: String, multiplier: Int)] = [
+                ("h", 3600),
+                ("m", 60),
+                ("s", 1),
+            ]
+
+            while !remaining.isEmpty {
+                // Consume leading digits
+                let digits = remaining.prefix(while: { $0.isNumber })
+                guard !digits.isEmpty, let value = Int(digits) else { break }
+                remaining = remaining.dropFirst(digits.count)
+
+                // Match a unit character
+                var unitFound = false
+                for (suffix, multiplier) in unitMultipliers {
+                    if remaining.hasPrefix(suffix) {
+                        total += value * multiplier
+                        remaining = remaining.dropFirst(suffix.count)
+                        unitFound = true
+                        matched = true
+                        break
+                    }
+                }
+                guard unitFound else { break }
+            }
+
+            // Valid only if we consumed the entire string and matched something
+            guard matched, remaining.isEmpty else { return nil }
+            return total
         }
     }
 }
