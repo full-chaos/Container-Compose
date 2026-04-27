@@ -36,18 +36,6 @@ struct RuntimeArgvTests {
 
     // MARK: - Test scaffolding (per plan §8)
 
-    /// Bind a fresh `RecordingRunner` for the duration of `body` and return it.
-    /// Mirrors the template at the end of plan §8 verbatim.
-    private func runWithRecorder(
-        _ body: () async throws -> Void
-    ) async throws -> RecordingRunner {
-        let recorder = RecordingRunner()
-        try await RunnerEnvironment.$current.withValue(recorder) {
-            try await body()
-        }
-        return recorder
-    }
-
     /// Write `yaml` to a fresh temp directory and return the directory + the
     /// compose file path. Caller is responsible for cleanup via the returned
     /// directory URL (typical pattern: a `defer` in the test body).
@@ -69,23 +57,42 @@ struct RuntimeArgvTests {
         try ComposeUp.parse(["--detach", "-f", composePath])
     }
 
-    /// `cmd.run()` spawns an unstructured `Task { … }` to call the runner and
-    /// then proceeds to `waitUntilServiceIsRunning`, which polls the runtime
-    /// (independent of the seam). When run under a recorder, the runtime
-    /// poll never observes a started container and may throw / time out;
-    /// what we care about is that the unstructured Task reached the runner.
-    /// Poll the recorder briefly until at least one `container run` argv
-    /// has been captured (or fail with a clear message).
-    private func awaitRecordedRunArgv(
-        _ recorder: RecordingRunner,
+    /// Detach `ComposeUp.run()` for `composePath` under a fresh
+    /// `RecordingRunner` task-local binding, poll the recorder until the
+    /// first `container run` argv is captured, then cancel the run task
+    /// and return the argv.
+    ///
+    /// Why detach + cancel: `cmd.run()`'s post-runner `waitUntilServiceIsRunning`
+    /// polls the live `ContainerClient` until its 30s timeout (no real
+    /// container ever starts under the recorder). Awaiting `cmd.run()` to
+    /// completion would pay that 30s on every test. Spawning it in a
+    /// detached `Task` and cancelling once the recorder has the argv keeps
+    /// each test sub-second; cancellation propagates through the
+    /// `Task.sleep` calls inside the polling loop.
+    private func recordedRunArgv(
+        composePath: String,
         timeout: TimeInterval = 5
     ) async throws -> [String] {
+        let recorder = RecordingRunner()
+        let runTask = Task {
+            try? await RunnerEnvironment.$current.withValue(recorder) {
+                var cmd = try parseComposeUp(composePath: composePath)
+                try await cmd.run()
+            }
+        }
+        defer { runTask.cancel() }
+
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             let argvs = await recorder.runArgvs()
-            if let first = argvs.first { return first }
+            if let first = argvs.first {
+                runTask.cancel()
+                return first
+            }
             try await Task.sleep(nanoseconds: 50_000_000) // 50 ms
         }
+
+        runTask.cancel()
         let all = await recorder.argvs()
         Issue.record(
             "No `container run` argv recorded within \(timeout)s. All recorded argvs: \(all)"
@@ -95,20 +102,6 @@ struct RuntimeArgvTests {
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "no run argv recorded"]
         )
-    }
-
-    /// Drive `cmd.run()` from inside the recorder binding. The call may
-    /// throw because side helpers (image pull / network setup / runtime
-    /// polling) reach out to Apple `container` directly; we only care
-    /// about what the recorder captured up to that point.
-    @discardableResult
-    private func driveRun(_ cmd: inout ComposeUp) async -> Error? {
-        do {
-            try await cmd.run()
-            return nil
-        } catch {
-            return error
-        }
     }
 
     // MARK: - Plan §8 #1 — entrypoint placement (head-only)
@@ -124,12 +117,7 @@ struct RuntimeArgvTests {
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let recorder = try await runWithRecorder {
-            var cmd = try parseComposeUp(composePath: compose.path)
-            _ = await driveRun(&cmd)
-        }
-
-        let argv = try await awaitRecordedRunArgv(recorder)
+        let argv = try await recordedRunArgv(composePath: compose.path)
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
         let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
@@ -150,12 +138,7 @@ struct RuntimeArgvTests {
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let recorder = try await runWithRecorder {
-            var cmd = try parseComposeUp(composePath: compose.path)
-            _ = await driveRun(&cmd)
-        }
-
-        let argv = try await awaitRecordedRunArgv(recorder)
+        let argv = try await recordedRunArgv(composePath: compose.path)
 
         // Locate landmarks.
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
@@ -192,12 +175,7 @@ struct RuntimeArgvTests {
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let recorder = try await runWithRecorder {
-            var cmd = try parseComposeUp(composePath: compose.path)
-            _ = await driveRun(&cmd)
-        }
-
-        let argv = try await awaitRecordedRunArgv(recorder)
+        let argv = try await recordedRunArgv(composePath: compose.path)
 
         // Expected -p value pairs (per `composePortToRunArg` semantics in
         // `Helper Functions.swift`): explicit-IP form preserved, no-IP form
@@ -255,12 +233,7 @@ struct RuntimeArgvTests {
         let compose = dir.appendingPathComponent("docker-compose.yml")
         try yaml.write(to: compose, atomically: true, encoding: .utf8)
 
-        let recorder = try await runWithRecorder {
-            var cmd = try parseComposeUp(composePath: compose.path)
-            _ = await driveRun(&cmd)
-        }
-
-        let argv = try await awaitRecordedRunArgv(recorder)
+        let argv = try await recordedRunArgv(composePath: compose.path)
 
         // Collect every `-e <K=V>` pair.
         var envPairs: [String] = []
