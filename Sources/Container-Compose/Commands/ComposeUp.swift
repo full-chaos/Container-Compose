@@ -294,6 +294,14 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         guard let projectName else { return }
         let actualVolumeName = volumeConfig.name ?? volumeName  // Use explicit name or key as name
 
+        // If a non-local driver is specified, warn and fall back to the hardlink directory.
+        let driver = volumeConfig.driver
+        if let driver, driver != "local" {
+            print(
+                "Warning: Volume driver '\(driver)' for '\(actualVolumeName)' is not supported by Apple container; falling back to hardlink directory."
+            )
+        }
+
         let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(actualVolumeName)")
         let volumePath = volumeUrl.path(percentEncoded: false)
 
@@ -310,53 +318,98 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("Info: Network '\(networkName)' is declared as external.")
             print("This tool assumes external network '\(externalNetwork.name ?? actualNetworkName)' already exists and will not attempt to create it.")
         } else {
-            var networkCreateArgs: [String] = ["network", "create"]
+            var commands: [String] = [actualNetworkName]
 
-            #warning("Docker Compose Network Options Not Supported")
-            // Add driver and driver options
+            // --plugin: NetworkCreate uses --plugin instead of --driver.
+            // Compose 'driver' is mapped to '--plugin' when non-empty.
             if let driver = networkConfig?.driver, !driver.isEmpty {
-                //                    networkCreateArgs.append("--driver")
-                //                    networkCreateArgs.append(driver)
-                print("Network Driver Detected, But Not Supported")
+                commands.append(contentsOf: ["--plugin", driver])
             }
+
+            // driver_opts: NetworkCreate has no --opt flag; warn and skip.
             if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
-                //                    for (optKey, optValue) in driverOpts {
-                //                        networkCreateArgs.append("--opt")
-                //                        networkCreateArgs.append("\(optKey)=\(optValue)")
-                //                    }
-                print("Network Options Detected, But Not Supported")
+                print(
+                    "Warning: Network '\(networkName)' specifies driver_opts \(driverOpts) which are not supported by Apple container network create; ignoring."
+                )
             }
-            // Add various network flags
-            if networkConfig?.attachable == true {
-                //                    networkCreateArgs.append("--attachable")
-                print("Network Attachable Flag Detected, But Not Supported")
-            }
-            if networkConfig?.enable_ipv6 == true {
-                //                    networkCreateArgs.append("--ipv6")
-                print("Network IPv6 Flag Detected, But Not Supported")
-            }
+
+            // --internal: maps to NetworkCreate's --internal flag (hostOnly mode).
             if networkConfig?.isInternal == true {
-                //                    networkCreateArgs.append("--internal")
-                print("Network Internal Flag Detected, But Not Supported")
-            }  // CORRECTED: Use isInternal
+                commands.append("--internal")
+            }
+
+            // Attachable: not supported by Apple container network create; warn only.
+            if networkConfig?.attachable == true {
+                print(
+                    "Warning: Network '\(networkName)' sets 'attachable: true' which is not supported by Apple container network create; ignoring."
+                )
+            }
+
+            // enable_ipv6: use --subnet-v6 flag if an IPv6 subnet is provided in IPAM config;
+            // a bare enable_ipv6 without a subnet is not directly actionable here.
+            if networkConfig?.enable_ipv6 == true {
+                print(
+                    "Warning: Network '\(networkName)' sets 'enable_ipv6: true'. Provide an IPv6 subnet in ipam.config to pass --subnet-v6; bare flag not supported."
+                )
+            }
+
+            // IPAM config: emit --subnet (IPv4) or --subnet-v6 (IPv6) for each config entry.
+            // ip_range and gateway are not supported by Apple container network create; warn if present.
+            if let ipamConfigs = networkConfig?.ipam?.config {
+                for ipamConfig in ipamConfigs {
+                    if let subnet = ipamConfig.subnet, !subnet.isEmpty {
+                        // Heuristic: IPv6 subnets contain ':', IPv4 use '.'
+                        if subnet.contains(":") {
+                            commands.append(contentsOf: ["--subnet-v6", subnet])
+                        } else {
+                            commands.append(contentsOf: ["--subnet", subnet])
+                        }
+                    }
+                    if let ipRange = ipamConfig.ip_range, !ipRange.isEmpty {
+                        print(
+                            "Warning: Network '\(networkName)' ipam.config ip_range '\(ipRange)' is not supported by Apple container network create; ignoring."
+                        )
+                    }
+                    if let gateway = ipamConfig.gateway, !gateway.isEmpty {
+                        print(
+                            "Warning: Network '\(networkName)' ipam.config gateway '\(gateway)' is not supported by Apple container network create; ignoring."
+                        )
+                    }
+                    if let auxAddresses = ipamConfig.aux_addresses, !auxAddresses.isEmpty {
+                        print(
+                            "Warning: Network '\(networkName)' ipam.config aux_addresses are not supported by Apple container network create; ignoring."
+                        )
+                    }
+                }
+            }
+
+            // IPAM driver/options: warn if present since they have no CLI equivalent.
+            if let ipamDriver = networkConfig?.ipam?.driver, !ipamDriver.isEmpty {
+                print(
+                    "Warning: Network '\(networkName)' ipam.driver '\(ipamDriver)' is not supported by Apple container network create; ignoring."
+                )
+            }
+            if let ipamOptions = networkConfig?.ipam?.options, !ipamOptions.isEmpty {
+                print(
+                    "Warning: Network '\(networkName)' ipam.options are not supported by Apple container network create; ignoring."
+                )
+            }
 
             // Add labels — NetworkCreate.parse accepts repeated --label key=value
             if let labels = networkConfig?.labels, !labels.isEmpty {
                 for (labelKey, labelValue) in labels.sorted(by: { $0.key < $1.key }) {
-                    networkCreateArgs.append(contentsOf: ["--label", "\(labelKey)=\(labelValue)"])
+                    commands.append(contentsOf: ["--label", "\(labelKey)=\(labelValue)"])
                 }
             }
 
             print("Creating network: \(networkName) (Actual name: \(actualNetworkName))")
-            print("Executing container network create: container \(networkCreateArgs.joined(separator: " "))")
+            print("Executing container network create with args: \(commands.joined(separator: " "))")
             guard (try? await NetworkClient().get(id: actualNetworkName)) == nil else {
                 print("Network '\(networkName)' already exists")
                 return
             }
-            let commands = [actualNetworkName]
-            
-            let networkCreate = try Application.NetworkCreate.parse(commands + logging.passThroughCommands())
 
+            let networkCreate = try Application.NetworkCreate.parse(commands + logging.passThroughCommands())
             try await networkCreate.run()
             print("Network '\(networkName)' created")
         }
