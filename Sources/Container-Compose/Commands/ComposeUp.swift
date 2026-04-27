@@ -555,15 +555,14 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("Note: Service '\(serviceName)' is not explicitly connected to any networks. It will likely use the default bridge network.")
         }
 
-        runCommandArgs.append(imageToRun)  // Add the image name as the final argument before command/entrypoint
-
-        // Add entrypoint or command
-        if let entrypointParts = service.entrypoint {
-            runCommandArgs.append("--entrypoint")
-            runCommandArgs.append(contentsOf: entrypointParts)
-        } else if let commandParts = service.command {
-            runCommandArgs.append(contentsOf: commandParts)
-        }
+        // Emit `--entrypoint <first>` (a pre-image flag) + image + remaining
+        // entrypoint args + command, so the runtime parses entrypoint/command
+        // exactly as the compose spec requires. See `imageAndEntrypointTail`.
+        runCommandArgs.append(contentsOf: Self.imageAndEntrypointTail(
+            image: imageToRun,
+            entrypoint: service.entrypoint,
+            command: service.command
+        ))
 
         var serviceColor: NamedColor = Self.availableContainerConsoleColors.randomElement()!
 
@@ -835,6 +834,56 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
 
         return runCommandArgs
+    }
+}
+
+// MARK: Argv tail (image + entrypoint/command)
+extension ComposeUp {
+
+    /// Builds the trailing portion of a `container run` argv: the
+    /// `--entrypoint` flag (if any), the image, and any positional args.
+    ///
+    /// `container run` (like `docker run`) accepts at most one
+    /// `--entrypoint <BIN>` flag *before* the image, with any extra
+    /// arguments to that entrypoint passed positionally *after* the image.
+    /// Compose, however, models `entrypoint` as `[a, b, c]` — a full argv.
+    /// We therefore split: the first token becomes the `--entrypoint` value
+    /// (pre-image), the remaining tokens become positional args (post-image),
+    /// followed by `command` if any.
+    ///
+    /// Resulting shapes:
+    /// - `entrypoint: [a, b, c]`, `command: [d, e]` → `[--entrypoint, a, <image>, b, c, d, e]`
+    /// - `entrypoint: [/app/foo.sh]`, no command   → `[--entrypoint, /app/foo.sh, <image>]`
+    /// - no entrypoint, `command: [d, e]`          → `[<image>, d, e]`
+    /// - neither                                    → `[<image>]`
+    static func imageAndEntrypointTail(
+        image: String,
+        entrypoint: [String]?,
+        command: [String]?
+    ) -> [String] {
+        var tail: [String] = []
+        var positional: [String] = []
+
+        if let entrypoint, let first = entrypoint.first {
+            tail.append("--entrypoint")
+            tail.append(first)
+            // Remaining entrypoint tokens are positional args to the entrypoint
+            // and must appear *after* the image.
+            positional.append(contentsOf: entrypoint.dropFirst())
+        }
+
+        tail.append(image)
+        tail.append(contentsOf: positional)
+
+        // `command` is only honored when no `entrypoint` is present *or* as
+        // additional args after a multi-token entrypoint. The compose spec
+        // says command is appended after entrypoint args, so we always
+        // append it when set.
+        if let command {
+            tail.append(contentsOf: command)
+        }
+
+        return tail
     }
 }
 
