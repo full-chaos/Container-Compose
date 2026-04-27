@@ -129,6 +129,10 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         projectName: String,
         environmentVariables: [String: String]
     ) async throws {
+        // Temp file for dockerfile_inline (cleaned up via defer).
+        var inlineTempURL: URL? = nil
+        defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
+
         let imageTag = service.image ?? "\(serviceName):latest"
 
         var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: composeDirectory)).path]
@@ -137,19 +141,83 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
         }
 
-        commands.append(contentsOf: [
-            "--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path,
-            "--tag", imageTag,
-        ])
+        // Add Dockerfile path — dockerfile_inline wins over dockerfile when both are set.
+        if let inlineContent = buildConfig.dockerfile_inline {
+            if buildConfig.dockerfile != nil {
+                print("Warning: Both 'dockerfile' and 'dockerfile_inline' are set for service '\(serviceName)'. 'dockerfile_inline' takes priority.")
+            }
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".Dockerfile")
+            try inlineContent.write(to: tempURL, atomically: true, encoding: .utf8)
+            inlineTempURL = tempURL
+            commands.append(contentsOf: ["--file", tempURL.path])
+        } else {
+            commands.append(contentsOf: [
+                "--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path,
+            ])
+        }
+
+        commands.append(contentsOf: ["--tag", imageTag])
 
         if noCache {
             commands.append("--no-cache")
         }
 
-        let split = service.platform?.split(separator: "/")
-        let os = String(split?.first ?? "linux")
-        let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
-        commands.append(contentsOf: ["--os", os, "--arch", arch])
+        // Add build target stage
+        if let target = buildConfig.target {
+            commands.append(contentsOf: ["--target", target])
+        }
+
+        // Add cache-from references
+        for ref in buildConfig.cache_from ?? [] {
+            commands.append(contentsOf: ["--cache-from", ref])
+        }
+
+        // Add cache-to references
+        for ref in buildConfig.cache_to ?? [] {
+            commands.append(contentsOf: ["--cache-to", ref])
+        }
+
+        // Add labels
+        for (key, value) in buildConfig.labels ?? [:] {
+            commands.append(contentsOf: ["--label", "\(key)=\(value)"])
+        }
+
+        // Add network mode
+        if let network = buildConfig.network {
+            commands.append(contentsOf: ["--network", network])
+        }
+
+        // Add secrets
+        for secretId in buildConfig.secrets ?? [] {
+            commands.append(contentsOf: ["--secret", "id=\(secretId)"])
+        }
+
+        // Add SSH agent/key mappings
+        for sshKey in buildConfig.ssh ?? [] {
+            commands.append(contentsOf: ["--ssh", sshKey])
+        }
+
+        // Add platform — build.platforms overrides service.platform; only first is used.
+        if let buildPlatforms = buildConfig.platforms, !buildPlatforms.isEmpty {
+            if buildPlatforms.count > 1 {
+                print("Warning: Service '\(serviceName)' declares \(buildPlatforms.count) build platforms. Only the first ('\(buildPlatforms[0])') will be used.")
+            }
+            let firstPlatform = buildPlatforms[0]
+            let split = firstPlatform.split(separator: "/")
+            let os = String(split.first ?? "linux")
+            let arch = String(split.count >= 2 ? split.last! : "arm64")
+            commands.append(contentsOf: ["--os", os, "--arch", arch])
+        } else {
+            let split = service.platform?.split(separator: "/")
+            let os = String(split?.first ?? "linux")
+            let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
+            commands.append(contentsOf: ["--os", os, "--arch", arch])
+        }
+
+        // Add shm-size
+        if let shmSize = buildConfig.shm_size {
+            commands.append(contentsOf: ["--shm-size", shmSize])
+        }
 
         let cpuCount = Int64(service.deploy?.resources?.limits?.cpus ?? "2") ?? 2
         let memoryLimit = service.deploy?.resources?.limits?.memory ?? "2048MB"
