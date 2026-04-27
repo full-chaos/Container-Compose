@@ -33,6 +33,14 @@ public struct Config: Codable {
     /// Labels for the config
     public let labels: [String: String]?
 
+    /// Public memberwise initializer for testing and direct construction.
+    public init(file: String? = nil, external: ExternalConfig? = nil, name: String? = nil, labels: [String: String]? = nil) {
+        self.file = file
+        self.external = external
+        self.name = name
+        self.labels = labels
+    }
+
     enum CodingKeys: String, CodingKey {
         case file, external, name, labels
     }

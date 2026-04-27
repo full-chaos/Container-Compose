@@ -35,6 +35,15 @@ public struct Secret: Codable {
     /// Labels for the secret
     public let labels: [String: String]?
 
+    /// Public memberwise initializer for testing and direct construction.
+    public init(file: String? = nil, environment: String? = nil, external: ExternalSecret? = nil, name: String? = nil, labels: [String: String]? = nil) {
+        self.file = file
+        self.environment = environment
+        self.external = external
+        self.name = name
+        self.labels = labels
+    }
+
     enum CodingKeys: String, CodingKey {
         case file, environment, external, name, labels
     }
