@@ -1,0 +1,8 @@
+{
+  "branch": "feat/compose-spec-phase-0-1",
+  "commit": "025ef9a26e322cb72cd116fa40d9402b9bc895e4",
+  "short": "025ef9a",
+  "target": "025ef9a",
+  "message": "ci(gh-pages): publish per-branch coverage.html + AGENTS.md to gh-pages",
+  "published_at": "2026-04-27T01:53:10.498805+00:00"
+}
