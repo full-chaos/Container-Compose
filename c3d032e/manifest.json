@@ -1,0 +1,8 @@
+{
+  "branch": "feat/pre-subcommand-global-flags",
+  "commit": "c3d032e1ae28518ddcbb82ab9ddf194efb4b592a",
+  "short": "c3d032e",
+  "target": "c3d032e",
+  "message": "refactor: wrap promoteGlobalFlags in ArgvNormalizer + add lone-flag edge tests",
+  "published_at": "2026-04-27T20:05:40.314601+00:00"
+}
