@@ -224,7 +224,7 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             runArgs.append(contentsOf: ComposeUp.NetworkingArgs.build(ctx))
         } else {
             // Emit everything from NetworkingArgs except the -p port bindings
-            var networkArgs = ComposeUp.NetworkingArgs.build(ctx)
+            let networkArgs = ComposeUp.NetworkingArgs.build(ctx)
             // Filter out pairs of ["-p", "<value>"] from the args
             var filteredNetworkArgs: [String] = []
             var skipNext = false

@@ -9,3 +9,6 @@ DerivedData/
 .vscode/launch.json
 .worktrees/
 coverage.json
+./release/**
+**/.cla**/
+**/release/*
