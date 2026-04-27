@@ -1,0 +1,8 @@
+{
+  "branch": "fix/entrypoint-argv-up",
+  "commit": "e7648e9f96e9a95da5a1f7b90c50589da31b2f83",
+  "short": "e7648e9",
+  "target": "e7648e9",
+  "message": "fix: place --entrypoint before image in compose up argv",
+  "published_at": "2026-04-27T14:50:53.564078+00:00"
+}
