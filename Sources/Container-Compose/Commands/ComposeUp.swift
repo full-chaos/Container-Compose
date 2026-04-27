@@ -385,7 +385,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         } else if let img = service.image {
             // Use specified image if no build config
             // Pull image if necessary
-            try await pullImage(img, platform: service.platform)
+            try await pullImage(img, platform: service.platform, policy: service.pull_policy)
             imageToRun = img
         } else {
             // Should not happen due to Service init validation, but as a fallback
@@ -550,18 +550,48 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
     }
 
-    private func pullImage(_ imageName: String, platform: String?) async throws {
+    private func pullImage(_ imageName: String, platform: String?, policy: String? = nil) async throws {
+        // Normalise policy: nil and "if_not_present" are aliases for "missing".
+        let effectivePolicy: String
+        switch policy?.lowercased() {
+        case nil, "missing", "if_not_present":
+            effectivePolicy = "missing"
+        case "always":
+            effectivePolicy = "always"
+        case "never":
+            effectivePolicy = "never"
+        case "build":
+            effectivePolicy = "build"
+        default:
+            effectivePolicy = "missing"
+        }
+
         let imageList = try await ClientImage.list()
-        guard !imageList.contains(where: { $0.description.reference.components(separatedBy: "/").last == imageName }) else {
+        let imageExists = imageList.contains(where: {
+            $0.description.reference.components(separatedBy: "/").last == imageName
+        })
+
+        switch effectivePolicy {
+        case "never", "build":
+            // Image must already be present; pull is forbidden.
+            guard imageExists else {
+                throw ComposeError.imageNotFound(imageName)
+            }
             return
+
+        case "always":
+            // Always pull, regardless of whether the image is cached locally.
+            break
+
+        default:
+            // "missing": short-circuit if image already exists.
+            guard !imageExists else { return }
         }
 
         print("Pulling Image \(imageName)...")
-        
-        var commands = [
-            imageName
-        ]
-        
+
+        var commands = [imageName]
+
         if let platform {
             commands.append(contentsOf: ["--platform", platform])
         }
