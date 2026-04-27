@@ -600,7 +600,21 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("\nStarting service: \(serviceName)")
             print("Starting \(serviceName)")
             print("----------------------------------------\n")
-            let _ = try await streamCommand("container", args: ["run"] + runCommandArgs, onStdout: handleOutput, onStderr: handleOutput)
+            // Route through the RunCommandRunner seam (PR-2 of the recorder
+            // migration; see docs/plans/PLAN-recorder-seam.md §7). Production
+            // behaviour is byte-for-byte unchanged: the default
+            // `ProductionRunner` wraps the same `Process()` semantics that
+            // `streamCommand` used.
+            let request = RunRequest(
+                kind: .streaming,
+                argv: ["container", "run"] + runCommandArgs,
+                cwd: cwd
+            )
+            let _ = try await RunnerEnvironment.current.run(
+                request,
+                onStdout: handleOutput,
+                onStderr: handleOutput
+            )
         }
 
         do {
@@ -904,70 +918,11 @@ extension ComposeUp {
     }
 }
 
-// MARK: CommandLine Functions
-extension ComposeUp {
-
-    /// Runs a command, streams stdout and stderr via closures, and completes when the process exits.
-    ///
-    /// - Parameters:
-    ///   - command: The name of the command to run (e.g., `"container"`).
-    ///   - args: Command-line arguments to pass to the command.
-    ///   - onStdout: Closure called with streamed stdout data.
-    ///   - onStderr: Closure called with streamed stderr data.
-    /// - Returns: The process's exit code.
-    /// - Throws: If the process fails to launch.
-    @discardableResult
-    func streamCommand(
-        _ command: String,
-        args: [String] = [],
-        onStdout: @escaping (@Sendable (String) -> Void),
-        onStderr: @escaping (@Sendable (String) -> Void)
-    ) async throws -> Int32 {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = [command] + args
-            process.currentDirectoryURL = URL(fileURLWithPath: cwd)
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
-
-            process.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-
-            let stdoutHandle = stdoutPipe.fileHandleForReading
-            let stderrHandle = stderrPipe.fileHandleForReading
-
-            stdoutHandle.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty else { return }
-                if let string = String(data: data, encoding: .utf8) {
-                    onStdout(string)
-                }
-            }
-
-            stderrHandle.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty else { return }
-                if let string = String(data: data, encoding: .utf8) {
-                    onStderr(string)
-                }
-            }
-
-            process.terminationHandler = { proc in
-                stdoutHandle.readabilityHandler = nil
-                stderrHandle.readabilityHandler = nil
-                continuation.resume(returning: proc.terminationStatus)
-            }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-}
+// PR-2 of the recorder migration removed the
+// `extension ComposeUp { func streamCommand(...) }` helper that previously
+// lived here. All `compose up` invocations now flow through
+// `RunnerEnvironment.current.run(_:onStdout:onStderr:)` (see the call site in
+// `configService` above). `ProductionRunner` in
+// `Sources/Container-Compose/Runtime/RunCommandRunner.swift` preserves the
+// previous `Process()` semantics byte-for-byte. See
+// `docs/plans/PLAN-recorder-seam.md` §7 / §11.
