@@ -33,13 +33,34 @@ extension ComposeUp {
                 }
             }
 
-            // --network … (list form: a service-level networks: [foo, bar] entry)
+            // --network … (list or map form of service-level networks)
             if let serviceNetworks = ctx.service.networks {
-                for network in serviceNetworks {
-                    let resolved = resolveVariable(network, with: ctx.environmentVariables)
+                for (name, config) in serviceNetworks.entries {
+                    let resolved = resolveVariable(name, with: ctx.environmentVariables)
                     // Prefer the explicit name from the top-level definition if set.
-                    let networkToConnect = ctx.dockerCompose.networks?[network]??.name ?? resolved
+                    let networkToConnect = ctx.dockerCompose.networks?[name]??.name ?? resolved
                     args.append(contentsOf: ["--network", networkToConnect])
+                    // Aliases: emit --alias per alias.
+                    // Note: Apple container CLI may not support --alias; flags are
+                    // emitted regardless with a one-time warning per network entry.
+                    if let aliases = config.aliases, !aliases.isEmpty {
+                        print("Warning: aliases for service-network '\(name)' may not be honored by Apple container; flags emitted regardless.")
+                        for alias in aliases {
+                            args.append(contentsOf: ["--alias", alias])
+                        }
+                    }
+                    // ipv4_address: emit --ip if present.
+                    if let ipv4 = config.ipv4_address {
+                        let resolvedIP = resolveVariable(ipv4, with: ctx.environmentVariables)
+                        print("Warning: ipv4_address for service-network '\(name)' may not be honored by Apple container; --ip flag emitted regardless.")
+                        args.append(contentsOf: ["--ip", resolvedIP])
+                    }
+                    // ipv6_address: emit --ip6 if present.
+                    if let ipv6 = config.ipv6_address {
+                        let resolvedIP = resolveVariable(ipv6, with: ctx.environmentVariables)
+                        print("Warning: ipv6_address for service-network '\(name)' may not be honored by Apple container; --ip6 flag emitted regardless.")
+                        args.append(contentsOf: ["--ip6", resolvedIP])
+                    }
                 }
             }
 
