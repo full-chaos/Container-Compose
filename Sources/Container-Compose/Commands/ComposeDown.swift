@@ -38,6 +38,9 @@ public struct ComposeDown: AsyncParsableCommand {
     @Argument(help: "Specify the services to stop")
     var services: [String] = []
 
+    @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
+    var profile: [String] = []
+
     @OptionGroup
     var process: Flags.Process
 
@@ -77,17 +80,8 @@ public struct ComposeDown: AsyncParsableCommand {
 
     public mutating func run() async throws {
 
-        // Read docker-compose.yml content
-        guard let yamlData = fileManager.contents(atPath: composePath) else {
-            let path = URL(fileURLWithPath: composePath)
-                .deletingLastPathComponent()
-                .path
-            throw YamlError.composeFileNotFound(path)
-        }
-
-        // Decode the YAML file into the DockerCompose struct
-        let dockerComposeString = String(data: yamlData, encoding: .utf8)!
-        let dockerCompose = try YAMLDecoder().decode(DockerCompose.self, from: dockerComposeString)
+        // Decode (and recursively merge includes) into the DockerCompose struct.
+        let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
 
         // Determine project name for container naming
         if let name = dockerCompose.name {
@@ -105,6 +99,11 @@ public struct ComposeDown: AsyncParsableCommand {
             guard let service else { return nil }
             return (serviceName, service)
         })
+
+        // Filter by active profiles before topo-sort.
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        services = Service.filterByProfiles(services, activeProfiles: activeProfiles)
+
         services = try Service.topoSortConfiguredServices(services)
 
         // Filter for specified services

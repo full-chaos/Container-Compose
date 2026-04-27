@@ -1,0 +1,39 @@
+# Demonstrates the full build sub-feature surface (Phase 2F).
+#  - target: pick a stage out of a multi-stage Dockerfile
+#  - dockerfile_inline: write the Dockerfile contents in compose itself
+#  - cache_from / cache_to: BuildKit-style cache references
+#  - labels, network, secrets, ssh, platforms, shm_size
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        APP_VERSION: "1.0.0"
+      cache_from:
+        - type=registry,ref=ghcr.io/myorg/api:cache
+      cache_to:
+        - type=registry,ref=ghcr.io/myorg/api:cache,mode=max
+      labels:
+        org.opencontainers.image.title: api
+        org.opencontainers.image.source: https://example.com
+      network: host
+      secrets:
+        - id=npmrc,src=/run/secrets/npmrc
+      ssh:
+        - default
+      platforms:
+        - linux/arm64
+      shm_size: 64m
+    image: api:1.0.0
+
+  builder-only:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM alpine:latest
+        RUN apk add --no-cache curl
+        CMD ["curl", "--version"]
+    image: builder-only:latest

@@ -39,6 +39,15 @@ public struct ServiceConfig: Codable, Hashable {
     /// Permissions mode for the mounted config file
     public let mode: Int?
 
+    /// Public memberwise initializer for testing and direct construction.
+    public init(source: String, target: String? = nil, uid: String? = nil, gid: String? = nil, mode: Int? = nil) {
+        self.source = source
+        self.target = target
+        self.uid = uid
+        self.gid = gid
+        self.mode = mode
+    }
+
     /// Custom initializer to handle `config_name` (string) or `{ source: config_name, target: /path }` (object).
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()

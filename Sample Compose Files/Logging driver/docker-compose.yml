@@ -1,0 +1,25 @@
+# Demonstrates service.logging driver/options pass-through (Phase 3C).
+# Apple `container` runtime may not support all log drivers; flags are
+# forwarded and the runtime decides.
+
+services:
+  app:
+    image: nginx:alpine
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+        labels: production_status,geo
+    labels:
+      production_status: "stable"
+      geo: us-west-2
+
+  syslog-app:
+    image: alpine:latest
+    command: ["sh", "-c", "echo to syslog && sleep 5"]
+    logging:
+      driver: syslog
+      options:
+        syslog-address: tcp://logs.example.com:514
+        tag: my-app

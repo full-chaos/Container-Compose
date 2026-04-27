@@ -90,6 +90,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     @Flag(name: .long, help: "Do not use cache")
     var noCache: Bool = false
 
+    @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
+    var profile: [String] = []
+
     @OptionGroup
     var process: Flags.Process
 
@@ -99,7 +102,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var fileManager: FileManager { FileManager.default }
-    private var projectName: String?
+    var projectName: String?
     private var environmentVariables: [String: String] = [:]
     private var containerIps: [String: String] = [:]
     private var containerConsoleColors: [String: NamedColor] = [:]
@@ -109,17 +112,12 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     ]
 
     public mutating func run() async throws {
-        // Read compose.yml content
-        guard let yamlData = fileManager.contents(atPath: composePath) else {
-            let path = URL(fileURLWithPath: composePath)
-                .deletingLastPathComponent()
-                .path
-            throw YamlError.composeFileNotFound(path)
-        }
-
-        // Decode the YAML file into the DockerCompose struct
-        let dockerComposeString = String(data: yamlData, encoding: .utf8)!
-        let dockerCompose = try YAMLDecoder().decode(DockerCompose.self, from: dockerComposeString)
+        // Decode + recursively merge includes (Phase 3E) and resolve extends
+        // (Phase 3F) before anything else touches the model. loadAndMerge
+        // throws IncludeError.fileNotFound if the main file is missing.
+        let dockerCompose = try DockerCompose
+            .loadAndMerge(mainPath: composePath)
+            .resolvingExtends()
 
         // Load environment variables from .env file
         environmentVariables = loadEnvFile(path: envFilePath)
@@ -147,7 +145,25 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             guard let service else { return nil }
             return (serviceName, service)
         })
+
+        // Filter by active profiles before topo-sort.
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        services = Service.filterByProfiles(services, activeProfiles: activeProfiles)
+
         services = try Service.topoSortConfiguredServices(services)
+
+        // Phase 3F — expand services with scale > 1 into N named replicas
+        var expanded: [(serviceName: String, service: Service)] = []
+        for (name, svc) in services {
+            if let scale = svc.scale, scale > 1 {
+                for i in 1...scale {
+                    expanded.append((serviceName: "\(name)-\(i)", service: svc))
+                }
+            } else {
+                expanded.append((name, svc))
+            }
+        }
+        services = expanded
 
         // Filter for specified services
         if !self.services.isEmpty {
@@ -278,6 +294,14 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         guard let projectName else { return }
         let actualVolumeName = volumeConfig.name ?? volumeName  // Use explicit name or key as name
 
+        // If a non-local driver is specified, warn and fall back to the hardlink directory.
+        let driver = volumeConfig.driver
+        if let driver, driver != "local" {
+            print(
+                "Warning: Volume driver '\(driver)' for '\(actualVolumeName)' is not supported by Apple container; falling back to hardlink directory."
+            )
+        }
+
         let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(actualVolumeName)")
         let volumePath = volumeUrl.path(percentEncoded: false)
 
@@ -294,55 +318,98 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("Info: Network '\(networkName)' is declared as external.")
             print("This tool assumes external network '\(externalNetwork.name ?? actualNetworkName)' already exists and will not attempt to create it.")
         } else {
-            var networkCreateArgs: [String] = ["network", "create"]
+            var commands: [String] = [actualNetworkName]
 
-            #warning("Docker Compose Network Options Not Supported")
-            // Add driver and driver options
+            // --plugin: NetworkCreate uses --plugin instead of --driver.
+            // Compose 'driver' is mapped to '--plugin' when non-empty.
             if let driver = networkConfig?.driver, !driver.isEmpty {
-                //                    networkCreateArgs.append("--driver")
-                //                    networkCreateArgs.append(driver)
-                print("Network Driver Detected, But Not Supported")
+                commands.append(contentsOf: ["--plugin", driver])
             }
-            if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
-                //                    for (optKey, optValue) in driverOpts {
-                //                        networkCreateArgs.append("--opt")
-                //                        networkCreateArgs.append("\(optKey)=\(optValue)")
-                //                    }
-                print("Network Options Detected, But Not Supported")
-            }
-            // Add various network flags
-            if networkConfig?.attachable == true {
-                //                    networkCreateArgs.append("--attachable")
-                print("Network Attachable Flag Detected, But Not Supported")
-            }
-            if networkConfig?.enable_ipv6 == true {
-                //                    networkCreateArgs.append("--ipv6")
-                print("Network IPv6 Flag Detected, But Not Supported")
-            }
-            if networkConfig?.isInternal == true {
-                //                    networkCreateArgs.append("--internal")
-                print("Network Internal Flag Detected, But Not Supported")
-            }  // CORRECTED: Use isInternal
 
-            // Add labels
+            // driver_opts: NetworkCreate has no --opt flag; warn and skip.
+            if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
+                print(
+                    "Warning: Network '\(networkName)' specifies driver_opts \(driverOpts) which are not supported by Apple container network create; ignoring."
+                )
+            }
+
+            // --internal: maps to NetworkCreate's --internal flag (hostOnly mode).
+            if networkConfig?.isInternal == true {
+                commands.append("--internal")
+            }
+
+            // Attachable: not supported by Apple container network create; warn only.
+            if networkConfig?.attachable == true {
+                print(
+                    "Warning: Network '\(networkName)' sets 'attachable: true' which is not supported by Apple container network create; ignoring."
+                )
+            }
+
+            // enable_ipv6: use --subnet-v6 flag if an IPv6 subnet is provided in IPAM config;
+            // a bare enable_ipv6 without a subnet is not directly actionable here.
+            if networkConfig?.enable_ipv6 == true {
+                print(
+                    "Warning: Network '\(networkName)' sets 'enable_ipv6: true'. Provide an IPv6 subnet in ipam.config to pass --subnet-v6; bare flag not supported."
+                )
+            }
+
+            // IPAM config: emit --subnet (IPv4) or --subnet-v6 (IPv6) for each config entry.
+            // ip_range and gateway are not supported by Apple container network create; warn if present.
+            if let ipamConfigs = networkConfig?.ipam?.config {
+                for ipamConfig in ipamConfigs {
+                    if let subnet = ipamConfig.subnet, !subnet.isEmpty {
+                        // Heuristic: IPv6 subnets contain ':', IPv4 use '.'
+                        if subnet.contains(":") {
+                            commands.append(contentsOf: ["--subnet-v6", subnet])
+                        } else {
+                            commands.append(contentsOf: ["--subnet", subnet])
+                        }
+                    }
+                    if let ipRange = ipamConfig.ip_range, !ipRange.isEmpty {
+                        print(
+                            "Warning: Network '\(networkName)' ipam.config ip_range '\(ipRange)' is not supported by Apple container network create; ignoring."
+                        )
+                    }
+                    if let gateway = ipamConfig.gateway, !gateway.isEmpty {
+                        print(
+                            "Warning: Network '\(networkName)' ipam.config gateway '\(gateway)' is not supported by Apple container network create; ignoring."
+                        )
+                    }
+                    if let auxAddresses = ipamConfig.aux_addresses, !auxAddresses.isEmpty {
+                        print(
+                            "Warning: Network '\(networkName)' ipam.config aux_addresses are not supported by Apple container network create; ignoring."
+                        )
+                    }
+                }
+            }
+
+            // IPAM driver/options: warn if present since they have no CLI equivalent.
+            if let ipamDriver = networkConfig?.ipam?.driver, !ipamDriver.isEmpty {
+                print(
+                    "Warning: Network '\(networkName)' ipam.driver '\(ipamDriver)' is not supported by Apple container network create; ignoring."
+                )
+            }
+            if let ipamOptions = networkConfig?.ipam?.options, !ipamOptions.isEmpty {
+                print(
+                    "Warning: Network '\(networkName)' ipam.options are not supported by Apple container network create; ignoring."
+                )
+            }
+
+            // Add labels — NetworkCreate.parse accepts repeated --label key=value
             if let labels = networkConfig?.labels, !labels.isEmpty {
-                print("Network Labels Detected, But Not Supported")
-                //                    for (labelKey, labelValue) in labels {
-                //                        networkCreateArgs.append("--label")
-                //                        networkCreateArgs.append("\(labelKey)=\(labelValue)")
-                //                    }
+                for (labelKey, labelValue) in labels.sorted(by: { $0.key < $1.key }) {
+                    commands.append(contentsOf: ["--label", "\(labelKey)=\(labelValue)"])
+                }
             }
 
             print("Creating network: \(networkName) (Actual name: \(actualNetworkName))")
-            print("Executing container network create: container \(networkCreateArgs.joined(separator: " "))")
+            print("Executing container network create with args: \(commands.joined(separator: " "))")
             guard (try? await NetworkClient().get(id: actualNetworkName)) == nil else {
                 print("Network '\(networkName)' already exists")
                 return
             }
-            let commands = [actualNetworkName]
-            
-            let networkCreate = try Application.NetworkCreate.parse(commands + logging.passThroughCommands())
 
+            let networkCreate = try Application.NetworkCreate.parse(commands + logging.passThroughCommands())
             try await networkCreate.run()
             print("Network '\(networkName)' created")
         }
@@ -352,8 +419,31 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private mutating func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
+        // Phase 1.4 — depends_on object-form gate. Topo-sort already orders
+        // dependencies before dependents, but for `condition: service_healthy`
+        // and `condition: service_completed_successfully` we must wait until
+        // each dependency reaches the declared state before starting this
+        // service. List-form depends_on (implicit `condition: service_started`)
+        // is also honored here; the wait is a no-op once the dep is running.
+        if let dependencies = service.dependsOn?.entries, !dependencies.isEmpty {
+            for (depName, entry) in dependencies {
+                do {
+                    try await waitForCondition(depName, condition: entry.condition)
+                } catch {
+                    if entry.required {
+                        throw error
+                    }
+                    print(
+                        "Warning: optional dependency '\(depName)' for service " +
+                        "'\(serviceName)' did not satisfy condition " +
+                        "'\(entry.condition.rawValue)': \(error.localizedDescription)"
+                    )
+                }
+            }
+        }
+
         var imageToRun: String
-        
+
         var runCommandArgs: [String] = []
 
         // Handle 'build' configuration
@@ -362,19 +452,16 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         } else if let img = service.image {
             // Use specified image if no build config
             // Pull image if necessary
-            try await pullImage(img, platform: service.platform)
+            try await pullImage(img, platform: service.platform, policy: service.pull_policy)
             imageToRun = img
         } else {
             // Should not happen due to Service init validation, but as a fallback
             throw ComposeError.imageNotFound(serviceName)
         }
         
-        // Set Run Platform
-        if let platform = service.platform {
-            runCommandArgs.append(contentsOf: ["--platform", "\(platform)"])
-        }
-
-        // Handle 'deploy' configuration (note that this tool doesn't fully support it)
+        // 'deploy' is parsed but mostly orchestrator-only — emit the same
+        // diagnostic the inline implementation used to. Resource limits from
+        // deploy.resources.limits are still applied via ResourceArgs below.
         if service.deploy != nil {
             print("Note: The 'deploy' configuration for service '\(serviceName)' was parsed successfully.")
             print(
@@ -383,36 +470,18 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("The service will be run as a single container based on other configurations.")
         }
 
-        // Add detach flag if specified on the CLI
-        if detach {
-            runCommandArgs.append("-d")
-        }
-
-        // Determine container name
+        // Determine container name (used in builder context and elsewhere).
         let containerName: String
         if let explicitContainerName = service.container_name {
             containerName = explicitContainerName
             print("Info: Using explicit container_name: \(containerName)")
         } else {
-            // Default container name based on project and service name
             containerName = "\(projectName)-\(serviceName)"
         }
-        runCommandArgs.append("--name")
-        runCommandArgs.append(containerName)
 
-        // REMOVED: Restart policy is not supported by `container run`
-        // if let restart = service.restart {
-        //     runCommandArgs.append("--restart")
-        //     runCommandArgs.append(restart)
-        // }
-
-        // Add user
-        if let user = service.user {
-            runCommandArgs.append("--user")
-            runCommandArgs.append(user)
-        }
-
-        // Add volume mounts
+        // Volume mounts: still inline because configVolume(_:) is async and
+        // mutates the filesystem (creates missing host dirs). Phase 2D will
+        // make the helper pure and move this into StorageArgs.
         if let volumes = service.volumes {
             for volume in volumes {
                 let args = try await configVolume(volume)
@@ -420,7 +489,8 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             }
         }
 
-        // Combine environment variables from .env files and service environment
+        // Build the merged env: .env files → service env_file paths → service
+        // environment map → ${VAR} substitution → service-name → IP rewrite.
         var combinedEnv: [String: String] = environmentVariables
 
         if let envFiles = service.env_file {
@@ -432,124 +502,57 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         if let serviceEnv = service.environment {
             combinedEnv.merge(serviceEnv) { (old, new) in
-                guard !new.contains("${") else {
-                    return old
-                }
+                guard !new.contains("${") else { return old }
                 return new
             }  // Service env overrides .env files
         }
 
-        // Fill in variables
         combinedEnv = combinedEnv.mapValues({ value in
             guard value.contains("${") else { return value }
-
             let variableName = String(value.replacingOccurrences(of: "${", with: "").dropLast())
             return combinedEnv[variableName] ?? value
         })
 
-        // Fill in IPs
         combinedEnv = combinedEnv.mapValues({ value in
             containerIps[value] ?? value
         })
 
-        // MARK: Spinning Spot
-        // Add environment variables to run command
         for (key, value) in combinedEnv {
-            runCommandArgs.append("-e")
-            runCommandArgs.append("\(key)=\(value)")
+            runCommandArgs.append(contentsOf: ["-e", "\(key)=\(value)"])
         }
 
-         if let ports = service.ports {
-             for port in ports {
-                 let resolvedPort = resolveVariable(port, with: environmentVariables)
-                 runCommandArgs.append("-p")
-                 runCommandArgs.append(composePortToRunArg(resolvedPort))
-             }
-         }
+        // Hand off the rest of the argv to the per-concern builders. They are
+        // intentionally pure; ordering across concerns doesn't matter to
+        // `container run` so we group by domain rather than by --flag.
+        let ctx = ArgsContext(
+            service: service,
+            serviceName: serviceName,
+            projectName: projectName,
+            containerName: containerName,
+            detach: detach,
+            environmentVariables: environmentVariables,
+            dockerCompose: dockerCompose,
+            composeFilename: composeFilename
+        )
+        runCommandArgs.append(contentsOf: LifecycleArgs.build(ctx))
+        runCommandArgs.append(contentsOf: SecurityArgs.build(ctx))
+        runCommandArgs.append(contentsOf: ResourceArgs.build(ctx))
+        runCommandArgs.append(contentsOf: NetworkingArgs.build(ctx))
+        runCommandArgs.append(contentsOf: StorageArgs.build(ctx))
+        runCommandArgs.append(contentsOf: LabelsArgs.build(ctx))
+        runCommandArgs.append(contentsOf: ConfigsSecretsArgs.build(ctx))
 
-        // Connect to specified networks
+        // Networks diagnostic — kept inline because it's purely informational
+        // and references composeFilename in its message.
         if let serviceNetworks = service.networks {
-            for network in serviceNetworks {
-                let resolvedNetwork = resolveVariable(network, with: environmentVariables)
-                // Use the explicit network name from top-level definition if available, otherwise resolved name
-                let networkToConnect = dockerCompose.networks?[network]??.name ?? resolvedNetwork
-                runCommandArgs.append("--network")
-                runCommandArgs.append(networkToConnect)
-            }
             print(
-                "Info: Service '\(serviceName)' is configured to connect to networks: \(serviceNetworks.joined(separator: ", ")) ascertained from networks attribute in \(composeFilename)."
+                "Info: Service '\(serviceName)' is configured to connect to networks: \(serviceNetworks.names.joined(separator: ", ")) ascertained from networks attribute in \(composeFilename ?? "compose file")."
             )
             print(
                 "Note: This tool assumes custom networks are defined at the top-level 'networks' key or are pre-existing. This tool does not create implicit networks for services if not explicitly defined at the top-level."
             )
         } else {
             print("Note: Service '\(serviceName)' is not explicitly connected to any networks. It will likely use the default bridge network.")
-        }
-
-        // Add hostname
-        if let hostname = service.hostname {
-            let resolvedHostname = resolveVariable(hostname, with: environmentVariables)
-            runCommandArgs.append("--hostname")
-            runCommandArgs.append(resolvedHostname)
-        }
-
-        // Add working directory
-        if let workingDir = service.working_dir {
-            let resolvedWorkingDir = resolveVariable(workingDir, with: environmentVariables)
-            runCommandArgs.append("--workdir")
-            runCommandArgs.append(resolvedWorkingDir)
-        }
-
-        // Add privileged flag
-        if service.privileged == true {
-            runCommandArgs.append("--privileged")
-        }
-
-        // Add read-only flag
-        if service.read_only == true {
-            runCommandArgs.append("--read-only")
-        }
-
-        // Add resource limits
-        if let cpus = service.deploy?.resources?.limits?.cpus {
-            runCommandArgs.append(contentsOf: ["--cpus", cpus])
-        }
-        if let memory = service.deploy?.resources?.limits?.memory {
-            runCommandArgs.append(contentsOf: ["--memory", memory])
-        }
-
-        // Handle service-level configs (note: still only parsing/logging, not attaching)
-        if let serviceConfigs = service.configs {
-            print(
-                "Note: Service '\(serviceName)' defines 'configs'. Docker Compose 'configs' are primarily used for Docker Swarm deployed stacks and are not directly translatable to 'container run' commands."
-            )
-            print("This tool will parse 'configs' definitions but will not create or attach them to containers during 'container run'.")
-            for serviceConfig in serviceConfigs {
-                print(
-                    "  - Config: '\(serviceConfig.source)' (Target: \(serviceConfig.target ?? "default location"), UID: \(serviceConfig.uid ?? "default"), GID: \(serviceConfig.gid ?? "default"), Mode: \(serviceConfig.mode?.description ?? "default"))"
-                )
-            }
-        }
-        //
-        // Handle service-level secrets (note: still only parsing/logging, not attaching)
-        if let serviceSecrets = service.secrets {
-            print(
-                "Note: Service '\(serviceName)' defines 'secrets'. Docker Compose 'secrets' are primarily used for Docker Swarm deployed stacks and are not directly translatable to 'container run' commands."
-            )
-            print("This tool will parse 'secrets' definitions but will not create or attach them to containers during 'container run'.")
-            for serviceSecret in serviceSecrets {
-                print(
-                    "  - Secret: '\(serviceSecret.source)' (Target: \(serviceSecret.target ?? "default location"), UID: \(serviceSecret.uid ?? "default"), GID: \(serviceSecret.gid ?? "default"), Mode: \(serviceSecret.mode?.description ?? "default"))"
-                )
-            }
-        }
-
-        // Add interactive and TTY flags
-        if service.stdin_open == true {
-            runCommandArgs.append("-i")  // --interactive
-        }
-        if service.tty == true {
-            runCommandArgs.append("-t")  // --tty
         }
 
         runCommandArgs.append(imageToRun)  // Add the image name as the final argument before command/entrypoint
@@ -592,18 +595,48 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
     }
 
-    private func pullImage(_ imageName: String, platform: String?) async throws {
+    private func pullImage(_ imageName: String, platform: String?, policy: String? = nil) async throws {
+        // Normalise policy: nil and "if_not_present" are aliases for "missing".
+        let effectivePolicy: String
+        switch policy?.lowercased() {
+        case nil, "missing", "if_not_present":
+            effectivePolicy = "missing"
+        case "always":
+            effectivePolicy = "always"
+        case "never":
+            effectivePolicy = "never"
+        case "build":
+            effectivePolicy = "build"
+        default:
+            effectivePolicy = "missing"
+        }
+
         let imageList = try await ClientImage.list()
-        guard !imageList.contains(where: { $0.description.reference.components(separatedBy: "/").last == imageName }) else {
+        let imageExists = imageList.contains(where: {
+            $0.description.reference.components(separatedBy: "/").last == imageName
+        })
+
+        switch effectivePolicy {
+        case "never", "build":
+            // Image must already be present; pull is forbidden.
+            guard imageExists else {
+                throw ComposeError.imageNotFound(imageName)
+            }
             return
+
+        case "always":
+            // Always pull, regardless of whether the image is cached locally.
+            break
+
+        default:
+            // "missing": short-circuit if image already exists.
+            guard !imageExists else { return }
         }
 
         print("Pulling Image \(imageName)...")
-        
-        var commands = [
-            imageName
-        ]
-        
+
+        var commands = [imageName]
+
         if let platform {
             commands.append(contentsOf: ["--platform", platform])
         }
@@ -621,6 +654,10 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     ///
     /// - Returns: Image Name (`String`)
     private func buildService(_ buildConfig: Build, for service: Service, serviceName: String) async throws -> String {
+        // Temp file for dockerfile_inline (cleaned up via defer).
+        var inlineTempURL: URL? = nil
+        defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
+
         // Determine image tag for built image
         let imageToRun = service.image ?? "\(serviceName):latest"
         let imageList = try await ClientImage.list()
@@ -636,24 +673,86 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
         }
 
-        // Add Dockerfile path
-        commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path])
-        
+        // Add Dockerfile path — dockerfile_inline wins over dockerfile when both are set.
+        if let inlineContent = buildConfig.dockerfile_inline {
+            if buildConfig.dockerfile != nil {
+                print("Warning: Both 'dockerfile' and 'dockerfile_inline' are set for service '\(serviceName)'. 'dockerfile_inline' takes priority.")
+            }
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".Dockerfile")
+            try inlineContent.write(to: tempURL, atomically: true, encoding: .utf8)
+            inlineTempURL = tempURL
+            commands.append(contentsOf: ["--file", tempURL.path])
+        } else {
+            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path])
+        }
+
         // Add caching options
         if noCache {
             commands.append("--no-cache")
         }
-        
-        // Add OS/Arch
-        let split = service.platform?.split(separator: "/")
-        let os = String(split?.first ?? "linux")
-        let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
-        commands.append(contentsOf: ["--os", os])
-        commands.append(contentsOf: ["--arch", arch])
-        
+
+        // Add build target stage
+        if let target = buildConfig.target {
+            commands.append(contentsOf: ["--target", target])
+        }
+
+        // Add cache-from references
+        for ref in buildConfig.cache_from ?? [] {
+            commands.append(contentsOf: ["--cache-from", ref])
+        }
+
+        // Add cache-to references
+        for ref in buildConfig.cache_to ?? [] {
+            commands.append(contentsOf: ["--cache-to", ref])
+        }
+
+        // Add labels
+        for (key, value) in buildConfig.labels ?? [:] {
+            commands.append(contentsOf: ["--label", "\(key)=\(value)"])
+        }
+
+        // Add network mode
+        if let network = buildConfig.network {
+            commands.append(contentsOf: ["--network", network])
+        }
+
+        // Add secrets
+        for secretId in buildConfig.secrets ?? [] {
+            commands.append(contentsOf: ["--secret", "id=\(secretId)"])
+        }
+
+        // Add SSH agent/key mappings
+        for sshKey in buildConfig.ssh ?? [] {
+            commands.append(contentsOf: ["--ssh", sshKey])
+        }
+
+        // Add platform — build.platforms overrides service.platform; only first is used.
+        if let buildPlatforms = buildConfig.platforms, !buildPlatforms.isEmpty {
+            if buildPlatforms.count > 1 {
+                print("Warning: Service '\(serviceName)' declares \(buildPlatforms.count) build platforms. Only the first ('\(buildPlatforms[0])') will be used.")
+            }
+            let firstPlatform = buildPlatforms[0]
+            let split = firstPlatform.split(separator: "/")
+            let os = String(split.first ?? "linux")
+            let arch = String(split.count >= 2 ? split.last! : "arm64")
+            commands.append(contentsOf: ["--os", os])
+            commands.append(contentsOf: ["--arch", arch])
+        } else {
+            let split = service.platform?.split(separator: "/")
+            let os = String(split?.first ?? "linux")
+            let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
+            commands.append(contentsOf: ["--os", os])
+            commands.append(contentsOf: ["--arch", arch])
+        }
+
+        // Add shm-size
+        if let shmSize = buildConfig.shm_size {
+            commands.append(contentsOf: ["--shm-size", shmSize])
+        }
+
         // Add image name
         commands.append(contentsOf: ["--tag", imageToRun])
-        
+
         // Add CPU & Memory
         let cpuCount = Int64(service.deploy?.resources?.limits?.cpus ?? "2") ?? 2
         let memoryLimit = service.deploy?.resources?.limits?.memory ?? "2048MB"

@@ -1,0 +1,38 @@
+# Demonstrates service-level networks in object form with aliases (Phase 3B).
+# Both list and map forms are accepted; this file uses the map form.
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/24
+  backend:
+    driver: bridge
+    internal: true
+
+services:
+  proxy:
+    image: nginx:alpine
+    networks:
+      frontend:
+        aliases: [proxy, edge]
+        priority: 100
+    ports:
+      - "8080:80"
+
+  api:
+    image: alpine:latest
+    command: ["sh", "-c", "echo api && sleep infinity"]
+    networks:
+      frontend:
+        aliases: [api, api-v1]
+      backend:
+        aliases: [api]
+
+  worker:
+    image: alpine:latest
+    command: ["sh", "-c", "echo worker && sleep infinity"]
+    networks:
+      backend: {}   # connect with no aliases (empty config)

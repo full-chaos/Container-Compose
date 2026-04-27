@@ -21,7 +21,12 @@ import ContainerAPIClient
 import TestHelpers
 @testable import ContainerComposeCore
 
-@Suite("Compose Up Tests - Real-World Compose Files", .containerDependent, .serialized)
+@Suite(
+    "Compose Up Tests - Real-World Compose Files",
+    .containerDependent,
+    .serialized,
+    .enabled(if: RuntimeAvailability.isAvailable(), "Apple container runtime not available")
+)
 struct ComposeUpTests {
     
     func stopInstance(location: URL) async throws {
