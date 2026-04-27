@@ -272,6 +272,14 @@ public struct Service: Codable, Hashable {
     /// Extends configuration — allows this service to inherit from another service
     public let extends: ExtendsConfig?
 
+    // MARK: - GPUs & Block I/O
+
+    /// GPU reservations ("all" shorthand or an array of GpuRequest)
+    public let gpus: Gpus?
+
+    /// Block I/O configuration (weight, per-device rates and IOPS)
+    public let blkio_config: BlkioConfig?
+
     /// Other services that depend on this service
     public var dependedBy: [String] = []
 
@@ -311,6 +319,9 @@ public struct Service: Codable, Hashable {
         case dependsOn = "depends_on"
         // Service Inheritance (Phase 3F)
         case extends
+        // GPUs & Block I/O (Phase 5D)
+        case gpus
+        case blkio_config
     }
     
     /// Public memberwise initializer for testing
@@ -401,6 +412,9 @@ public struct Service: Codable, Hashable {
         device_cgroup_rules: [String]? = nil,
         storage_opt: [String: String]? = nil,
         extends: ExtendsConfig? = nil,
+        // GPUs & Block I/O
+        gpus: Gpus? = nil,
+        blkio_config: BlkioConfig? = nil,
         dependedBy: [String] = []
     ) {
         self.image = image
@@ -477,6 +491,8 @@ public struct Service: Codable, Hashable {
         self.device_cgroup_rules = device_cgroup_rules
         self.storage_opt = storage_opt
         self.extends = extends
+        self.gpus = gpus
+        self.blkio_config = blkio_config
         self.dependedBy = dependedBy
     }
 
@@ -627,6 +643,10 @@ public struct Service: Codable, Hashable {
 
         // Service Inheritance (Phase 3F)
         extends = extendsDecoded
+
+        // GPUs & Block I/O (Phase 5D)
+        gpus = try container.decodeIfPresent(Gpus.self, forKey: .gpus)
+        blkio_config = try container.decodeIfPresent(BlkioConfig.self, forKey: .blkio_config)
     }
 
     /// Returns the services in topological order based on `dependsOn` relationships.
