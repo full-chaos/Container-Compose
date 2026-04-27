@@ -1,0 +1,8 @@
+{
+  "branch": "ci/drop-build-from-cache",
+  "commit": "b43d3c8499ee7c9f95111ef35310577c7d16bc2d",
+  "short": "b43d3c8",
+  "target": "b43d3c8",
+  "message": "ci: drop .build from cache to fix clang module-cache collision",
+  "published_at": "2026-04-27T20:14:52.556732+00:00"
+}
