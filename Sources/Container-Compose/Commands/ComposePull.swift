@@ -56,11 +56,24 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     // MARK: - Computed paths
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    /// Project root for outside-container relative-path resolution. Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
+    }
 
     private var cwdURL: URL { URL(fileURLWithPath: cwd) }
 

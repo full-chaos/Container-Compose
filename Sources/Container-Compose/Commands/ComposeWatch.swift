@@ -251,11 +251,24 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     // MARK: - Helpers
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    /// Project root for outside-container relative-path resolution. Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
+    }
 
     private var cwdURL: URL { URL(fileURLWithPath: cwd) }
 
@@ -313,8 +326,9 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
             return
         }
 
-        // Resolve paths relative to the compose file directory.
-        let composeDir = URL(fileURLWithPath: composePath).deletingLastPathComponent().path
+        // Resolve paths relative to the project directory (--project-directory
+        // override, falling back to the compose file's directory).
+        let composeDir = effectiveProjectDirectory
         let resolvedRules: [(serviceName: String, rule: WatchRule)] = watchRules.map { serviceName, rule in
             let resolvedPath: String
             if rule.path.hasPrefix("/") {

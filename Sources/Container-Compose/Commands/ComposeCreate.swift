@@ -61,6 +61,9 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
@@ -92,8 +95,14 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         return resolvedPath(for: envFile, relativeTo: cwdURL)
     }
 
-    private var composeDirectory: String {
-        URL(fileURLWithPath: composePath).deletingLastPathComponent().path
+    /// Project root for outside-container relative-path resolution. Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
     }
 
     private var fileManager: FileManager { FileManager.default }
@@ -111,12 +120,19 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             print("Info: Docker Compose file version: \(version)")
         }
 
-        if let name = dockerCompose.name {
-            projectName = name
-            print("Info: Docker Compose project name: \(name)")
+        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
+        let resolvedName = resolveProjectName(
+            cliOverride: projectFlags.projectName,
+            composeName: dockerCompose.name,
+            projectDirectory: effectiveProjectDirectory
+        )
+        projectName = resolvedName
+        if let cliName = projectFlags.projectName, !cliName.isEmpty {
+            print("Info: Using project name from --project-name flag: \(cliName)")
+        } else if dockerCompose.name != nil {
+            print("Info: Docker Compose project name: \(resolvedName)")
         } else {
-            projectName = deriveProjectName(cwd: cwd)
-            print("Info: Using directory name as project name: \(projectName ?? "")")
+            print("Info: Using directory name as project name: \(resolvedName)")
         }
 
         var resolvedServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
@@ -217,7 +233,7 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             return imageToRun
         }
 
-        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: composeDirectory)).path]
+        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
 
         for (key, value) in buildConfig.args ?? [:] {
             commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
@@ -232,7 +248,7 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             inlineTempURL = tempURL
             commands.append(contentsOf: ["--file", tempURL.path])
         } else {
-            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path])
+            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path])
         }
 
         if noCache {
@@ -375,7 +391,7 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
 
         if let envFiles = service.env_file {
             for envFile in envFiles {
-                let additionalEnvVars = loadEnvFile(path: URL(fileURLWithPath: envFile, relativeTo: URL(fileURLWithPath: composeDirectory)).path)
+                let additionalEnvVars = loadEnvFile(path: URL(fileURLWithPath: envFile, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path)
                 combinedEnv.merge(additionalEnvVars) { current, _ in current }
             }
         }

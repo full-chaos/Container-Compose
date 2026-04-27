@@ -44,7 +44,20 @@ public struct ComposeDown: AsyncParsableCommand {
     @OptionGroup
     var process: Flags.Process
 
+    @OptionGroup
+    var projectFlags: ProjectFlags
+
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    /// Project root for outside-container relative-path resolution. Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
+    }
 
     @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")
     var composeFilename: String?
@@ -83,16 +96,23 @@ public struct ComposeDown: AsyncParsableCommand {
         // Decode (and recursively merge includes) into the DockerCompose struct.
         let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
 
-        // Determine project name for container naming
-        if let name = dockerCompose.name {
-            projectName = name
+        // Determine project name for container naming.
+        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
+        let resolvedName = resolveProjectName(
+            cliOverride: projectFlags.projectName,
+            composeName: dockerCompose.name,
+            projectDirectory: effectiveProjectDirectory
+        )
+        projectName = resolvedName
+        if let cliName = projectFlags.projectName, !cliName.isEmpty {
+            print("Info: Using project name from --project-name flag: \(cliName)")
+        } else if let name = dockerCompose.name {
             print("Info: Docker Compose project name parsed as: \(name)")
             print(
                 "Note: The 'name' field currently only affects container naming (e.g., '\(name)-serviceName'). Full project-level isolation for other resources (networks, implicit volumes) is not implemented by this tool."
             )
         } else {
-            projectName = deriveProjectName(cwd: cwd)
-            print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(projectName ?? "")")
+            print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(resolvedName)")
         }
 
         var services: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap({ serviceName, service in

@@ -55,6 +55,9 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
@@ -81,8 +84,15 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
     }
 
-    private var composeDirectory: String {
-        URL(fileURLWithPath: composePath).deletingLastPathComponent().path
+    /// Project root for outside-container relative-path resolution
+    /// (build context, env-file, volume bind sources). Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
     }
 
     private var envFilePath: String {
@@ -107,12 +117,11 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
         let environmentVariables = loadEnvFile(path: envFilePath)
 
-        let projectName: String
-        if let name = dockerCompose.name {
-            projectName = name
-        } else {
-            projectName = deriveProjectName(cwd: cwd)
-        }
+        let projectName = resolveProjectName(
+            cliOverride: projectFlags.projectName,
+            composeName: dockerCompose.name,
+            projectDirectory: effectiveProjectDirectory
+        )
 
         // Build the candidate list first (every service visible to this invocation),
         // then narrow down to those with a `build:` block. The candidate count is
@@ -159,7 +168,7 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
 
         let imageTag = service.image ?? "\(serviceName):latest"
 
-        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: composeDirectory)).path]
+        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
 
         for (key, value) in buildConfig.args ?? [:] {
             commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
@@ -176,7 +185,7 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--file", tempURL.path])
         } else {
             commands.append(contentsOf: [
-                "--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path,
+                "--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path,
             ])
         }
 

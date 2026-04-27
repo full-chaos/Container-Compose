@@ -61,11 +61,24 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     // MARK: - Computed helpers
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    /// Project root for outside-container relative-path resolution. Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
+    }
 
     private var cwdURL: URL { URL(fileURLWithPath: cwd) }
 
@@ -116,13 +129,12 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
             .loadAndMerge(mainPath: composePath)
             .resolvingExtends()
 
-        // 2. Determine project name
-        let projectName: String
-        if let name = dockerCompose.name {
-            projectName = name
-        } else {
-            projectName = deriveProjectName(cwd: cwd)
-        }
+        // 2. Determine project name (CLI flag > compose `name:` > directory basename).
+        let projectName = resolveProjectName(
+            cliOverride: projectFlags.projectName,
+            composeName: dockerCompose.name,
+            projectDirectory: effectiveProjectDirectory
+        )
 
         // 3. Resolve all services
         var allServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
