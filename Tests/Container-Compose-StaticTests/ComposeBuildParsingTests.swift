@@ -205,12 +205,6 @@ struct ComposeBuildParsingTests {
         #expect(cmd.verbose == true)
     }
 
-    @Test("ComposeBuild command parses -v short flag")
-    func composeBuildCommandParsesVerboseShortFlag() throws {
-        let cmd = try ComposeBuild.parse(["-v"])
-        #expect(cmd.verbose == true)
-    }
-
     @Test("ComposeBuild command defaults verbose to false")
     func composeBuildCommandDefaultsVerboseToFalse() throws {
         let cmd = try ComposeBuild.parse([])

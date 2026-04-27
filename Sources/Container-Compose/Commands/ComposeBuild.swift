@@ -45,7 +45,7 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     @Flag(name: .long, help: "Do not use cache when building")
     var noCache: Bool = false
 
-    @Flag(name: .shortAndLong, help: "Show extra detail on the empty-output message when no services need building")
+    @Flag(name: .long, help: "Show extra detail on the empty-output message when no services need building")
     var verbose: Bool = false
 
     @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
