@@ -1,0 +1,8 @@
+{
+  "branch": "chore/build-empty-output-verbose",
+  "commit": "bd5cbaa72f5c473214518b903af7eab84a5e231d",
+  "short": "bd5cbaa",
+  "target": "bd5cbaa",
+  "message": "chore: add --verbose detail to 'compose build' empty-output message",
+  "published_at": "2026-04-27T14:51:35.438353+00:00"
+}
