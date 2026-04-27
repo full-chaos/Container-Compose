@@ -1,0 +1,8 @@
+{
+  "branch": "fix/entrypoint-argv-up",
+  "commit": "0881e104d431fb16151df6251aefdbb9fb1f7931",
+  "short": "0881e10",
+  "target": "0881e10",
+  "message": "test: clarify empty-entrypoint-as-nil contract",
+  "published_at": "2026-04-27T15:09:31.730640+00:00"
+}
