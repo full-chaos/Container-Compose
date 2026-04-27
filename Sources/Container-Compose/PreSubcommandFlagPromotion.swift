@@ -55,75 +55,77 @@ import Foundation
 ///
 /// - Parameter args: The captured argv (without the program name).
 /// - Returns: The reordered argv.
-public func promoteGlobalFlags(_ args: [String]) -> [String] {
-    guard !args.isEmpty else { return args }
+public enum ArgvNormalizer {
+    public static func promoteGlobalFlags(_ args: [String]) -> [String] {
+        guard !args.isEmpty else { return args }
 
-    // Recognized global option flag tokens. None are bool — each takes one value.
-    let recognizedGlobals: Set<String> = [
-        "-f", "--file",
-        "-p", "--project-name",
-        "--profile",
-        "--env-file",
-        "--project-directory",
-    ]
+        // Recognized global option flag tokens. None are bool — each takes one value.
+        let recognizedGlobals: Set<String> = [
+            "-f", "--file",
+            "-p", "--project-name",
+            "--profile",
+            "--env-file",
+            "--project-directory",
+        ]
 
-    var leading: [String] = []          // tokens we leave where they are (unrecognized flags)
-    var promoted: [String] = []         // captured globals, to insert after subcommand
-    var i = 0
+        var leading: [String] = []          // tokens we leave where they are (unrecognized flags)
+        var promoted: [String] = []         // captured globals, to insert after subcommand
+        var i = 0
 
-    while i < args.count {
-        let token = args[i]
+        while i < args.count {
+            let token = args[i]
 
-        // Once we hit a non-flag, that's the subcommand — stop scanning.
-        if !token.hasPrefix("-") {
-            break
-        }
+            // Once we hit a non-flag, that's the subcommand — stop scanning.
+            if !token.hasPrefix("-") {
+                break
+            }
 
-        // Equals form: --file=path or --profile=dev
-        if let eqRange = token.range(of: "=") {
-            let name = String(token[..<eqRange.lowerBound])
-            if recognizedGlobals.contains(name) {
-                promoted.append(token)
+            // Equals form: --file=path or --profile=dev
+            if let eqRange = token.range(of: "=") {
+                let name = String(token[..<eqRange.lowerBound])
+                if recognizedGlobals.contains(name) {
+                    promoted.append(token)
+                    i += 1
+                    continue
+                }
+                // Unrecognized — leave in place.
+                leading.append(token)
                 i += 1
                 continue
             }
-            // Unrecognized — leave in place.
+
+            // Space-separated form: -f path / --profile dev
+            if recognizedGlobals.contains(token) {
+                promoted.append(token)
+                i += 1
+                // Consume the next token as the value if it exists.
+                if i < args.count {
+                    promoted.append(args[i])
+                    i += 1
+                }
+                continue
+            }
+
+            // Unrecognized flag — leave in place.
             leading.append(token)
             i += 1
-            continue
         }
 
-        // Space-separated form: -f path / --profile dev
-        if recognizedGlobals.contains(token) {
-            promoted.append(token)
-            i += 1
-            // Consume the next token as the value if it exists.
-            if i < args.count {
-                promoted.append(args[i])
-                i += 1
-            }
-            continue
+        // No subcommand found (only flags, e.g. --help / --version) — return unchanged.
+        if i >= args.count {
+            return args
         }
 
-        // Unrecognized flag — leave in place.
-        leading.append(token)
-        i += 1
+        // i points at the subcommand. Trailing args = subcommand + everything after.
+        let subcommand = args[i]
+        let trailing = Array(args[(i + 1)...])
+
+        // If we didn't promote anything, return the original args unchanged
+        // (preserves exact ordering of unrecognized leading flags).
+        if promoted.isEmpty {
+            return args
+        }
+
+        return leading + [subcommand] + promoted + trailing
     }
-
-    // No subcommand found (only flags, e.g. --help / --version) — return unchanged.
-    if i >= args.count {
-        return args
-    }
-
-    // i points at the subcommand. Trailing args = subcommand + everything after.
-    let subcommand = args[i]
-    let trailing = Array(args[(i + 1)...])
-
-    // If we didn't promote anything, return the original args unchanged
-    // (preserves exact ordering of unrecognized leading flags).
-    if promoted.isEmpty {
-        return args
-    }
-
-    return leading + [subcommand] + promoted + trailing
 }

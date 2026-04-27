@@ -16,6 +16,6 @@ struct Application: AsyncParsableCommand {
         // Reorder args so global flags placed BEFORE the subcommand
         // (e.g. `container-compose -f compose.yml build`) are moved
         // to immediately AFTER the subcommand, matching `docker compose` UX.
-        await Main.main(promoteGlobalFlags(args))
+        await Main.main(ArgvNormalizer.promoteGlobalFlags(args))
     }
 }
