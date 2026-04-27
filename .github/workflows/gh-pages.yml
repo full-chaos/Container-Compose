@@ -223,13 +223,18 @@ jobs:
 
           mv _index.tmp index.html
 
-          if git diff --quiet -- index.html; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+
+          # Stage first, then check the index against HEAD. `git diff` on
+          # an untracked file returns "no diff" because untracked files
+          # aren't tracked changes; `--cached` correctly reports new and
+          # modified files via the staging area.
+          if git diff --cached --quiet; then
             echo "index.html unchanged; nothing to push."
             exit 0
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
           git commit -m "publish: refresh root version listing"
           git push origin gh-pages
