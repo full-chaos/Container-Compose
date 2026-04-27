@@ -324,13 +324,11 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                 print("Network Internal Flag Detected, But Not Supported")
             }  // CORRECTED: Use isInternal
 
-            // Add labels
+            // Add labels — NetworkCreate.parse accepts repeated --label key=value
             if let labels = networkConfig?.labels, !labels.isEmpty {
-                print("Network Labels Detected, But Not Supported")
-                //                    for (labelKey, labelValue) in labels {
-                //                        networkCreateArgs.append("--label")
-                //                        networkCreateArgs.append("\(labelKey)=\(labelValue)")
-                //                    }
+                for (labelKey, labelValue) in labels.sorted(by: { $0.key < $1.key }) {
+                    networkCreateArgs.append(contentsOf: ["--label", "\(labelKey)=\(labelValue)"])
+                }
             }
 
             print("Creating network: \(networkName) (Actual name: \(actualNetworkName))")
@@ -472,6 +470,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         runCommandArgs.append(contentsOf: ResourceArgs.build(ctx))
         runCommandArgs.append(contentsOf: NetworkingArgs.build(ctx))
         runCommandArgs.append(contentsOf: StorageArgs.build(ctx))
+        runCommandArgs.append(contentsOf: LabelsArgs.build(ctx))
 
         // Networks diagnostic — kept inline because it's purely informational
         // and references composeFilename in its message.
