@@ -119,7 +119,10 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         // Decode the YAML file into the DockerCompose struct
         let dockerComposeString = String(data: yamlData, encoding: .utf8)!
-        let dockerCompose = try YAMLDecoder().decode(DockerCompose.self, from: dockerComposeString)
+        var dockerCompose = try YAMLDecoder().decode(DockerCompose.self, from: dockerComposeString)
+
+        // Phase 3F — resolve extends: fields before any further processing
+        dockerCompose = try dockerCompose.resolvingExtends()
 
         // Load environment variables from .env file
         environmentVariables = loadEnvFile(path: envFilePath)
@@ -148,6 +151,19 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             return (serviceName, service)
         })
         services = try Service.topoSortConfiguredServices(services)
+
+        // Phase 3F — expand services with scale > 1 into N named replicas
+        var expanded: [(serviceName: String, service: Service)] = []
+        for (name, svc) in services {
+            if let scale = svc.scale, scale > 1 {
+                for i in 1...scale {
+                    expanded.append((serviceName: "\(name)-\(i)", service: svc))
+                }
+            } else {
+                expanded.append((name, svc))
+            }
+        }
+        services = expanded
 
         // Filter for specified services
         if !self.services.isEmpty {

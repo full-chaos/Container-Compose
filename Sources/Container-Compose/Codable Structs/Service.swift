@@ -269,6 +269,9 @@ public struct Service: Codable, Hashable {
     /// Storage driver options
     public let storage_opt: [String: String]?
 
+    /// Extends configuration — allows this service to inherit from another service
+    public let extends: ExtendsConfig?
+
     /// Other services that depend on this service
     public var dependedBy: [String] = []
 
@@ -306,6 +309,8 @@ public struct Service: Codable, Hashable {
         case devices, device_cgroup_rules, storage_opt
         // Service Dependencies (Phase 1.3)
         case dependsOn = "depends_on"
+        // Service Inheritance (Phase 3F)
+        case extends
     }
     
     /// Public memberwise initializer for testing
@@ -395,6 +400,7 @@ public struct Service: Codable, Hashable {
         devices: [String]? = nil,
         device_cgroup_rules: [String]? = nil,
         storage_opt: [String: String]? = nil,
+        extends: ExtendsConfig? = nil,
         dependedBy: [String] = []
     ) {
         self.image = image
@@ -470,6 +476,7 @@ public struct Service: Codable, Hashable {
         self.devices = devices
         self.device_cgroup_rules = device_cgroup_rules
         self.storage_opt = storage_opt
+        self.extends = extends
         self.dependedBy = dependedBy
     }
 
@@ -479,10 +486,11 @@ public struct Service: Codable, Hashable {
         image = try container.decodeIfPresent(String.self, forKey: .image)
         build = try container.decodeIfPresent(Build.self, forKey: .build)
         deploy = try container.decodeIfPresent(Deploy.self, forKey: .deploy)
-        
-        // Ensure that a service has either an image or a build context.
-        guard image != nil || build != nil else {
-            throw DecodingError.dataCorruptedError(forKey: .image, in: container, debugDescription: "Service must have either 'image' or 'build' specified.")
+        let extendsDecoded = try container.decodeIfPresent(ExtendsConfig.self, forKey: .extends)
+
+        // Ensure that a service has either an image, a build context, or extends another service.
+        guard image != nil || build != nil || extendsDecoded != nil else {
+            throw DecodingError.dataCorruptedError(forKey: .image, in: container, debugDescription: "Service must have either 'image', 'build', or 'extends' specified.")
         }
 
         restart = try container.decodeIfPresent(String.self, forKey: .restart)
@@ -616,8 +624,11 @@ public struct Service: Codable, Hashable {
         devices = try container.decodeIfPresent([String].self, forKey: .devices)
         device_cgroup_rules = try container.decodeIfPresent([String].self, forKey: .device_cgroup_rules)
         storage_opt = try container.decodeIfPresent([String: String].self, forKey: .storage_opt)
+
+        // Service Inheritance (Phase 3F)
+        extends = extendsDecoded
     }
-    
+
     /// Returns the services in topological order based on `dependsOn` relationships.
     public static func topoSortConfiguredServices(
         _ services: [(serviceName: String, service: Service)]
