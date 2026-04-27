@@ -487,6 +487,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         runCommandArgs.append(contentsOf: NetworkingArgs.build(ctx))
         runCommandArgs.append(contentsOf: StorageArgs.build(ctx))
         runCommandArgs.append(contentsOf: LabelsArgs.build(ctx))
+        runCommandArgs.append(contentsOf: ConfigsSecretsArgs.build(ctx))
 
         // Networks diagnostic — kept inline because it's purely informational
         // and references composeFilename in its message.
@@ -499,30 +500,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             )
         } else {
             print("Note: Service '\(serviceName)' is not explicitly connected to any networks. It will likely use the default bridge network.")
-        }
-
-        // Service-level configs / secrets are Swarm-only — diagnose and skip.
-        if let serviceConfigs = service.configs {
-            print(
-                "Note: Service '\(serviceName)' defines 'configs'. Docker Compose 'configs' are primarily used for Docker Swarm deployed stacks and are not directly translatable to 'container run' commands."
-            )
-            print("This tool will parse 'configs' definitions but will not create or attach them to containers during 'container run'.")
-            for serviceConfig in serviceConfigs {
-                print(
-                    "  - Config: '\(serviceConfig.source)' (Target: \(serviceConfig.target ?? "default location"), UID: \(serviceConfig.uid ?? "default"), GID: \(serviceConfig.gid ?? "default"), Mode: \(serviceConfig.mode?.description ?? "default"))"
-                )
-            }
-        }
-        if let serviceSecrets = service.secrets {
-            print(
-                "Note: Service '\(serviceName)' defines 'secrets'. Docker Compose 'secrets' are primarily used for Docker Swarm deployed stacks and are not directly translatable to 'container run' commands."
-            )
-            print("This tool will parse 'secrets' definitions but will not create or attach them to containers during 'container run'.")
-            for serviceSecret in serviceSecrets {
-                print(
-                    "  - Secret: '\(serviceSecret.source)' (Target: \(serviceSecret.target ?? "default location"), UID: \(serviceSecret.uid ?? "default"), GID: \(serviceSecret.gid ?? "default"), Mode: \(serviceSecret.mode?.description ?? "default"))"
-                )
-            }
         }
 
         runCommandArgs.append(imageToRun)  // Add the image name as the final argument before command/entrypoint
