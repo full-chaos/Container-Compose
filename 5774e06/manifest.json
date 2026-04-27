@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr2",
+  "commit": "5774e06d8e1d8b46892f1c1b96875523a29cbfaa",
+  "short": "5774e06",
+  "target": "5774e06",
+  "message": "test: detach cmd.run() in RuntimeArgvTests to skip the 30s waitUntilServiceIsRunning",
+  "published_at": "2026-04-27T22:40:44.388843+00:00"
+}
