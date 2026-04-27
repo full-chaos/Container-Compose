@@ -272,6 +272,9 @@ public struct Service: Codable, Hashable {
     /// Extends configuration — allows this service to inherit from another service
     public let extends: ExtendsConfig?
 
+    /// Develop configuration for filesystem watching (Phase 5C)
+    public let develop: Develop?
+
     /// Other services that depend on this service
     public var dependedBy: [String] = []
 
@@ -311,6 +314,8 @@ public struct Service: Codable, Hashable {
         case dependsOn = "depends_on"
         // Service Inheritance (Phase 3F)
         case extends
+        // Develop / Watch (Phase 5C)
+        case develop
     }
     
     /// Public memberwise initializer for testing
@@ -401,6 +406,7 @@ public struct Service: Codable, Hashable {
         device_cgroup_rules: [String]? = nil,
         storage_opt: [String: String]? = nil,
         extends: ExtendsConfig? = nil,
+        develop: Develop? = nil,
         dependedBy: [String] = []
     ) {
         self.image = image
@@ -477,6 +483,7 @@ public struct Service: Codable, Hashable {
         self.device_cgroup_rules = device_cgroup_rules
         self.storage_opt = storage_opt
         self.extends = extends
+        self.develop = develop
         self.dependedBy = dependedBy
     }
 
@@ -627,6 +634,9 @@ public struct Service: Codable, Hashable {
 
         // Service Inheritance (Phase 3F)
         extends = extendsDecoded
+
+        // Develop / Watch (Phase 5C)
+        develop = try container.decodeIfPresent(Develop.self, forKey: .develop)
     }
 
     /// Returns the services in topological order based on `dependsOn` relationships.
