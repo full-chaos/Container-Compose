@@ -82,6 +82,7 @@ struct CommandBuildArgvTests {
 
     // MARK: - Edge case: empty arrays
 
+    // Intentional contract: an empty entrypoint array and nil are deliberately treated as the same case in `imageAndEntrypointTail`.
     @Test("empty entrypoint array behaves like nil — image first")
     func emptyEntrypointArray() {
         let argv = ComposeUp.imageAndEntrypointTail(
