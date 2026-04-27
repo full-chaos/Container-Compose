@@ -208,16 +208,51 @@
   "groups": [
     {
       "id": "depends_on",
-      "title": "depends_on (anchor — compose-spec.json L277-L310)",
+      "title": "depends_on (anchor \u2014 compose-spec.json L277-L310)",
       "note": "User-anchored section. Object-form support is the largest gap.",
       "rows": [
-        ["depends_on (list form)", "ok", "yes", "[String]? on Service; topologically sorted with cycle detection in Service.topoSortConfiguredServices."],
-        ["depends_on (object form)", "miss", "no", "Service.init(from:) only handles String or [String]; map shape rejected by Yams decoder."],
-        ["condition: service_started", "miss", "no", "Not modeled. Topo-sort imposes order, but no per-service condition is parsed."],
-        ["condition: service_healthy", "miss", "no", "Healthcheck struct exists but ComposeUp.waitUntilServiceIsRunning only checks status==.running."],
-        ["condition: service_completed_successfully", "miss", "no", "No exit-status awaiting in ComposeUp."],
-        ["required (bool, default true)", "miss", "no", "Unmodeled; all dependencies are effectively required today."],
-        ["restart (bool|string)", "miss", "no", "Unmodeled. Top-level service.restart is parsed but not applied (container run lacks --restart)."]
+        [
+          "depends_on (list form)",
+          "ok",
+          "yes",
+          "[String]? on Service; topologically sorted with cycle detection in Service.topoSortConfiguredServices."
+        ],
+        [
+          "depends_on (object form)",
+          "ok",
+          "yes",
+          "DependsOn type accepts list/single/object form. Service.dependsOn: DependsOn?."
+        ],
+        [
+          "condition: service_started",
+          "ok",
+          "yes",
+          "waitForCondition(.serviceStarted) gates dependents in configService."
+        ],
+        [
+          "condition: service_healthy",
+          "partial",
+          "yes",
+          "Honored at the gate; underlying ContainerSnapshot doesn't expose health, so falls back to .running with a TODO warning."
+        ],
+        [
+          "condition: service_completed_successfully",
+          "partial",
+          "yes",
+          "Honored at the gate; ContainerSnapshot doesn't expose exit code, so we wait for .stopped without verifying exit==0."
+        ],
+        [
+          "required (bool, default true)",
+          "ok",
+          "yes",
+          "DependsOnEntry.required gates whether errors propagate or are warned."
+        ],
+        [
+          "restart (bool|string)",
+          "partial",
+          "yes",
+          "Parsed on DependsOnEntry. Restart manager wiring is Phase-future since Apple container's restart manager is also pending."
+        ]
       ]
     },
     {
@@ -225,15 +260,60 @@
       "title": "Top-level Compose keys",
       "note": "Fields directly under the compose-file root.",
       "rows": [
-        ["version", "ok", "yes", "Decoded; logged but otherwise ignored at runtime."],
-        ["name", "ok", "yes", "Used as project prefix for container names."],
-        ["services", "ok", "yes", "[String: Service?] map; service-by-service orchestration in ComposeUp."],
-        ["networks", "partial", "yes", "Parsed and created; many sub-fields warned-and-ignored (driver, ipv6, internal, labels, opts)."],
-        ["volumes", "partial", "yes", "Parsed; named volumes fall back to ~/.containers/Volumes/<project>/<name> hard-link directories."],
-        ["secrets", "partial", "no", "Parsed only; not attached to containers (Swarm-only). Warned at runtime."],
-        ["configs", "partial", "no", "Parsed only; not attached to containers (Swarm-only). Warned at runtime."],
-        ["include", "miss", "no", "Multi-file include is unmodeled."],
-        ["models", "miss", "no", "Compose-spec extension; unmodeled."]
+        [
+          "version",
+          "ok",
+          "yes",
+          "Decoded; logged but otherwise ignored at runtime."
+        ],
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as project prefix for container names."
+        ],
+        [
+          "services",
+          "ok",
+          "yes",
+          "[String: Service?] map; service-by-service orchestration in ComposeUp."
+        ],
+        [
+          "networks",
+          "ok",
+          "yes",
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority."
+        ],
+        [
+          "volumes",
+          "partial",
+          "yes",
+          "Parsed; named volumes fall back to ~/.containers/Volumes/<project>/<name> hard-link directories."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "configs",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:<target> per service.configs entry; uid/gid/mode parsed but not enforced via -v."
+        ],
+        [
+          "include",
+          "ok",
+          "yes",
+          "DockerCompose.loadAndMerge resolves includes recursively with cycle protection."
+        ],
+        [
+          "models",
+          "miss",
+          "no",
+          "Compose-spec extension; unmodeled."
+        ]
       ]
     },
     {
@@ -241,204 +321,984 @@
       "title": "Service properties (89 in spec)",
       "note": "Implemented at parse-and-runtime, parse-only, or unmodeled.",
       "rows": [
-        ["image", "ok", "yes", "Pulled via ClientImage.list / ImagePull before running."],
-        ["build", "ok", "yes", "Build struct (context, dockerfile, args). Routed to Application.BuildCommand."],
-        ["command", "ok", "yes", "Accepts string or [String]; appended after image in argv."],
-        ["container_name", "ok", "yes", "Overrides default <project>-<service>."],
-        ["depends_on", "partial", "yes", "List form only. See anchor section above."],
-        ["deploy", "partial", "yes", "Parsed; only deploy.resources.limits.cpus/memory honored at runtime."],
-        ["entrypoint", "ok", "yes", "Accepts string or [String]; passed via --entrypoint."],
-        ["env_file", "ok", "yes", "List of paths; loaded via loadEnvFile() and merged."],
-        ["environment", "ok", "yes", "Map; ${VAR} substitution; running container IPs replace bare service-name values."],
-        ["healthcheck", "partial", "yes", "Parsed (test/interval/timeout/retries/start_period). Not enforced — startup never waits on healthy state."],
-        ["hostname", "ok", "yes", "--hostname applied; ${VAR} resolved."],
-        ["platform", "ok", "yes", "--platform applied; split into --os/--arch for builds."],
-        ["ports", "ok", "yes", "Parsed via composePortToRunArg; supports IPv4/IPv6, protocol, host:container."],
-        ["privileged", "ok", "yes", "Adds --privileged."],
-        ["read_only", "ok", "yes", "Adds --read-only."],
-        ["restart", "partial", "yes", "Decoded but NOT applied — container run does not support --restart. Code path commented out."],
-        ["stdin_open", "ok", "yes", "Adds -i flag."],
-        ["tty", "ok", "yes", "Adds -t flag."],
-        ["user", "ok", "yes", "Adds --user."],
-        ["volumes", "ok", "yes", "[String] of source:dest[:mode]; bind mounts created if missing."],
-        ["working_dir", "ok", "yes", "Adds --workdir."],
-        ["configs", "partial", "no", "Service-level [ServiceConfig] parsed; not attached to containers."],
-        ["secrets", "partial", "no", "Service-level [ServiceSecret] parsed; not attached to containers."],
-        ["networks", "partial", "yes", "[String] only — service-network alias/IP-objects unsupported."],
-        ["annotations", "miss", "no", ""],
-        ["attach", "miss", "no", ""],
-        ["blkio_config", "miss", "no", ""],
-        ["cap_add", "miss", "no", ""],
-        ["cap_drop", "miss", "no", ""],
-        ["cgroup", "miss", "no", ""],
-        ["cgroup_parent", "miss", "no", ""],
-        ["cpu_count", "miss", "no", ""],
-        ["cpu_percent", "miss", "no", ""],
-        ["cpu_period", "miss", "no", ""],
-        ["cpu_quota", "miss", "no", ""],
-        ["cpu_rt_period", "miss", "no", ""],
-        ["cpu_rt_runtime", "miss", "no", ""],
-        ["cpu_shares", "miss", "no", ""],
-        ["cpus", "partial", "yes", "Reachable via deploy.resources.limits.cpus only — not the top-level service.cpus key."],
-        ["cpuset", "miss", "no", ""],
-        ["credential_spec", "miss", "no", ""],
-        ["develop", "miss", "no", ""],
-        ["device_cgroup_rules", "miss", "no", ""],
-        ["devices", "miss", "no", ""],
-        ["dns", "miss", "no", ""],
-        ["dns_opt", "miss", "no", ""],
-        ["dns_search", "miss", "no", ""],
-        ["domainname", "miss", "no", ""],
-        ["expose", "miss", "no", ""],
-        ["extends", "miss", "no", ""],
-        ["external_links", "miss", "no", ""],
-        ["extra_hosts", "miss", "no", ""],
-        ["gpus", "miss", "no", ""],
-        ["group_add", "miss", "no", ""],
-        ["init", "miss", "no", ""],
-        ["ipc", "miss", "no", ""],
-        ["isolation", "miss", "no", ""],
-        ["label_file", "miss", "no", ""],
-        ["labels", "miss", "no", ""],
-        ["links", "miss", "no", "(deprecated in compose-spec)"],
-        ["logging", "miss", "no", ""],
-        ["mac_address", "miss", "no", ""],
-        ["mem_limit", "partial", "yes", "Reachable via deploy.resources.limits.memory only."],
-        ["mem_reservation", "miss", "no", ""],
-        ["mem_swappiness", "miss", "no", ""],
-        ["memswap_limit", "miss", "no", ""],
-        ["models", "miss", "no", ""],
-        ["network_mode", "miss", "no", ""],
-        ["oom_kill_disable", "miss", "no", ""],
-        ["oom_score_adj", "miss", "no", ""],
-        ["pid", "miss", "no", ""],
-        ["pids_limit", "miss", "no", ""],
-        ["post_start", "miss", "no", ""],
-        ["pre_stop", "miss", "no", ""],
-        ["profiles", "miss", "no", ""],
-        ["provider", "miss", "no", ""],
-        ["pull_policy", "miss", "no", "Implicit always-pull-if-missing in pullImage() — but key isn't honored."],
-        ["pull_refresh_after", "miss", "no", ""],
-        ["runtime", "miss", "no", ""],
-        ["scale", "miss", "no", ""],
-        ["security_opt", "miss", "no", ""],
-        ["shm_size", "miss", "no", ""],
-        ["stop_grace_period", "miss", "no", ""],
-        ["stop_signal", "miss", "no", ""],
-        ["storage_opt", "miss", "no", ""],
-        ["sysctls", "miss", "no", ""],
-        ["tmpfs", "miss", "no", ""],
-        ["ulimits", "miss", "no", ""],
-        ["use_api_socket", "miss", "no", ""],
-        ["userns_mode", "miss", "no", ""],
-        ["uts", "miss", "no", ""],
-        ["volumes_from", "miss", "no", ""]
+        [
+          "image",
+          "ok",
+          "yes",
+          "Pulled via ClientImage.list / ImagePull before running."
+        ],
+        [
+          "build",
+          "ok",
+          "yes",
+          "Build struct (context, dockerfile, args). Routed to Application.BuildCommand."
+        ],
+        [
+          "command",
+          "ok",
+          "yes",
+          "Accepts string or [String]; appended after image in argv."
+        ],
+        [
+          "container_name",
+          "ok",
+          "yes",
+          "Overrides default <project>-<service>."
+        ],
+        [
+          "depends_on",
+          "partial",
+          "yes",
+          "List form only. See anchor section above."
+        ],
+        [
+          "deploy",
+          "partial",
+          "yes",
+          "Parsed; only deploy.resources.limits.cpus/memory honored at runtime."
+        ],
+        [
+          "entrypoint",
+          "ok",
+          "yes",
+          "Accepts string or [String]; passed via --entrypoint."
+        ],
+        [
+          "env_file",
+          "ok",
+          "yes",
+          "List of paths; loaded via loadEnvFile() and merged."
+        ],
+        [
+          "environment",
+          "ok",
+          "yes",
+          "Map; ${VAR} substitution; running container IPs replace bare service-name values."
+        ],
+        [
+          "healthcheck",
+          "partial",
+          "yes",
+          "Parsed (test/interval/timeout/retries/start_period). Not enforced \u2014 startup never waits on healthy state."
+        ],
+        [
+          "hostname",
+          "ok",
+          "yes",
+          "--hostname applied; ${VAR} resolved."
+        ],
+        [
+          "platform",
+          "ok",
+          "yes",
+          "--platform applied; split into --os/--arch for builds."
+        ],
+        [
+          "ports",
+          "ok",
+          "yes",
+          "Parsed via composePortToRunArg; supports IPv4/IPv6, protocol, host:container."
+        ],
+        [
+          "privileged",
+          "ok",
+          "yes",
+          "Adds --privileged."
+        ],
+        [
+          "read_only",
+          "ok",
+          "yes",
+          "Adds --read-only."
+        ],
+        [
+          "restart",
+          "partial",
+          "yes",
+          "Decoded but NOT applied \u2014 container run does not support --restart. Code path commented out."
+        ],
+        [
+          "stdin_open",
+          "ok",
+          "yes",
+          "Adds -i flag."
+        ],
+        [
+          "tty",
+          "ok",
+          "yes",
+          "Adds -t flag."
+        ],
+        [
+          "user",
+          "ok",
+          "yes",
+          "Adds --user."
+        ],
+        [
+          "volumes",
+          "ok",
+          "yes",
+          "[String] of source:dest[:mode]; bind mounts created if missing."
+        ],
+        [
+          "working_dir",
+          "ok",
+          "yes",
+          "Adds --workdir."
+        ],
+        [
+          "configs",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:<target> per service.configs entry; uid/gid/mode parsed but not enforced via -v."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "networks",
+          "ok",
+          "yes",
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority."
+        ],
+        [
+          "annotations",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "attach",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "blkio_config",
+          "ok",
+          "yes",
+          "BlkioConfig.swift; ResourceArgs emits --blkio-weight, --blkio-weight-device, --device-{read,write}-{bps,iops}."
+        ],
+        [
+          "cap_add",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --cap-add per item."
+        ],
+        [
+          "cap_drop",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --cap-drop per item."
+        ],
+        [
+          "cgroup",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "cgroup_parent",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "cpu_count",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-count."
+        ],
+        [
+          "cpu_percent",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-percent."
+        ],
+        [
+          "cpu_period",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-period."
+        ],
+        [
+          "cpu_quota",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-quota."
+        ],
+        [
+          "cpu_rt_period",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-rt-period."
+        ],
+        [
+          "cpu_rt_runtime",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-rt-runtime."
+        ],
+        [
+          "cpu_shares",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-shares."
+        ],
+        [
+          "cpus",
+          "ok",
+          "yes",
+          "Top-level service.cpus \u2192 --cpus; falls back to deploy.resources.limits.cpus."
+        ],
+        [
+          "cpuset",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpuset-cpus."
+        ],
+        [
+          "credential_spec",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "develop",
+          "ok",
+          "yes",
+          "Develop schema parsed; compose watch implements polling-based watcher with sync/rebuild/restart actions."
+        ],
+        [
+          "device_cgroup_rules",
+          "partial",
+          "yes",
+          "Parsed; warn-and-skip \u2014 not supported by Apple container runtime."
+        ],
+        [
+          "devices",
+          "ok",
+          "yes",
+          "StorageArgs emits --device per item; runtime may reject unsupported mappings."
+        ],
+        [
+          "dns",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns per item with ${VAR} substitution."
+        ],
+        [
+          "dns_opt",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns-option per item."
+        ],
+        [
+          "dns_search",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns-search per item."
+        ],
+        [
+          "domainname",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --domainname."
+        ],
+        [
+          "expose",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --expose per item."
+        ],
+        [
+          "extends",
+          "ok",
+          "yes",
+          "DockerCompose.resolvingExtends() resolves at parse time with cycle detection (same-file)."
+        ],
+        [
+          "external_links",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "extra_hosts",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --add-host per item; map form serialized to host:ip."
+        ],
+        [
+          "gpus",
+          "ok",
+          "yes",
+          "Gpus.swift handles 'all' shorthand or array form; ResourceArgs emits --gpus."
+        ],
+        [
+          "group_add",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --group-add per item."
+        ],
+        [
+          "init",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --init when true."
+        ],
+        [
+          "ipc",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --ipc."
+        ],
+        [
+          "isolation",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "label_file",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "links",
+          "miss",
+          "no",
+          "(deprecated in compose-spec)"
+        ],
+        [
+          "logging",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --log-driver and --log-opt per option."
+        ],
+        [
+          "mac_address",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --mac-address."
+        ],
+        [
+          "mem_limit",
+          "ok",
+          "yes",
+          "Top-level service.mem_limit \u2192 --memory; overrides deploy.resources.limits.memory."
+        ],
+        [
+          "mem_reservation",
+          "ok",
+          "yes",
+          "ResourceArgs emits --memory-reservation."
+        ],
+        [
+          "mem_swappiness",
+          "ok",
+          "yes",
+          "ResourceArgs emits --memory-swappiness."
+        ],
+        [
+          "memswap_limit",
+          "ok",
+          "yes",
+          "ResourceArgs emits --memory-swap."
+        ],
+        [
+          "models",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "network_mode",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --network MODE."
+        ],
+        [
+          "oom_kill_disable",
+          "ok",
+          "yes",
+          "ResourceArgs emits --oom-kill-disable when true."
+        ],
+        [
+          "oom_score_adj",
+          "ok",
+          "yes",
+          "ResourceArgs emits --oom-score-adj."
+        ],
+        [
+          "pid",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --pid."
+        ],
+        [
+          "pids_limit",
+          "ok",
+          "yes",
+          "ResourceArgs emits --pids-limit."
+        ],
+        [
+          "post_start",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "pre_stop",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "profiles",
+          "ok",
+          "yes",
+          "Service.filterByProfiles filters services in up/down/build/etc; --profile flag + COMPOSE_PROFILES env."
+        ],
+        [
+          "provider",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "pull_policy",
+          "ok",
+          "yes",
+          "Routed through pullImage with always/never/build/missing branches."
+        ],
+        [
+          "pull_refresh_after",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "runtime",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --runtime."
+        ],
+        [
+          "scale",
+          "ok",
+          "yes",
+          "ComposeUp expands services with scale > 1 into <name>-1, <name>-2, ... -N replicas."
+        ],
+        [
+          "security_opt",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --security-opt per item."
+        ],
+        [
+          "shm_size",
+          "ok",
+          "yes",
+          "ResourceArgs emits --shm-size."
+        ],
+        [
+          "stop_grace_period",
+          "ok",
+          "yes",
+          "LifecycleArgs parses Go-duration format \u2192 --stop-timeout."
+        ],
+        [
+          "stop_signal",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --stop-signal."
+        ],
+        [
+          "storage_opt",
+          "partial",
+          "yes",
+          "Parsed; warn-and-skip \u2014 not supported by Apple container runtime."
+        ],
+        [
+          "sysctls",
+          "ok",
+          "yes",
+          "StorageArgs emits --sysctl key=value per entry."
+        ],
+        [
+          "tmpfs",
+          "ok",
+          "yes",
+          "StorageArgs emits --tmpfs per item."
+        ],
+        [
+          "ulimits",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "use_api_socket",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "userns_mode",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --userns."
+        ],
+        [
+          "uts",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --uts."
+        ],
+        [
+          "volumes_from",
+          "partial",
+          "yes",
+          "Parsed; warn-and-skip \u2014 not supported by Apple container runtime."
+        ]
       ]
     },
     {
       "id": "build",
       "title": "Service.build sub-properties",
       "rows": [
-        ["context", "ok", "yes", "Resolved relative to compose file directory."],
-        ["dockerfile", "ok", "yes", "Defaults to ./Dockerfile if absent."],
-        ["args", "ok", "yes", "Map; ${VAR} substitution applied."],
-        ["dockerfile_inline", "miss", "no", ""],
-        ["entitlements", "miss", "no", ""],
-        ["cache_from", "miss", "no", ""],
-        ["cache_to", "miss", "no", ""],
-        ["labels", "miss", "no", ""],
-        ["network", "miss", "no", ""],
-        ["secrets", "miss", "no", ""],
-        ["ssh", "miss", "no", ""],
-        ["target", "miss", "no", ""],
-        ["platforms", "miss", "no", ""],
-        ["shm_size", "miss", "no", ""],
-        ["no_cache (--no-cache flag)", "ok", "yes", "Honored via CLI flag, not the build.no_cache key."]
+        [
+          "context",
+          "ok",
+          "yes",
+          "Resolved relative to compose file directory."
+        ],
+        [
+          "dockerfile",
+          "ok",
+          "yes",
+          "Defaults to ./Dockerfile if absent."
+        ],
+        [
+          "args",
+          "ok",
+          "yes",
+          "Map; ${VAR} substitution applied."
+        ],
+        [
+          "dockerfile_inline",
+          "ok",
+          "yes",
+          "Inline content written to a temp file and passed via --file; cleaned up via defer."
+        ],
+        [
+          "entitlements",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "cache_from",
+          "ok",
+          "yes",
+          "buildService emits --cache-from per item; runtime may reject."
+        ],
+        [
+          "cache_to",
+          "ok",
+          "yes",
+          "buildService emits --cache-to per item; runtime may reject."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "network",
+          "ok",
+          "yes",
+          "buildService emits --network."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "ssh",
+          "ok",
+          "yes",
+          "buildService emits --ssh per item; runtime may reject."
+        ],
+        [
+          "target",
+          "ok",
+          "yes",
+          "buildService emits --target."
+        ],
+        [
+          "platforms",
+          "ok",
+          "yes",
+          "First platform picked; warn if more than one declared."
+        ],
+        [
+          "shm_size",
+          "ok",
+          "yes",
+          "ResourceArgs emits --shm-size."
+        ],
+        [
+          "no_cache (--no-cache flag)",
+          "ok",
+          "yes",
+          "Honored via CLI flag, not the build.no_cache key."
+        ]
       ]
     },
     {
       "id": "healthcheck",
       "title": "Service.healthcheck",
       "rows": [
-        ["test (CMD / CMD-SHELL / NONE / string)", "partial", "yes", "Decoded; not enforced before dependents start."],
-        ["interval", "partial", "yes", "Decoded only."],
-        ["timeout", "partial", "yes", "Decoded only."],
-        ["retries", "partial", "yes", "Decoded only."],
-        ["start_period", "partial", "yes", "Decoded only."],
-        ["start_interval", "miss", "no", ""],
-        ["disable", "miss", "no", ""]
+        [
+          "test (CMD / CMD-SHELL / NONE / string)",
+          "partial",
+          "yes",
+          "Decoded; not enforced before dependents start."
+        ],
+        [
+          "interval",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "timeout",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "retries",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "start_period",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "start_interval",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "disable",
+          "miss",
+          "no",
+          ""
+        ]
       ]
     },
     {
       "id": "deploy",
       "title": "Service.deploy",
       "rows": [
-        ["mode", "partial", "no", "Parsed; not used (no orchestrator)."],
-        ["replicas", "partial", "no", "Parsed; not used."],
-        ["restart_policy", "partial", "no", "Parsed; not used."],
-        ["resources.limits.cpus", "ok", "yes", "Applied to container run --cpus and build --cpus."],
-        ["resources.limits.memory", "ok", "yes", "Applied to container run --memory and build --memory."],
-        ["resources.reservations.cpus", "partial", "no", "Parsed; not applied."],
-        ["resources.reservations.memory", "partial", "no", "Parsed; not applied."],
-        ["resources.reservations.devices", "partial", "no", "DeviceReservation parsed; not applied."],
-        ["labels", "miss", "no", ""],
-        ["placement", "miss", "no", ""],
-        ["rollback_config", "miss", "no", ""],
-        ["update_config", "miss", "no", ""],
-        ["endpoint_mode", "miss", "no", ""]
+        [
+          "mode",
+          "partial",
+          "no",
+          "Parsed; not used (no orchestrator)."
+        ],
+        [
+          "replicas",
+          "partial",
+          "no",
+          "Parsed; not used."
+        ],
+        [
+          "restart_policy",
+          "partial",
+          "no",
+          "Parsed; not used."
+        ],
+        [
+          "resources.limits.cpus",
+          "ok",
+          "yes",
+          "Applied to container run --cpus and build --cpus."
+        ],
+        [
+          "resources.limits.memory",
+          "ok",
+          "yes",
+          "Applied to container run --memory and build --memory."
+        ],
+        [
+          "resources.reservations.cpus",
+          "partial",
+          "no",
+          "Parsed; not applied."
+        ],
+        [
+          "resources.reservations.memory",
+          "partial",
+          "no",
+          "Parsed; not applied."
+        ],
+        [
+          "resources.reservations.devices",
+          "partial",
+          "no",
+          "DeviceReservation parsed; not applied."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "placement",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "rollback_config",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "update_config",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "endpoint_mode",
+          "miss",
+          "no",
+          ""
+        ]
       ]
     },
     {
       "id": "network",
       "title": "Top-level Network",
       "rows": [
-        ["name", "ok", "yes", "Used as actual network name."],
-        ["external", "ok", "yes", "Boolean and {name: …} forms via ExternalNetwork; assumed pre-existing."],
-        ["driver", "partial", "yes", "Parsed; warned-and-ignored."],
-        ["driver_opts", "partial", "yes", "Parsed; warned-and-ignored."],
-        ["attachable", "partial", "yes", "Parsed; warned-and-ignored."],
-        ["enable_ipv6", "partial", "yes", "Parsed; warned-and-ignored."],
-        ["internal", "partial", "yes", "Parsed (as isInternal); warned-and-ignored."],
-        ["labels", "partial", "yes", "Parsed; warned-and-ignored."],
-        ["ipam", "miss", "no", ""]
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as actual network name."
+        ],
+        [
+          "external",
+          "ok",
+          "yes",
+          "Boolean and {name: \u2026} forms via ExternalNetwork; assumed pre-existing."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "attachable",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "enable_ipv6",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "internal",
+          "partial",
+          "yes",
+          "Parsed (as isInternal); warned-and-ignored."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "ipam",
+          "ok",
+          "yes",
+          "Phase 5B Ipam struct; --subnet/--subnet-v6 emitted; ip-range/gateway warn-skip."
+        ]
       ]
     },
     {
       "id": "volume",
       "title": "Top-level Volume",
       "rows": [
-        ["name", "ok", "yes", "Used as actual volume name."],
-        ["external", "ok", "yes", "Bool and object form via ExternalVolume."],
-        ["driver", "partial", "no", "Parsed; not applied (named volumes use ~/.containers fallback)."],
-        ["driver_opts", "partial", "no", "Parsed; not applied."],
-        ["labels", "partial", "no", "Parsed; not applied."]
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as actual volume name."
+        ],
+        [
+          "external",
+          "ok",
+          "yes",
+          "Bool and object form via ExternalVolume."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "no",
+          "Parsed; not applied."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ]
       ]
     },
     {
       "id": "secret",
       "title": "Top-level Secret",
       "rows": [
-        ["file", "partial", "no", "Parsed; not mounted at runtime."],
-        ["environment", "partial", "no", "Custom extension; parsed only."],
-        ["external", "ok", "no", "Bool and object form via ExternalSecret."],
-        ["name", "ok", "no", "Parsed."],
-        ["labels", "partial", "no", "Parsed only."],
-        ["driver", "miss", "no", ""],
-        ["driver_opts", "miss", "no", ""],
-        ["template_driver", "miss", "no", ""]
+        [
+          "file",
+          "partial",
+          "no",
+          "Parsed; not mounted at runtime."
+        ],
+        [
+          "environment",
+          "partial",
+          "no",
+          "Custom extension; parsed only."
+        ],
+        [
+          "external",
+          "ok",
+          "no",
+          "Bool and object form via ExternalSecret."
+        ],
+        [
+          "name",
+          "ok",
+          "no",
+          "Parsed."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "template_driver",
+          "miss",
+          "no",
+          ""
+        ]
       ]
     },
     {
       "id": "config",
       "title": "Top-level Config",
       "rows": [
-        ["file", "partial", "no", "Parsed; not mounted."],
-        ["external", "ok", "no", "Bool and object form via ExternalConfig."],
-        ["name", "ok", "no", "Parsed."],
-        ["labels", "partial", "no", "Parsed only."],
-        ["content", "miss", "no", ""],
-        ["environment", "miss", "no", ""],
-        ["template_driver", "miss", "no", ""]
+        [
+          "file",
+          "partial",
+          "no",
+          "Parsed; not mounted."
+        ],
+        [
+          "external",
+          "ok",
+          "no",
+          "Bool and object form via ExternalConfig."
+        ],
+        [
+          "name",
+          "ok",
+          "no",
+          "Parsed."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "content",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "environment",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "template_driver",
+          "miss",
+          "no",
+          ""
+        ]
       ]
     },
     {
@@ -446,28 +1306,138 @@
       "title": "Compose CLI subcommands",
       "note": "Versus the canonical docker compose CLI surface.",
       "rows": [
-        ["compose up", "ok", "yes", "Topo-sorted startup, network/volume creation, image pull/build."],
-        ["compose down", "ok", "yes", "Stops (and optionally removes) project containers."],
-        ["compose build", "ok", "yes", "Builds without running. Honors --no-cache, -f."],
-        ["compose version", "ok", "yes", "Prints tool version (0.11.0)."],
-        ["compose pull", "miss", "no", ""],
-        ["compose push", "miss", "no", ""],
-        ["compose logs", "miss", "no", "Inline streaming exists during `up`, but no standalone subcommand."],
-        ["compose ps", "miss", "no", ""],
-        ["compose run", "miss", "no", ""],
-        ["compose exec", "miss", "no", ""],
-        ["compose start", "miss", "no", ""],
-        ["compose stop", "miss", "no", ""],
-        ["compose restart", "miss", "no", ""],
-        ["compose kill", "miss", "no", ""],
-        ["compose rm", "miss", "no", ""],
-        ["compose create", "miss", "no", ""],
-        ["compose config", "miss", "no", ""],
-        ["compose port", "miss", "no", ""],
-        ["compose top", "miss", "no", ""],
-        ["compose events", "miss", "no", ""],
-        ["compose ls", "miss", "no", ""],
-        ["compose watch", "miss", "no", ""]
+        [
+          "compose up",
+          "ok",
+          "yes",
+          "Topo-sorted startup, network/volume creation, image pull/build."
+        ],
+        [
+          "compose down",
+          "ok",
+          "yes",
+          "Stops (and optionally removes) project containers."
+        ],
+        [
+          "compose build",
+          "ok",
+          "yes",
+          "Builds without running. Honors --no-cache, -f."
+        ],
+        [
+          "compose version",
+          "ok",
+          "yes",
+          "Prints tool version (0.11.0)."
+        ],
+        [
+          "compose pull",
+          "ok",
+          "yes",
+          "ComposePull subcommand respects --policy / service.pull_policy."
+        ],
+        [
+          "compose push",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "compose logs",
+          "ok",
+          "yes",
+          "ComposeLogs subcommand streams logs via ContainerClient.logs() with prefixed colored output."
+        ],
+        [
+          "compose ps",
+          "ok",
+          "yes",
+          "ComposePs lists project containers with name/image/status/ports table."
+        ],
+        [
+          "compose run",
+          "ok",
+          "yes",
+          "ComposeRun spawns one-off container with overrides; ports skipped unless --service-ports."
+        ],
+        [
+          "compose exec",
+          "ok",
+          "yes",
+          "ComposeExec runs a command inside an existing project container."
+        ],
+        [
+          "compose start",
+          "ok",
+          "yes",
+          "ComposeStart starts existing containers in topo-sort order."
+        ],
+        [
+          "compose stop",
+          "ok",
+          "yes",
+          "ComposeStop stops in reverse topo-sort order via ContainerClient.stop()."
+        ],
+        [
+          "compose restart",
+          "ok",
+          "yes",
+          "ComposeRestart shares stop+start helpers."
+        ],
+        [
+          "compose kill",
+          "ok",
+          "yes",
+          "ComposeKill shells out to container kill --signal."
+        ],
+        [
+          "compose rm",
+          "ok",
+          "yes",
+          "ComposeRm uses ContainerClient.delete; --force/--stop/--volumes flags."
+        ],
+        [
+          "compose create",
+          "ok",
+          "yes",
+          "ComposeCreate provisions without starting; capability-probe falls back if Apple container lacks 'create'."
+        ],
+        [
+          "compose config",
+          "ok",
+          "yes",
+          "ComposeConfig emits resolved YAML via Yams.YAMLEncoder; --services/--volumes/--profiles."
+        ],
+        [
+          "compose port",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "compose top",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "compose events",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "compose ls",
+          "ok",
+          "yes",
+          "ComposeLs groups containers by project-name prefix."
+        ],
+        [
+          "compose watch",
+          "miss",
+          "no",
+          ""
+        ]
       ]
     }
   ]
