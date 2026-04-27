@@ -112,17 +112,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     ]
 
     public mutating func run() async throws {
-        // Read compose.yml content
-        guard let yamlData = fileManager.contents(atPath: composePath) else {
-            let path = URL(fileURLWithPath: composePath)
-                .deletingLastPathComponent()
-                .path
-            throw YamlError.composeFileNotFound(path)
-        }
-
-        // Decode the YAML file into the DockerCompose struct
-        let dockerComposeString = String(data: yamlData, encoding: .utf8)!
-        let dockerCompose = try YAMLDecoder().decode(DockerCompose.self, from: dockerComposeString)
+        // Decode (and recursively merge includes) into the DockerCompose struct.
+        // loadAndMerge handles file-not-found by throwing IncludeError.fileNotFound.
+        let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
 
         // Load environment variables from .env file
         environmentVariables = loadEnvFile(path: envFilePath)
