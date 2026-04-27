@@ -30,6 +30,23 @@ extension ComposeUp {
             if ctx.service.privileged == true { args.append("--privileged") }
             if ctx.service.read_only == true { args.append("--read-only") }
 
+            // Phase 2A — capabilities & security flags
+            for cap in ctx.service.cap_add ?? [] {
+                args.append(contentsOf: ["--cap-add", cap])
+            }
+            for cap in ctx.service.cap_drop ?? [] {
+                args.append(contentsOf: ["--cap-drop", cap])
+            }
+            for opt in ctx.service.security_opt ?? [] {
+                args.append(contentsOf: ["--security-opt", opt])
+            }
+            if let userns = ctx.service.userns_mode {
+                args.append(contentsOf: ["--userns", userns])
+            }
+            for group in ctx.service.group_add ?? [] {
+                args.append(contentsOf: ["--group-add", group])
+            }
+
             return args
         }
     }
