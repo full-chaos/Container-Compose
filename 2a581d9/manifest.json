@@ -1,0 +1,8 @@
+{
+  "branch": "chore/build-empty-output-verbose",
+  "commit": "2a581d9953c57ecb9241e9ca95c692241f1f866d",
+  "short": "2a581d9",
+  "target": "2a581d9",
+  "message": "chore: narrow compose build --verbose to .long (remove -v short flag)",
+  "published_at": "2026-04-27T15:09:51.504613+00:00"
+}
