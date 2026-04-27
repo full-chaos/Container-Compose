@@ -1,0 +1,110 @@
+//===----------------------------------------------------------------------===//
+// Copyright © 2025 Morris Richman and the Container-Compose project authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//===----------------------------------------------------------------------===//
+
+import Testing
+import Foundation
+@testable import ContainerComposeCore
+
+@Suite("ComposePull Parsing Tests")
+struct ComposePullTests {
+
+    @Test("ComposePull parses with no arguments")
+    func composePullParsesWithNoArguments() throws {
+        let cmd = try ComposePull.parse([])
+        #expect(cmd.services.isEmpty)
+        #expect(cmd.composeFilename == nil)
+        #expect(cmd.profile.isEmpty)
+        #expect(cmd.includeDeps == false)
+        #expect(cmd.ignorePullFailures == false)
+        #expect(cmd.policy == nil)
+    }
+
+    @Test("ComposePull parses service name arguments")
+    func composePullParsesServiceNames() throws {
+        let cmd = try ComposePull.parse(["web", "db"])
+        #expect(cmd.services == ["web", "db"])
+    }
+
+    @Test("ComposePull parses --policy always")
+    func composePullParsesPolicyAlways() throws {
+        let cmd = try ComposePull.parse(["--policy", "always"])
+        #expect(cmd.policy == "always")
+    }
+
+    @Test("ComposePull parses --policy missing")
+    func composePullParsesPolicyMissing() throws {
+        let cmd = try ComposePull.parse(["--policy", "missing"])
+        #expect(cmd.policy == "missing")
+    }
+
+    @Test("ComposePull parses --policy never")
+    func composePullParsesPolicyNever() throws {
+        let cmd = try ComposePull.parse(["--policy", "never"])
+        #expect(cmd.policy == "never")
+    }
+
+    @Test("ComposePull parses --include-deps flag")
+    func composePullParsesIncludeDeps() throws {
+        let cmd = try ComposePull.parse(["--include-deps"])
+        #expect(cmd.includeDeps == true)
+    }
+
+    @Test("ComposePull parses --ignore-pull-failures flag")
+    func composePullParsesIgnorePullFailures() throws {
+        let cmd = try ComposePull.parse(["--ignore-pull-failures"])
+        #expect(cmd.ignorePullFailures == true)
+    }
+
+    @Test("ComposePull parses --profile flag")
+    func composePullParsesProfile() throws {
+        let cmd = try ComposePull.parse(["--profile", "production"])
+        #expect(cmd.profile == ["production"])
+    }
+
+    @Test("ComposePull parses multiple --profile flags")
+    func composePullParsesMultipleProfiles() throws {
+        let cmd = try ComposePull.parse(["--profile", "production", "--profile", "debug"])
+        #expect(cmd.profile == ["production", "debug"])
+    }
+
+    @Test("ComposePull parses -f flag for compose file")
+    func composePullParsesFileFlag() throws {
+        let cmd = try ComposePull.parse(["-f", "my-compose.yaml"])
+        #expect(cmd.composeFilename == "my-compose.yaml")
+    }
+
+    @Test("ComposePull parses --file flag for compose file")
+    func composePullParsesLongFileFlag() throws {
+        let cmd = try ComposePull.parse(["--file", "docker-compose.yml"])
+        #expect(cmd.composeFilename == "docker-compose.yml")
+    }
+
+    @Test("ComposePull parses combination of flags and services")
+    func composePullParsesCombinedFlagsAndServices() throws {
+        let cmd = try ComposePull.parse([
+            "--policy", "always",
+            "--include-deps",
+            "--ignore-pull-failures",
+            "--profile", "production",
+            "web", "api"
+        ])
+        #expect(cmd.policy == "always")
+        #expect(cmd.includeDeps == true)
+        #expect(cmd.ignorePullFailures == true)
+        #expect(cmd.profile == ["production"])
+        #expect(cmd.services == ["web", "api"])
+    }
+}
