@@ -1,0 +1,8 @@
+{
+  "branch": "chore/build-empty-output-verbose",
+  "commit": "020261eee849e4b391c3ad99d4ee852de228ba23",
+  "short": "020261e",
+  "target": "020261e",
+  "message": "Merge main: pull in CI workflow fix (PR #6)",
+  "published_at": "2026-04-27T20:25:22.504489+00:00"
+}
