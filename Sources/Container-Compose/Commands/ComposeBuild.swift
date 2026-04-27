@@ -45,6 +45,9 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     @Flag(name: .long, help: "Do not use cache when building")
     var noCache: Bool = false
 
+    @Flag(name: .long, help: "Show extra detail on the empty-output message when no services need building")
+    var verbose: Bool = false
+
     @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
     var profile: [String] = []
 
@@ -87,6 +90,18 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         return resolvedPath(for: envFile, relativeTo: cwdURL)
     }
 
+    /// Lines printed when the build invocation has no services to build.
+    /// Default is the terse single-line message; `--verbose` appends a
+    /// second line clarifying that all candidate services already use
+    /// pre-built images.
+    static func emptyBuildOutputLines(verbose: Bool, totalServiceCount: Int) -> [String] {
+        var lines = ["No services with a 'build' configuration found."]
+        if verbose {
+            lines.append("All \(totalServiceCount) service(s) use pre-built images. Nothing to build.")
+        }
+        return lines
+    }
+
     public mutating func run() async throws {
         // Decode (and recursively merge includes) into the DockerCompose struct.
         let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
@@ -99,21 +114,28 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             projectName = deriveProjectName(cwd: cwd)
         }
 
-        var servicesToBuild: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
-            guard let service, service.build != nil else { return nil }
+        // Build the candidate list first (every service visible to this invocation),
+        // then narrow down to those with a `build:` block. The candidate count is
+        // the denominator we report in the verbose empty-output message.
+        var candidateServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
+            guard let service else { return nil }
             return (name, service)
         }
 
         // Filter by active profiles before applying CLI service filter.
         let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        servicesToBuild = Service.filterByProfiles(servicesToBuild, activeProfiles: activeProfiles)
+        candidateServices = Service.filterByProfiles(candidateServices, activeProfiles: activeProfiles)
 
         if !services.isEmpty {
-            servicesToBuild = servicesToBuild.filter { services.contains($0.serviceName) }
+            candidateServices = candidateServices.filter { services.contains($0.serviceName) }
         }
 
+        let servicesToBuild = candidateServices.filter { $0.service.build != nil }
+
         if servicesToBuild.isEmpty {
-            print("No services with a 'build' configuration found.")
+            for line in Self.emptyBuildOutputLines(verbose: verbose, totalServiceCount: candidateServices.count) {
+                print(line)
+            }
             return
         }
 
