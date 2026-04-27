@@ -11,8 +11,11 @@ import ArgumentParser
 @main
 struct Application: AsyncParsableCommand {
     @Argument(parsing: .captureForPassthrough) var args: [String]
-    
+
     func run() async throws {
-        await Main.main(args)
+        // Reorder args so global flags placed BEFORE the subcommand
+        // (e.g. `container-compose -f compose.yml build`) are moved
+        // to immediately AFTER the subcommand, matching `docker compose` UX.
+        await Main.main(ArgvNormalizer.promoteGlobalFlags(args))
     }
 }
