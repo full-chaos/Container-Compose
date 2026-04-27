@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "38102b51698cee9c19cc87db063afea14b6b96c0",
-  "short": "38102b5",
+  "commit": "80af29a210fbd2235cbe544bc1c1177353918287",
+  "short": "80af29a",
   "target": "current",
-  "message": "ci: drop .build from cache to fix clang module-cache collision (#6)",
-  "published_at": "2026-04-27T20:24:20.049849+00:00"
+  "message": "fix: --entrypoint placed after image in compose up (#3)",
+  "published_at": "2026-04-27T20:33:27.263153+00:00"
 }
