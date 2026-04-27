@@ -1,0 +1,8 @@
+{
+  "branch": "fix/entrypoint-argv-up",
+  "commit": "0e212ebb8d92f44ef7563eb62ea625fa153482c3",
+  "short": "0e212eb",
+  "target": "0e212eb",
+  "message": "Merge main: pull in CI workflow fix (PR #6)",
+  "published_at": "2026-04-27T20:25:17.539793+00:00"
+}
