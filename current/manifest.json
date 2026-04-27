@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "491e6a6bee94eabafe38a772dd3fba75c292e449",
-  "short": "491e6a6",
+  "commit": "d8e45932dcb3df2adb6ccb8adc8fff6e47cf8849",
+  "short": "d8e4593",
   "target": "current",
-  "message": "feat: introduce RunCommandRunner protocol seam (PR-1 of recorder migration) (#9)",
-  "published_at": "2026-04-27T22:16:35.276096+00:00"
+  "message": "feat: route ComposeUp through RunCommandRunner + add RuntimeArgvTests (PR-2 of recorder migration) (#10)",
+  "published_at": "2026-04-27T22:58:16.810286+00:00"
 }
