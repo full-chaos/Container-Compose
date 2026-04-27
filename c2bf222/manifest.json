@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr1",
+  "commit": "c2bf222ddfea6f1706fd1c4814e0464f7178a031",
+  "short": "c2bf222",
+  "target": "c2bf222",
+  "message": "feat: introduce RunCommandRunner protocol seam (PR-1 of recorder migration)",
+  "published_at": "2026-04-27T22:09:58.316087+00:00"
+}
