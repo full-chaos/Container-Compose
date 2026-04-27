@@ -1,0 +1,8 @@
+{
+  "branch": "feat/project-context-options",
+  "commit": "84f53b29e8ef0f9cec109c4a156f003b7c19da45",
+  "short": "84f53b2",
+  "target": "84f53b2",
+  "message": "feat: wire pre-subcommand globals end-to-end (--project-name, --project-directory)",
+  "published_at": "2026-04-27T22:00:08.819383+00:00"
+}
