@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "63698117fc2e70183fa55044c5b2acd70ff7ac01",
-  "short": "6369811",
+  "commit": "38102b51698cee9c19cc87db063afea14b6b96c0",
+  "short": "38102b5",
   "target": "current",
-  "message": "fix: resolve three Swift 6 compiler warnings (#2)",
-  "published_at": "2026-04-27T13:12:11.651896+00:00"
+  "message": "ci: drop .build from cache to fix clang module-cache collision (#6)",
+  "published_at": "2026-04-27T20:24:20.049849+00:00"
 }
