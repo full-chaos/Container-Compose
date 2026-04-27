@@ -110,6 +110,63 @@ public func deriveProjectName(cwd: String) -> String {
     return projectName
 }
 
+/// Resolves the effective project name with `docker compose` precedence:
+/// CLI override (`-p` / `--project-name`) > compose file `name:` > basename
+/// of the project directory (sanitized via `deriveProjectName`).
+///
+/// An empty CLI override is treated as if the flag had not been provided, so
+/// that a stray `--project-name ""` does not silently produce an unnamed
+/// project — it falls through to the compose-file or directory-derived name.
+/// - Parameters:
+///   - cliOverride: Value of the `-p` / `--project-name` flag, if any.
+///   - composeName: The `name:` field from the compose document, if any.
+///   - projectDirectory: The effective project root, used for the basename
+///     fallback. (See `resolveProjectDirectory(...)`.)
+public func resolveProjectName(
+    cliOverride: String?,
+    composeName: String?,
+    projectDirectory: String
+) -> String {
+    if let cli = cliOverride, !cli.isEmpty { return cli }
+    if let name = composeName, !name.isEmpty { return name }
+    return deriveProjectName(cwd: projectDirectory)
+}
+
+/// Resolves the effective project root used to anchor outside-container
+/// relative-path resolution (build context, env-file, volume bind sources,
+/// etc.). This is *not* the same as `Flags.Process.cwd`, which is the
+/// inside-container working directory.
+///
+/// Precedence: CLI override (`--project-directory`) > the compose file's
+/// containing directory.
+///
+/// A relative CLI override is resolved against `cwd` (i.e. the current
+/// working directory of the host process), matching `docker compose`'s
+/// behaviour where `--project-directory ./services` is relative to where
+/// the user invoked the command.
+/// - Parameters:
+///   - cliOverride: Value of the `--project-directory` flag, if any.
+///   - composeFilePath: Absolute path to the compose file.
+///   - cwd: Current working directory of the host process. Used to resolve
+///     relative `cliOverride` values.
+public func resolveProjectDirectory(
+    cliOverride: String?,
+    composeFilePath: String,
+    cwd: String
+) -> String {
+    if let cli = cliOverride, !cli.isEmpty {
+        let expanded = NSString(string: cli).expandingTildeInPath
+        // `isDirectory: true` on the base URL is required so that
+        // `URL(fileURLWithPath:relativeTo:)` joins the relative path
+        // against `cwd` instead of treating `cwd` as a file and
+        // replacing its last component.
+        let cwdURL = URL(fileURLWithPath: cwd, isDirectory: true)
+        return URL(fileURLWithPath: expanded, relativeTo: cwdURL)
+            .standardizedFileURL.path
+    }
+    return URL(fileURLWithPath: composeFilePath).deletingLastPathComponent().path
+}
+
 /// Converts Docker Compose port specification into a container run -p format.
 /// Handles various formats: "PORT", "HOST:PORT", "IP:HOST:PORT", and optional protocol.
 /// - Parameter portSpec: The port specification string from docker-compose.yml.

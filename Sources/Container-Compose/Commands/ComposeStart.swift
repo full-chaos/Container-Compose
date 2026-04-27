@@ -45,9 +45,22 @@ public struct ComposeStart: AsyncParsableCommand {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    /// Project root for outside-container relative-path resolution. Honors
+    /// `--project-directory`, falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
+    }
 
     private var cwdURL: URL { URL(fileURLWithPath: cwd) }
 
@@ -78,12 +91,17 @@ public struct ComposeStart: AsyncParsableCommand {
             .loadAndMerge(mainPath: composePath)
             .resolvingExtends()
 
-        let projectName: String
-        if let name = dockerCompose.name {
-            projectName = name
-            print("Info: Docker Compose project name: \(name)")
+        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
+        let projectName = resolveProjectName(
+            cliOverride: projectFlags.projectName,
+            composeName: dockerCompose.name,
+            projectDirectory: effectiveProjectDirectory
+        )
+        if let cliName = projectFlags.projectName, !cliName.isEmpty {
+            print("Info: Using project name from --project-name flag: \(cliName)")
+        } else if dockerCompose.name != nil {
+            print("Info: Docker Compose project name: \(projectName)")
         } else {
-            projectName = deriveProjectName(cwd: cwd)
             print("Info: Using directory name as project name: \(projectName)")
         }
 

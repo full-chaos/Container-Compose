@@ -80,10 +80,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         return resolvedPath(for: envFile, relativeTo: cwdURL)
     }
 
-    private var composeDirectory: String {
-        URL(fileURLWithPath: composePath).deletingLastPathComponent().path
-    }
-
     @Flag(name: [.customShort("b"), .customLong("build")])
     var rebuild: Bool = false
 
@@ -97,9 +93,23 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     var process: Flags.Process
 
     @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
     var logging: Flags.Logging
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    /// Project root used for outside-container relative-path resolution
+    /// (build context, env-file, volume bind sources). Honors
+    /// `--project-directory` and falls back to the compose file's directory.
+    private var effectiveProjectDirectory: String {
+        resolveProjectDirectory(
+            cliOverride: projectFlags.projectDirectory,
+            composeFilePath: composePath,
+            cwd: cwd
+        )
+    }
 
     private var fileManager: FileManager { FileManager.default }
     var projectName: String?
@@ -128,16 +138,23 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("Note: The 'version' field influences how a Docker Compose CLI interprets the file, but this custom 'container-compose' tool directly interprets the schema.")
         }
 
-        // Determine project name for container naming
-        if let name = dockerCompose.name {
-            projectName = name
+        // Determine project name for container naming.
+        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
+        let resolvedName = resolveProjectName(
+            cliOverride: projectFlags.projectName,
+            composeName: dockerCompose.name,
+            projectDirectory: effectiveProjectDirectory
+        )
+        projectName = resolvedName
+        if let cliName = projectFlags.projectName, !cliName.isEmpty {
+            print("Info: Using project name from --project-name flag: \(cliName)")
+        } else if let name = dockerCompose.name {
             print("Info: Docker Compose project name parsed as: \(name)")
             print(
                 "Note: The 'name' field currently only affects container naming (e.g., '\(name)-serviceName'). Full project-level isolation for other resources (networks, implicit volumes) is not implemented by this tool."
             )
         } else {
-            projectName = deriveProjectName(cwd: cwd)
-            print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(projectName ?? "")")
+            print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(resolvedName)")
         }
 
         // Get Services to use
@@ -495,7 +512,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         if let envFiles = service.env_file {
             for envFile in envFiles {
-                let additionalEnvVars = loadEnvFile(path: URL(fileURLWithPath: envFile, relativeTo: URL(fileURLWithPath: composeDirectory)).path)
+                let additionalEnvVars = loadEnvFile(path: URL(fileURLWithPath: envFile, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path)
                 combinedEnv.merge(additionalEnvVars) { (current, _) in current }
             }
         }
@@ -665,7 +682,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // Build command arguments
-        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: composeDirectory)).path]
+        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
 
         // Add build arguments
         for (key, value) in buildConfig.args ?? [:] {
@@ -682,7 +699,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             inlineTempURL = tempURL
             commands.append(contentsOf: ["--file", tempURL.path])
         } else {
-            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: composeDirectory)).path])
+            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path])
         }
 
         // Add caching options
