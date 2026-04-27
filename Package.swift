@@ -44,7 +44,11 @@ let package = Package(
         ),
         
         // Test Helper
-        .target(name: "TestHelpers", path: "Tests/TestHelpers"),
+        .target(
+            name: "TestHelpers",
+            dependencies: ["ContainerComposeCore"],
+            path: "Tests/TestHelpers"
+        ),
         
         // Tests
         .testTarget(
