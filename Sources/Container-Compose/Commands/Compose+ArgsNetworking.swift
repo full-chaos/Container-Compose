@@ -49,6 +49,82 @@ extension ComposeUp {
                 args.append(contentsOf: ["--hostname", resolved])
             }
 
+            // --dns ADDR (per item)
+            if let dns = ctx.service.dns {
+                for addr in dns {
+                    let resolved = resolveVariable(addr, with: ctx.environmentVariables)
+                    args.append(contentsOf: ["--dns", resolved])
+                }
+            }
+
+            // --dns-option OPT (per item)
+            if let dnsOpts = ctx.service.dns_opt {
+                for opt in dnsOpts {
+                    let resolved = resolveVariable(opt, with: ctx.environmentVariables)
+                    args.append(contentsOf: ["--dns-option", resolved])
+                }
+            }
+
+            // --dns-search DOMAIN (per item)
+            if let dnsSearch = ctx.service.dns_search {
+                for domain in dnsSearch {
+                    let resolved = resolveVariable(domain, with: ctx.environmentVariables)
+                    args.append(contentsOf: ["--dns-search", resolved])
+                }
+            }
+
+            // --add-host HOST:IP (per item; already serialized as "host:ip" by Phase 1.2 decoder)
+            if let extraHosts = ctx.service.extra_hosts {
+                for host in extraHosts {
+                    let resolved = resolveVariable(host, with: ctx.environmentVariables)
+                    args.append(contentsOf: ["--add-host", resolved])
+                }
+            }
+
+            // --domainname NAME
+            if let domainname = ctx.service.domainname {
+                let resolved = resolveVariable(domainname, with: ctx.environmentVariables)
+                args.append(contentsOf: ["--domainname", resolved])
+            }
+
+            // --expose PORT/PROTO (per item)
+            if let expose = ctx.service.expose {
+                for port in expose {
+                    let resolved = resolveVariable(port, with: ctx.environmentVariables)
+                    args.append(contentsOf: ["--expose", resolved])
+                }
+            }
+
+            // --mac-address MAC
+            if let macAddress = ctx.service.mac_address {
+                let resolved = resolveVariable(macAddress, with: ctx.environmentVariables)
+                args.append(contentsOf: ["--mac-address", resolved])
+            }
+
+            // --network MODE (network_mode overrides; distinct from the networks list above)
+            if let networkMode = ctx.service.network_mode {
+                let resolved = resolveVariable(networkMode, with: ctx.environmentVariables)
+                args.append(contentsOf: ["--network", resolved])
+            }
+
+            // --ipc MODE
+            if let ipc = ctx.service.ipc {
+                let resolved = resolveVariable(ipc, with: ctx.environmentVariables)
+                args.append(contentsOf: ["--ipc", resolved])
+            }
+
+            // --pid MODE
+            if let pid = ctx.service.pid {
+                let resolved = resolveVariable(pid, with: ctx.environmentVariables)
+                args.append(contentsOf: ["--pid", resolved])
+            }
+
+            // --uts MODE
+            if let uts = ctx.service.uts {
+                let resolved = resolveVariable(uts, with: ctx.environmentVariables)
+                args.append(contentsOf: ["--uts", resolved])
+            }
+
             return args
         }
     }
