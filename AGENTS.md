@@ -106,35 +106,69 @@ service for reverse-graph queries.
 
 ### 3.2 Commands
 
-All subcommands conform to `AsyncParsableCommand`:
+All subcommands conform to `AsyncParsableCommand`. There are **15 subcommands**
+registered in `Application.swift`:
 
-| Subcommand   | Key flags / args                                               |
-| ------------ | -------------------------------------------------------------- |
-| `up`         | `[services...]`, `-d/--detach`, `-f/--file`, `-b/--build`, `--no-cache` |
-| `down`       | `[services...]`                                                |
-| `build`      | `[services...]`, `--no-cache`, `-f/--file`                     |
-| `version`    | none                                                           |
+| Subcommand     | Purpose                                                |
+| -------------- | ------------------------------------------------------ |
+| `up`           | Start project containers (topo-sorted, profile-filtered, includes/extends/scale resolved) |
+| `down`         | Stop and remove project containers                     |
+| `start`        | Start existing stopped project containers              |
+| `stop`         | Stop running project containers (reverse topo order)   |
+| `restart`      | Stop + start                                           |
+| `build`        | Build project images without running                   |
+| `ps`           | List project containers (NAME / IMAGE / STATUS / PORTS) |
+| `ls`           | List active compose projects on the host               |
+| `logs`         | Stream logs from project containers (`-f`, `--tail`)   |
+| `pull`         | Pull (or skip-pull / always-pull) project images       |
+| `config`       | Print fully-resolved/normalized compose YAML           |
+| `run`          | Spawn a one-off container with overrides              |
+| `exec`         | Run a command inside an existing project container     |
+| `kill`         | Send a signal to project containers (default `SIGKILL`) |
+| `rm`           | Remove stopped project containers                      |
+| `create`       | Provision containers without starting (capability-probed) |
+| `watch`        | Polling-based file monitor honoring `develop.watch[]`  |
+| `version`      | Print tool version                                      |
 
 `up` performs:
 1. Locate compose file (`-f`, then `compose.yml` / `compose.yaml` / `docker-compose.yml` / `docker-compose.yaml`).
-2. YAML decode into `DockerCompose`.
+2. `DockerCompose.loadAndMerge(...).resolvingExtends()` — recursively merge `include:` files (cycle-detected) and resolve `extends:`.
 3. Load `.env` file (`process.envFile` first, else `./.env`).
 4. Derive project name (explicit `name:` field, else CWD basename).
-5. Topo-sort services by `depends_on`.
-6. Stop + remove existing containers for those services.
-7. Create top-level networks (basic; many flags warned-but-ignored).
-8. Create local hard-link directories for top-level named volumes.
-9. For each service in topological order: pull/build image, assemble
-   `container run` argv, spawn it as a `Task`, then `waitUntilServiceIsRunning`
-   (30 s timeout, 0.5 s poll), then resolve service-name placeholders in env
-   to the now-running container's IP.
-10. If not detached, block forever (so `^C` tears down the user session).
+5. Filter services by `--profile` (or `COMPOSE_PROFILES` env). Topo-sort by `dependsOn`.
+6. Expand `service.scale > 1` into N named replicas.
+7. Stop + remove existing containers.
+8. Create top-level networks (driver / IPAM `--subnet` honored where Apple `container` accepts).
+9. Create local hard-link directories for top-level named volumes (warn for non-`local` drivers).
+10. For each service: wait on **per-dep `condition`** before starting (Phase 1.4), pull/build image (`pull_policy`-aware), assemble argv via per-concern `*Args.build` builders, spawn as a `Task`, then `waitUntilServiceIsRunning`, then resolve service-name → container-IP in env.
+11. If not detached, block forever.
 
-`down` calls `ContainerClient.stop()` (and `delete()` only when explicitly
-asked) for every container matching `<project>-<service>`.
+`down` calls `ContainerClient.stop()` (and `delete()` for `up`'s tear-down) for every container matching `<project>-<service>`.
 
 `build` re-uses the same YAML→model pipeline and invokes
-`Application.BuildCommand` from the Apple `container` package.
+`Application.BuildCommand` with the full set of build sub-features (target,
+dockerfile_inline, cache_from/to, labels, network, ssh, secrets, platforms,
+shm_size).
+
+### 3.3 Per-concern argv builders (Phase 1.1 split)
+
+`ComposeUp.configService` no longer inlines argv emission. Each concern is in
+its own extension file under `Sources/Container-Compose/Commands/`:
+
+| File | Owns |
+| ---- | ---- |
+| `Compose+ArgsBase.swift` | `ArgsContext` struct |
+| `Compose+ArgsLifecycle.swift` | platform, name, detach, stdin/tty, init, stop_signal/grace_period, runtime, restart-warn, logging |
+| `Compose+ArgsSecurity.swift` | user, privileged, read_only, cap_add/drop, security_opt, userns_mode, group_add |
+| `Compose+ArgsResource.swift` | cpus, memory, mem_*, pids/shm/oom/cpu_*, ulimits, gpus, blkio_config |
+| `Compose+ArgsNetworking.swift` | ports, networks (list+map+aliases), hostname, dns, extra_hosts, domainname, expose, mac_address, network_mode, ipc, pid, uts |
+| `Compose+ArgsStorage.swift` | working_dir, tmpfs, devices, sysctls, warn-skip volumes_from/storage_opt/device_cgroup_rules |
+| `Compose+ArgsLabels.swift` | service.labels |
+| `Compose+ConfigsAndSecrets.swift` | service-level configs/secrets bind-mounts |
+| `Compose+Wait.swift` | `waitForCondition(_:condition:)` for depends_on object form |
+
+Each builder takes `ArgsContext` and returns `[String]`. Side-effects (volume
+dir creation, env merging) stay inline in `configService`.
 
 ### 3.3 Helpers (`Helper Functions.swift`)
 
@@ -150,28 +184,41 @@ Re-used across commands:
 ## 4. Coverage vs. compose-spec
 
 The full feature-coverage matrix lives in **`coverage.html`** at the repo
-root (open in a browser). The summary:
+root. Open it in a browser; the inline JSON data is also extracted to
+`coverage.json` by `scripts/regen-coverage.sh`. Current totals:
 
-| Layer                         | Coverage |
-| ----------------------------- | -------- |
-| Top-level Compose keys        | 7 / 9    |
-| Service properties            | 23 / 89  |
-| `depends_on` schema (L277-310)| 1 / 4 sub-features (list form only) |
-| Network / Volume / Secret / Config core fields | complete |
-| Compose subcommands           | 4 / ~22  |
+| Status      | Count   | %    |
+| ----------- | ------- | ---- |
+| Implemented | **130** | 67%  |
+| Partial     | 30      | 15%  |
+| Missing     | 34      | 18%  |
+| **Total**   | **194** | 100% |
 
-Concrete gaps relative to compose-spec **lines 277-310** (the `depends_on`
-object form):
+The remaining "partial" and "missing" rows fall into three buckets:
+1. **Apple-container-runtime limitations**  — e.g. healthcheck condition can't
+   read a true health status because `ContainerSnapshot` doesn't surface a
+   `health` field; `--restart` isn't accepted by `container run`; a handful of
+   network flags (`--ip-range`, `--gateway`) lack CLI equivalents.
+2. **Swarm-only / orchestrator features**  — `deploy.replicas`, `deploy.update_config`,
+   `deploy.placement`, `endpoint_mode`, etc.
+3. **Deprecated or rarely-used fields**  — `links`, `external_links`,
+   `volumes_from`, `cgroup_parent`.
 
-- ✅ list-of-strings form (`depends_on: [db, redis]`) — supported and topo-sorted.
-- ❌ object form (`depends_on: {db: {condition: service_healthy}}`) — decoder rejects.
-- ❌ `condition: service_started | service_healthy | service_completed_successfully` — none honored at runtime.
-- ❌ `required` flag — unmodeled.
-- ❌ `restart` flag — unmodeled.
+### Anchor section: `depends_on` (compose-spec.json L277-L310)
 
-Healthchecks are *parsed* into `Healthcheck`, but `ComposeUp` never blocks on
-them — services start in topological order and immediately progress once the
-container reaches `running` state, regardless of healthcheck status.
+End-to-end status:
+
+- ✅ list form (`depends_on: [db, redis]`) — `DependsOn.list(...)` factory
+- ✅ object form (`depends_on: {db: {condition: service_healthy}}`) — `DependsOn.entries`
+- ✅ `condition: service_started` — `waitForCondition(.serviceStarted)`
+- ⚠️ `condition: service_healthy` — gated, but underlying fallback to `.running`
+  (TODO: true health when ContainerSnapshot exposes it)
+- ⚠️ `condition: service_completed_successfully` — gated to `.stopped`,
+  no exit-code verification (TODO)
+- ✅ `required: true|false` — `DependsOnEntry.required` controls whether
+  errors propagate or are warned
+- ⚠️ `restart` — parsed on `DependsOnEntry`; pending Apple container's
+  restart manager exposure
 
 ---
 
@@ -233,19 +280,40 @@ in CI by default. Verify locally before committing.
 
 ### High-leverage open work
 
-1. **`depends_on` object form** (compose-spec L277-310) — extend `Service`
-   with a `DependsOn` enum (list / object), wire `condition` into
-   `ComposeUp.waitUntilServiceIsRunning`, and add tests in
-   `ServiceDependencyTests` + `HealthcheckConfigurationTests`.
-2. **Healthcheck-gated startup** — `ContainerClient` exposes status; today
-   `up` only waits for `running`. Wait for `healthy` when a dependent
-   declares `condition: service_healthy`.
-3. **More Service properties** — high-value missing ones: `cap_add`,
-   `cap_drop`, `dns`, `extra_hosts`, `labels`, `logging`, `pid`,
-   `security_opt`, `sysctls`, `tmpfs`, `ulimits`, `expose`, `init`,
-   `network_mode`, `pull_policy`, `profiles`. (Full list in `coverage.html`.)
-4. **More subcommands** — `logs`, `ps`, `restart`, `start`, `stop`, `pull`,
-   `config`, `ls` would all map cleanly onto `ContainerClient` APIs.
+The big-ticket items listed in the original AGENTS.md (depends_on object
+form, healthcheck-gated startup, the property block, and the missing
+subcommands) all landed in Phases 1-5. The remaining work is upstream-
+dependent or scope-deferred:
+
+1. **True `service_healthy` enforcement** — depends on Apple's `container`
+   package surfacing a health field on `ContainerSnapshot`. Currently
+   `Compose+Wait.swift` falls back to `.running` with a one-time warning.
+2. **Exit-code verification for `service_completed_successfully`** — same
+   class of issue: `ContainerSnapshot` doesn't expose exit code today, so
+   we wait for `.stopped` only.
+3. **`restart` policy actually applied** — Apple `container run` doesn't
+   support `--restart`. When the container package adds a higher-level
+   restart manager, route `service.restart` through it (and the
+   `DependsOnEntry.restart` field too).
+4. **FSEvents-based watcher** — `compose watch` currently polls. Upgrade to
+   `FSEventStream` for low-latency change detection on macOS.
+5. **`compose logs --since` / `--timestamps`** — parsed but unsupported
+   because `ContainerClient.logs(id:)` lacks those parameters.
+6. **`compose run` / `exec` flag namespacing** — both commands use
+   `--run-env`/`--exec-env`/etc. to avoid clashes with `Flags.Process`.
+   When `Flags.Process` allows opt-out of those names, switch to standard
+   `-e`/`-u`/`-w`.
+7. **Cross-file `extends`** (`extends: { service: foo, file: ./other.yml }`)
+   currently warn-and-skips. Reuse `loadAndMerge`-style cross-file loading
+   to actually pull `foo` from another file.
+8. **DRY pull helpers** — `ComposePull` and `ComposeCreate` each carry a
+   private copy of `pullImage`. Lift to a shared internal helper.
+9. **The 34 `miss` rows in coverage.html** — most are Swarm-only
+   (`deploy.replicas`, `deploy.update_config`, etc.) or deprecated
+   (`links`, `external_links`). A small set is genuine leftover work:
+   `cgroup_parent`, `credential_spec`, `isolation`, `label_file`,
+   `models`, `post_start`, `pre_stop`, `provider`, `pull_refresh_after`,
+   `use_api_socket`, plus `compose top`, `compose port`, `compose events`.
 
 ---
 
