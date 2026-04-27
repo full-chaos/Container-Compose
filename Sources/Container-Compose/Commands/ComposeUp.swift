@@ -90,6 +90,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     @Flag(name: .long, help: "Do not use cache")
     var noCache: Bool = false
 
+    @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
+    var profile: [String] = []
+
     @OptionGroup
     var process: Flags.Process
 
@@ -147,6 +150,11 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             guard let service else { return nil }
             return (serviceName, service)
         })
+
+        // Filter by active profiles before topo-sort.
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        services = Service.filterByProfiles(services, activeProfiles: activeProfiles)
+
         services = try Service.topoSortConfiguredServices(services)
 
         // Filter for specified services
