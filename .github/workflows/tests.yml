@@ -40,15 +40,18 @@ jobs:
     # .enabled(if: RuntimeAvailability.isAvailable()), so they skip cleanly here
     # — no --filter / --skip needed. See Tests/TestHelpers/RuntimeAvailability.swift.
 
-    - name: Cache SwiftPM build artifacts
+    # Cache only the SwiftPM dependency download cache, not `.build`.
+    # `.build` contains clang module-cache `.pcm` files with embedded
+    # absolute paths; restoring them into a workspace whose path-case
+    # differs from the build-time path triggers
+    # `module '_DarwinFoundation2' is defined in both …` from clang.
+    - name: Cache SwiftPM dependencies
       uses: actions/cache@v4
       with:
-        path: |
-          .build
-          ~/Library/Caches/org.swift.swiftpm
-        key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.resolved') }}
+        path: ~/Library/Caches/org.swift.swiftpm
+        key: ${{ runner.os }}-swiftpm-deps-${{ hashFiles('Package.resolved') }}
         restore-keys: |
-          ${{ runner.os }}-swiftpm-
+          ${{ runner.os }}-swiftpm-deps-
 
     - name: Build tests
       run: swift build --build-tests
