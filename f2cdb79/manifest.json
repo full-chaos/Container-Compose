@@ -1,0 +1,8 @@
+{
+  "branch": "feat/plan",
+  "commit": "f2cdb79b7f5d01e4337997749e1922650e060fb3",
+  "short": "f2cdb79",
+  "target": "f2cdb79",
+  "message": "chore: add --verbose detail to 'compose build' empty-output message (#5)",
+  "published_at": "2026-04-27T20:45:10.164507+00:00"
+}
