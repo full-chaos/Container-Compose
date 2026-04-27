@@ -40,10 +40,12 @@ public struct Network: Codable {
     public let name: String?
     /// Indicates if the network is external (pre-existing)
     public let external: ExternalNetwork?
+    /// IPAM (IP Address Management) configuration
+    public let ipam: Ipam?
 
     /// Updated CodingKeys to map 'internal' from YAML to 'isInternal' Swift property
     enum CodingKeys: String, CodingKey {
-        case driver, driver_opts, attachable, enable_ipv6, isInternal = "internal", labels, name, external
+        case driver, driver_opts, attachable, enable_ipv6, isInternal = "internal", labels, name, external, ipam
     }
 
     /// Custom initializer to handle `external: true` (boolean) or `external: { name: "my_net" }` (object).
@@ -56,6 +58,7 @@ public struct Network: Codable {
         isInternal = try container.decodeIfPresent(Bool.self, forKey: .isInternal) // Use isInternal here
         labels = try container.decodeIfPresent([String: String].self, forKey: .labels)
         name = try container.decodeIfPresent(String.self, forKey: .name)
+        ipam = try container.decodeIfPresent(Ipam.self, forKey: .ipam)
 
         if let externalBool = try? container.decodeIfPresent(Bool.self, forKey: .external) {
             external = ExternalNetwork(isExternal: externalBool, name: nil)
@@ -64,5 +67,28 @@ public struct Network: Codable {
         } else {
             external = nil
         }
+    }
+
+    /// Memberwise initializer
+    public init(
+        driver: String? = nil,
+        driver_opts: [String: String]? = nil,
+        attachable: Bool? = nil,
+        enable_ipv6: Bool? = nil,
+        isInternal: Bool? = nil,
+        labels: [String: String]? = nil,
+        name: String? = nil,
+        external: ExternalNetwork? = nil,
+        ipam: Ipam? = nil
+    ) {
+        self.driver = driver
+        self.driver_opts = driver_opts
+        self.attachable = attachable
+        self.enable_ipv6 = enable_ipv6
+        self.isInternal = isInternal
+        self.labels = labels
+        self.name = name
+        self.external = external
+        self.ipam = ipam
     }
 }
