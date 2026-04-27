@@ -299,24 +299,45 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             runArgs.append(contentsOf: ["--user", serviceUser])
         }
 
-        // Image
-        runArgs.append(imageToRun)
+        // 9. Image + entrypoint/command tail.
+        //
+        // The CLI `command` override (`!command.isEmpty`) wins outright per
+        // `docker compose run [--] CMD…` semantics: the supplied tokens are
+        // positional command args appended after the image, and any
+        // service-level `entrypoint` / `command` is suppressed.
+        //
+        // Otherwise we mirror `compose up` and emit
+        // `--entrypoint <first>` *before* the image with remaining entrypoint
+        // tokens (and `command`) trailing as positional args. See
+        // `Self.imageAndEntrypointTail(image:cliCommand:entrypoint:command:)`
+        // and `docs/plans/PLAN.md` §1 / `docs/plans/PLAN-recorder-seam.md` §7.
+        runArgs.append(contentsOf: Self.imageAndEntrypointTail(
+            image: imageToRun,
+            cliCommand: command,
+            entrypoint: service.entrypoint,
+            command: service.command
+        ))
 
-        // 9. Command override (overrides service.command)
-        if !command.isEmpty {
-            runArgs.append(contentsOf: command)
-        } else if let entrypointParts = service.entrypoint {
-            runArgs.append("--entrypoint")
-            runArgs.append(contentsOf: entrypointParts)
-        } else if let commandParts = service.command {
-            runArgs.append(contentsOf: commandParts)
-        }
-
-        // 10. Shell out
+        // 10. Hand off to the runner.
         print("Running one-off container '\(containerName)' from service '\(serviceName)'")
         print("Executing: container run \(runArgs.joined(separator: " "))")
 
-        let _ = try await streamCommand("container", args: ["run"] + runArgs, cwd: cwd)
+        // Route through the RunCommandRunner seam (PR-3 of the recorder
+        // migration; see docs/plans/PLAN-recorder-seam.md §7 / §9 PR-3).
+        // Production behaviour is byte-for-byte unchanged: the default
+        // `ProductionRunner` falls back to `print` / `fputs(_:stderr)` when
+        // the stdout/stderr closures are nil (see plan §10 Q5), preserving
+        // the deleted `streamCommand`'s direct-stdio semantics.
+        let request = RunRequest(
+            kind: .streaming,
+            argv: ["container", "run"] + runArgs,
+            cwd: cwd
+        )
+        let _ = try await RunnerEnvironment.current.run(
+            request,
+            onStdout: nil,
+            onStderr: nil
+        )
     }
 
     // MARK: - Pull image helper
@@ -363,56 +384,82 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         let imagePull = try Application.ImagePull.parse(commands + logging.passThroughCommands())
         try await imagePull.run()
     }
+}
 
-    // MARK: - Stream command helper
+// MARK: Argv tail (image + entrypoint/command, with `compose run`'s CLI override)
 
-    @discardableResult
-    private func streamCommand(_ command: String, args: [String] = [], cwd: String) async throws -> Int32 {
-        try await withCheckedThrowingContinuation { continuation in
-            let proc = Process()
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
+extension ComposeRun {
 
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = [command] + args
-            proc.currentDirectoryURL = URL(fileURLWithPath: cwd)
-            proc.standardOutput = stdoutPipe
-            proc.standardError = stderrPipe
-
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-
-            let stdoutHandle = stdoutPipe.fileHandleForReading
-            let stderrHandle = stderrPipe.fileHandleForReading
-
-            stdoutHandle.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty else { return }
-                if let str = String(data: data, encoding: .utf8) {
-                    print(str, terminator: "")
-                }
-            }
-
-            stderrHandle.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty else { return }
-                if let str = String(data: data, encoding: .utf8) {
-                    fputs(str, stderr)
-                }
-            }
-
-            proc.terminationHandler = { p in
-                stdoutHandle.readabilityHandler = nil
-                stderrHandle.readabilityHandler = nil
-                continuation.resume(returning: p.terminationStatus)
-            }
-
-            do {
-                try proc.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
+    /// Builds the trailing portion of a `container run` argv for `compose run`.
+    ///
+    /// `compose run` adds one wrinkle on top of `compose up`'s
+    /// `imageAndEntrypointTail`: a non-empty CLI command (`compose run [--]
+    /// SVC CMD…`) is treated by Docker / Apple `container` as the in-container
+    /// command and *suppresses* both the service-level `entrypoint` and
+    /// `command` (the runtime keeps its image-default ENTRYPOINT). The CLI
+    /// command tokens are appended after the image as positional args; no
+    /// `--entrypoint` flag is emitted.
+    ///
+    /// Otherwise we mirror `ComposeUp.imageAndEntrypointTail` exactly: first
+    /// element of `entrypoint` becomes the value of the pre-image
+    /// `--entrypoint` flag, remaining tokens become positional args after the
+    /// image, and `command` is appended last. This is the fix for
+    /// `docs/plans/PLAN.md` §1 at the `compose run` site (the buggy code
+    /// previously placed `--entrypoint` *after* the image, which the runtime
+    /// then misparsed as a command).
+    ///
+    /// We deliberately keep this helper local to `ComposeRun` rather than
+    /// extending `ComposeUp.imageAndEntrypointTail` to take a `cliCommand`:
+    /// `compose up` has no per-call CLI override and adding a fourth
+    /// parameter would force every up call site to pass `cliCommand: []`.
+    /// Local helper keeps each command's argv logic readable in isolation.
+    ///
+    /// Resulting shapes:
+    /// - `cliCommand: ["x", "y"]`, any `entrypoint` / `command` → `[<image>, "x", "y"]`
+    ///   (CLI command suppresses service entrypoint AND service command)
+    /// - `cliCommand: []`, `entrypoint: ["a"]`, no `command`         → `[--entrypoint, a, <image>]`
+    /// - `cliCommand: []`, `entrypoint: ["a", "b"]`, `command: ["c"]` → `[--entrypoint, a, <image>, b, c]`
+    /// - `cliCommand: []`, no `entrypoint`, `command: ["c"]`         → `[<image>, c]`
+    /// - `cliCommand: []`, neither                                    → `[<image>]`
+    static func imageAndEntrypointTail(
+        image: String,
+        cliCommand: [String],
+        entrypoint: [String]?,
+        command: [String]?
+    ) -> [String] {
+        // CLI command override wins outright: `docker compose run svc CMD…`
+        // suppresses the service's entrypoint and command, and the supplied
+        // tokens become positional args after the image.
+        if !cliCommand.isEmpty {
+            return [image] + cliCommand
         }
+
+        var tail: [String] = []
+        var positional: [String] = []
+
+        if let entrypoint, let first = entrypoint.first {
+            tail.append("--entrypoint")
+            tail.append(first)
+            positional.append(contentsOf: entrypoint.dropFirst())
+        }
+
+        tail.append(image)
+        tail.append(contentsOf: positional)
+
+        if let command {
+            tail.append(contentsOf: command)
+        }
+
+        return tail
     }
 }
+
+// PR-3 of the recorder migration removed the
+// `private func streamCommand(...)` helper that previously lived here. The
+// `compose run` shell-out now flows through
+// `RunnerEnvironment.current.run(_:onStdout:onStderr:)` (see the call site
+// in `run()` above). `ProductionRunner` in
+// `Sources/Container-Compose/Runtime/RunCommandRunner.swift` preserves the
+// previous `Process()` semantics — including the parent-stdio fall-through
+// when the closures are nil — byte-for-byte. See
+// `docs/plans/PLAN-recorder-seam.md` §7 / §10 Q5 / §11.
