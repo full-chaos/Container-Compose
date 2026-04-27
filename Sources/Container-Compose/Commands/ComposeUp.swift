@@ -112,9 +112,12 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     ]
 
     public mutating func run() async throws {
-        // Decode (and recursively merge includes) into the DockerCompose struct.
-        // loadAndMerge handles file-not-found by throwing IncludeError.fileNotFound.
-        let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
+        // Decode + recursively merge includes (Phase 3E) and resolve extends
+        // (Phase 3F) before anything else touches the model. loadAndMerge
+        // throws IncludeError.fileNotFound if the main file is missing.
+        let dockerCompose = try DockerCompose
+            .loadAndMerge(mainPath: composePath)
+            .resolvingExtends()
 
         // Load environment variables from .env file
         environmentVariables = loadEnvFile(path: envFilePath)
@@ -148,6 +151,19 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         services = Service.filterByProfiles(services, activeProfiles: activeProfiles)
 
         services = try Service.topoSortConfiguredServices(services)
+
+        // Phase 3F — expand services with scale > 1 into N named replicas
+        var expanded: [(serviceName: String, service: Service)] = []
+        for (name, svc) in services {
+            if let scale = svc.scale, scale > 1 {
+                for i in 1...scale {
+                    expanded.append((serviceName: "\(name)-\(i)", service: svc))
+                }
+            } else {
+                expanded.append((name, svc))
+            }
+        }
+        services = expanded
 
         // Filter for specified services
         if !self.services.isEmpty {
