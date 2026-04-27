@@ -67,11 +67,20 @@ struct RuntimeArgvTests {
     /// container ever starts under the recorder). Awaiting `cmd.run()` to
     /// completion would pay that 30s on every test. Spawning it in a
     /// detached `Task` and cancelling once the recorder has the argv keeps
-    /// each test sub-second; cancellation propagates through the
-    /// `Task.sleep` calls inside the polling loop.
+    /// the test fast (locally <100 ms; cancellation propagates through the
+    /// `Task.sleep` calls inside the polling loop).
+    ///
+    /// Why the timeout is 60 s and not 5 s: CI runners do not have Apple
+    /// `container` installed, so the `pullImage` path that runs *before*
+    /// the runner Task spawns inside `configService` (line ~472 in
+    /// `ComposeUp.swift`) calls into `ClientImage.list()` /
+    /// `Application.ImagePull.parse(...).run()` and takes several seconds
+    /// to flow through before the runner call is reached. Locally these
+    /// short-circuit in milliseconds. 60 s is comfortably above the
+    /// observed CI path-to-runner latency without masking real failures.
     private func recordedRunArgv(
         composePath: String,
-        timeout: TimeInterval = 5
+        timeout: TimeInterval = 60
     ) async throws -> [String] {
         let recorder = RecordingRunner()
         let runTask = Task {
