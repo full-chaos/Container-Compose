@@ -68,6 +68,18 @@ extension ComposeUp {
                 print("Note: 'restart' policy not yet routed through Apple container restart manager.")
             }
 
+            // --log-driver / --log-opt: emit logging configuration flags
+            if let logging = ctx.service.logging {
+                if let driver = logging.driver {
+                    args.append(contentsOf: ["--log-driver", driver])
+                }
+                if let options = logging.options {
+                    for (key, value) in options.sorted(by: { $0.key < $1.key }) {
+                        args.append(contentsOf: ["--log-opt", "\(key)=\(value)"])
+                    }
+                }
+            }
+
             return args
         }
 
