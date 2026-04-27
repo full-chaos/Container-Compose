@@ -280,6 +280,9 @@ public struct Service: Codable, Hashable {
     /// Block I/O configuration (weight, per-device rates and IOPS)
     public let blkio_config: BlkioConfig?
 
+    /// Develop configuration for filesystem watching (Phase 5C)
+    public let develop: Develop?
+
     /// Other services that depend on this service
     public var dependedBy: [String] = []
 
@@ -322,6 +325,8 @@ public struct Service: Codable, Hashable {
         // GPUs & Block I/O (Phase 5D)
         case gpus
         case blkio_config
+        // Develop / Watch (Phase 5C)
+        case develop
     }
     
     /// Public memberwise initializer for testing
@@ -415,6 +420,7 @@ public struct Service: Codable, Hashable {
         // GPUs & Block I/O
         gpus: Gpus? = nil,
         blkio_config: BlkioConfig? = nil,
+        develop: Develop? = nil,
         dependedBy: [String] = []
     ) {
         self.image = image
@@ -493,6 +499,7 @@ public struct Service: Codable, Hashable {
         self.extends = extends
         self.gpus = gpus
         self.blkio_config = blkio_config
+        self.develop = develop
         self.dependedBy = dependedBy
     }
 
@@ -647,6 +654,9 @@ public struct Service: Codable, Hashable {
         // GPUs & Block I/O (Phase 5D)
         gpus = try container.decodeIfPresent(Gpus.self, forKey: .gpus)
         blkio_config = try container.decodeIfPresent(BlkioConfig.self, forKey: .blkio_config)
+
+        // Develop / Watch (Phase 5C)
+        develop = try container.decodeIfPresent(Develop.self, forKey: .develop)
     }
 
     /// Returns the services in topological order based on `dependsOn` relationships.

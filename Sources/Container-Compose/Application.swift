@@ -44,6 +44,7 @@ public struct Main: AsyncParsableCommand {
             ComposeKill.self,
             ComposeRm.self,
             ComposeCreate.self,
+            ComposeWatch.self,
             Version.self
         ])
 
