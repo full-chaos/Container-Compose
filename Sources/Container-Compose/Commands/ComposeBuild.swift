@@ -45,6 +45,9 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     @Flag(name: .long, help: "Do not use cache when building")
     var noCache: Bool = false
 
+    @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
+    var profile: [String] = []
+
     @OptionGroup
     var process: Flags.Process
 
@@ -105,6 +108,10 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             guard let service, service.build != nil else { return nil }
             return (name, service)
         }
+
+        // Filter by active profiles before applying CLI service filter.
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        servicesToBuild = Service.filterByProfiles(servicesToBuild, activeProfiles: activeProfiles)
 
         if !services.isEmpty {
             servicesToBuild = servicesToBuild.filter { services.contains($0.serviceName) }
