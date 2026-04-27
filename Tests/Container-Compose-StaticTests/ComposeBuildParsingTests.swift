@@ -165,4 +165,55 @@ struct ComposeBuildParsingTests {
         let cmd = try ComposeBuild.parse(["-f", "my-compose.yaml"])
         #expect(cmd.composeFilename == "my-compose.yaml")
     }
+
+    // MARK: - Empty-output wording (PLAN.md §3.4)
+
+    @Test("Empty-output: default (non-verbose) emits only the terse one-liner")
+    func emptyBuildOutputLinesNonVerbose() {
+        let lines = ComposeBuild.emptyBuildOutputLines(verbose: false, totalServiceCount: 3)
+        #expect(lines == ["No services with a 'build' configuration found."])
+    }
+
+    @Test("Empty-output: --verbose appends the candidate-count clarifier")
+    func emptyBuildOutputLinesVerbose() {
+        let lines = ComposeBuild.emptyBuildOutputLines(verbose: true, totalServiceCount: 3)
+        #expect(lines == [
+            "No services with a 'build' configuration found.",
+            "All 3 service(s) use pre-built images. Nothing to build.",
+        ])
+    }
+
+    @Test("Empty-output: --verbose with a single candidate matches spec wording exactly")
+    func emptyBuildOutputLinesVerboseSingle() {
+        let lines = ComposeBuild.emptyBuildOutputLines(verbose: true, totalServiceCount: 1)
+        #expect(lines.count == 2)
+        #expect(lines[1] == "All 1 service(s) use pre-built images. Nothing to build.")
+    }
+
+    @Test("Empty-output: --verbose with zero candidates is total (edge case)")
+    func emptyBuildOutputLinesVerboseZero() {
+        let lines = ComposeBuild.emptyBuildOutputLines(verbose: true, totalServiceCount: 0)
+        #expect(lines == [
+            "No services with a 'build' configuration found.",
+            "All 0 service(s) use pre-built images. Nothing to build.",
+        ])
+    }
+
+    @Test("ComposeBuild command parses --verbose flag")
+    func composeBuildCommandParsesVerboseFlag() throws {
+        let cmd = try ComposeBuild.parse(["--verbose"])
+        #expect(cmd.verbose == true)
+    }
+
+    @Test("ComposeBuild command parses -v short flag")
+    func composeBuildCommandParsesVerboseShortFlag() throws {
+        let cmd = try ComposeBuild.parse(["-v"])
+        #expect(cmd.verbose == true)
+    }
+
+    @Test("ComposeBuild command defaults verbose to false")
+    func composeBuildCommandDefaultsVerboseToFalse() throws {
+        let cmd = try ComposeBuild.parse([])
+        #expect(cmd.verbose == false)
+    }
 }
