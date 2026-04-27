@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "8aea462c6e09fdc3ebbdf0ab2f3d73d5839b359f",
-  "short": "8aea462",
+  "commit": "6c2fe2329ddc89c4e124824a46249e27455f7270",
+  "short": "6c2fe23",
   "target": "current",
-  "message": "Move Plans (#7)",
-  "published_at": "2026-04-27T20:48:09.340930+00:00"
+  "message": "feat: wire pre-subcommand globals end-to-end (--project-name, --project-directory) (#8)",
+  "published_at": "2026-04-27T22:12:55.513509+00:00"
 }
