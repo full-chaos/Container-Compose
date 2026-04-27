@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr2",
+  "commit": "d8f49c9f0aa424b06e32baafc2d46b179e194f69",
+  "short": "d8f49c9",
+  "target": "d8f49c9",
+  "message": "feat: route ComposeUp through RunCommandRunner + add RuntimeArgvTests for up (PR-2 of recorder migration)",
+  "published_at": "2026-04-27T22:30:22.256110+00:00"
+}
