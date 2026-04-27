@@ -1,0 +1,8 @@
+{
+  "branch": "fix/compiler-warnings",
+  "commit": "5cbcc2ab6fdbc33ac303640f040a28b56e014538",
+  "short": "5cbcc2a",
+  "target": "5cbcc2a",
+  "message": "fix: resolve Swift 6 strict-concurrency and dead-code warnings",
+  "published_at": "2026-04-27T12:27:17.205542+00:00"
+}
