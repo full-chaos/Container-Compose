@@ -1,0 +1,8 @@
+{
+  "branch": "feat/compose-spec-phase-0-1",
+  "commit": "37475460214b44d55f3f1222109264b92fc0cbe1",
+  "short": "3747546",
+  "target": "3747546",
+  "message": "fix(gh-pages): use git diff --cached so the new index.html actually pushes",
+  "published_at": "2026-04-27T01:59:35.535663+00:00"
+}
