@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "6c2fe2329ddc89c4e124824a46249e27455f7270",
-  "short": "6c2fe23",
+  "commit": "491e6a6bee94eabafe38a772dd3fba75c292e449",
+  "short": "491e6a6",
   "target": "current",
-  "message": "feat: wire pre-subcommand globals end-to-end (--project-name, --project-directory) (#8)",
-  "published_at": "2026-04-27T22:12:55.513509+00:00"
+  "message": "feat: introduce RunCommandRunner protocol seam (PR-1 of recorder migration) (#9)",
+  "published_at": "2026-04-27T22:16:35.276096+00:00"
 }
