@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "f2cdb79b7f5d01e4337997749e1922650e060fb3",
-  "short": "f2cdb79",
+  "commit": "8aea462c6e09fdc3ebbdf0ab2f3d73d5839b359f",
+  "short": "8aea462",
   "target": "current",
-  "message": "chore: add --verbose detail to 'compose build' empty-output message (#5)",
-  "published_at": "2026-04-27T20:36:22.435561+00:00"
+  "message": "Move Plans (#7)",
+  "published_at": "2026-04-27T20:48:09.340930+00:00"
 }
