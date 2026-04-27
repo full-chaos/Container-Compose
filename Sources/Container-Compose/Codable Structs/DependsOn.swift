@@ -22,7 +22,7 @@
 import Foundation
 
 /// The condition under which a dependency is considered satisfied.
-public enum DependsOnCondition: String, Codable, Hashable, CaseIterable {
+public enum DependsOnCondition: String, Codable, Hashable, CaseIterable, Sendable {
     case serviceStarted = "service_started"
     case serviceHealthy = "service_healthy"
     case serviceCompletedSuccessfully = "service_completed_successfully"
@@ -51,7 +51,7 @@ public struct DependsOnEntry: Codable, Hashable {
 
         // restart accepts Bool, or String "true"/"false" (case-insensitive) — default false otherwise
         if let boolValue = try? container.decodeIfPresent(Bool.self, forKey: .restart) {
-            restart = boolValue ?? false
+            restart = boolValue
         } else if let stringValue = try? container.decodeIfPresent(String.self, forKey: .restart) {
             restart = stringValue.lowercased() == "true"
         } else {
