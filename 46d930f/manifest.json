@@ -1,0 +1,8 @@
+{
+  "branch": "feat/pre-subcommand-global-flags",
+  "commit": "46d930f5faef3ea7731332646047a44fa9246dd3",
+  "short": "46d930f",
+  "target": "46d930f",
+  "message": "feat: support pre-subcommand global flags for docker compose parity",
+  "published_at": "2026-04-27T14:51:26.487222+00:00"
+}
