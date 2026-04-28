@@ -237,9 +237,9 @@
         ],
         [
           "condition: service_completed_successfully",
-          "partial",
+          "ok",
           "yes",
-          "Honored at the gate; ContainerSnapshot doesn't expose exit code, so we wait for .stopped without verifying exit==0."
+          "Honored at the gate; verifies snapshot.lastExitCode == 0 and throws ComposeWaitError.nonZeroExitCode otherwise. Falls back to .stopped-only if lastExitCode is nil (e.g., older runtime)."
         ],
         [
           "required (bool, default true)",
