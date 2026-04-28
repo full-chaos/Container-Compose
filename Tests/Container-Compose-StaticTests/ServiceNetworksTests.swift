@@ -263,7 +263,7 @@ struct ServiceNetworksTests {
 
     // MARK: - Argv emission: map form with aliases
 
-    @Test("Map form with aliases emits --network then --alias per alias")
+    @Test("Map form with aliases emits --network and no unsupported --alias flags")
     func mapFormWithAliasesArgvEmission() {
         let config = ServiceNetworkConfig(aliases: ["a1", "a2"])
         let sn = ServiceNetworks(entries: [("foo", config)])
@@ -275,13 +275,7 @@ struct ServiceNetworksTests {
         if let idx = networkIdx {
             #expect(result[idx + 1] == "foo")
         }
-        // Should have --alias a1 and --alias a2
-        let aliasPairs = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--alias" }
-            .map { result[$0 + 1] }
-        #expect(aliasPairs.contains("a1"))
-        #expect(aliasPairs.contains("a2"))
-        #expect(aliasPairs.count == 2)
+        #expect(!result.contains("--alias"))
     }
 
     @Test("Map form without aliases does not emit --alias flags")
@@ -302,7 +296,7 @@ struct ServiceNetworksTests {
         #expect(ipPairs == ["10.0.0.5"])
     }
 
-    @Test("Map form with aliases and ipv4 emits all expected flags")
+    @Test("Map form with aliases and ipv4 emits network/ip but no unsupported --alias flags")
     func mapFormWithAliasesAndIPv4() {
         let config = ServiceNetworkConfig(aliases: ["svc-alias"], ipv4_address: "192.168.1.10")
         let sn = ServiceNetworks(entries: [("appnet", config)])
@@ -312,10 +306,7 @@ struct ServiceNetworksTests {
             .filter { result[$0] == "--network" }
             .map { result[$0 + 1] }
         #expect(networkPairs == ["appnet"])
-        let aliasPairs = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--alias" }
-            .map { result[$0 + 1] }
-        #expect(aliasPairs == ["svc-alias"])
+        #expect(!result.contains("--alias"))
         let ipPairs = stride(from: 0, to: result.count - 1, by: 1)
             .filter { result[$0] == "--ip" }
             .map { result[$0 + 1] }

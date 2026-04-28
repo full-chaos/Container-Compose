@@ -218,13 +218,17 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             runArgs.append(contentsOf: ["--runtime", runtime])
         }
         if let loggingConfig = service.logging {
-            if let driver = loggingConfig.driver {
-                runArgs.append(contentsOf: ["--log-driver", driver])
+            if loggingConfig.driver != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.logging.driver",
+                    "Note: 'logging.driver' is parsed but not supported by Apple container; ignored."
+                )
             }
-            if let options = loggingConfig.options {
-                for (key, value) in options.sorted(by: { $0.key < $1.key }) {
-                    runArgs.append(contentsOf: ["--log-opt", "\(key)=\(value)"])
-                }
+            if let options = loggingConfig.options, !options.isEmpty {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.logging.options",
+                    "Note: 'logging.options' is parsed but not supported by Apple container; ignored."
+                )
             }
         }
 

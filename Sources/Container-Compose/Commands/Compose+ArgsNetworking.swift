@@ -40,14 +40,13 @@ extension ComposeUp {
                     // Prefer the explicit name from the top-level definition if set.
                     let networkToConnect = ctx.dockerCompose.networks?[name]??.name ?? resolved
                     args.append(contentsOf: ["--network", networkToConnect])
-                    // Aliases: emit --alias per alias.
-                    // Note: Apple container CLI may not support --alias; flags are
-                    // emitted regardless with a one-time warning per network entry.
+                    // Aliases: parsed, but Apple container does not expose --alias
+                    // on `container run`.
                     if let aliases = config.aliases, !aliases.isEmpty {
-                        print("Warning: aliases for service-network '\(name)' may not be honored by Apple container; flags emitted regardless.")
-                        for alias in aliases {
-                            args.append(contentsOf: ["--alias", alias])
-                        }
+                        warnUnsupportedRuntimeFieldOnce(
+                            "service.networks.aliases",
+                            "Note: 'networks.<name>.aliases' for service networks is parsed but not supported by Apple container; ignored."
+                        )
                     }
                     // ipv4_address: emit --ip if present.
                     if let ipv4 = config.ipv4_address {
@@ -94,11 +93,14 @@ extension ComposeUp {
                 }
             }
 
-            // --add-host HOST:IP (per item; already serialized as "host:ip" by Phase 1.2 decoder)
+            // extra_hosts: parsed, but Apple container does not expose --add-host
+            // on `container run`.
             if let extraHosts = ctx.service.extra_hosts {
-                for host in extraHosts {
-                    let resolved = resolveVariable(host, with: ctx.environmentVariables)
-                    args.append(contentsOf: ["--add-host", resolved])
+                if !extraHosts.isEmpty {
+                    warnUnsupportedRuntimeFieldOnce(
+                        "service.extra_hosts",
+                        "Note: 'extra_hosts' is parsed but not supported by Apple container; ignored."
+                    )
                 }
             }
 
