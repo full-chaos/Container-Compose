@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-34-f3153882153bd4ea4b0728659868bf3efa2ea1d8",
+  "commit": "b56706b8e1c3569f8066f41f7719300e7bd8ea96",
+  "short": "b56706b",
+  "target": "b56706b",
+  "message": "feat: implement cross-file extends with cycle detection (CHAOS-1317) (#34)",
+  "published_at": "2026-04-28T13:14:23.767558+00:00"
+}
