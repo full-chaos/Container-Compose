@@ -101,16 +101,11 @@ struct NetworkArgsTests {
 
     // MARK: - extra_hosts
 
-    @Test("extra_hosts list form emits --add-host per item")
-    func extraHostsListEmitsAddHost() {
+    @Test("extra_hosts list form emits no unsupported --add-host flags")
+    func extraHostsListEmitsNoUnsupportedAddHost() {
         let svc = Service(image: "alpine", extra_hosts: ["db:10.0.0.1", "cache:10.0.0.2"])
         let result = args(for: svc)
-        let pairs = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--add-host" }
-            .map { result[$0 + 1] }
-        #expect(pairs.contains("db:10.0.0.1"))
-        #expect(pairs.contains("cache:10.0.0.2"))
-        #expect(pairs.count == 2)
+        #expect(!result.contains("--add-host"))
     }
 
     // MARK: - domainname
@@ -228,7 +223,7 @@ struct NetworkArgsTests {
 
     // MARK: - Combination test
 
-    @Test("Combo: dns + dns_search + extra_hosts all emit correct flags")
+    @Test("Combo: dns + dns_search emit and extra_hosts does not emit unsupported flags")
     func comboDnsDnsSearchExtraHosts() {
         let svc = Service(
             image: "alpine",
@@ -242,12 +237,10 @@ struct NetworkArgsTests {
             .filter { result[$0] == "--dns" }.map { result[$0 + 1] }
         let searchVals = stride(from: 0, to: result.count - 1, by: 1)
             .filter { result[$0] == "--dns-search" }.map { result[$0 + 1] }
-        let hostVals = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--add-host" }.map { result[$0 + 1] }
 
         #expect(dnsVals == ["8.8.8.8"])
         #expect(searchVals == ["example.com"])
-        #expect(hostVals == ["host1:192.168.1.1"])
+        #expect(!result.contains("--add-host"))
     }
 
     // MARK: - Regression: existing flags still emit

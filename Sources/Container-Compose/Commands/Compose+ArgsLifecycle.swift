@@ -68,15 +68,20 @@ extension ComposeUp {
                 print("Note: 'restart' policy not yet routed through Apple container restart manager.")
             }
 
-            // --log-driver / --log-opt: emit logging configuration flags
+            // logging: parsed, but Apple container does not expose
+            // --log-driver / --log-opt on `container run`.
             if let logging = ctx.service.logging {
-                if let driver = logging.driver {
-                    args.append(contentsOf: ["--log-driver", driver])
+                if logging.driver != nil {
+                    warnUnsupportedRuntimeFieldOnce(
+                        "service.logging.driver",
+                        "Note: 'logging.driver' is parsed but not supported by Apple container; ignored."
+                    )
                 }
-                if let options = logging.options {
-                    for (key, value) in options.sorted(by: { $0.key < $1.key }) {
-                        args.append(contentsOf: ["--log-opt", "\(key)=\(value)"])
-                    }
+                if let options = logging.options, !options.isEmpty {
+                    warnUnsupportedRuntimeFieldOnce(
+                        "service.logging.options",
+                        "Note: 'logging.options' is parsed but not supported by Apple container; ignored."
+                    )
                 }
             }
 

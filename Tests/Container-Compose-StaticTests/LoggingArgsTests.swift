@@ -19,7 +19,7 @@ import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
-/// Tests for Phase 3C: service.logging → --log-driver / --log-opt flags.
+/// Tests for service.logging parse support without unsupported runtime flags.
 @Suite("Logging Args Tests")
 struct LoggingArgsTests {
 
@@ -63,128 +63,88 @@ struct LoggingArgsTests {
 
     // MARK: - driver only
 
-    @Test("logging with driver only emits --log-driver flag")
-    func driverOnlyEmitsLogDriver() throws {
+    @Test("logging with driver only emits no unsupported log flags")
+    func driverOnlyEmitsNoUnsupportedLogFlags() throws {
         let logging = Logging(driver: "json-file", options: nil)
         let svc = Service(image: "alpine", logging: logging)
         let result = try args(svc)
-        #expect(result.contains("--log-driver"))
-        let idx = result.firstIndex(of: "--log-driver")
-        #expect(idx != nil)
-        if let i = idx {
-            #expect(result[result.index(after: i)] == "json-file")
-        }
+        #expect(!result.contains("--log-driver"))
         #expect(!result.contains("--log-opt"))
     }
 
     // MARK: - driver + options
 
-    @Test("logging with driver and options emits --log-driver and sorted --log-opt flags")
-    func driverAndOptionsEmitsBothFlags() throws {
+    @Test("logging with driver and options emits no unsupported log flags")
+    func driverAndOptionsEmitsNoUnsupportedLogFlags() throws {
         let logging = Logging(
             driver: "syslog",
             options: ["syslog-address": "tcp://192.168.0.1:514", "max-size": "10m"]
         )
         let svc = Service(image: "alpine", logging: logging)
         let result = try args(svc)
-
-        // --log-driver present with correct value
-        #expect(result.contains("--log-driver"))
-        let driverIdx = result.firstIndex(of: "--log-driver")
-        #expect(driverIdx != nil)
-        if let i = driverIdx {
-            #expect(result[result.index(after: i)] == "syslog")
-        }
-
-        // --log-opt present for both options; options sorted by key
-        // sorted keys: "max-size" < "syslog-address"
-        let optIndices = result.indices.filter { result[$0] == "--log-opt" }
-        #expect(optIndices.count == 2)
-        if optIndices.count == 2 {
-            let firstOptValue = result[result.index(after: optIndices[0])]
-            let secondOptValue = result[result.index(after: optIndices[1])]
-            #expect(firstOptValue == "max-size=10m")
-            #expect(secondOptValue == "syslog-address=tcp://192.168.0.1:514")
-        }
+        #expect(!result.contains("--log-driver"))
+        #expect(!result.contains("--log-opt"))
     }
 
     // MARK: - options only (no driver)
 
-    @Test("logging with options only (no driver) emits only --log-opt flags")
-    func optionsOnlyEmitsLogOptOnly() throws {
+    @Test("logging with options only emits no unsupported log flags")
+    func optionsOnlyEmitsNoUnsupportedLogFlags() throws {
         let logging = Logging(driver: nil, options: ["tag": "myservice"])
         let svc = Service(image: "alpine", logging: logging)
         let result = try args(svc)
         #expect(!result.contains("--log-driver"))
-        #expect(result.contains("--log-opt"))
-        let idx = result.firstIndex(of: "--log-opt")
-        #expect(idx != nil)
-        if let i = idx {
-            #expect(result[result.index(after: i)] == "tag=myservice")
-        }
+        #expect(!result.contains("--log-opt"))
     }
 
     // MARK: - multiple options sorted
 
-    @Test("multiple log options are emitted in sorted key order")
-    func multipleOptionsSorted() throws {
+    @Test("multiple log options emit no unsupported log flags")
+    func multipleOptionsEmitNoUnsupportedLogFlags() throws {
         let logging = Logging(
             driver: "json-file",
             options: ["max-file": "3", "compress": "true", "max-size": "10m"]
         )
         let svc = Service(image: "alpine", logging: logging)
         let result = try args(svc)
-
-        // sorted keys: "compress" < "max-file" < "max-size"
-        let optIndices = result.indices.filter { result[$0] == "--log-opt" }
-        #expect(optIndices.count == 3)
-        if optIndices.count == 3 {
-            #expect(result[result.index(after: optIndices[0])] == "compress=true")
-            #expect(result[result.index(after: optIndices[1])] == "max-file=3")
-            #expect(result[result.index(after: optIndices[2])] == "max-size=10m")
-        }
+        #expect(!result.contains("--log-driver"))
+        #expect(!result.contains("--log-opt"))
     }
 
     // MARK: - Regression: existing LifecycleArgs flags still work alongside logging
 
-    @Test("init_ and logging emitted together without interference")
+    @Test("init_ and logging parse together without unsupported log flags")
     func initAndLoggingRegression() throws {
         let logging = Logging(driver: "none", options: nil)
         let svc = Service(image: "alpine", init_: true, logging: logging)
         let result = try args(svc)
         #expect(result.contains("--init"))
-        #expect(result.contains("--log-driver"))
-        let idx = result.firstIndex(of: "--log-driver")
-        if let i = idx {
-            #expect(result[result.index(after: i)] == "none")
-        }
+        #expect(!result.contains("--log-driver"))
+        #expect(!result.contains("--log-opt"))
     }
 
-    @Test("stop_signal and logging emitted together without interference")
+    @Test("stop_signal and logging parse together without unsupported log flags")
     func stopSignalAndLoggingRegression() throws {
         let logging = Logging(driver: "local", options: nil)
         let svc = Service(image: "alpine", stop_signal: "SIGTERM", logging: logging)
         let result = try args(svc)
         #expect(result.contains("--stop-signal"))
-        #expect(result.contains("--log-driver"))
+        #expect(!result.contains("--log-driver"))
+        #expect(!result.contains("--log-opt"))
         let stopIdx = result.firstIndex(of: "--stop-signal")
         if let i = stopIdx {
             #expect(result[result.index(after: i)] == "SIGTERM")
         }
-        let driverIdx = result.firstIndex(of: "--log-driver")
-        if let i = driverIdx {
-            #expect(result[result.index(after: i)] == "local")
-        }
     }
 
-    @Test("runtime and logging emitted together without interference")
+    @Test("runtime and logging parse together without unsupported log flags")
     func runtimeAndLoggingRegression() throws {
         let logging = Logging(driver: "splunk", options: ["splunk-token": "abc"])
         let svc = Service(image: "alpine", runtime: "nvidia", logging: logging)
         let result = try args(svc)
         #expect(result.contains("--runtime"))
-        #expect(result.contains("--log-driver"))
-        #expect(result.contains("--log-opt"))
+        #expect(!result.contains("--log-driver"))
+        #expect(!result.contains("--log-opt"))
         let runtimeIdx = result.firstIndex(of: "--runtime")
         if let i = runtimeIdx {
             #expect(result[result.index(after: i)] == "nvidia")
