@@ -219,8 +219,12 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         if let platform {
             commands.append(contentsOf: ["--platform", platform])
         }
-        let imagePull = try Application.ImagePull.parse(commands + logging.passThroughCommands())
-        try await imagePull.run()
+        let imagePullArgv = commands + logging.passThroughCommands()
+        _ = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .swiftAPI(name: "ImagePull"), argv: imagePullArgv, cwd: nil),
+            onStdout: nil,
+            onStderr: nil
+        )
     }
 
     private func buildService(_ buildConfig: Build, for service: Service, serviceName: String) async throws -> String {
@@ -303,11 +307,14 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         let memoryLimit = service.deploy?.resources?.limits?.memory ?? "2048MB"
         commands.append(contentsOf: ["--cpus", "\(cpuCount)", "--memory", memoryLimit])
 
-        var buildCommand = try Application.BuildCommand.parse(commands + logging.passThroughCommands())
+        let buildArgv = commands + logging.passThroughCommands()
         print("\n----------------------------------------")
         print("Building image for service: \(serviceName) (Tag: \(imageToRun))")
-        try buildCommand.validate()
-        try await buildCommand.run()
+        _ = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: buildArgv, cwd: nil),
+            onStdout: nil,
+            onStderr: nil
+        )
         print("Image build for \(serviceName) completed.")
         print("----------------------------------------")
 
@@ -347,8 +354,12 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             return
         }
 
-        let networkCreate = try Application.NetworkCreate.parse([actualNetworkName] + logging.passThroughCommands())
-        try await networkCreate.run()
+        let networkCreateArgv = [actualNetworkName] + logging.passThroughCommands()
+        _ = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .swiftAPI(name: "NetworkCreate"), argv: networkCreateArgv, cwd: nil),
+            onStdout: nil,
+            onStderr: nil
+        )
         print("Network '\(networkName)' created")
     }
 

@@ -258,9 +258,12 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
 
         print("\n----------------------------------------")
         print("Building \(serviceName) -> \(imageTag)")
-        var buildCommand = try Application.BuildCommand.parse(commands + logging.passThroughCommands())
-        try buildCommand.validate()
-        try await buildCommand.run()
+        let buildArgv = commands + logging.passThroughCommands()
+        _ = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: buildArgv, cwd: nil),
+            onStdout: nil,
+            onStderr: nil
+        )
         print("Built \(serviceName) successfully.")
         print("----------------------------------------")
     }

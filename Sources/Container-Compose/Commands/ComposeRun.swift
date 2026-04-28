@@ -360,8 +360,12 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--platform", platform])
         }
 
-        let imagePull = try Application.ImagePull.parse(commands + logging.passThroughCommands())
-        try await imagePull.run()
+        let imagePullArgv = commands + logging.passThroughCommands()
+        _ = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .swiftAPI(name: "ImagePull"), argv: imagePullArgv, cwd: nil),
+            onStdout: nil,
+            onStderr: nil
+        )
     }
 
     // MARK: - Stream command helper

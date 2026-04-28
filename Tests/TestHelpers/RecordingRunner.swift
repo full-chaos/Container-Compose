@@ -64,6 +64,10 @@ public actor RecordingRunner: RunCommandRunner {
     /// Stubbed probe answers keyed by full argv equality.
     private var probeStubs: [[String]: Bool] = [:]
 
+    /// Stubbed exit codes for `.swiftAPI(name:)` requests, keyed by name.
+    /// Default (no stub) is `0` (success).
+    private var swiftAPIStubs: [String: Int32] = [:]
+
     public init() {}
 
     // MARK: - Configuration
@@ -87,6 +91,13 @@ public actor RecordingRunner: RunCommandRunner {
     /// explicitly says otherwise).
     public func stubProbe(argv: [String], available: Bool) {
         probeStubs[argv] = available
+    }
+
+    /// Set the exit code for a `.swiftAPI(name:)` call. Default (no stub) is
+    /// `0` (success). Use this to simulate "what does ComposeUp do when
+    /// ImagePull throws?" scenarios.
+    public func stub(swiftAPIName: String, exitCode: Int32) {
+        swiftAPIStubs[swiftAPIName] = exitCode
     }
 
     // MARK: - RunCommandRunner
@@ -117,6 +128,11 @@ public actor RecordingRunner: RunCommandRunner {
         case .streaming, .awaitOnly:
             let exit = exitStubs.last(where: { request.argv.starts(with: $0.prefix) })?.exit ?? 0
             return RunResult(exitCode: exit, probeAvailable: false)
+        case .swiftAPI(let name):
+            // Default: record + return success. Tests bind a `.swiftAPI` stub
+            // via `stub(swiftAPIName:exitCode:)` to inject failures.
+            let exit = swiftAPIStubs[name] ?? 0
+            return RunResult(exitCode: exit, probeAvailable: false)
         }
     }
 
@@ -132,5 +148,18 @@ public actor RecordingRunner: RunCommandRunner {
     public func runArgvs() -> [[String]] {
         entries.filter { $0.request.argv.starts(with: ["container", "run"]) }
             .map(\.request.argv)
+    }
+
+    /// All recorded `.swiftAPI(name:)` call argvs, in time order.
+    public func swiftAPIArgvs() -> [(name: String, argv: [String])] {
+        entries.compactMap { entry in
+            guard case let .swiftAPI(name) = entry.request.kind else { return nil }
+            return (name, entry.request.argv)
+        }
+    }
+
+    /// Filter recorded `.swiftAPI` calls by name.
+    public func swiftAPIArgvs(named name: String) -> [[String]] {
+        swiftAPIArgvs().filter { $0.name == name }.map(\.argv)
     }
 }

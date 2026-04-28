@@ -276,4 +276,159 @@ struct RuntimeArgvTests {
             "unresolved ${BASE} must not survive (got: \(envPairs))"
         )
     }
+
+    // MARK: - PR-6 — full pipeline coverage (swiftAPI + streaming run)
+
+    /// Proof that PR-6 routes the in-process `Application.*` calls through
+    /// the seam: when running under a `RecordingRunner`, the recorder must
+    /// capture BOTH the `swiftAPI(name: "ImagePull")` request AND the
+    /// `streaming` `container run` request — without ever reaching Apple
+    /// `container`. Previously the path-to-runner went through
+    /// `pullImage`'s direct call into `Application.ImagePull.parse(...).run()`,
+    /// which on CI (no runtime installed) failed before the streaming runner
+    /// call was reached.
+    @Test("up: recorder captures swiftAPI(ImagePull) AND streaming(container run)")
+    func up_recorder_captures_full_pipeline() async throws {
+        // `pull_policy: always` forces `pullImage` past its `imageExists`
+        // short-circuit even when the image is already cached locally
+        // (which is the typical local-developer state). Under a
+        // `RecordingRunner`, this guarantees the swiftAPI(ImagePull) call
+        // fires and is recorded — the central regression target of PR-6.
+        let yaml = """
+        services:
+          app:
+            image: alpine:latest
+            pull_policy: always
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let recorder = RecordingRunner()
+        let runTask = Task {
+            try? await RunnerEnvironment.$current.withValue(recorder) {
+                var cmd = try parseComposeUp(composePath: compose.path)
+                try await cmd.run()
+            }
+        }
+        defer { runTask.cancel() }
+
+        // Wait until BOTH the swiftAPI ImagePull AND the streaming `container
+        // run` calls have been recorded. Prior to PR-6, on a host without
+        // Apple `container` installed, the recorder would only ever see the
+        // streaming run if pullImage's call somehow short-circuited; with
+        // PR-6 the swiftAPI call is recorded directly.
+        let deadline = Date().addingTimeInterval(60)
+        var observedPullArgv: [String]? = nil
+        var observedRunArgv: [String]? = nil
+        while Date() < deadline {
+            let pulls = await recorder.swiftAPIArgvs(named: "ImagePull")
+            let runs = await recorder.runArgvs()
+            if let firstPull = pulls.first, let firstRun = runs.first {
+                observedPullArgv = firstPull
+                observedRunArgv = firstRun
+                break
+            }
+            try await Task.sleep(nanoseconds: 50_000_000) // 50 ms
+        }
+        runTask.cancel()
+
+        let pull = try #require(observedPullArgv, "expected a recorded swiftAPI(ImagePull) within 60s")
+        let run = try #require(observedRunArgv, "expected a recorded streaming(container run) within 60s")
+
+        // ImagePull's argv begins with the image name (positional), per
+        // pullImage's `var commands = [imageName]` construction.
+        #expect(
+            pull.first == "alpine:latest",
+            "ImagePull argv[0] should be the image name (got: \(pull))"
+        )
+        // Streaming run argv must start with ["container", "run", ...].
+        #expect(
+            run.starts(with: ["container", "run"]),
+            "streaming run argv must start with [container, run] (got: \(run))"
+        )
+        #expect(
+            run.contains("alpine:latest"),
+            "streaming run argv must include the image name (got: \(run))"
+        )
+    }
+
+    // MARK: - Plan §8 #7 — build emits labels and cache_from (enabled by PR-6)
+
+    /// Plan §8 test 7: the `Application.BuildCommand.parse(...)` argv carries
+    /// `--label key=value` and `--cache-from refX` flags as built by
+    /// `ComposeBuild.buildService`. Was disabled in earlier PRs because the
+    /// build path did not flow through the seam; PR-6 enables it.
+    @Test("build: BuildCommand argv carries --label and --cache-from")
+    func build_emits_labels_and_cache_from() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Create a stub Dockerfile so resolution doesn't fail upstream.
+        let dockerfile = dir.appendingPathComponent("Dockerfile")
+        try "FROM alpine:latest\n".write(to: dockerfile, atomically: true, encoding: .utf8)
+
+        let yaml = """
+        services:
+          api:
+            build:
+              context: .
+              dockerfile: Dockerfile
+              labels:
+                org.opencontainers.image.title: api
+                org.opencontainers.image.version: "1.0"
+              cache_from:
+                - registry.example.com/api:cache
+                - registry.example.com/api:base
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            var cmd = try ComposeBuild.parse(["-f", compose.path])
+            try await cmd.run()
+        }
+
+        let buildArgvs = await recorder.swiftAPIArgvs(named: "BuildCommand")
+        let argv = try #require(buildArgvs.first, "expected a swiftAPI(BuildCommand) call to be recorded")
+
+        // Helper: collect every `[flag, value]` pair from the argv.
+        func valuesFor(flag: String) -> [String] {
+            var values: [String] = []
+            var idx = 0
+            while idx < argv.count {
+                if argv[idx] == flag, idx + 1 < argv.count {
+                    values.append(argv[idx + 1])
+                    idx += 2
+                } else {
+                    idx += 1
+                }
+            }
+            return values
+        }
+
+        let labels = valuesFor(flag: "--label")
+        #expect(
+            labels.contains("org.opencontainers.image.title=api"),
+            "expected --label org.opencontainers.image.title=api (got labels: \(labels), full argv: \(argv))"
+        )
+        #expect(
+            labels.contains("org.opencontainers.image.version=1.0"),
+            "expected --label org.opencontainers.image.version=1.0 (got labels: \(labels), full argv: \(argv))"
+        )
+
+        let cacheFroms = valuesFor(flag: "--cache-from")
+        #expect(
+            cacheFroms.contains("registry.example.com/api:cache"),
+            "expected --cache-from registry.example.com/api:cache (got cache-froms: \(cacheFroms), full argv: \(argv))"
+        )
+        #expect(
+            cacheFroms.contains("registry.example.com/api:base"),
+            "expected --cache-from registry.example.com/api:base (got cache-froms: \(cacheFroms), full argv: \(argv))"
+        )
+    }
 }
