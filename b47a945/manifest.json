@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1320-consume-last-exit-code",
+  "commit": "b47a945177aba5580f4d5140786c7d5a7debdf00",
+  "short": "b47a945",
+  "target": "b47a945",
+  "message": "feat: enforce service_completed_successfully via lastExitCode (CHAOS-1320)",
+  "published_at": "2026-04-28T16:24:59.303865+00:00"
+}
