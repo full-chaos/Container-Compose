@@ -146,42 +146,42 @@ public struct ComposeKill: AsyncParsableCommand {
             print("Killing container: \(containerName) (signal: \(signal))")
             do {
                 // ContainerClient does not expose a kill(id:signal:) method;
-                // shell out to `container kill --signal <sig> <name>` instead.
-                try await shellKill(containerName: container.id)
+                // route through the RunCommandRunner seam (PR-5 of the
+                // recorder migration; see docs/plans/PLAN-recorder-seam.md
+                // §7 / §9 PR-5 / §10 Q4). The previous `shellKill` helper was
+                // deleted; `ProductionRunner` preserves the same `Process()`
+                // semantics byte-for-byte, and caller-side error translation
+                // keeps the original `NSError(domain: "ComposeKill", ...)`
+                // shape.
+                let request = RunRequest(
+                    kind: .awaitOnly,
+                    argv: ["container", "kill", "--signal", signal, container.id],
+                    cwd: cwd
+                )
+                let result = try await RunnerEnvironment.current.run(
+                    request,
+                    onStdout: nil,
+                    onStderr: nil
+                )
+                guard result.exitCode == 0 else {
+                    throw NSError(
+                        domain: "ComposeKill",
+                        code: Int(result.exitCode),
+                        userInfo: [NSLocalizedDescriptionKey: "container kill exited with status \(result.exitCode)"]
+                    )
+                }
                 print("Successfully killed container: \(containerName)")
             } catch {
                 print("Error killing container '\(containerName)': \(error)")
             }
         }
     }
-
-    private func shellKill(containerName: String) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = ["container", "kill", "--signal", signal, containerName]
-            proc.currentDirectoryURL = cwdURL
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-
-            proc.terminationHandler = { p in
-                if p.terminationStatus == 0 {
-                    continuation.resume()
-                } else {
-                    continuation.resume(throwing: NSError(
-                        domain: "ComposeKill",
-                        code: Int(p.terminationStatus),
-                        userInfo: [NSLocalizedDescriptionKey: "container kill exited with status \(p.terminationStatus)"]
-                    ))
-                }
-            }
-
-            do {
-                try proc.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
 }
+
+// PR-5 of the recorder migration removed the `private func shellKill(...)`
+// helper that previously lived here. The `compose kill` await-only shell-out
+// now flows through `RunnerEnvironment.current.run(_:onStdout:onStderr:)`
+// (see the call site in `killServices` above). `ProductionRunner` in
+// `Sources/Container-Compose/Runtime/RunCommandRunner.swift` preserves the
+// previous `Process()` semantics — including inherit-stdio for the await-only
+// call — byte-for-byte. See `docs/plans/PLAN-recorder-seam.md` §7 / §10 Q4 / §11.

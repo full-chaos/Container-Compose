@@ -150,9 +150,9 @@ actor WatchLoop {
                 print("[dry-run] would run: container-compose up -d \(serviceName)")
             } else {
                 print("[watch] rebuilding \(serviceName)…")
-                await shell(["container-compose", "build", serviceName], cwd: cwd)
+                await runWatchShell(["container-compose", "build", serviceName], cwd: cwd)
                 print("[watch] restarting \(serviceName)…")
-                await shell(["container-compose", "up", "-d", serviceName], cwd: cwd)
+                await runWatchShell(["container-compose", "up", "-d", serviceName], cwd: cwd)
             }
 
         case .sync:
@@ -176,7 +176,7 @@ actor WatchLoop {
                     "File sync requires 'container cp' equivalent (not yet available). " +
                     "Only restart will be attempted."
                 )
-                await shell(["container-compose", "restart", serviceName], cwd: cwd)
+                await runWatchShell(["container-compose", "restart", serviceName], cwd: cwd)
             }
 
         case .syncExec:
@@ -190,7 +190,7 @@ actor WatchLoop {
                     "Only exec will be attempted if command is provided."
                 )
                 if let execCmd = rule.exec?.command, !execCmd.isEmpty {
-                    await shell(["container-compose", "exec", serviceName] + execCmd, cwd: cwd)
+                    await runWatchShell(["container-compose", "exec", serviceName] + execCmd, cwd: cwd)
                 }
             }
 
@@ -199,28 +199,29 @@ actor WatchLoop {
                 print("[dry-run] would run: container-compose restart \(serviceName)")
             } else {
                 print("[watch] restarting \(serviceName)…")
-                await shell(["container-compose", "restart", serviceName], cwd: cwd)
+                await runWatchShell(["container-compose", "restart", serviceName], cwd: cwd)
             }
         }
     }
 
-    /// Fire-and-forget shell execution.
-    private func shell(_ args: [String], cwd: String) async {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = args
-            proc.currentDirectoryURL = URL(fileURLWithPath: cwd)
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-            proc.terminationHandler = { _ in continuation.resume() }
-            do {
-                try proc.run()
-            } catch {
-                print("[watch] shell error: \(error)")
-                continuation.resume()
-            }
+    /// Fire-and-forget shell execution routed through the
+    /// `RunCommandRunner` seam (PR-5 of the recorder migration; see
+    /// `docs/plans/PLAN-recorder-seam.md` §2 / §7 / §9 PR-5). The watch loop
+    /// shells out to `container-compose` itself (re-entrant), not Apple
+    /// `container`; argv[0] distinguishes the recording lane. The previous
+    /// private `shell` helper swallowed launch errors via a `print(...)`
+    /// diagnostic; that semantics is preserved here by wrapping the throwing
+    /// runner call in a `do`/`catch` that logs and continues.
+    private func runWatchShell(_ args: [String], cwd: String) async {
+        let request = RunRequest(kind: .awaitOnly, argv: args, cwd: cwd)
+        do {
+            _ = try await RunnerEnvironment.current.run(
+                request,
+                onStdout: nil,
+                onStderr: nil
+            )
+        } catch {
+            print("[watch] shell error: \(error)")
         }
     }
 }

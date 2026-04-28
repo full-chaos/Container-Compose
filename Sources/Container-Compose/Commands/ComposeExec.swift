@@ -181,58 +181,30 @@ public struct ComposeExec: AsyncParsableCommand, @unchecked Sendable {
         // 6. Shell out to `container exec`
         print("Executing in container '\(containerName)': \(command.joined(separator: " "))")
 
-        let _ = try await shellExec(args: execArgs)
-    }
-
-    // MARK: - Shell exec helper
-
-    @discardableResult
-    private func shellExec(args: [String]) async throws -> Int32 {
-        try await withCheckedThrowingContinuation { continuation in
-            let proc = Process()
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = ["container", "exec"] + args
-            proc.currentDirectoryURL = cwdURL
-            proc.standardOutput = stdoutPipe
-            proc.standardError = stderrPipe
-
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-
-            let stdoutHandle = stdoutPipe.fileHandleForReading
-            let stderrHandle = stderrPipe.fileHandleForReading
-
-            stdoutHandle.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty else { return }
-                if let str = String(data: data, encoding: .utf8) {
-                    print(str, terminator: "")
-                }
-            }
-
-            stderrHandle.readabilityHandler = { handle in
-                let data = handle.availableData
-                guard !data.isEmpty else { return }
-                if let str = String(data: data, encoding: .utf8) {
-                    fputs(str, stderr)
-                }
-            }
-
-            proc.terminationHandler = { p in
-                stdoutHandle.readabilityHandler = nil
-                stderrHandle.readabilityHandler = nil
-                continuation.resume(returning: p.terminationStatus)
-            }
-
-            do {
-                try proc.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        // Route through the RunCommandRunner seam (PR-5 of the recorder
+        // migration; see docs/plans/PLAN-recorder-seam.md §7 / §9 PR-5).
+        // Production behaviour is byte-for-byte unchanged: the default
+        // `ProductionRunner` falls back to `print` / `fputs(_:stderr)` when
+        // the stdout/stderr closures are nil (see plan §10 Q5), preserving
+        // the deleted `shellExec`'s direct-stdio semantics.
+        let request = RunRequest(
+            kind: .streaming,
+            argv: ["container", "exec"] + execArgs,
+            cwd: cwd
+        )
+        let _ = try await RunnerEnvironment.current.run(
+            request,
+            onStdout: nil,
+            onStderr: nil
+        )
     }
 }
+
+// PR-5 of the recorder migration removed the `private func shellExec(args:)`
+// helper that previously lived here. The `compose exec` streaming shell-out
+// now flows through `RunnerEnvironment.current.run(_:onStdout:onStderr:)`
+// (see the call site in `run()` above). `ProductionRunner` in
+// `Sources/Container-Compose/Runtime/RunCommandRunner.swift` preserves the
+// previous `Process()` semantics — including the `print` / `fputs(_:stderr)`
+// fall-through for nil stdout/stderr closures — byte-for-byte. See
+// `docs/plans/PLAN-recorder-seam.md` §7 / §10 Q5 / §11.
