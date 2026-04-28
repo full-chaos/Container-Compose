@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-20-77c5f9beac9e30737c66a8dc1f76221aa0fcd48b",
+  "commit": "278cb04eeefe0a0c0d99e4560f0cacbef8e38eb6",
+  "short": "278cb04",
+  "target": "278cb04",
+  "message": "feat: decode healthcheck.start_interval + disable (CHAOS-1304) (#20)",
+  "published_at": "2026-04-28T08:12:54.058779+00:00"
+}
