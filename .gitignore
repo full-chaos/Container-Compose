@@ -12,3 +12,8 @@ coverage.json
 ./release/**
 **/.cla**/
 **/release/*
+
+# Per-developer / tooling
+/release
+.linear.yaml
+/CLAUDE.md
