@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "7dd0104a94271a6e5d75cae1add60edeeb606ee8",
-  "short": "7dd0104",
+  "commit": "ce4bc2eec2ebee37f32295c4eb9bc20133bc1b16",
+  "short": "ce4bc2e",
   "target": "current",
-  "message": "feat: add ContainerClientProvider seam so RuntimeArgvTests pass on CI (#13)",
-  "published_at": "2026-04-28T01:17:36.478662+00:00"
+  "message": "feat: route ComposeCreate through seam + fix entrypoint ordering (PR-4 of recorder migration, closes \u00a71) (#14)",
+  "published_at": "2026-04-28T02:01:31.092205+00:00"
 }
