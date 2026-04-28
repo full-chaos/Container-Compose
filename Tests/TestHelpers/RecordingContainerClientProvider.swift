@@ -41,6 +41,7 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         case delete(id: String, force: Bool)
         case logs(id: String)
         case networkGet(id: String)
+        case imageList
     }
 
     public private(set) var entries: [Entry] = []
@@ -98,6 +99,15 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
             code: 1,
             userInfo: [NSLocalizedDescriptionKey: "no network '\(id)' (recorded fake)"]
         )
+    }
+
+    public func imageList() async throws -> [ClientImage] {
+        entries.append(.imageList)
+        // Empty list — `pullImage` and `buildService` short-circuit on
+        // "image already exists?" and otherwise proceed to the seam-routed
+        // pull/build invocation. Returning [] forces the seam call to
+        // fire so the `RunCommandRunner` recorder captures it.
+        return []
     }
 
     // MARK: - Test affordances

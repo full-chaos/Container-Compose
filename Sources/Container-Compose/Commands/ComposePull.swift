@@ -187,7 +187,7 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
             effectivePolicy = "missing"
         }
 
-        let imageList = try await ClientImage.list()
+        let imageList = try await ContainerClientEnvironment.current.imageList()
         let imageExists = imageList.contains(where: {
             $0.description.reference.components(separatedBy: "/").last == imageName
         })

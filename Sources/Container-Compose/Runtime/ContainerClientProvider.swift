@@ -64,6 +64,14 @@ public protocol ContainerClientProvider: Sendable {
     /// `ContainerizationError(.notFound)` when no network with the given id
     /// exists (existing call sites use `try?` + `== nil` to mean "create it").
     func networkGet(id: String) async throws -> NetworkState
+
+    /// Mirrors the static `ClientImage.list()` upstream call. Used by
+    /// `pullImage` and `buildService` paths to short-circuit a pull when the
+    /// image already exists locally. The recorder fake returns `[]` so those
+    /// short-circuits never fire under tests — the seam-routed pull / build
+    /// invocation always proceeds and is captured by the `RunCommandRunner`
+    /// recorder.
+    func imageList() async throws -> [ClientImage]
 }
 
 // MARK: - ProductionContainerClientProvider
@@ -97,6 +105,10 @@ public struct ProductionContainerClientProvider: ContainerClientProvider {
 
     public func networkGet(id: String) async throws -> NetworkState {
         try await NetworkClient().get(id: id)
+    }
+
+    public func imageList() async throws -> [ClientImage] {
+        try await ClientImage.list()
     }
 }
 

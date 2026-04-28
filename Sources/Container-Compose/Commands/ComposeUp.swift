@@ -645,7 +645,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             effectivePolicy = "missing"
         }
 
-        let imageList = try await ClientImage.list()
+        let imageList = try await ContainerClientEnvironment.current.imageList()
         let imageExists = imageList.contains(where: {
             $0.description.reference.components(separatedBy: "/").last == imageName
         })
@@ -698,7 +698,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         // Determine image tag for built image
         let imageToRun = service.image ?? "\(serviceName):latest"
-        let imageList = try await ClientImage.list()
+        let imageList = try await ContainerClientEnvironment.current.imageList()
         if !rebuild, imageList.contains(where: { $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
             return imageToRun
         }
