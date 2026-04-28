@@ -2,7 +2,7 @@
 prefix      ?= /usr/local
 bindir       = $(prefix)/bin
 binary_name  = container-compose
-swift_product = Container-Compose
+swift_product = container-compose
 release_bin  = .build/release/$(swift_product)
 
 # Default target: a release build.
