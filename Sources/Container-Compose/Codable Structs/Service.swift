@@ -47,8 +47,10 @@ public struct Service: Codable, Hashable {
     /// Environment variables to set in the container
     public let environment: [String: String]?
 
-    /// List of .env files to load environment variables from
-    public let env_file: [String]?
+    /// List of .env files to load environment variables from. Compose-spec
+    /// accepts a string, a list of strings, or a list of `{path, required}`
+    /// mappings; all three normalize into `[EnvFileEntry]`.
+    public let env_file: [EnvFileEntry]?
 
     /// Port mappings (e.g., "hostPort:containerPort")
     public let ports: [String]?
@@ -338,7 +340,7 @@ public struct Service: Codable, Hashable {
         healthcheck: Healthcheck? = nil,
         volumes: [String]? = nil,
         environment: [String: String]? = nil,
-        env_file: [String]? = nil,
+        env_file: [EnvFileEntry]? = nil,
         ports: [String]? = nil,
         command: [String]? = nil,
         dependsOn: DependsOn? = nil,
@@ -520,7 +522,7 @@ public struct Service: Codable, Hashable {
         healthcheck = try container.decodeIfPresent(Healthcheck.self, forKey: .healthcheck)
         volumes = try container.decodeIfPresent([String].self, forKey: .volumes)
         environment = try container.decodeIfPresent([String: String].self, forKey: .environment)
-        env_file = try container.decodeIfPresent([String].self, forKey: .env_file)
+        env_file = try [EnvFileEntry].decodeEnvFile(from: container, forKey: .env_file)
         ports = try container.decodeIfPresent([String].self, forKey: .ports)
 
         // Decode 'command' which can be either a single string or an array of strings.

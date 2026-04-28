@@ -373,6 +373,48 @@ struct RuntimeArgvTests {
         )
     }
 
+    @Test("up: env_file mapping form produces same -e flags as string form")
+    func up_env_file_mapping_form_produces_same_args() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let envFile = dir.appendingPathComponent("api.env")
+        try "TOKEN=abc123\nREGION=us-west\n".write(to: envFile, atomically: true, encoding: .utf8)
+
+        // Mapping form with required: false should decode and produce the same
+        // -e pairs as the equivalent scalar form.
+        let yaml = """
+        services:
+          api:
+            image: alpine:latest
+            env_file:
+              - path: \(envFile.path)
+                required: false
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let argv = try await recordedRunArgv {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
+
+        var envPairs: [String] = []
+        var idx = 0
+        while idx < argv.count {
+            if argv[idx] == "-e", idx + 1 < argv.count {
+                envPairs.append(argv[idx + 1])
+                idx += 2
+            } else {
+                idx += 1
+            }
+        }
+
+        #expect(envPairs.contains("TOKEN=abc123"), "mapping-form env_file must contribute its keys (got: \(envPairs))")
+        #expect(envPairs.contains("REGION=us-west"), "mapping-form env_file must contribute its keys (got: \(envPairs))")
+    }
+
     // MARK: - PR-6 — full pipeline coverage (swiftAPI + streaming run)
 
     /// Proof that PR-6 routes the in-process `Application.*` calls through
