@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1317-cross-file-extends",
+  "commit": "d49b56147decceb93c5f73f7e45a44d0a5fa9d46",
+  "short": "d49b561",
+  "target": "d49b561",
+  "message": "feat: implement cross-file extends with cycle detection (CHAOS-1317)",
+  "published_at": "2026-04-28T12:57:13.545735+00:00"
+}
