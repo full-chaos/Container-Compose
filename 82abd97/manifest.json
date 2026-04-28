@@ -1,0 +1,8 @@
+{
+  "branch": "fix/env-file-mapping-form",
+  "commit": "82abd97519b746dabd35941d0f05bd7122deeb9e",
+  "short": "82abd97",
+  "target": "82abd97",
+  "message": "fix: env_file accepts string scalar and {path, required} mapping forms (CHAOS-1297)",
+  "published_at": "2026-04-28T07:26:16.573105+00:00"
+}
