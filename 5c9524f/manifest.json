@@ -1,0 +1,8 @@
+{
+  "branch": "tier2-fork-patches",
+  "commit": "5c9524f0d67a35b4e13c5e978d686fbb303228da",
+  "short": "5c9524f",
+  "target": "5c9524f",
+  "message": "feat: wire all 5 Tier 2 fork patches into Container-Compose",
+  "published_at": "2026-04-28T21:15:35.468458+00:00"
+}
