@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "f3153882153bd4ea4b0728659868bf3efa2ea1d8",
-  "short": "f315388",
+  "commit": "b56706b8e1c3569f8066f41f7719300e7bd8ea96",
+  "short": "b56706b",
   "target": "current",
-  "message": "feat: FSEvents-backed watcher for compose watch (CHAOS-1318) (#33)",
-  "published_at": "2026-04-28T12:53:54.709490+00:00"
+  "message": "feat: implement cross-file extends with cycle detection (CHAOS-1317) (#34)",
+  "published_at": "2026-04-28T13:22:58.934822+00:00"
 }
