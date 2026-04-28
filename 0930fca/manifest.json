@@ -1,0 +1,8 @@
+{
+  "branch": "feat/parity-service-fields",
+  "commit": "0930fca470bce3b16191de334c7a0e5d787eed95",
+  "short": "0930fca",
+  "target": "0930fca",
+  "message": "feat: decode parity for 11 service-level spec fields (CHAOS-1303)",
+  "published_at": "2026-04-28T08:28:25.156097+00:00"
+}
