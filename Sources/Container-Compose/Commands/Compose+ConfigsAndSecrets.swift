@@ -54,6 +54,10 @@ extension ComposeUp {
                         continue
                     }
 
+                    if topLevel.templateDriver != nil {
+                        print("Note: 'template_driver' for config '\(sc.source)' Detected, But Not Supported by the current runtime; the raw file will be mounted as-is.")
+                    }
+
                     let target = sc.target ?? "/\(sc.source)"
                     let resolvedSource = (sourceFile as NSString).expandingTildeInPath
                     args.append(contentsOf: ["-v", "\(resolvedSource):\(target)"])
@@ -82,6 +86,10 @@ extension ComposeUp {
                     guard let sourceFile = topLevel.file else {
                         print("Warning: Secret '\(ss.source)' has no 'file:' source; skipping.")
                         continue
+                    }
+
+                    if topLevel.templateDriver != nil {
+                        print("Note: 'template_driver' for secret '\(ss.source)' Detected, But Not Supported by the current runtime; the raw file will be mounted as-is.")
                     }
 
                     let target = ss.target ?? "/run/secrets/\(ss.source)"
