@@ -1,0 +1,8 @@
+{
+  "branch": "fix/CHAOS-1327-bridge-network-driver",
+  "commit": "cd25b6717510bcf903219643f06ad4f9aa531fce",
+  "short": "cd25b67",
+  "target": "cd25b67",
+  "message": "fix: skip --plugin emission for Docker default 'bridge' driver (CHAOS-1327)",
+  "published_at": "2026-04-28T17:17:37.094925+00:00"
+}
