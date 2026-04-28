@@ -1,0 +1,8 @@
+{
+  "branch": "feat/parity-healthcheck-fields",
+  "commit": "255ef32d7a355bb70ea3cbd85ba86c10460262cb",
+  "short": "255ef32",
+  "target": "255ef32",
+  "message": "feat: decode healthcheck.start_interval + disable (CHAOS-1304)",
+  "published_at": "2026-04-28T07:54:29.491538+00:00"
+}
