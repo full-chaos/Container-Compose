@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "36839cee48958a9f29e0de5cc4667136799c51ba",
-  "short": "36839ce",
+  "commit": "2f4502c7613fec54081fffd161df5d93d7a7b47c",
+  "short": "2f4502c",
   "target": "current",
-  "message": "Update FUNDING.yml (#35)",
-  "published_at": "2026-04-28T13:31:05.941027+00:00"
+  "message": "chore: switch container dep from mcrich23 to full-chaos fork (CHAOS-1325) (#36)",
+  "published_at": "2026-04-28T14:45:29.763758+00:00"
 }
