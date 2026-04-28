@@ -1,0 +1,8 @@
+{
+  "branch": "feat/container-client-seam",
+  "commit": "3680e56af3cdff3ffb4ce7c1aa618e32abe618d7",
+  "short": "3680e56",
+  "target": "3680e56",
+  "message": "feat: add ContainerClientProvider seam so RuntimeArgvTests pass on CI",
+  "published_at": "2026-04-28T00:29:55.634798+00:00"
+}
