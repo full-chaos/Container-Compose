@@ -1,0 +1,8 @@
+{
+  "branch": "feat/parity-build-entitlements",
+  "commit": "c35ca17becd1da80a08bed972d1171148f51f438",
+  "short": "c35ca17",
+  "target": "c35ca17",
+  "message": "feat: decode build.entitlements (CHAOS-1307)",
+  "published_at": "2026-04-28T07:37:05.222622+00:00"
+}
