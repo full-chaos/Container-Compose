@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1314-ci-flake-fix",
+  "commit": "9cf6da417873bea7b11eb5bc0be006ebb27929d3",
+  "short": "9cf6da4",
+  "target": "9cf6da4",
+  "message": "ci: fix swiftpm-testing-helper signal-10 flake (CHAOS-1314)",
+  "published_at": "2026-04-28T12:29:58.960088+00:00"
+}
