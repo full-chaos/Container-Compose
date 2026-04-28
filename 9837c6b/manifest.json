@@ -1,0 +1,8 @@
+{
+  "branch": "feat/parity-secret-config-niche",
+  "commit": "9837c6b2cb0bf69f3681d9214c3e0f54bde21985",
+  "short": "9837c6b",
+  "target": "9837c6b",
+  "message": "feat: decode niche secret + config fields (CHAOS-1306)",
+  "published_at": "2026-04-28T08:10:08.850523+00:00"
+}
