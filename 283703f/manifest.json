@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-32-0cbe07ac2535b7e13f4f2be0fe4717055a7306ca",
+  "commit": "283703fa146d74e1434aff1b2207b08fd4f8bfa0",
+  "short": "283703f",
+  "target": "283703f",
+  "message": "feat: decode newer-spec models / service.models / service.provider (CHAOS-1316) (#32)",
+  "published_at": "2026-04-28T12:43:52.495871+00:00"
+}
