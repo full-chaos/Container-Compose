@@ -8,7 +8,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.1"),
-        .package(url: "https://github.com/full-chaos/container", branch: "main"),
+        .package(url: "https://github.com/full-chaos/container", branch: "feat/CHAOS-1320-last-exit-code-on-snapshot"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.1"),
         .package(url: "https://github.com/onevcat/Rainbow", .upToNextMajor(from: "4.0.0")),
     ],

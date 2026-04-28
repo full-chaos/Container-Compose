@@ -29,14 +29,12 @@ extension ComposeUp {
     ///   `.running` and emits a one-time warning.
     ///   // TODO: Re-implement true health check once the upstream Swift container package
     ///   // surfaces a health field on ContainerSnapshot.
-    /// - **serviceCompletedSuccessfully**: returns when `container.status == .stopped`.
-    ///   The Apple `container` runtime does not currently expose a per-container exit code
-    ///   on `ContainerSnapshot`, so we can only verify that the container has stopped, not
-    ///   that it stopped with exit code 0. A `ComposeWaitError.exitCodeUnavailable` error
-    ///   is thrown after the container reaches `.stopped` state if strict exit-code
-    ///   verification is ever required by callers; currently, reaching `.stopped` is treated
-    ///   as sufficient and the function returns normally with a warning.
-    ///   // TODO: Re-implement strict exit-code check once ContainerSnapshot exposes exitCode.
+    /// - **serviceCompletedSuccessfully**: returns when `container.status == .stopped`
+    ///   AND `container.lastExitCode == 0`. Throws `ComposeWaitError.nonZeroExitCode` if
+    ///   the container stopped with a non-zero exit code. If `lastExitCode` is `nil`
+    ///   (e.g., the container exited before the daemon captured the code, or the daemon
+    ///   was restarted between exit and read), falls back to treating `.stopped` as
+    ///   sufficient and returns normally.
     ///
     /// - Parameters:
     ///   - serviceName: The logical service name (e.g. "db"). The container name is
@@ -72,15 +70,7 @@ extension ComposeUp {
                 "ContainerSnapshot. Falling back to status == .running. " +
                 "// TODO: Enforce true health check once upstream package surfaces health."
             )
-        case .serviceCompletedSuccessfully:
-            print(
-                "Warning: waitForCondition(.serviceCompletedSuccessfully) for '\(serviceName)': " +
-                "The Apple container runtime does not currently expose an exit code on " +
-                "ContainerSnapshot. This condition will return as soon as status == .stopped, " +
-                "without verifying exit code 0. " +
-                "// TODO: Add exit-code check once ContainerSnapshot exposes exitCode."
-            )
-        case .serviceStarted:
+        case .serviceCompletedSuccessfully, .serviceStarted:
             break
         }
 
@@ -109,9 +99,13 @@ extension ComposeUp {
                 }
 
             case .serviceCompletedSuccessfully:
-                // TODO: Add exit-code == 0 check once ContainerSnapshot exposes exitCode.
-                // For now, reaching .stopped is treated as "completed".
                 if status == .stopped {
+                    if let exitCode = container.lastExitCode, exitCode != 0 {
+                        throw ComposeWaitError.nonZeroExitCode(
+                            containerName: containerName,
+                            exitCode: exitCode
+                        )
+                    }
                     return
                 }
             }
@@ -128,9 +122,9 @@ public enum ComposeWaitError: Error, LocalizedError {
     /// The container did not satisfy the required condition within the allotted time.
     case timeout(containerName: String, condition: DependsOnCondition, seconds: TimeInterval)
 
-    /// The exit code of the container is unavailable (reserved for future use once
-    /// ContainerSnapshot exposes exitCode).
-    case exitCodeUnavailable(containerName: String)
+    /// The container reached `.stopped` state with a non-zero exit code while waiting
+    /// on `service_completed_successfully`.
+    case nonZeroExitCode(containerName: String, exitCode: Int32)
 
     public var errorDescription: String? {
         switch self {
@@ -138,11 +132,10 @@ public enum ComposeWaitError: Error, LocalizedError {
             return
                 "Timed out after \(Int(seconds))s waiting for container '\(name)' " +
                 "to satisfy condition '\(condition.rawValue)'."
-        case let .exitCodeUnavailable(name):
+        case let .nonZeroExitCode(name, exitCode):
             return
-                "Cannot verify exit code for container '\(name)': " +
-                "ContainerSnapshot does not expose an exit code field in the current " +
-                "Apple container runtime package."
+                "Container '\(name)' exited with non-zero status \(exitCode); " +
+                "service_completed_successfully condition not satisfied."
         }
     }
 }

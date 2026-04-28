@@ -1,5 +1,5 @@
 {
-  "originHash" : "5658ba2f3922bb66e8f726aa29f450b75ab25ef1030b9db893c88509eecbfba3",
+  "originHash" : "4305de9f7652ac7b964214731f72b213ec7b98882a4f3b7c2f02e19786dbc788",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/full-chaos/container",
       "state" : {
-        "branch" : "main",
-        "revision" : "0c06aa760025f983f77f82dd465132c0fb840431"
+        "branch" : "feat/CHAOS-1320-last-exit-code-on-snapshot",
+        "revision" : "ac52ced81f321efc6fe0f58d8c0c66359027bd34"
       }
     },
     {
