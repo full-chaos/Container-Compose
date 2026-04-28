@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1318-fsevents-watcher",
+  "commit": "527317aa325bd6770579d734b404444453bdc861",
+  "short": "527317a",
+  "target": "527317a",
+  "message": "feat: FSEvents-backed watcher for compose watch (CHAOS-1318)",
+  "published_at": "2026-04-28T12:29:41.707171+00:00"
+}
