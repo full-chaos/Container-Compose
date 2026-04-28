@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr6",
+  "commit": "fc80c240d43bd2d90c3d8bd712be5564ca827828",
+  "short": "fc80c24",
+  "target": "fc80c24",
+  "message": "feat: route in-process Application.* calls through the seam (PR-6, pulled forward to unblock CI)",
+  "published_at": "2026-04-28T00:03:12.768464+00:00"
+}
