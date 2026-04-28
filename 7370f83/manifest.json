@@ -1,0 +1,8 @@
+{
+  "branch": "docs/refresh-post-CHAOS-1299",
+  "commit": "7370f83e7e2276746f251b9444f6e0b30c40abb7",
+  "short": "7370f83",
+  "target": "7370f83",
+  "message": "docs: refresh AGENTS.md + flip 2 stale miss rows post-CHAOS-1299",
+  "published_at": "2026-04-28T11:09:35.953340+00:00"
+}
