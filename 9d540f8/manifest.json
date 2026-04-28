@@ -1,0 +1,8 @@
+{
+  "branch": "fix/makefile-product-and-test-targets",
+  "commit": "9d540f8b6bc91acf77b6a1bd368f66d0b5164cf6",
+  "short": "9d540f8",
+  "target": "9d540f8",
+  "message": "fix: Makefile builds via --product so TestHelpers stays out of release (CHAOS-1312)",
+  "published_at": "2026-04-28T09:38:11.617098+00:00"
+}
