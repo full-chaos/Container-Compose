@@ -349,7 +349,7 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         }
 
         print("Creating network: \(networkName) (actual: \(actualNetworkName))")
-        guard (try? await NetworkClient().get(id: actualNetworkName)) == nil else {
+        guard (try? await ContainerClientEnvironment.current.networkGet(id: actualNetworkName)) == nil else {
             print("Network '\(networkName)' already exists")
             return
         }

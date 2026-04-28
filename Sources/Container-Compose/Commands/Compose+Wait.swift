@@ -60,7 +60,7 @@ extension ComposeUp {
 
         let containerName = "\(projectName)-\(serviceName)"
         let deadline = Date().addingTimeInterval(timeout)
-        let client = ContainerClient()
+        let provider = ContainerClientEnvironment.current
 
         // Emit one-time warnings for conditions that cannot be fully implemented
         // with the current ContainerSnapshot API surface.
@@ -86,7 +86,7 @@ extension ComposeUp {
 
         while Date() < deadline {
             try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-            let container = try? await client.get(id: containerName)
+            let container = try? await provider.get(id: containerName)
 
             guard let container else {
                 // Container not found yet; keep polling.

@@ -219,11 +219,11 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
         numLines: Int?,
         follow: Bool
     ) async {
-        let client = ContainerClient()
+        let provider = ContainerClientEnvironment.current
 
         let fhs: [FileHandle]
         do {
-            fhs = try await client.logs(id: containerName)
+            fhs = try await provider.logs(id: containerName)
         } catch {
             let msg = "Warning: Could not retrieve logs for container '\(containerName)': \(error.localizedDescription)"
             print(noColor ? msg : msg.applyingColor(.red))

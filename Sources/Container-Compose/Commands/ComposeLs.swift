@@ -57,10 +57,10 @@ public struct ComposeLs: AsyncParsableCommand {
     // MARK: - run
 
     public mutating func run() async throws {
-        let client = ContainerClient()
+        let provider = ContainerClientEnvironment.current
 
         // List all containers; filter stopped ones below when --all is not set.
-        let containers = try await client.list(filters: .all)
+        let containers = try await provider.list(filters: .all)
 
         // Build a project summary: project name → (running count, exited count).
         // Use String rawValues to avoid referencing ContainerSnapshot/RuntimeStatus by name.

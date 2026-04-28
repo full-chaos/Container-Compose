@@ -134,14 +134,15 @@ public struct ComposeStop: AsyncParsableCommand {
                 containerName = "\(projectName)-\(serviceName)"
             }
 
-            guard let container = try? await ContainerClient().get(id: containerName) else {
+            let provider = ContainerClientEnvironment.current
+            guard let container = try? await provider.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")
                 continue
             }
 
             print("Stopping container: \(containerName)")
             do {
-                try await ContainerClient().stop(id: container.id)
+                try await provider.stop(id: container.id, opts: .default)
                 print("Successfully stopped container: \(containerName)")
             } catch {
                 print("Error stopping container '\(containerName)': \(error)")

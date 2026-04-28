@@ -85,10 +85,13 @@ struct RuntimeArgvTests {
         parse: @escaping @Sendable () throws -> C
     ) async throws -> [String] {
         let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
         let runTask = Task {
             try? await RunnerEnvironment.$current.withValue(recorder) {
-                var cmd = try parse()
-                try await cmd.run()
+                try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                    var cmd = try parse()
+                    try await cmd.run()
+                }
             }
         }
         defer { runTask.cancel() }
@@ -340,10 +343,13 @@ struct RuntimeArgvTests {
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
         let runTask = Task {
             try? await RunnerEnvironment.$current.withValue(recorder) {
-                var cmd = try parseComposeUp(composePath: compose.path)
-                try await cmd.run()
+                try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                    var cmd = try ComposeUp.parse(["--detach", "-f", compose.path])
+                    try await cmd.run()
+                }
             }
         }
         defer { runTask.cancel() }
@@ -424,9 +430,12 @@ struct RuntimeArgvTests {
         try yaml.write(to: compose, atomically: true, encoding: .utf8)
 
         let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
         try await RunnerEnvironment.$current.withValue(recorder) {
-            var cmd = try ComposeBuild.parse(["-f", compose.path])
-            try await cmd.run()
+            try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                var cmd = try ComposeBuild.parse(["-f", compose.path])
+                try await cmd.run()
+            }
         }
 
         let buildArgvs = await recorder.swiftAPIArgvs(named: "BuildCommand")

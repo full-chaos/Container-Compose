@@ -123,10 +123,11 @@ public struct ComposePs: AsyncParsableCommand {
         })
 
         // Fetch containers from the runtime.
-        // list() with no arguments returns all containers (running + stopped).
-        // When --all is not set, filter to running containers only in Swift.
-        let client = ContainerClient()
-        let allContainers = try await client.list()
+        // list(filters: .all) with no filters returns all containers
+        // (running + stopped). When --all is not set, filter to running
+        // containers only in Swift.
+        let provider = ContainerClientEnvironment.current
+        let allContainers = try await provider.list(filters: .all)
 
         // Keep only containers that belong to this project.
         // When --all is false, exclude stopped containers.
