@@ -260,10 +260,12 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         // Combined env: .env file + service env
         var combinedEnv = environmentVariables
         if let envFiles = service.env_file {
-            for envFile in envFiles {
-                let additionalEnvVars = loadEnvFile(
-                    path: URL(fileURLWithPath: envFile, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path
-                )
+            for entry in envFiles {
+                let resolved = URL(fileURLWithPath: entry.path, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path
+                if !entry.required && !FileManager.default.fileExists(atPath: resolved) {
+                    continue
+                }
+                let additionalEnvVars = loadEnvFile(path: resolved)
                 combinedEnv.merge(additionalEnvVars) { current, _ in current }
             }
         }

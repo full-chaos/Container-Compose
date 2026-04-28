@@ -16,11 +16,89 @@
 
 import Testing
 import Foundation
+@testable import Yams
 @testable import ContainerComposeCore
 
 @Suite("Environment File Loading Tests")
 struct EnvFileLoadingTests {
-    
+
+    // MARK: - env_file YAML shape decoding (compose-spec parity)
+
+    @Test("Service decodes env_file as a single scalar string")
+    func decodeEnvFileScalarString() throws {
+        let yaml = """
+        services:
+          api:
+            image: alpine:latest
+            env_file: ./api.env
+        """
+        let compose = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        let svc = try #require(compose.services["api"] ?? nil)
+        let entries = try #require(svc.env_file)
+        #expect(entries.count == 1)
+        #expect(entries[0].path == "./api.env")
+        #expect(entries[0].required == true, "scalar form must default required to true")
+    }
+
+    @Test("Service decodes env_file as list of strings")
+    func decodeEnvFileListOfStrings() throws {
+        let yaml = """
+        services:
+          api:
+            image: alpine:latest
+            env_file:
+              - ./common.env
+              - ./api.env
+        """
+        let compose = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        let svc = try #require(compose.services["api"] ?? nil)
+        let entries = try #require(svc.env_file)
+        #expect(entries.map(\.path) == ["./common.env", "./api.env"])
+        #expect(entries.allSatisfy { $0.required == true }, "string list defaults required to true")
+    }
+
+    @Test("Service decodes env_file as list of mappings with required")
+    func decodeEnvFileListOfMappings() throws {
+        let yaml = """
+        services:
+          api:
+            image: alpine:latest
+            env_file:
+              - path: ./api.env
+                required: false
+              - path: ./secrets.env
+        """
+        let compose = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        let svc = try #require(compose.services["api"] ?? nil)
+        let entries = try #require(svc.env_file)
+        #expect(entries.count == 2)
+        #expect(entries[0].path == "./api.env")
+        #expect(entries[0].required == false)
+        #expect(entries[1].path == "./secrets.env")
+        #expect(entries[1].required == true, "mapping form omitting required must default to true")
+    }
+
+    @Test("Service decodes env_file as a mixed list of strings and mappings")
+    func decodeEnvFileMixedList() throws {
+        let yaml = """
+        services:
+          api:
+            image: alpine:latest
+            env_file:
+              - ./common.env
+              - path: ./optional.env
+                required: false
+              - ./api.env
+        """
+        let compose = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        let svc = try #require(compose.services["api"] ?? nil)
+        let entries = try #require(svc.env_file)
+        #expect(entries.map(\.path) == ["./common.env", "./optional.env", "./api.env"])
+        #expect(entries.map(\.required) == [true, false, true])
+    }
+
+    // MARK: - loadEnvFile (file parser) tests
+
     @Test("Load simple key-value pairs from .env file")
     func loadSimpleEnvFile() throws {
         let tempDir = FileManager.default.temporaryDirectory
