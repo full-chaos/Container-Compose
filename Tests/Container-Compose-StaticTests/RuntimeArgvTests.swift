@@ -84,6 +84,28 @@ struct RuntimeArgvTests {
         timeout: TimeInterval = 60,
         parse: @escaping @Sendable () throws -> C
     ) async throws -> [String] {
+        try await recordedFirstArgv(
+            timeout: timeout,
+            matching: { $0.starts(with: ["container", "run"]) },
+            description: "container run",
+            parse: parse
+        )
+    }
+
+    /// Generalised polling variant of `recordedRunArgv`. Polls `recorder.argvs()`
+    /// (every recorded request, not just `.streaming` `container run`s) and
+    /// returns the first argv satisfying `matching`. PR-4 of the recorder
+    /// migration introduced this generalisation so `compose create` tests can
+    /// filter for the `["container", "create", ...]` argv that ComposeCreate
+    /// emits AFTER its `.probe(["container", "create", "--help"])` call, while
+    /// the existing `compose up` / `compose run` tests keep working unchanged
+    /// via the `recordedRunArgv` wrapper above.
+    private func recordedFirstArgv<C: AsyncParsableCommand>(
+        timeout: TimeInterval = 60,
+        matching predicate: @escaping @Sendable ([String]) -> Bool,
+        description: String,
+        parse: @escaping @Sendable () throws -> C
+    ) async throws -> [String] {
         let recorder = RecordingRunner()
         let containerProvider = RecordingContainerClientProvider()
         let runTask = Task {
@@ -98,8 +120,8 @@ struct RuntimeArgvTests {
 
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            let argvs = await recorder.runArgvs()
-            if let first = argvs.first {
+            let argvs = await recorder.argvs()
+            if let first = argvs.first(where: predicate) {
                 runTask.cancel()
                 return first
             }
@@ -109,12 +131,12 @@ struct RuntimeArgvTests {
         runTask.cancel()
         let all = await recorder.argvs()
         Issue.record(
-            "No `container run` argv recorded within \(timeout)s. All recorded argvs: \(all)"
+            "No `\(description)` argv recorded within \(timeout)s. All recorded argvs: \(all)"
         )
         throw NSError(
             domain: "RuntimeArgvTests",
             code: 1,
-            userInfo: [NSLocalizedDescriptionKey: "no run argv recorded"]
+            userInfo: [NSLocalizedDescriptionKey: "no \(description) argv recorded"]
         )
     }
 
@@ -160,6 +182,38 @@ struct RuntimeArgvTests {
         let argv = try await recordedRunArgv {
             try ComposeRun.parse(["-f", compose.path, "app"])
         }
+        let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
+        let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
+        #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
+        #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
+    }
+
+    // MARK: - Plan §8 #3 — `compose create` entrypoint placement (PR-4 regression)
+
+    @Test("create: --entrypoint precedes image (regression for ComposeCreate §1 bug)")
+    func create_emits_entrypoint_before_image() async throws {
+        let yaml = """
+        services:
+          app:
+            image: alpine:latest
+            entrypoint: ["/app/entrypoint.sh"]
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // ComposeCreate emits a `.probe(["container", "create", "--help"])`
+        // request first to test capability, then the actual
+        // `.awaitOnly(["container", "create", "--name", ..., ...])` request.
+        // Filter past the probe to the create call itself.
+        let argv = try await recordedFirstArgv(
+            matching: { argv in
+                argv.starts(with: ["container", "create", "--name"])
+            },
+            description: "container create"
+        ) {
+            try ComposeCreate.parse(["-f", compose.path])
+        }
+
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
         let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")

@@ -219,3 +219,58 @@ struct ComposeRunArgvTailTests {
         #expect(argv == [image, "x"])
     }
 }
+
+/// Static argv-shape tests for `ComposeCreate.imageAndEntrypointTail`.
+///
+/// Mirrors `CommandBuildArgvTests` for `compose up` exactly: `compose create`
+/// has no per-call CLI command override (unlike `compose run`), so the
+/// signature and contract match `ComposeUp.imageAndEntrypointTail` token-for-
+/// token. PR-4 of the recorder seam migration introduces this helper as the
+/// fix for `docs/plans/PLAN.md` §1 at the `compose create` site (the previous
+/// 9-line block placed `--entrypoint` *after* the image). This is the third
+/// and final entrypoint-bug site — §1 fully closed.
+@Suite("ComposeCreate Argv Tail Tests")
+struct ComposeCreateArgvTailTests {
+
+    private let image = "alpine:latest"
+
+    @Test("single-token entrypoint, no command → --entrypoint precedes image")
+    func singleEntrypointNoCommand() {
+        let argv = ComposeCreate.imageAndEntrypointTail(
+            image: image,
+            entrypoint: ["/app/foo.sh"],
+            command: nil
+        )
+        #expect(argv == ["--entrypoint", "/app/foo.sh", image])
+    }
+
+    @Test("single-token entrypoint plus command → command appended after image")
+    func singleEntrypointWithCommand() {
+        let argv = ComposeCreate.imageAndEntrypointTail(
+            image: image,
+            entrypoint: ["a"],
+            command: ["x", "y"]
+        )
+        #expect(argv == ["--entrypoint", "a", image, "x", "y"])
+    }
+
+    @Test("no entrypoint, command only → image then command tokens")
+    func commandOnly() {
+        let argv = ComposeCreate.imageAndEntrypointTail(
+            image: image,
+            entrypoint: nil,
+            command: ["x"]
+        )
+        #expect(argv == [image, "x"])
+    }
+
+    @Test("neither entrypoint nor command → image alone")
+    func imageOnly() {
+        let argv = ComposeCreate.imageAndEntrypointTail(
+            image: image,
+            entrypoint: nil,
+            command: nil
+        )
+        #expect(argv == [image])
+    }
+}

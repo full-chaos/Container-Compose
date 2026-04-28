@@ -442,84 +442,70 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         createArgs.append(contentsOf: ComposeUp.StorageArgs.build(ctx))
         createArgs.append(contentsOf: ComposeUp.LabelsArgs.build(ctx))
 
-        createArgs.append(imageToRun)
+        // Emit `--entrypoint <first>` (a pre-image flag) + image + remaining
+        // entrypoint args + command, so the runtime parses entrypoint/command
+        // exactly as the compose spec requires. See `imageAndEntrypointTail`.
+        // Fix for `docs/plans/PLAN.md` §1 at the `compose create` site (PR-4
+        // of the recorder seam migration; the previous 9-line block placed
+        // `--entrypoint` *after* the image, which the runtime then misparsed
+        // as the in-container command).
+        createArgs.append(contentsOf: Self.imageAndEntrypointTail(
+            image: imageToRun,
+            entrypoint: service.entrypoint,
+            command: service.command
+        ))
 
-        if let entrypointParts = service.entrypoint {
-            createArgs.append("--entrypoint")
-            createArgs.append(contentsOf: entrypointParts)
-        } else if let commandParts = service.command {
-            createArgs.append(contentsOf: commandParts)
+        // Capability probe: Apple `container` did not always expose the
+        // `create` sub-command. Route the probe through the runner seam so
+        // tests can stub the answer (PR-4 of the recorder migration; see
+        // docs/plans/PLAN-recorder-seam.md §7).
+        let probeRequest = RunRequest(
+            kind: .probe,
+            argv: ["container", "create", "--help"],
+            cwd: nil
+        )
+        let probeResult: RunResult
+        do {
+            probeResult = try await RunnerEnvironment.current.run(
+                probeRequest,
+                onStdout: nil,
+                onStderr: nil
+            )
+        } catch {
+            print("Warning: Apple container doesn't support 'create'; please use 'compose up' instead.")
+            return
+        }
+        guard probeResult.probeAvailable else {
+            print("Warning: Apple container doesn't support 'create'; please use 'compose up' instead.")
+            return
         }
 
         print("\nCreating container (without starting): \(containerName)")
+
+        // Route through the RunCommandRunner seam (PR-4 of the recorder
+        // migration; see docs/plans/PLAN-recorder-seam.md §7 / §9 PR-4).
+        // The previous `shellCreate` helper was deleted; `ProductionRunner`
+        // preserves the same `Process()` semantics byte-for-byte.
+        let createArgv = ["container", "create", "--name", containerName] + createArgs
+        let request = RunRequest(kind: .awaitOnly, argv: createArgv, cwd: cwd)
         do {
-            try await shellCreate(containerName: containerName, args: createArgs)
+            let result = try await RunnerEnvironment.current.run(
+                request,
+                onStdout: nil,
+                onStderr: nil
+            )
+            guard result.exitCode == 0 else {
+                throw NSError(
+                    domain: "ComposeCreate",
+                    code: Int(result.exitCode),
+                    userInfo: [NSLocalizedDescriptionKey: "container create exited with status \(result.exitCode)"]
+                )
+            }
             print("Successfully created container: \(containerName)")
         } catch {
             // If `container create` is not supported by Apple container, surface a helpful message.
             print("Warning: Failed to create container '\(containerName)': \(error)")
             print("Note: Apple's 'container' CLI may not support the 'create' subcommand. Use 'compose up' to start containers directly.")
-        }
-    }
-
-    private func shellCreate(containerName: String, args: [String]) async throws {
-        // Check whether `container create` is available by probing --help.
-        // If the sub-command is absent the process exits non-zero which we
-        // treat as "not supported".
-        let supported = await checkCreateSupported()
-        guard supported else {
-            print("Warning: Apple container doesn't support 'create'; please use 'compose up' instead.")
-            return
-        }
-
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = ["container", "create", "--name", containerName] + args
-            proc.currentDirectoryURL = cwdURL
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-
-            proc.terminationHandler = { p in
-                if p.terminationStatus == 0 {
-                    continuation.resume()
-                } else {
-                    continuation.resume(throwing: NSError(
-                        domain: "ComposeCreate",
-                        code: Int(p.terminationStatus),
-                        userInfo: [NSLocalizedDescriptionKey: "container create exited with status \(p.terminationStatus)"]
-                    ))
-                }
-            }
-
-            do {
-                try proc.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-
-    /// Returns `true` if `container create --help` exits 0, meaning the sub-command exists.
-    private func checkCreateSupported() async -> Bool {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = ["container", "create", "--help"]
-            proc.standardOutput = FileHandle.nullDevice
-            proc.standardError = FileHandle.nullDevice
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-            proc.terminationHandler = { p in
-                continuation.resume(returning: p.terminationStatus == 0)
-            }
-            do {
-                try proc.run()
-            } catch {
-                continuation.resume(returning: false)
-            }
         }
     }
 
@@ -572,3 +558,70 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         return runCommandArgs
     }
 }
+
+// MARK: Argv tail (image + entrypoint/command)
+
+extension ComposeCreate {
+
+    /// Builds the trailing portion of a `container create` argv: the
+    /// `--entrypoint` flag (if any), the image, and any positional args.
+    ///
+    /// `container create` (like `container run` and `docker run` / `docker
+    /// create`) accepts at most one `--entrypoint <BIN>` flag *before* the
+    /// image, with any extra arguments to that entrypoint passed positionally
+    /// *after* the image. Compose models `entrypoint` as `[a, b, c]` — a full
+    /// argv. We therefore split: the first token becomes the `--entrypoint`
+    /// value (pre-image), the remaining tokens become positional args
+    /// (post-image), followed by `command` if any.
+    ///
+    /// `compose create` has no per-call CLI command override (unlike
+    /// `compose run`), so the signature mirrors `ComposeUp.imageAndEntrypointTail`
+    /// exactly. Kept as a parallel ComposeCreate-local helper rather than
+    /// reusing `ComposeUp.imageAndEntrypointTail` to keep each command's argv
+    /// logic readable in isolation and to avoid cross-file coupling — the
+    /// PR-3 ComposeRun helper made the same call.
+    ///
+    /// Resulting shapes:
+    /// - `entrypoint: [a, b, c]`, `command: [d, e]` → `[--entrypoint, a, <image>, b, c, d, e]`
+    /// - `entrypoint: [/app/foo.sh]`, no command   → `[--entrypoint, /app/foo.sh, <image>]`
+    /// - no entrypoint, `command: [d, e]`          → `[<image>, d, e]`
+    /// - neither                                    → `[<image>]`
+    static func imageAndEntrypointTail(
+        image: String,
+        entrypoint: [String]?,
+        command: [String]?
+    ) -> [String] {
+        var tail: [String] = []
+        var positional: [String] = []
+
+        if let entrypoint, let first = entrypoint.first {
+            tail.append("--entrypoint")
+            tail.append(first)
+            // Remaining entrypoint tokens are positional args to the entrypoint
+            // and must appear *after* the image.
+            positional.append(contentsOf: entrypoint.dropFirst())
+        }
+
+        tail.append(image)
+        tail.append(contentsOf: positional)
+
+        // `command` is appended after entrypoint args per the compose spec.
+        if let command {
+            tail.append(contentsOf: command)
+        }
+
+        return tail
+    }
+}
+
+// PR-4 of the recorder migration removed the
+// `private func shellCreate(...)` and `private func checkCreateSupported()`
+// helpers that previously lived here. The `compose create` await-only
+// shell-out and the `container create --help` capability probe now flow
+// through `RunnerEnvironment.current.run(_:onStdout:onStderr:)` (see the
+// call site in `createService` above). `ProductionRunner` in
+// `Sources/Container-Compose/Runtime/RunCommandRunner.swift` preserves the
+// previous `Process()` semantics — including the `/dev/null`-ed stdio for
+// the probe and inherit-stdio for the await-only call — byte-for-byte. See
+// `docs/plans/PLAN-recorder-seam.md` §7 / §10 Q4 / §11 and
+// `docs/plans/PLAN.md` §1 (third and final entrypoint-bug site closed).
