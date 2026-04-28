@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "e0449af16d43bdcaf4361a113a888c6c18b08849",
-  "short": "e0449af",
+  "commit": "71d83fe5e34afbcdd370ff54b1f0009aee4adb69",
+  "short": "71d83fe",
   "target": "current",
-  "message": "fix: Makefile builds via --product so TestHelpers stays out of release (CHAOS-1312) (#26)",
-  "published_at": "2026-04-28T09:42:50.745868+00:00"
+  "message": "feat: implement compose top/port/events/push subcommands (CHAOS-1299) (#27)",
+  "published_at": "2026-04-28T10:37:33.170029+00:00"
 }
