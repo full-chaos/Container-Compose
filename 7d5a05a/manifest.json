@@ -1,0 +1,8 @@
+{
+  "branch": "chore/rename-package-to-container-compose",
+  "commit": "7d5a05ab0815dc5fab1ce458f4deb15464d6c715",
+  "short": "7d5a05a",
+  "target": "7d5a05a",
+  "message": "chore: rename SwiftPM package + binary to container-compose",
+  "published_at": "2026-04-28T10:50:36.578246+00:00"
+}
