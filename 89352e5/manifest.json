@@ -1,0 +1,8 @@
+{
+  "branch": "chore/switch-container-dep-to-full-chaos",
+  "commit": "89352e53a8b5d6cf1712f9f84d724af802ec06bf",
+  "short": "89352e5",
+  "target": "89352e5",
+  "message": "chore: switch container dep from mcrich23 to full-chaos fork (CHAOS-1325)",
+  "published_at": "2026-04-28T14:27:02.317578+00:00"
+}
