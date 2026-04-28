@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1316-newer-spec-decoding",
+  "commit": "11cad2a8227914f1736e08fec8c40380c35e9e74",
+  "short": "11cad2a",
+  "target": "11cad2a",
+  "message": "feat: decode newer-spec models / service.models / service.provider (CHAOS-1316)",
+  "published_at": "2026-04-28T12:39:30.223059+00:00"
+}
