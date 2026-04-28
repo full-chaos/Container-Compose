@@ -534,15 +534,16 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         if let buildConfig = service.build {
             imageToRun = try await buildService(buildConfig, for: service, serviceName: serviceName)
         } else if let img = service.image {
+            let qualifiedImage = Self.qualifyImageReference(img)
             // Use specified image if no build config
             // Pull image if necessary
             try await pullImage(
-                image: img,
+                image: qualifiedImage,
                 policy: service.pull_policy,
                 platform: service.platform,
                 loggingArguments: logging.passThroughCommands()
             )
-            imageToRun = img
+            imageToRun = qualifiedImage
         } else {
             // Should not happen due to Service init validation, but as a fallback
             throw ComposeError.imageNotFound(serviceName)
@@ -715,9 +716,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
 
         // Determine image tag for built image
-        let imageToRun = service.image ?? "\(serviceName):latest"
+        let imageToRun = Self.qualifyImageReference(service.image ?? "\(serviceName):latest")
         let imageList = try await ContainerClientEnvironment.current.imageList()
-        if !rebuild, imageList.contains(where: { $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
+        if !rebuild, imageList.contains(where: { $0.description.reference == imageToRun || $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
             return imageToRun
         }
 

@@ -182,9 +182,9 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         var inlineTempURL: URL? = nil
         defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
 
-        let imageToRun = service.image ?? "\(serviceName):latest"
+        let imageToRun = ComposeUp.qualifyImageReference(service.image ?? "\(serviceName):latest")
         let imageList = try await ContainerClientEnvironment.current.imageList()
-        if !rebuild, imageList.contains(where: { $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
+        if !rebuild, imageList.contains(where: { $0.description.reference == imageToRun || $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
             return imageToRun
         }
 
@@ -324,14 +324,15 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         if let buildConfig = service.build {
             imageToRun = try await buildService(buildConfig, for: service, serviceName: serviceName)
         } else if let img = service.image {
+            let qualifiedImage = ComposeUp.qualifyImageReference(img)
             let effectivePolicy = pull ? "always" : service.pull_policy
             try await pullImage(
-                image: img,
+                image: qualifiedImage,
                 policy: effectivePolicy,
                 platform: service.platform,
                 loggingArguments: logging.passThroughCommands()
             )
-            imageToRun = img
+            imageToRun = qualifiedImage
         } else {
             throw ComposeError.imageNotFound(serviceName)
         }

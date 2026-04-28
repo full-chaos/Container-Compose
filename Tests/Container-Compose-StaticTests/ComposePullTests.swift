@@ -120,7 +120,7 @@ struct ComposePullTests {
             runner: alwaysRunner
         )
         #expect(await alwaysClient.entriesSnapshot() == [.imageList])
-        #expect(await alwaysRunner.swiftAPIArgvs(named: "ImagePull") == [["redis:latest"]])
+        #expect(await alwaysRunner.swiftAPIArgvs(named: "ImagePull") == [["docker.io/library/redis:latest"]])
 
         let neverRunner = RecordingRunner()
         let neverClient = RecordingContainerClientProvider()
@@ -144,7 +144,7 @@ struct ComposePullTests {
             runner: missingAbsentRunner
         )
         #expect(await missingAbsentClient.entriesSnapshot() == [.imageList])
-        #expect(await missingAbsentRunner.swiftAPIArgvs(named: "ImagePull") == [["nginx:latest"]])
+        #expect(await missingAbsentRunner.swiftAPIArgvs(named: "ImagePull") == [["docker.io/library/nginx:latest"]])
 
         let missingPresentRunner = RecordingRunner()
         let missingPresentClient = RecordingContainerClientProvider(imageReferences: ["docker.io/library/nginx:latest"])

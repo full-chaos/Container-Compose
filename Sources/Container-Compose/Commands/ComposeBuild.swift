@@ -166,7 +166,7 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         var inlineTempURL: URL? = nil
         defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
 
-        let imageTag = service.image ?? "\(serviceName):latest"
+        let imageTag = ComposeUp.qualifyImageReference(service.image ?? "\(serviceName):latest")
 
         var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
 

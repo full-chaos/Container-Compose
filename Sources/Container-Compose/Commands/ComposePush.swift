@@ -153,11 +153,13 @@ public struct ComposePush: AsyncParsableCommand, @unchecked Sendable {
     }
 
     private func pushImage(_ imageName: String, serviceName: String) async throws {
+        let qualifiedImageName = ComposeUp.qualifyImageReference(imageName)
+
         if !quiet {
-            print("Pushing image for service '\(serviceName)': \(imageName)")
+            print("Pushing image for service '\(serviceName)': \(qualifiedImageName)")
         }
 
-        let pushArgv = ["container", "image", "push", imageName] + logging.passThroughCommands()
+        let pushArgv = ["container", "image", "push", qualifiedImageName] + logging.passThroughCommands()
         let result = try await RunnerEnvironment.current.run(
             RunRequest(kind: .awaitOnly, argv: pushArgv, cwd: cwd),
             onStdout: nil,

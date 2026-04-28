@@ -24,18 +24,19 @@ func pullImage(
     platform: String? = nil,
     loggingArguments: [String] = []
 ) async throws {
+    let qualifiedImageName = ComposeUp.qualifyImageReference(imageName)
     let effectivePolicy = normalizedPullPolicy(policy)
 
     let imageList = try await client.imageList()
     let imageExists = imageList.contains(where: {
-        $0.description.reference.components(separatedBy: "/").last == imageName
+        $0.description.reference == qualifiedImageName || $0.description.reference.components(separatedBy: "/").last == imageName
     })
 
     switch effectivePolicy {
     case "never", "build":
         // Image must already be present; pull is forbidden.
         guard imageExists else {
-            throw ComposeError.imageNotFound(imageName)
+            throw ComposeError.imageNotFound(qualifiedImageName)
         }
         return
 
@@ -48,9 +49,9 @@ func pullImage(
         guard !imageExists else { return }
     }
 
-    print("Pulling Image \(imageName)...")
+    print("Pulling Image \(qualifiedImageName)...")
 
-    var commands = [imageName]
+    var commands = [qualifiedImageName]
 
     if let platform {
         commands.append(contentsOf: ["--platform", platform])

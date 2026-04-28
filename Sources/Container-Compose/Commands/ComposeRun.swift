@@ -160,11 +160,12 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         // 7. Resolve the image to run
         let imageToRun: String
         if let img = service.image {
-            try await pullImage(img, platform: service.platform, policy: service.pull_policy, logging: logging)
-            imageToRun = img
+            let qualifiedImage = ComposeUp.qualifyImageReference(img)
+            try await pullImage(qualifiedImage, platform: service.platform, policy: service.pull_policy, logging: logging)
+            imageToRun = qualifiedImage
         } else if service.build != nil {
             // Build-only service — use the derived image tag
-            imageToRun = service.image ?? "\(serviceName):latest"
+            imageToRun = ComposeUp.qualifyImageReference(service.image ?? "\(serviceName):latest")
         } else {
             throw ComposeError.imageNotFound(serviceName)
         }
@@ -349,6 +350,7 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
     // MARK: - Pull image helper
 
     private func pullImage(_ imageName: String, platform: String?, policy: String? = nil, logging: Flags.Logging) async throws {
+        let qualifiedImageName = ComposeUp.qualifyImageReference(imageName)
         let effectivePolicy: String
         switch policy?.lowercased() {
         case nil, "missing", "if_not_present":
@@ -365,13 +367,13 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
 
         let imageList = try await ContainerClientEnvironment.current.imageList()
         let imageExists = imageList.contains(where: {
-            $0.description.reference.components(separatedBy: "/").last == imageName
+            $0.description.reference == qualifiedImageName || $0.description.reference.components(separatedBy: "/").last == imageName
         })
 
         switch effectivePolicy {
         case "never", "build":
             guard imageExists else {
-                throw ComposeError.imageNotFound(imageName)
+                throw ComposeError.imageNotFound(qualifiedImageName)
             }
             return
         case "always":
@@ -380,9 +382,9 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             guard !imageExists else { return }
         }
 
-        print("Pulling Image \(imageName)...")
+        print("Pulling Image \(qualifiedImageName)...")
 
-        var commands = [imageName]
+        var commands = [qualifiedImageName]
         if let platform {
             commands.append(contentsOf: ["--platform", platform])
         }
