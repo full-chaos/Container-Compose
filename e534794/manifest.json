@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-18-3a506463b3070f05b4656a896cb438b29e4d1fb7",
+  "commit": "e534794f2358ce3dfbb99d79bb04d23b2818cdd0",
+  "short": "e534794",
+  "target": "e534794",
+  "message": "fix: env_file accepts string scalar and {path, required} mapping forms (CHAOS-1297) (#18)",
+  "published_at": "2026-04-28T07:44:39.990240+00:00"
+}
