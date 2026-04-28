@@ -178,55 +178,6 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         print("--- Containers Created ---\n")
     }
 
-    // MARK: - Image provisioning
-
-    private func pullImage(_ imageName: String, platform: String?, policy: String? = nil) async throws {
-        let effectivePolicy: String
-        if pull {
-            effectivePolicy = "always"
-        } else {
-            switch policy?.lowercased() {
-            case nil, "missing", "if_not_present":
-                effectivePolicy = "missing"
-            case "always":
-                effectivePolicy = "always"
-            case "never", "build":
-                effectivePolicy = "never"
-            default:
-                effectivePolicy = "missing"
-            }
-        }
-
-        let imageList = try await ContainerClientEnvironment.current.imageList()
-        let imageExists = imageList.contains(where: {
-            $0.description.reference.components(separatedBy: "/").last == imageName
-        })
-
-        switch effectivePolicy {
-        case "never", "build":
-            guard imageExists else {
-                throw ComposeError.imageNotFound(imageName)
-            }
-            return
-        case "always":
-            break
-        default:
-            guard !imageExists else { return }
-        }
-
-        print("Pulling image \(imageName)...")
-        var commands = [imageName]
-        if let platform {
-            commands.append(contentsOf: ["--platform", platform])
-        }
-        let imagePullArgv = commands + logging.passThroughCommands()
-        _ = try await RunnerEnvironment.current.run(
-            RunRequest(kind: .swiftAPI(name: "ImagePull"), argv: imagePullArgv, cwd: nil),
-            onStdout: nil,
-            onStderr: nil
-        )
-    }
-
     private func buildService(_ buildConfig: Build, for service: Service, serviceName: String) async throws -> String {
         var inlineTempURL: URL? = nil
         defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
@@ -373,7 +324,13 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         if let buildConfig = service.build {
             imageToRun = try await buildService(buildConfig, for: service, serviceName: serviceName)
         } else if let img = service.image {
-            try await pullImage(img, platform: service.platform, policy: service.pull_policy)
+            let effectivePolicy = pull ? "always" : service.pull_policy
+            try await pullImage(
+                image: img,
+                policy: effectivePolicy,
+                platform: service.platform,
+                loggingArguments: logging.passThroughCommands()
+            )
             imageToRun = img
         } else {
             throw ComposeError.imageNotFound(serviceName)
