@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-22-aa95d433817b796df75bf86e32bc05f0a82ee47c",
+  "commit": "1bcbfa2090e4f11af09cf4d95a88500e66c89c76",
+  "short": "1bcbfa2",
+  "target": "1bcbfa2",
+  "message": "feat: decode niche secret + config fields (CHAOS-1306) (#22)",
+  "published_at": "2026-04-28T08:28:11.504926+00:00"
+}
