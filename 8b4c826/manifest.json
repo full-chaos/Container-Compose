@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-41-0a587635cbb7640cf569736590ed2e0cfb946d0a",
+  "commit": "8b4c826c371e845e54b8c8bb4091b624338ffefc",
+  "short": "8b4c826",
+  "target": "8b4c826",
+  "message": "ci: serialize LineBuffer tests for parallel Swift Testing (CHAOS-1326) (#41)",
+  "published_at": "2026-04-28T19:14:23.636942+00:00"
+}
