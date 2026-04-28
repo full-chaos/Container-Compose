@@ -1,0 +1,8 @@
+{
+  "branch": "ci/node24-and-swift-version",
+  "commit": "f270aadbf23e32dea5003fd25a79000f3eb7624c",
+  "short": "f270aad",
+  "target": "f270aad",
+  "message": "ci: opt into Node 24 for JavaScript actions + pin Swift version",
+  "published_at": "2026-04-28T02:43:53.032586+00:00"
+}
