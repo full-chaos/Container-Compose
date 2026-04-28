@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "28acda1d38ad7a159ca7ae591d2a605989a2a599",
-  "short": "28acda1",
+  "commit": "e0449af16d43bdcaf4361a113a888c6c18b08849",
+  "short": "e0449af",
   "target": "current",
-  "message": "chore: post-B-sweep housekeeping (bugs.md, AGENTS.md Linear, .gitignore) (#24)",
-  "published_at": "2026-04-28T09:21:09.488721+00:00"
+  "message": "fix: Makefile builds via --product so TestHelpers stays out of release (CHAOS-1312) (#26)",
+  "published_at": "2026-04-28T09:42:50.745868+00:00"
 }
