@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-21-278cb04eeefe0a0c0d99e4560f0cacbef8e38eb6",
+  "commit": "aa95d433817b796df75bf86e32bc05f0a82ee47c",
+  "short": "aa95d43",
+  "target": "aa95d43",
+  "message": "feat: decode swarm-only deploy stubs (placement, update_config, rollback_config, endpoint_mode) (CHAOS-1305) (#21)",
+  "published_at": "2026-04-28T08:12:55.647917+00:00"
+}
