@@ -1,0 +1,8 @@
+{
+  "branch": "feat/container-client-seam",
+  "commit": "fe22beeb4438cd24b74469950de32b711d3cb773",
+  "short": "fe22bee",
+  "target": "fe22bee",
+  "message": "fix: route ClientImage.list() through the seam too (third upstream surface)",
+  "published_at": "2026-04-28T01:09:27.821251+00:00"
+}
