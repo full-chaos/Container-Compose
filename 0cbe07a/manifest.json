@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-31-2d39ccf97a762cf69623ece1801bc16ae9270968",
+  "commit": "0cbe07ac2535b7e13f4f2be0fe4717055a7306ca",
+  "short": "0cbe07a",
+  "target": "0cbe07a",
+  "message": "refactor: extract shared pullImage helper into Compose+Pull (CHAOS-1315) (#31)",
+  "published_at": "2026-04-28T12:43:19.560688+00:00"
+}
