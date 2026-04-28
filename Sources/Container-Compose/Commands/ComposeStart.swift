@@ -149,41 +149,42 @@ public struct ComposeStart: AsyncParsableCommand {
 
             print("Starting container: \(containerName)")
             do {
-                try await shellStart(containerName: containerName)
+                // Route through the RunCommandRunner seam (PR-5 of the
+                // recorder migration; see docs/plans/PLAN-recorder-seam.md
+                // §7 / §9 PR-5 / §10 Q4). The previous `shellStart` helper
+                // was deleted; `ProductionRunner` preserves the same
+                // `Process()` semantics byte-for-byte, and caller-side error
+                // translation keeps the original `NSError(domain: "ComposeStart", ...)`
+                // shape.
+                let request = RunRequest(
+                    kind: .awaitOnly,
+                    argv: ["container", "start", "--detach", containerName],
+                    cwd: cwd
+                )
+                let result = try await RunnerEnvironment.current.run(
+                    request,
+                    onStdout: nil,
+                    onStderr: nil
+                )
+                guard result.exitCode == 0 else {
+                    throw NSError(
+                        domain: "ComposeStart",
+                        code: Int(result.exitCode),
+                        userInfo: [NSLocalizedDescriptionKey: "container start exited with status \(result.exitCode)"]
+                    )
+                }
                 print("Successfully started container: \(containerName)")
             } catch {
                 print("Error starting container '\(containerName)': \(error)")
             }
         }
     }
-
-    private func shellStart(containerName: String) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = ["container", "start", "--detach", containerName]
-            proc.currentDirectoryURL = cwdURL
-            proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-            ]) { _, new in new }
-
-            proc.terminationHandler = { p in
-                if p.terminationStatus == 0 {
-                    continuation.resume()
-                } else {
-                    continuation.resume(throwing: NSError(
-                        domain: "ComposeStart",
-                        code: Int(p.terminationStatus),
-                        userInfo: [NSLocalizedDescriptionKey: "container start exited with status \(p.terminationStatus)"]
-                    ))
-                }
-            }
-
-            do {
-                try proc.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
 }
+
+// PR-5 of the recorder migration removed the `private func shellStart(...)`
+// helper that previously lived here. The `compose start` await-only shell-out
+// now flows through `RunnerEnvironment.current.run(_:onStdout:onStderr:)`
+// (see the call site in `startServices` above). `ProductionRunner` in
+// `Sources/Container-Compose/Runtime/RunCommandRunner.swift` preserves the
+// previous `Process()` semantics — including inherit-stdio for the await-only
+// call — byte-for-byte. See `docs/plans/PLAN-recorder-seam.md` §7 / §10 Q4 / §11.

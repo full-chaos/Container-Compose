@@ -17,6 +17,9 @@
 import Testing
 import Foundation
 import ArgumentParser
+import ContainerAPIClient
+import ContainerResource
+import ContainerizationOCI
 @testable import ContainerComposeCore
 import TestHelpers
 
@@ -530,4 +533,121 @@ struct RuntimeArgvTests {
             "expected --cache-from registry.example.com/api:base (got cache-froms: \(cacheFroms), full argv: \(argv))"
         )
     }
+
+    // MARK: - Plan §8 #8 — kill emits --signal in argv (PR-5 regression)
+
+    /// Plan §8 #8: every recorded `container kill` argv carries
+    /// `--signal SIGUSR1` and the project's container id. `ComposeKill` first
+    /// calls `ContainerClientEnvironment.current.get(id:)` to verify the
+    /// container exists; only then does it shell out to `container kill`.
+    /// `RecordingContainerClientProvider.get(id:)` throws "not found", which
+    /// would short-circuit the loop before reaching the seam — so this test
+    /// substitutes `KillTestContainerProvider` (defined below) which returns
+    /// a synthetic snapshot from `get(id:)` so the kill code path proceeds
+    /// to the runner. `imageList` / `networkGet` retain the not-found
+    /// semantics of the recording provider.
+    @Test("kill: argv carries --signal and applies to project containers")
+    func kill_emits_signal_in_argv() async throws {
+        let yaml = """
+        services:
+          web:
+            image: nginx:alpine
+          worker:
+            image: alpine:latest
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let recorder = RecordingRunner()
+        let containerProvider = KillTestContainerProvider()
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                var cmd = try ComposeKill.parse(["--signal", "SIGUSR1", "-f", compose.path])
+                try await cmd.run()
+            }
+        }
+
+        // Every recorded argv must be a `container kill --signal SIGUSR1 …`
+        // call, one per project service (per plan §8 #8: "Order matches
+        // reverse topo-sort"). Two services in the YAML ⇒ two kill argvs.
+        let argvs = await recorder.argvs()
+        let killArgvs = argvs.filter { $0.starts(with: ["container", "kill"]) }
+        #expect(
+            killArgvs.count == 2,
+            "expected one `container kill` per service (got \(killArgvs.count): \(killArgvs))"
+        )
+
+        for argv in killArgvs {
+            #expect(argv[0] == "container")
+            #expect(argv[1] == "kill")
+            #expect(
+                argv.contains("--signal"),
+                "argv must include --signal (got: \(argv))"
+            )
+            let signalIdx = try #require(argv.firstIndex(of: "--signal"))
+            #expect(
+                argv[signalIdx + 1] == "SIGUSR1",
+                "--signal value must be SIGUSR1 (got: \(argv))"
+            )
+            // The trailing positional argument is the container id, derived
+            // from the synthetic snapshot KillTestContainerProvider returns.
+            #expect(
+                argv.last?.hasSuffix("-web") == true || argv.last?.hasSuffix("-worker") == true,
+                "argv last token must be a project container id (got: \(argv))"
+            )
+        }
+    }
+}
+
+// MARK: - Test-only ContainerClientProvider for kill_emits_signal_in_argv
+
+/// `ComposeKill.killServices` calls `ContainerClientEnvironment.current.get(id:)`
+/// before each shell-out to verify the container exists. Returning a real
+/// `ContainerSnapshot` here forces the kill loop to proceed to the
+/// `RunCommandRunner` seam; the existing `RecordingContainerClientProvider`
+/// throws on `get(id:)` to mimic "not found" (its design contract per plan
+/// §10 Q2), which makes it unusable for kill argv recording.
+///
+/// Defined inline (rather than added to `Tests/TestHelpers/`) per the PR-5
+/// constraint that keeps `Tests/TestHelpers/RecordingContainerClientProvider.swift`
+/// untouched.
+private actor KillTestContainerProvider: ContainerClientProvider {
+    func list(filters: ContainerListFilters) async throws -> [ContainerSnapshot] { [] }
+
+    func get(id: String) async throws -> ContainerSnapshot {
+        // Construct a minimal-but-valid snapshot whose `id` matches the
+        // requested name. `ComposeKill` uses `container.id` as the trailing
+        // argv positional, so the recorded argv tail must be exactly `id`.
+        let descriptor = Descriptor(
+            mediaType: "application/vnd.oci.image.manifest.v1+json",
+            digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            size: 0
+        )
+        let image = ImageDescription(reference: id, descriptor: descriptor)
+        let process = ProcessConfiguration(
+            executable: "/bin/sh",
+            arguments: ["-c", "true"],
+            environment: []
+        )
+        let configuration = ContainerConfiguration(id: id, image: image, process: process)
+        return ContainerSnapshot(
+            configuration: configuration,
+            status: .running,
+            networks: []
+        )
+    }
+
+    func stop(id: String, opts: ContainerStopOptions) async throws {}
+    func delete(id: String, force: Bool) async throws {}
+    func logs(id: String) async throws -> [FileHandle] { [] }
+
+    func networkGet(id: String) async throws -> NetworkState {
+        throw NSError(
+            domain: "KillTestContainerProvider",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "no network '\(id)'"]
+        )
+    }
+
+    func imageList() async throws -> [ClientImage] { [] }
 }
