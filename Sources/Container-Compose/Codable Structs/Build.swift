@@ -50,6 +50,10 @@ public struct Build: Codable, Hashable {
     public let platforms: [String]?
     /// Size of /dev/shm during build
     public let shm_size: String?
+    /// BuildKit entitlements to grant during the build (e.g. `security.insecure`, `network.host`).
+    /// Decoded from compose-spec `build.entitlements`; not yet passed through to the build
+    /// command because `Application.BuildCommand` does not expose an `--allow` flag.
+    public let entitlements: [String]?
 
     /// Custom initializer to handle `build: .` (string) or `build: { context: . }` (object)
     public init(from decoder: Decoder) throws {
@@ -68,6 +72,7 @@ public struct Build: Codable, Hashable {
             self.ssh = nil
             self.platforms = nil
             self.shm_size = nil
+            self.entitlements = nil
         } else {
             let keyedContainer = try decoder.container(keyedBy: CodingKeys.self)
             self.context = try keyedContainer.decode(String.self, forKey: .context)
@@ -83,10 +88,11 @@ public struct Build: Codable, Hashable {
             self.ssh = try keyedContainer.decodeIfPresent([String].self, forKey: .ssh)
             self.platforms = try keyedContainer.decodeIfPresent([String].self, forKey: .platforms)
             self.shm_size = try keyedContainer.decodeIfPresent(String.self, forKey: .shm_size)
+            self.entitlements = try keyedContainer.decodeIfPresent([String].self, forKey: .entitlements)
         }
     }
 
     enum CodingKeys: String, CodingKey {
-        case context, dockerfile, args, target, dockerfile_inline, cache_from, cache_to, labels, network, secrets, ssh, platforms, shm_size
+        case context, dockerfile, args, target, dockerfile_inline, cache_from, cache_to, labels, network, secrets, ssh, platforms, shm_size, entitlements
     }
 }

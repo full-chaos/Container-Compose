@@ -122,8 +122,52 @@ struct BuildConfigurationTests {
     @Test("Absolute context path")
     func absoluteContextPath() {
         let context = "/absolute/path/to/build"
-        
+
         #expect(context.starts(with: "/") == true)
+    }
+
+    // MARK: - build.entitlements (CHAOS-1307)
+
+    @Test("Parse build with entitlements list")
+    func parseBuildWithEntitlements() throws {
+        let yaml = """
+        context: .
+        entitlements:
+          - security.insecure
+          - network.host
+        """
+
+        let decoder = YAMLDecoder()
+        let build = try decoder.decode(Build.self, from: yaml)
+
+        #expect(build.entitlements == ["security.insecure", "network.host"])
+    }
+
+    @Test("Parse build without entitlements defaults to nil")
+    func parseBuildWithoutEntitlementsIsNil() throws {
+        let yaml = """
+        context: .
+        """
+
+        let decoder = YAMLDecoder()
+        let build = try decoder.decode(Build.self, from: yaml)
+
+        #expect(build.entitlements == nil)
+    }
+
+    @Test("Parse build with single entitlement round-trips")
+    func parseBuildWithSingleEntitlementRoundTrips() throws {
+        let yaml = """
+        context: .
+        entitlements:
+          - security.insecure
+        """
+
+        let decoder = YAMLDecoder()
+        let build = try decoder.decode(Build.self, from: yaml)
+
+        #expect(build.entitlements == ["security.insecure"])
+        #expect(build.entitlements?.count == 1)
     }
 }
 
