@@ -17,6 +17,7 @@
 import Testing
 import Foundation
 @testable import Yams
+@testable import TestHelpers
 @testable import ContainerComposeCore
 
 /// Tests for Phase 3F — service.extends resolution.
@@ -31,6 +32,18 @@ struct ExtendsTests {
 
     private func resolved(_ yaml: String) throws -> DockerCompose {
         try decode(yaml).resolvingExtends()
+    }
+
+    private func makeTempDir() throws -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
+    private func writeYAML(_ content: String, to dir: URL, named filename: String) throws -> String {
+        let url = dir.appendingPathComponent(filename)
+        try content.write(to: url, atomically: true, encoding: .utf8)
+        return url.path
     }
 
     // MARK: - Map-form extends
@@ -171,25 +184,72 @@ struct ExtendsTests {
         }
     }
 
-    // MARK: - Cross-file extends (warn + skip)
+    // MARK: - Cross-file extends
 
-    @Test("Cross-file extends is skipped with a warning (no crash)")
-    func crossFileExtendsSkipped() throws {
-        let yaml = """
+    @Test("Cross-file extends merges service definitions from referenced file")
+    func crossFileExtendsMergesServiceDefinitions() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        _ = try writeYAML(DockerComposeYamlFiles.crossFileExtendsBaseYaml, to: dir, named: "base.yml")
+        let mainPath = try writeYAML("""
         services:
           child:
-            image: alpine:latest
             extends:
               service: base
-              file: ./other.yml
-        """
-        // Should not throw — cross-file extends is warned and skipped.
-        let dc = try resolved(yaml)
+              file: ./base.yml
+        """, to: dir, named: "compose.yml")
+
+        let dc = try DockerCompose.loadAndMerge(mainPath: mainPath).resolvingExtends()
         let child = try #require(dc.services["child"] as? Service)
-        // The child's own image should still be present.
-        #expect(child.image == "alpine:latest")
-        // extends should be cleared after resolution.
+        #expect(child.image == "alpine:3.18")
+        #expect(child.command == ["echo", "from-base"])
+        #expect(child.restart == "always")
         #expect(child.extends == nil)
+    }
+
+    @Test("Cross-file extends honors child precedence over inherited fields")
+    func crossFileExtendsChildPrecedence() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        _ = try writeYAML(DockerComposeYamlFiles.crossFileExtendsBaseYaml, to: dir, named: "base.yml")
+        let mainPath = try writeYAML(DockerComposeYamlFiles.crossFileExtendsChildYaml, to: dir, named: "compose.yml")
+
+        let dc = try DockerCompose.loadAndMerge(mainPath: mainPath).resolvingExtends()
+        let child = try #require(dc.services["child"] as? Service)
+        #expect(child.image == "alpine:edge")
+        #expect(child.command == ["echo", "from-base"])
+        #expect(child.restart == "always")
+        #expect(child.extends == nil)
+    }
+
+    @Test("Cross-file extends cycle detection throws across two files")
+    func crossFileExtendsCycleDetected() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let aPath = try writeYAML("""
+        services:
+          a:
+            image: alpine:a
+            extends:
+              service: b
+              file: ./b.yml
+        """, to: dir, named: "a.yml")
+
+        _ = try writeYAML("""
+        services:
+          b:
+            image: alpine:b
+            extends:
+              service: a
+              file: ./a.yml
+        """, to: dir, named: "b.yml")
+
+        #expect(throws: (any Error).self) {
+            _ = try DockerCompose.loadAndMerge(mainPath: aPath).resolvingExtends()
+        }
     }
 
     // MARK: - Post-resolution cleanup
