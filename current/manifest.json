@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "d7ab1b889be01bc0e66ba658c2dcb45fc7c4a7a7",
-  "short": "d7ab1b8",
+  "commit": "7dd0104a94271a6e5d75cae1add60edeeb606ee8",
+  "short": "7dd0104",
   "target": "current",
-  "message": "feat: route in-process Application.* calls through the seam (PR-6, pulled forward to unblock CI) (#12)",
-  "published_at": "2026-04-28T00:13:28.443632+00:00"
+  "message": "feat: add ContainerClientProvider seam so RuntimeArgvTests pass on CI (#13)",
+  "published_at": "2026-04-28T01:17:36.478662+00:00"
 }
