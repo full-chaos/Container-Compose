@@ -231,9 +231,9 @@
         ],
         [
           "condition: service_healthy",
-          "partial",
+          "ok",
           "yes",
-          "Honored at the gate; underlying ContainerSnapshot doesn't expose health, so falls back to .running with a TODO warning."
+          "Honored at the gate; checks container.health == .healthy via fork-patched ContainerSnapshot.health field. Falls back to .running if no healthcheck is configured on the service."
         ],
         [
           "condition: service_completed_successfully",
@@ -249,9 +249,9 @@
         ],
         [
           "restart (bool|string)",
-          "partial",
+          "ok",
           "yes",
-          "Parsed on DependsOnEntry. Restart manager wiring is Phase-future since Apple container's restart manager is also pending."
+          "Parsed on DependsOnEntry. Restart policy now emitted as --restart flag via fork-patched container run support."
         ]
       ]
     },
@@ -413,9 +413,9 @@
         ],
         [
           "restart",
-          "partial",
+          "ok",
           "yes",
-          "Decoded but NOT applied \u2014 container run does not support --restart. Code path commented out."
+          "Decoded and applied — emits --restart flag via fork-patched container run support."
         ],
         [
           "stdin_open",
@@ -1346,7 +1346,7 @@
           "compose logs",
           "ok",
           "yes",
-          "ComposeLogs subcommand streams logs via ContainerClient.logs() with prefixed colored output."
+          "ComposeLogs subcommand streams logs via ContainerClient.logs(id:options:) with prefixed colored output. Supports --since (ISO8601 and relative durations) and --timestamps via fork-patched ContainerLogOptions."
         ],
         [
           "compose ps",
@@ -1422,9 +1422,9 @@
         ],
         [
           "compose events",
-          "partial",
+          "ok",
           "yes",
-          "ComposeEvents implemented via 1s polling fallback (synthetic create/start/stop/die/destroy diff) because Apple `container` ContainerClient exposes no native event stream. Plain or --json output. True streaming pending upstream support."
+          "ComposeEvents uses native ContainerClient.events() API via fork-patched event buffer. Polls events endpoint every 1s, filters by project/service, outputs plain or --json."
         ],
         [
           "compose ls",
