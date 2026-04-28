@@ -1,0 +1,175 @@
+//===----------------------------------------------------------------------===//
+// Copyright © 2025 Morris Richman and the Container-Compose project authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//===----------------------------------------------------------------------===//
+
+//
+//  ComposePush.swift
+//  Container-Compose
+//
+
+import ArgumentParser
+import ContainerCommands
+import ContainerAPIClient
+import ContainerizationExtras
+import Foundation
+
+public struct ComposePush: AsyncParsableCommand, @unchecked Sendable {
+    public init() {}
+
+    public static let configuration: CommandConfiguration = .init(
+        commandName: "push",
+        abstract: "Push service images"
+    )
+
+    @Argument(help: "Services to push (pushes all image-based services if omitted)")
+    var services: [String] = []
+
+    @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")
+    var composeFilename: String?
+
+    @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
+    var profile: [String] = []
+
+    @Flag(name: [.long], help: "Also push images for dependency services")
+    var includeDeps: Bool = false
+
+    @Flag(name: [.long], help: "Do not fail if an image push cannot be done")
+    var ignorePushFailures: Bool = false
+
+    @Flag(name: [.customShort("q"), .customLong("quiet")], help: "Suppress progress output")
+    var quiet: Bool = false
+
+    @OptionGroup
+    var process: Flags.Process
+
+    @OptionGroup
+    var projectFlags: ProjectFlags
+
+    @OptionGroup
+    var logging: Flags.Logging
+
+    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+
+    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
+
+    private static let supportedComposeFilenames = [
+        "compose.yml",
+        "compose.yaml",
+        "docker-compose.yml",
+        "docker-compose.yaml",
+    ]
+
+    private var composePath: String {
+        if let composeFilename {
+            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
+        }
+        for filename in Self.supportedComposeFilenames {
+            let candidate = cwdURL.appending(path: filename).path
+            if FileManager.default.fileExists(atPath: candidate) {
+                return candidate
+            }
+        }
+        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
+    }
+
+    public mutating func run() async throws {
+        let dockerCompose = try DockerCompose
+            .loadAndMerge(mainPath: composePath)
+            .resolvingExtends()
+
+        var candidateServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
+            guard let service else { return nil }
+            return (name, service)
+        }
+
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        candidateServices = Service.filterByProfiles(candidateServices, activeProfiles: activeProfiles)
+        candidateServices = try Service.topoSortConfiguredServices(candidateServices)
+
+        if !services.isEmpty {
+            candidateServices = candidateServices.filter { serviceName, service in
+                if services.contains(serviceName) { return true }
+                if includeDeps && services.contains(where: { service.dependedBy.contains($0) }) {
+                    return true
+                }
+                return false
+            }
+        }
+
+        if !quiet {
+            print("Pushing images...")
+        }
+
+        var failedPushes: [(name: String, error: Error)] = []
+
+        for (serviceName, service) in candidateServices {
+            guard let imageName = service.image else {
+                if !quiet {
+                    if service.build != nil {
+                        print("Skipping build-only service '\(serviceName)' (no image field; no remote registry tag to push)")
+                    } else {
+                        print("Warning: Skipping service '\(serviceName)' (no image field)")
+                    }
+                }
+                continue
+            }
+
+            do {
+                try await pushImage(imageName, serviceName: serviceName)
+            } catch {
+                if ignorePushFailures {
+                    if !quiet {
+                        print("Warning: Failed to push image '\(imageName)' for service '\(serviceName)': \(error.localizedDescription)")
+                    }
+                    failedPushes.append((name: serviceName, error: error))
+                } else {
+                    throw error
+                }
+            }
+        }
+
+        if !quiet {
+            if failedPushes.isEmpty {
+                print("All images pushed successfully.")
+            } else {
+                print("Push completed with \(failedPushes.count) failure(s):")
+                for failed in failedPushes {
+                    print("  - \(failed.name): \(failed.error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func pushImage(_ imageName: String, serviceName: String) async throws {
+        if !quiet {
+            print("Pushing image for service '\(serviceName)': \(imageName)")
+        }
+
+        let pushArgv = ["container", "image", "push", imageName] + logging.passThroughCommands()
+        let result = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .awaitOnly, argv: pushArgv, cwd: cwd),
+            onStdout: nil,
+            onStderr: nil
+        )
+
+        guard result.exitCode == 0 else {
+            throw NSError(
+                domain: "ComposePush",
+                code: Int(result.exitCode),
+                userInfo: [NSLocalizedDescriptionKey: "container image push exited with status \(result.exitCode)"]
+            )
+        }
+    }
+}
