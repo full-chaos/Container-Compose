@@ -15,41 +15,44 @@
 //===----------------------------------------------------------------------===//
 
 //
-//  Deploy.swift
+//  DeployUpdateConfig.swift
 //  container-compose-app
 //
-//  Created by Morris Richman on 6/17/25.
-//
 
-
-/// Represents the `deploy` configuration for a service (primarily for Swarm orchestration).
-public struct Deploy: Codable, Hashable {
-    /// Deployment mode (e.g., 'replicated', 'global')
-    public let mode: String?
-    /// Number of replicated service tasks
-    public let replicas: Int?
-    /// Resource constraints (limits, reservations)
-    public let resources: DeployResources?
-    /// Restart policy for tasks
-    public let restart_policy: DeployRestartPolicy?
-
-    /// Placement constraints and preferences for Swarm scheduling.
+/// Configuration for rolling update or rollback behaviour in Swarm mode.
+///
+/// This type is shared between `deploy.update_config` and `deploy.rollback_config`
+/// as both have the same shape per the compose-spec.
+///
+/// Swarm-only; decoded but not enforced.
+public struct DeployUpdateConfig: Codable, Hashable {
+    /// Number of containers to update in parallel.
     ///
     /// Swarm-only; decoded but not enforced.
-    public let placement: DeployPlacement?
+    public let parallelism: Int?
 
-    /// Rolling update configuration.
+    /// Delay between updates/rollbacks (duration string, e.g. "10s").
     ///
     /// Swarm-only; decoded but not enforced.
-    public let update_config: DeployUpdateConfig?
+    public let delay: String?
 
-    /// Rollback configuration (same shape as update_config).
+    /// Action to take on update/rollback failure ("pause", "continue", "rollback").
     ///
     /// Swarm-only; decoded but not enforced.
-    public let rollback_config: DeployUpdateConfig?
+    public let failure_action: String?
 
-    /// Endpoint mode for service VIP resolution ("vip" or "dnsrr").
+    /// Duration to monitor updated tasks after each update (duration string).
     ///
     /// Swarm-only; decoded but not enforced.
-    public let endpoint_mode: String?
+    public let monitor: String?
+
+    /// Maximum fraction of tasks allowed to fail during an update.
+    ///
+    /// Swarm-only; decoded but not enforced.
+    public let max_failure_ratio: Double?
+
+    /// Order of operations: "start-first" or "stop-first".
+    ///
+    /// Swarm-only; decoded but not enforced.
+    public let order: String?
 }
