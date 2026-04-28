@@ -34,24 +34,36 @@ public struct Healthcheck: Codable, Hashable {
     public let retries: Int?
     /// Timeout for each check
     public let timeout: String?
-    
+    /// Interval used during `start_period` (Docker 24+, compose-spec `start_interval`).
+    /// Parse-only: enforcement is gated on Apple `container` runtime support
+    /// (currently absent — see AGENTS.md §6 #1).
+    public let start_interval: String?
+    /// Skip the inherited image healthcheck entirely (compose-spec `disable`).
+    /// Parse-only: enforcement is gated on Apple `container` runtime support
+    /// (currently absent — see AGENTS.md §6 #1).
+    public let disable: Bool?
+
     public init(
         test: [String]? = nil,
         start_period: String? = nil,
         interval: String? = nil,
         retries: Int? = nil,
-        timeout: String? = nil
+        timeout: String? = nil,
+        start_interval: String? = nil,
+        disable: Bool? = nil
     ) {
         self.test = test
         self.start_period = start_period
         self.interval = interval
         self.retries = retries
         self.timeout = timeout
+        self.start_interval = start_interval
+        self.disable = disable
     }
-    
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        
+
         // Handle if `test` is a single string instead of an array
         if let test = try? container.decodeIfPresent([String].self, forKey: .test) {
             self.test = test
@@ -60,10 +72,12 @@ public struct Healthcheck: Codable, Hashable {
         } else {
             self.test = nil
         }
-        
+
         self.start_period = try container.decodeIfPresent(String.self, forKey: .start_period)
         self.interval = try container.decodeIfPresent(String.self, forKey: .interval)
         self.retries = try container.decodeIfPresent(Int.self, forKey: .retries)
         self.timeout = try container.decodeIfPresent(String.self, forKey: .timeout)
+        self.start_interval = try container.decodeIfPresent(String.self, forKey: .start_interval)
+        self.disable = try container.decodeIfPresent(Bool.self, forKey: .disable)
     }
 }

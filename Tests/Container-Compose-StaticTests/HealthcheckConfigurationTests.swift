@@ -165,6 +165,66 @@ struct HealthcheckConfigurationTests {
         #expect(compose.services["web"]??.healthcheck != nil)
         #expect(compose.services["web"]??.healthcheck?.interval == "30s")
     }
+
+    @Test("Parse healthcheck with start_interval")
+    func parseHealthcheckWithStartInterval() throws {
+        let yaml = """
+        test: ["CMD", "curl", "-f", "http://localhost"]
+        start_interval: 30s
+        """
+
+        let decoder = YAMLDecoder()
+        let healthcheck = try decoder.decode(Healthcheck.self, from: yaml)
+
+        #expect(healthcheck.start_interval == "30s")
+    }
+
+    @Test("Parse healthcheck with disable true")
+    func parseHealthcheckWithDisableTrue() throws {
+        let yaml = """
+        disable: true
+        """
+
+        let decoder = YAMLDecoder()
+        let healthcheck = try decoder.decode(Healthcheck.self, from: yaml)
+
+        #expect(healthcheck.disable == true)
+    }
+
+    @Test("Parse complete healthcheck with start_interval and disable")
+    func parseCompleteHealthcheckWithNewFields() throws {
+        let yaml = """
+        test: ["CMD", "curl", "-f", "http://localhost"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s
+        start_interval: 5s
+        """
+
+        let decoder = YAMLDecoder()
+        let healthcheck = try decoder.decode(Healthcheck.self, from: yaml)
+
+        #expect(healthcheck.test != nil)
+        #expect(healthcheck.interval == "30s")
+        #expect(healthcheck.timeout == "10s")
+        #expect(healthcheck.retries == 3)
+        #expect(healthcheck.start_period == "40s")
+        #expect(healthcheck.start_interval == "5s")
+        #expect(healthcheck.disable == nil)
+    }
+
+    @Test("Parse disable healthcheck field omitted defaults to nil")
+    func parseHealthcheckDisableOmittedIsNil() throws {
+        let yaml = """
+        test: ["CMD", "curl", "-f", "http://localhost"]
+        interval: 30s
+        """
+
+        let decoder = YAMLDecoder()
+        let healthcheck = try decoder.decode(Healthcheck.self, from: yaml)
+
+        #expect(healthcheck.disable == nil)
+    }
 }
 
-// Test helper structs
