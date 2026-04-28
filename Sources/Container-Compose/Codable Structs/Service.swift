@@ -175,6 +175,12 @@ public struct Service: Codable, Hashable {
     /// Profiles this service belongs to
     public let profiles: [String]?
 
+    /// Top-level models this service references (decode-only)
+    public let models: [String]?
+
+    /// External provider configuration for services managed outside Compose
+    public let provider: ServiceProvider?
+
     // MARK: - Labels
 
     /// Metadata labels
@@ -339,7 +345,7 @@ public struct Service: Codable, Hashable {
         case group_add
         // Runtime Behaviour
         case init_ = "init"
-        case runtime, scale, pull_policy, profiles
+        case runtime, scale, pull_policy, profiles, models, provider
         // Labels
         case labels
         // Stop Behaviour
@@ -424,6 +430,8 @@ public struct Service: Codable, Hashable {
         scale: Int? = nil,
         pull_policy: String? = nil,
         profiles: [String]? = nil,
+        models: [String]? = nil,
+        provider: ServiceProvider? = nil,
         // Labels
         labels: [String: String]? = nil,
         // Stop Behaviour
@@ -522,6 +530,8 @@ public struct Service: Codable, Hashable {
         self.scale = scale
         self.pull_policy = pull_policy
         self.profiles = profiles
+        self.models = models
+        self.provider = provider
         self.labels = labels
         self.stop_signal = stop_signal
         self.stop_grace_period = stop_grace_period
@@ -574,11 +584,12 @@ public struct Service: Codable, Hashable {
         image = try container.decodeIfPresent(String.self, forKey: .image)
         build = try container.decodeIfPresent(Build.self, forKey: .build)
         deploy = try container.decodeIfPresent(Deploy.self, forKey: .deploy)
+        provider = try container.decodeIfPresent(ServiceProvider.self, forKey: .provider)
         let extendsDecoded = try container.decodeIfPresent(ExtendsConfig.self, forKey: .extends)
 
-        // Ensure that a service has either an image, a build context, or extends another service.
-        guard image != nil || build != nil || extendsDecoded != nil else {
-            throw DecodingError.dataCorruptedError(forKey: .image, in: container, debugDescription: "Service must have either 'image', 'build', or 'extends' specified.")
+        // Ensure that a service has an image, build context, provider, or extends another service.
+        guard image != nil || build != nil || provider != nil || extendsDecoded != nil else {
+            throw DecodingError.dataCorruptedError(forKey: .image, in: container, debugDescription: "Service must have either 'image', 'build', 'provider', or 'extends' specified.")
         }
 
         restart = try container.decodeIfPresent(String.self, forKey: .restart)
@@ -670,6 +681,13 @@ public struct Service: Codable, Hashable {
         scale = try container.decodeIfPresent(Int.self, forKey: .scale)
         pull_policy = try container.decodeIfPresent(String.self, forKey: .pull_policy)
         profiles = try container.decodeIfPresent([String].self, forKey: .profiles)
+        if let modelList = try? container.decodeIfPresent([String].self, forKey: .models) {
+            models = modelList
+        } else if let modelMap = try? container.decodeIfPresent([String: Model?].self, forKey: .models) {
+            models = modelMap.keys.sorted()
+        } else {
+            models = nil
+        }
 
         // Labels
         labels = try container.decodeIfPresent([String: String].self, forKey: .labels)

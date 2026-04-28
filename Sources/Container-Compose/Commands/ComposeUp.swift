@@ -116,6 +116,8 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private var environmentVariables: [String: String] = [:]
     private var containerIps: [String: String] = [:]
     private var containerConsoleColors: [String: NamedColor] = [:]
+    private var didWarnServiceModelsUnsupported = false
+    private var didWarnServiceProviderUnsupported = false
 
     private static let availableContainerConsoleColors: Set<NamedColor> = [
         .blue, .cyan, .magenta, .lightBlack, .lightBlue, .lightCyan, .lightYellow, .yellow, .lightGreen, .green,
@@ -155,6 +157,10 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             )
         } else {
             print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(resolvedName)")
+        }
+
+        if let models = dockerCompose.models, !models.isEmpty {
+            print("'top.models' Detected, But Not Supported")
         }
 
         // Get Services to use
@@ -496,6 +502,17 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
         if service.cgroup != nil {
             print("Note: 'cgroup' for service '\(serviceName)' is not supported by Apple container; ignored.")
+        }
+        if let models = service.models, !models.isEmpty, !didWarnServiceModelsUnsupported {
+            print("'service.models' Detected, But Not Supported")
+            didWarnServiceModelsUnsupported = true
+        }
+        if service.provider != nil, !didWarnServiceProviderUnsupported {
+            print("'service.provider' Detected, But Not Supported")
+            didWarnServiceProviderUnsupported = true
+        }
+        if service.provider != nil, service.image == nil, service.build == nil {
+            return
         }
 
         var imageToRun: String
