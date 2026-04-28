@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-17-9d2c99c0ac05c757581b96a38c353e013ca6f1ad",
+  "commit": "264982a8e53b9c62fa2c7f4d0b53c823ff434aeb",
+  "short": "264982a",
+  "target": "264982a",
+  "message": "ci: opt into Node 24 for JavaScript actions + pin Swift version (#17)",
+  "published_at": "2026-04-28T03:11:03.639181+00:00"
+}
