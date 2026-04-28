@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr5",
+  "commit": "dab093497c7e185c894bb53f0b70d751ae854aa9",
+  "short": "dab0934",
+  "target": "dab0934",
+  "message": "feat: route Kill/Start/Exec/Watch through seam (PR-5 of recorder migration, completes seam migration)",
+  "published_at": "2026-04-28T02:13:06.626445+00:00"
+}
