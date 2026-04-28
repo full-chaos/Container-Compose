@@ -285,6 +285,41 @@ public struct Service: Codable, Hashable {
     /// Develop configuration for filesystem watching (Phase 5C)
     public let develop: Develop?
 
+    // MARK: - CHAOS-1303: Parity fields (decode-only; not enforced at runtime)
+
+    /// cgroup parent for the container (decode-only; not supported by Apple container)
+    public let cgroup_parent: String?
+
+    /// Windows credential spec (decode-only; not supported by Apple container)
+    public let credential_spec: String?
+
+    /// Isolation technology (decode-only; not supported by Apple container)
+    public let isolation: String?
+
+    /// Label files to load metadata labels from (accepts single string or list)
+    public let label_file: [String]?
+
+    /// Lifecycle hooks to run after the container starts (decode-only)
+    public let post_start: [ServiceHook]?
+
+    /// Lifecycle hooks to run before the container stops (decode-only)
+    public let pre_stop: [ServiceHook]?
+
+    /// Duration after which a pulled image should be refreshed (decode-only)
+    public let pull_refresh_after: String?
+
+    /// Whether to pass the API socket into the container (decode-only)
+    public let use_api_socket: Bool?
+
+    /// OCI annotations for the container (decode-only)
+    public let annotations: [String: String]?
+
+    /// Whether to attach to the container's stdio (decode-only)
+    public let attach: Bool?
+
+    /// cgroup namespace mode (decode-only; not supported by Apple container)
+    public let cgroup: String?
+
     /// Other services that depend on this service
     public var dependedBy: [String] = []
 
@@ -329,6 +364,11 @@ public struct Service: Codable, Hashable {
         case blkio_config
         // Develop / Watch (Phase 5C)
         case develop
+        // CHAOS-1303: Parity fields
+        case cgroup_parent, credential_spec, isolation, label_file
+        case post_start, pre_stop
+        case pull_refresh_after, use_api_socket
+        case annotations, attach, cgroup
     }
     
     /// Public memberwise initializer for testing
@@ -423,6 +463,18 @@ public struct Service: Codable, Hashable {
         gpus: Gpus? = nil,
         blkio_config: BlkioConfig? = nil,
         develop: Develop? = nil,
+        // CHAOS-1303: Parity fields
+        cgroup_parent: String? = nil,
+        credential_spec: String? = nil,
+        isolation: String? = nil,
+        label_file: [String]? = nil,
+        post_start: [ServiceHook]? = nil,
+        pre_stop: [ServiceHook]? = nil,
+        pull_refresh_after: String? = nil,
+        use_api_socket: Bool? = nil,
+        annotations: [String: String]? = nil,
+        attach: Bool? = nil,
+        cgroup: String? = nil,
         dependedBy: [String] = []
     ) {
         self.image = image
@@ -502,6 +554,17 @@ public struct Service: Codable, Hashable {
         self.gpus = gpus
         self.blkio_config = blkio_config
         self.develop = develop
+        self.cgroup_parent = cgroup_parent
+        self.credential_spec = credential_spec
+        self.isolation = isolation
+        self.label_file = label_file
+        self.post_start = post_start
+        self.pre_stop = pre_stop
+        self.pull_refresh_after = pull_refresh_after
+        self.use_api_socket = use_api_socket
+        self.annotations = annotations
+        self.attach = attach
+        self.cgroup = cgroup
         self.dependedBy = dependedBy
     }
 
@@ -659,6 +722,28 @@ public struct Service: Codable, Hashable {
 
         // Develop / Watch (Phase 5C)
         develop = try container.decodeIfPresent(Develop.self, forKey: .develop)
+
+        // CHAOS-1303: Parity fields (decode-only)
+        cgroup_parent = try container.decodeIfPresent(String.self, forKey: .cgroup_parent)
+        credential_spec = try container.decodeIfPresent(String.self, forKey: .credential_spec)
+        isolation = try container.decodeIfPresent(String.self, forKey: .isolation)
+
+        // label_file accepts a single string or a list of strings.
+        if let labelFileArray = try? container.decodeIfPresent([String].self, forKey: .label_file) {
+            label_file = labelFileArray
+        } else if let labelFileString = try? container.decodeIfPresent(String.self, forKey: .label_file) {
+            label_file = [labelFileString]
+        } else {
+            label_file = nil
+        }
+
+        post_start = try container.decodeIfPresent([ServiceHook].self, forKey: .post_start)
+        pre_stop = try container.decodeIfPresent([ServiceHook].self, forKey: .pre_stop)
+        pull_refresh_after = try container.decodeIfPresent(String.self, forKey: .pull_refresh_after)
+        use_api_socket = try container.decodeIfPresent(Bool.self, forKey: .use_api_socket)
+        annotations = try container.decodeIfPresent([String: String].self, forKey: .annotations)
+        attach = try container.decodeIfPresent(Bool.self, forKey: .attach)
+        cgroup = try container.decodeIfPresent(String.self, forKey: .cgroup)
     }
 
     /// Returns the services in topological order based on `dependsOn` relationships.

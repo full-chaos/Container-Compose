@@ -316,7 +316,12 @@ extension DockerCompose {
                     pids_limit: svc.pids_limit, shm_size: svc.shm_size,
                     ulimits: svc.ulimits, logging: svc.logging,
                     devices: svc.devices, device_cgroup_rules: svc.device_cgroup_rules, storage_opt: svc.storage_opt,
-                    extends: nil
+                    extends: nil,
+                    cgroup_parent: svc.cgroup_parent, credential_spec: svc.credential_spec,
+                    isolation: svc.isolation, label_file: svc.label_file,
+                    post_start: svc.post_start, pre_stop: svc.pre_stop,
+                    pull_refresh_after: svc.pull_refresh_after, use_api_socket: svc.use_api_socket,
+                    annotations: svc.annotations, attach: svc.attach, cgroup: svc.cgroup
                 )
                 cache[name] = stripped
                 return stripped
@@ -411,7 +416,18 @@ extension DockerCompose {
                 devices: svc.devices ?? base.devices,
                 device_cgroup_rules: svc.device_cgroup_rules ?? base.device_cgroup_rules,
                 storage_opt: svc.storage_opt ?? base.storage_opt,
-                extends: nil  // clear extends after resolution
+                extends: nil,  // clear extends after resolution
+                cgroup_parent: svc.cgroup_parent ?? base.cgroup_parent,
+                credential_spec: svc.credential_spec ?? base.credential_spec,
+                isolation: svc.isolation ?? base.isolation,
+                label_file: svc.label_file ?? base.label_file,
+                post_start: svc.post_start ?? base.post_start,
+                pre_stop: svc.pre_stop ?? base.pre_stop,
+                pull_refresh_after: svc.pull_refresh_after ?? base.pull_refresh_after,
+                use_api_socket: svc.use_api_socket ?? base.use_api_socket,
+                annotations: svc.annotations ?? base.annotations,
+                attach: svc.attach ?? base.attach,
+                cgroup: svc.cgroup ?? base.cgroup
             )
 
             cache[name] = merged
