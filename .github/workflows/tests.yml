@@ -73,9 +73,7 @@ jobs:
       run: swift build --build-tests
 
     - name: Run tests
-      # TODO(CHAOS-1314): revert --no-parallel once upstream Swift Testing fixes
-      # swiftpm-testing-helper SIGBUS during post-pass teardown on macOS CI.
-      run: swift test --no-parallel
+      run: swift test
 
     - name: Upload test artifacts on failure
       if: failure()
