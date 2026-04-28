@@ -235,10 +235,21 @@ public struct ProductionRunner: RunCommandRunner {
     // Each spawner is a verbatim port of an existing helper body (modulo the
     // argv-as-array parameterisation). PR-2..5 will delete the originals.
 
-    /// Mirrors `ComposeUp.streamCommand` (Sources/Container-Compose/Commands/
-    /// ComposeUp.swift:902-955). When `onStdout`/`onStderr` are nil, falls
-    /// through to `print` / `fputs(_:stderr)` to preserve `ComposeRun.streamCommand`
-    /// (Sources/Container-Compose/Commands/ComposeRun.swift:359-406) parity.
+    /// Mirrors the deleted `ComposeUp.streamCommand` / `ComposeRun.streamCommand`
+    /// helpers, with one upgrade per PLAN.md §4: stdout/stderr are buffered
+    /// per-handle until newline-terminated lines can be emitted, so each
+    /// `onStdout`/`onStderr` invocation receives exactly one complete line
+    /// (no trailing `\n`). This fixes the column-wrap bug where the upstream
+    /// callers (e.g. `ComposeUp.configService`'s `handleOutput`) prefix every
+    /// invocation with `"<service>: "` — previously each transport-chunk
+    /// boundary was treated as a line boundary, yielding fragmented prefixed
+    /// output.
+    ///
+    /// When `onStdout`/`onStderr` are nil, falls through to `print(line)` /
+    /// `fputs("<line>\n", stderr)` — both add a trailing newline (matching
+    /// the pre-fix `print(_:terminator:"")` / `fputs(_:stderr)` behaviour for
+    /// newline-terminated streams, while now correctly buffering chunks split
+    /// across reads).
     private func spawnStreaming(
         argv: [String],
         cwd: String?,
@@ -265,15 +276,22 @@ public struct ProductionRunner: RunCommandRunner {
             let stdoutHandle = stdoutPipe.fileHandleForReading
             let stderrHandle = stderrPipe.fileHandleForReading
 
+            // PLAN.md §4: one buffer per handle. `readabilityHandler`
+            // invocations on a single FileHandle are serialized by the OS,
+            // so single-handle access needs no locking.
+            let stdoutBuffer = LineBuffer()
+            let stderrBuffer = LineBuffer()
+
             stdoutHandle.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                if let string = String(data: data, encoding: .utf8) {
+                stdoutBuffer.append(data) { line in
                     if let onStdout {
-                        onStdout(string)
+                        onStdout(line)
                     } else {
-                        // ComposeRun parity: write directly to parent stdout.
-                        print(string, terminator: "")
+                        // ComposeRun parity: write directly to parent stdout
+                        // (default `print` terminator is "\n").
+                        print(line)
                     }
                 }
             }
@@ -281,12 +299,12 @@ public struct ProductionRunner: RunCommandRunner {
             stderrHandle.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                if let string = String(data: data, encoding: .utf8) {
+                stderrBuffer.append(data) { line in
                     if let onStderr {
-                        onStderr(string)
+                        onStderr(line)
                     } else {
                         // ComposeRun parity: write directly to parent stderr.
-                        fputs(string, stderr)
+                        fputs("\(line)\n", stderr)
                     }
                 }
             }
@@ -294,6 +312,22 @@ public struct ProductionRunner: RunCommandRunner {
             process.terminationHandler = { proc in
                 stdoutHandle.readabilityHandler = nil
                 stderrHandle.readabilityHandler = nil
+                // Flush any trailing partial line (process exited without a
+                // final newline). `LineBuffer.flush` is a no-op on empty.
+                stdoutBuffer.flush { line in
+                    if let onStdout {
+                        onStdout(line)
+                    } else {
+                        print(line)
+                    }
+                }
+                stderrBuffer.flush { line in
+                    if let onStderr {
+                        onStderr(line)
+                    } else {
+                        fputs("\(line)\n", stderr)
+                    }
+                }
                 continuation.resume(returning: proc.terminationStatus)
             }
 
@@ -357,5 +391,57 @@ public struct ProductionRunner: RunCommandRunner {
                 continuation.resume(returning: false)
             }
         }
+    }
+}
+
+// MARK: - LineBuffer
+
+/// Buffers byte chunks read from a streaming `FileHandle` until newline-
+/// terminated lines can be emitted. Fixes the log column-wrap bug
+/// (PLAN.md §4) where transport-chunk boundaries were being treated as
+/// line boundaries by `ProductionRunner.spawnStreaming`.
+///
+/// `readabilityHandler` invocations on a given `FileHandle` are serialized
+/// by the OS, so this class needs no internal locking for single-handle
+/// use. Each `spawnStreaming` invocation creates two independent buffers
+/// (one for stdout, one for stderr).
+///
+/// Contract:
+/// - Splits only on `\n` (0x0A). `\r\n` line endings will leave the `\r`
+///   attached to the emitted line (we do not strip it). This matches the
+///   pre-fix behaviour of treating bytes verbatim.
+/// - Drops invalid UTF-8 lines silently rather than emitting garbage.
+///   (A partial multi-byte UTF-8 sequence at the end of a chunk stays
+///   buffered until the rest arrives, so well-formed UTF-8 is preserved.)
+///
+/// `internal` (rather than `private`) so unit tests can exercise it
+/// directly via `@testable import ContainerComposeCore`.
+final class LineBuffer: @unchecked Sendable {
+    private var buffer = Data()
+
+    /// Append `data`, then invoke `emit` once per complete `\n`-terminated
+    /// line found in the accumulated buffer. The trailing `\n` is stripped
+    /// before emission. Any partial line at the end stays buffered.
+    func append(_ data: Data, emit: (String) -> Void) {
+        buffer.append(data)
+        while let nlIdx = buffer.firstIndex(of: 0x0A) {  // '\n'
+            let lineData = buffer[buffer.startIndex..<nlIdx]
+            if let line = String(data: Data(lineData), encoding: .utf8) {
+                emit(line)
+            }
+            // Drop emitted bytes + the newline.
+            buffer.removeSubrange(buffer.startIndex...nlIdx)
+        }
+    }
+
+    /// Emit any remaining buffered bytes as a final line (no trailing
+    /// newline expected on EOF). Call this from `terminationHandler` after
+    /// the readability handlers have been nil'd. No-op if buffer is empty.
+    func flush(emit: (String) -> Void) {
+        guard !buffer.isEmpty else { return }
+        if let line = String(data: buffer, encoding: .utf8) {
+            emit(line)
+        }
+        buffer.removeAll()
     }
 }
