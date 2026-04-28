@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "57a1053ba561e11d44ae4bd5046f80978dba0eab",
-  "short": "57a1053",
+  "commit": "d7ab1b889be01bc0e66ba658c2dcb45fc7c4a7a7",
+  "short": "d7ab1b8",
   "target": "current",
-  "message": "feat: route ComposeRun through seam + fix entrypoint ordering (PR-3 of recorder migration) (#11)",
-  "published_at": "2026-04-28T00:13:11.404988+00:00"
+  "message": "feat: route in-process Application.* calls through the seam (PR-6, pulled forward to unblock CI) (#12)",
+  "published_at": "2026-04-28T00:13:28.443632+00:00"
 }
