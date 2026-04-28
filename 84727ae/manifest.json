@@ -1,0 +1,8 @@
+{
+  "branch": "chore/rename-package-to-container-compose",
+  "commit": "84727ae5a4d224efd114551100e7fab9f626a344",
+  "short": "84727ae",
+  "target": "84727ae",
+  "message": "ci: add merge_group trigger so required checks fire on merge queue",
+  "published_at": "2026-04-28T12:09:33.118689+00:00"
+}
