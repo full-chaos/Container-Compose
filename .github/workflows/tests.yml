@@ -18,6 +18,10 @@ on:
       - 'Package.swift'
       - 'Package.resolved'
       - '.github/workflows/tests.yml'
+  # Merge queue evaluates required status checks against a synthetic
+  # merge-group commit. Without this trigger the queue blocks forever
+  # waiting for `Build and Test` to report.
+  merge_group:
 
 # Cancel stale runs on the same ref so superseded commits don't burn CI time.
 concurrency:
