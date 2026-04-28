@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "40dfca94b48899e8539ab9511107a3e20b189c5b",
-  "short": "40dfca9",
+  "commit": "ed1a89d1954d05368f8524db47c73f1393ed581b",
+  "short": "ed1a89d",
   "target": "current",
-  "message": "feat: enforce service_completed_successfully via lastExitCode (CHAOS-1320) (#37)",
-  "published_at": "2026-04-28T16:45:28.071662+00:00"
+  "message": "fix: skip --plugin emission for Docker default 'bridge' driver (CHAOS-1327) (#38)",
+  "published_at": "2026-04-28T17:44:01.900232+00:00"
 }
