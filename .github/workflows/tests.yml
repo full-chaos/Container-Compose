@@ -24,6 +24,13 @@ concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Opt JavaScript actions into Node 24 ahead of GitHub's June 2026 forced
+# migration. Silences the deprecation warning from actions/cache@v4,
+# actions/checkout@v4, swift-actions/setup-swift@v3, etc.
+# https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     name: Build and Test
@@ -33,8 +40,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # Pin Swift to the version that swift-actions/setup-swift@v3's `latest`
+    # currently resolves to anyway, so the "requested: latest, actual: 6.3.1"
+    # warning goes away. Bump alongside Package.swift's swift-tools-version.
     - name: Setup Swift
       uses: swift-actions/setup-swift@v3
+      with:
+        swift-version: "6.3.1"
 
     # CI runners do not ship Apple `container`. Dynamic suites apply
     # .enabled(if: RuntimeAvailability.isAvailable()), so they skip cleanly here
