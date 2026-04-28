@@ -1,0 +1,8 @@
+{
+  "branch": "feat/recorder-seam-pr4",
+  "commit": "d79a1da91ca0080ed514390f2e20655667d7dc13",
+  "short": "d79a1da",
+  "target": "d79a1da",
+  "message": "feat: route ComposeCreate through seam + fix entrypoint ordering (PR-4 of recorder migration, closes \u00a71)",
+  "published_at": "2026-04-28T01:35:14.669257+00:00"
+}
