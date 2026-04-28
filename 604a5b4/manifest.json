@@ -1,0 +1,8 @@
+{
+  "branch": "feature/CHAOS-1299-missing-cli-subcommands",
+  "commit": "604a5b4e4e66c187d102315a0bad2b7abce18e4d",
+  "short": "604a5b4",
+  "target": "604a5b4",
+  "message": "feat: implement compose top/port/events/push subcommands (CHAOS-1299)",
+  "published_at": "2026-04-28T10:32:48.237250+00:00"
+}
