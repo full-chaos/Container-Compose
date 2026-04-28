@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-30-b13ee400ada3ce39b918a94c2601b4efb4e8094a",
+  "commit": "2d39ccf97a762cf69623ece1801bc16ae9270968",
+  "short": "2d39ccf",
+  "target": "2d39ccf",
+  "message": "ci: fix swiftpm-testing-helper signal-10 flake (CHAOS-1314) (#30)",
+  "published_at": "2026-04-28T12:42:53.460405+00:00"
+}
