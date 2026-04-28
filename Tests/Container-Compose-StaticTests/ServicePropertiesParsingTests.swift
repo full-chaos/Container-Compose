@@ -495,6 +495,134 @@ struct ServicePropertiesParsingTests {
         #expect(svc.storage_opt?["size"] == "1G")
     }
 
+    // MARK: - CHAOS-1303: Parity fields (decode-only)
+
+    @Test("Parse cgroup_parent")
+    func parseCgroupParent() throws {
+        let yaml = wrap("cgroup_parent: /sys/fs/cgroup/memory/docker")
+        let svc = try decodeService(yaml)
+        #expect(svc.cgroup_parent == "/sys/fs/cgroup/memory/docker")
+    }
+
+    @Test("Parse credential_spec")
+    func parseCredentialSpec() throws {
+        let yaml = wrap("credential_spec: file://my-credential-spec.json")
+        let svc = try decodeService(yaml)
+        #expect(svc.credential_spec == "file://my-credential-spec.json")
+    }
+
+    @Test("Parse isolation")
+    func parseIsolation() throws {
+        let yaml = wrap("isolation: process")
+        let svc = try decodeService(yaml)
+        #expect(svc.isolation == "process")
+    }
+
+    @Test("Parse label_file as single string")
+    func parseLabelFileString() throws {
+        let yaml = wrap("label_file: ./labels.env")
+        let svc = try decodeService(yaml)
+        #expect(svc.label_file == ["./labels.env"])
+    }
+
+    @Test("Parse label_file as list")
+    func parseLabelFileList() throws {
+        let yaml = wrap("""
+        label_file:
+          - ./labels1.env
+          - ./labels2.env
+        """)
+        let svc = try decodeService(yaml)
+        #expect(svc.label_file == ["./labels1.env", "./labels2.env"])
+    }
+
+    @Test("Parse post_start hooks")
+    func parsePostStart() throws {
+        let yaml = wrap("""
+        post_start:
+          - command: /bin/init.sh
+            user: root
+            privileged: true
+            working_dir: /app
+            environment:
+              FOO: bar
+        """)
+        let svc = try decodeService(yaml)
+        let hooks = try #require(svc.post_start)
+        #expect(hooks.count == 1)
+        #expect(hooks[0].command == ["/bin/init.sh"])
+        #expect(hooks[0].user == "root")
+        #expect(hooks[0].privileged == true)
+        #expect(hooks[0].working_dir == "/app")
+        #expect(hooks[0].environment?["FOO"] == "bar")
+    }
+
+    @Test("Parse pre_stop hooks")
+    func parsePreStop() throws {
+        let yaml = wrap("""
+        pre_stop:
+          - command: /bin/cleanup.sh
+        """)
+        let svc = try decodeService(yaml)
+        let hooks = try #require(svc.pre_stop)
+        #expect(hooks.count == 1)
+        #expect(hooks[0].command == ["/bin/cleanup.sh"])
+    }
+
+    @Test("Parse post_start command as array")
+    func parsePostStartCommandArray() throws {
+        let yaml = wrap("""
+        post_start:
+          - command:
+              - /bin/sh
+              - -c
+              - echo hello
+        """)
+        let svc = try decodeService(yaml)
+        let hooks = try #require(svc.post_start)
+        #expect(hooks[0].command == ["/bin/sh", "-c", "echo hello"])
+    }
+
+    @Test("Parse pull_refresh_after")
+    func parsePullRefreshAfter() throws {
+        let yaml = wrap("pull_refresh_after: 24h")
+        let svc = try decodeService(yaml)
+        #expect(svc.pull_refresh_after == "24h")
+    }
+
+    @Test("Parse use_api_socket")
+    func parseUseApiSocket() throws {
+        let yaml = wrap("use_api_socket: true")
+        let svc = try decodeService(yaml)
+        #expect(svc.use_api_socket == true)
+    }
+
+    @Test("Parse annotations as map")
+    func parseAnnotations() throws {
+        let yaml = wrap("""
+        annotations:
+          com.example.description: "My service"
+          com.example.version: "1.0"
+        """)
+        let svc = try decodeService(yaml)
+        #expect(svc.annotations?["com.example.description"] == "My service")
+        #expect(svc.annotations?["com.example.version"] == "1.0")
+    }
+
+    @Test("Parse attach")
+    func parseAttach() throws {
+        let yaml = wrap("attach: false")
+        let svc = try decodeService(yaml)
+        #expect(svc.attach == false)
+    }
+
+    @Test("Parse cgroup")
+    func parseCgroup() throws {
+        let yaml = wrap("cgroup: private")
+        let svc = try decodeService(yaml)
+        #expect(svc.cgroup == "private")
+    }
+
     // MARK: - Absence tests (optional fields absent when not set)
 
     @Test("All new optional fields are nil when not specified")
@@ -554,5 +682,17 @@ struct ServicePropertiesParsingTests {
         #expect(svc.devices == nil)
         #expect(svc.device_cgroup_rules == nil)
         #expect(svc.storage_opt == nil)
+        // CHAOS-1303 parity fields
+        #expect(svc.cgroup_parent == nil)
+        #expect(svc.credential_spec == nil)
+        #expect(svc.isolation == nil)
+        #expect(svc.label_file == nil)
+        #expect(svc.post_start == nil)
+        #expect(svc.pre_stop == nil)
+        #expect(svc.pull_refresh_after == nil)
+        #expect(svc.use_api_socket == nil)
+        #expect(svc.annotations == nil)
+        #expect(svc.attach == nil)
+        #expect(svc.cgroup == nil)
     }
 }
