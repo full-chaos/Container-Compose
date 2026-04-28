@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "71d83fe5e34afbcdd370ff54b1f0009aee4adb69",
-  "short": "71d83fe",
+  "commit": "cb6f6cba2ecb9b1dea36155fd9442bc776a65ec8",
+  "short": "cb6f6cb",
   "target": "current",
-  "message": "feat: implement compose top/port/events/push subcommands (CHAOS-1299) (#27)",
-  "published_at": "2026-04-28T10:37:33.170029+00:00"
+  "message": "docs: refresh AGENTS.md + flip 2 stale miss rows post-CHAOS-1299 (#29)",
+  "published_at": "2026-04-28T12:08:58.334443+00:00"
 }
