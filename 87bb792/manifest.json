@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-28-71d83fe5e34afbcdd370ff54b1f0009aee4adb69",
+  "commit": "87bb792e9308c28b94a2f05542c3232dbe8fe6ff",
+  "short": "87bb792",
+  "target": "87bb792",
+  "message": "chore: rename SwiftPM package + binary to container-compose (#28)",
+  "published_at": "2026-04-28T10:58:15.544122+00:00"
+}
