@@ -1338,9 +1338,9 @@
         ],
         [
           "compose push",
-          "miss",
-          "no",
-          ""
+          "ok",
+          "yes",
+          "ComposePush shells out to `container image push <image>` per service via RunnerEnvironment. Honors profile filter, --include-deps, --ignore-push-failures, --quiet. Build-only services skipped with note."
         ],
         [
           "compose logs",
@@ -1410,21 +1410,21 @@
         ],
         [
           "compose port",
-          "miss",
-          "no",
-          ""
+          "ok",
+          "yes",
+          "ComposePort resolves <service> <private-port> [--protocol tcp|udp] against service.ports via composePortToRunArg; prints 0.0.0.0:<host-port> or exits non-zero if unmapped."
         ],
         [
           "compose top",
-          "miss",
-          "no",
-          ""
+          "ok",
+          "yes",
+          "ComposeTop shells out to `container exec <id> ps -ef` per running project container via RunnerEnvironment. Apple `container` runtime exposes no native top API."
         ],
         [
           "compose events",
-          "miss",
-          "no",
-          ""
+          "partial",
+          "yes",
+          "ComposeEvents implemented via 1s polling fallback (synthetic create/start/stop/die/destroy diff) because Apple `container` ContainerClient exposes no native event stream. Plain or --json output. True streaming pending upstream support."
         ],
         [
           "compose ls",
