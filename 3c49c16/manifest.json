@@ -1,0 +1,8 @@
+{
+  "branch": "fix/CHAOS-1328-image-auto-qualify",
+  "commit": "3c49c16ce2d05fc8524d379b48ac412e0a88006d",
+  "short": "3c49c16",
+  "target": "3c49c16",
+  "message": "fix: qualify image refs for apple container (CHAOS-1328)",
+  "published_at": "2026-04-28T18:45:19.839213+00:00"
+}
