@@ -34,18 +34,35 @@ public struct Secret: Codable {
     public let name: String?
     /// Labels for the secret
     public let labels: [String: String]?
+    /// Driver-specific key/value options passed to the secrets driver.
+    public let driverOpts: [String: String]?
+    /// Name of the templating driver used to render the secret value.
+    /// Parsed only — tooling will warn at runtime if non-nil.
+    public let templateDriver: String?
 
     /// Public memberwise initializer for testing and direct construction.
-    public init(file: String? = nil, environment: String? = nil, external: ExternalSecret? = nil, name: String? = nil, labels: [String: String]? = nil) {
+    public init(
+        file: String? = nil,
+        environment: String? = nil,
+        external: ExternalSecret? = nil,
+        name: String? = nil,
+        labels: [String: String]? = nil,
+        driverOpts: [String: String]? = nil,
+        templateDriver: String? = nil
+    ) {
         self.file = file
         self.environment = environment
         self.external = external
         self.name = name
         self.labels = labels
+        self.driverOpts = driverOpts
+        self.templateDriver = templateDriver
     }
 
     enum CodingKeys: String, CodingKey {
         case file, environment, external, name, labels
+        case driverOpts = "driver_opts"
+        case templateDriver = "template_driver"
     }
 
     /// Custom initializer to handle `external: true` (boolean) or `external: { name: "my_sec" }` (object).
@@ -55,6 +72,8 @@ public struct Secret: Codable {
         environment = try container.decodeIfPresent(String.self, forKey: .environment)
         name = try container.decodeIfPresent(String.self, forKey: .name)
         labels = try container.decodeIfPresent([String: String].self, forKey: .labels)
+        driverOpts = try container.decodeIfPresent([String: String].self, forKey: .driverOpts)
+        templateDriver = try container.decodeIfPresent(String.self, forKey: .templateDriver)
 
         if let externalBool = try? container.decodeIfPresent(Bool.self, forKey: .external) {
             external = ExternalSecret(isExternal: externalBool, name: nil)

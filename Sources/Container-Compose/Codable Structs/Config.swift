@@ -32,17 +32,38 @@ public struct Config: Codable {
     public let name: String?
     /// Labels for the config
     public let labels: [String: String]?
+    /// Inline literal content of the config.
+    /// Alternative source — bind-mount support is a follow-up issue.
+    public let content: String?
+    /// Name of an env var whose value becomes the config content.
+    /// Alternative source — bind-mount support is a follow-up issue.
+    public let environment: String?
+    /// Name of the templating driver used to render the config value.
+    /// Parsed only — tooling will warn at runtime if non-nil.
+    public let templateDriver: String?
 
     /// Public memberwise initializer for testing and direct construction.
-    public init(file: String? = nil, external: ExternalConfig? = nil, name: String? = nil, labels: [String: String]? = nil) {
+    public init(
+        file: String? = nil,
+        external: ExternalConfig? = nil,
+        name: String? = nil,
+        labels: [String: String]? = nil,
+        content: String? = nil,
+        environment: String? = nil,
+        templateDriver: String? = nil
+    ) {
         self.file = file
         self.external = external
         self.name = name
         self.labels = labels
+        self.content = content
+        self.environment = environment
+        self.templateDriver = templateDriver
     }
 
     enum CodingKeys: String, CodingKey {
-        case file, external, name, labels
+        case file, external, name, labels, content, environment
+        case templateDriver = "template_driver"
     }
 
     /// Custom initializer to handle `external: true` (boolean) or `external: { name: "my_cfg" }` (object).
@@ -51,6 +72,9 @@ public struct Config: Codable {
         file = try container.decodeIfPresent(String.self, forKey: .file)
         name = try container.decodeIfPresent(String.self, forKey: .name)
         labels = try container.decodeIfPresent([String: String].self, forKey: .labels)
+        content = try container.decodeIfPresent(String.self, forKey: .content)
+        environment = try container.decodeIfPresent(String.self, forKey: .environment)
+        templateDriver = try container.decodeIfPresent(String.self, forKey: .templateDriver)
 
         if let externalBool = try? container.decodeIfPresent(Bool.self, forKey: .external) {
             external = ExternalConfig(isExternal: externalBool, name: nil)
