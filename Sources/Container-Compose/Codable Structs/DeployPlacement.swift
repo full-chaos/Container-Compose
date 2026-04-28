@@ -15,41 +15,26 @@
 //===----------------------------------------------------------------------===//
 
 //
-//  Deploy.swift
+//  DeployPlacement.swift
 //  container-compose-app
 //
-//  Created by Morris Richman on 6/17/25.
-//
 
-
-/// Represents the `deploy` configuration for a service (primarily for Swarm orchestration).
-public struct Deploy: Codable, Hashable {
-    /// Deployment mode (e.g., 'replicated', 'global')
-    public let mode: String?
-    /// Number of replicated service tasks
-    public let replicas: Int?
-    /// Resource constraints (limits, reservations)
-    public let resources: DeployResources?
-    /// Restart policy for tasks
-    public let restart_policy: DeployRestartPolicy?
-
-    /// Placement constraints and preferences for Swarm scheduling.
+/// Placement constraints and preferences for Swarm scheduling.
+///
+/// Swarm-only; decoded but not enforced.
+public struct DeployPlacement: Codable, Hashable {
+    /// List of placement constraint expressions (e.g. "node.role == manager").
     ///
     /// Swarm-only; decoded but not enforced.
-    public let placement: DeployPlacement?
+    public let constraints: [String]?
 
-    /// Rolling update configuration.
+    /// List of placement preference entries used for spreading tasks.
     ///
     /// Swarm-only; decoded but not enforced.
-    public let update_config: DeployUpdateConfig?
+    public let preferences: [DeployPlacementPreference]?
 
-    /// Rollback configuration (same shape as update_config).
+    /// Maximum number of replicas to place on a single node.
     ///
     /// Swarm-only; decoded but not enforced.
-    public let rollback_config: DeployUpdateConfig?
-
-    /// Endpoint mode for service VIP resolution ("vip" or "dnsrr").
-    ///
-    /// Swarm-only; decoded but not enforced.
-    public let endpoint_mode: String?
+    public let max_replicas_per_node: Int?
 }
