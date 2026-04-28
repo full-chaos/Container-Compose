@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "cf499161daebf7b698398c14383ab9ae635644e9",
-  "short": "cf49916",
+  "commit": "f3153882153bd4ea4b0728659868bf3efa2ea1d8",
+  "short": "f315388",
   "target": "current",
-  "message": "feat: decode newer-spec models / service.models / service.provider (CHAOS-1316) (#32)",
-  "published_at": "2026-04-28T12:53:42.514934+00:00"
+  "message": "feat: FSEvents-backed watcher for compose watch (CHAOS-1318) (#33)",
+  "published_at": "2026-04-28T12:53:54.709490+00:00"
 }
