@@ -35,6 +35,8 @@ public struct DockerCompose: Codable {
     public let name: String?
     /// Dictionary of service definitions, keyed by service name
     public let services: [String: Service?]
+    /// Optional top-level model definitions
+    public let models: [String: Model]?
     /// Optional top-level volume definitions
     public let volumes: [String: Volume?]?
     /// Optional top-level network definitions
@@ -52,6 +54,7 @@ public struct DockerCompose: Codable {
         version: String?,
         name: String?,
         services: [String: Service?],
+        models: [String: Model]? = nil,
         volumes: [String: Volume?]?,
         networks: [String: Network?]?,
         configs: [String: Config?]?,
@@ -61,6 +64,7 @@ public struct DockerCompose: Codable {
         self.version = version
         self.name = name
         self.services = services
+        self.models = models
         self.volumes = volumes
         self.networks = networks
         self.configs = configs
@@ -73,6 +77,7 @@ public struct DockerCompose: Codable {
         version = try container.decodeIfPresent(String.self, forKey: .version)
         name = try container.decodeIfPresent(String.self, forKey: .name)
         services = try container.decode([String: Service?].self, forKey: .services)
+        models = try container.decodeIfPresent([String: Model].self, forKey: .models)
 
         if let volumes = try container.decodeIfPresent([String: Optional<Volume>].self, forKey: .volumes) {
             let safeVolumes: [String: Volume] = volumes.mapValues { value in
@@ -92,6 +97,7 @@ public struct DockerCompose: Codable {
         case version
         case name
         case services
+        case models
         case volumes
         case networks
         case configs
@@ -156,6 +162,7 @@ extension DockerCompose {
             version: nil,
             name: nil,
             services: [:],
+            models: nil,
             volumes: nil,
             networks: nil,
             configs: nil,
@@ -193,6 +200,19 @@ extension DockerCompose {
                 print("Warning: Service '\(key)' defined in multiple compose files; the later definition wins.")
             }
             mergedServices[key] = value
+        }
+
+        // Models
+        var mergedModels: [String: Model]? = base.models
+        if let overrideModels = override.models {
+            var models = mergedModels ?? [:]
+            for (key, value) in overrideModels {
+                if models[key] != nil {
+                    print("Warning: Model '\(key)' defined in multiple compose files; the later definition wins.")
+                }
+                models[key] = value
+            }
+            mergedModels = models
         }
 
         // Volumes
@@ -241,6 +261,7 @@ extension DockerCompose {
             version: override.version ?? base.version,
             name: override.name ?? base.name,
             services: mergedServices,
+            models: mergedModels,
             volumes: mergedVolumes,
             networks: mergedNetworks,
             configs: mergedConfigs,
@@ -305,6 +326,7 @@ extension DockerCompose {
                     ipc: svc.ipc, pid: svc.pid, uts: svc.uts, userns_mode: svc.userns_mode,
                     group_add: svc.group_add, init_: svc.init_, runtime: svc.runtime,
                     scale: svc.scale, pull_policy: svc.pull_policy, profiles: svc.profiles,
+                    models: svc.models, provider: svc.provider,
                     labels: svc.labels, stop_signal: svc.stop_signal, stop_grace_period: svc.stop_grace_period,
                     tmpfs: svc.tmpfs, sysctls: svc.sysctls, volumes_from: svc.volumes_from,
                     cpus_top: svc.cpus_top, cpu_count: svc.cpu_count, cpu_percent: svc.cpu_percent,
@@ -388,6 +410,8 @@ extension DockerCompose {
                 scale: svc.scale ?? base.scale,
                 pull_policy: svc.pull_policy ?? base.pull_policy,
                 profiles: svc.profiles ?? base.profiles,
+                models: svc.models ?? base.models,
+                provider: svc.provider ?? base.provider,
                 labels: svc.labels ?? base.labels,
                 stop_signal: svc.stop_signal ?? base.stop_signal,
                 stop_grace_period: svc.stop_grace_period ?? base.stop_grace_period,
@@ -448,6 +472,7 @@ extension DockerCompose {
             version: version,
             name: name,
             services: newServices,
+            models: models,
             volumes: volumes,
             networks: networks,
             configs: configs,
