@@ -1,0 +1,8 @@
+{
+  "branch": "fix/streaming-line-buffer",
+  "commit": "dc927239fd0469d890cecc95af10a9de88ac681d",
+  "short": "dc92723",
+  "target": "dc92723",
+  "message": "fix: line-buffer streaming relay so multi-line output isn't fragmented (PLAN.md \u00a74)",
+  "published_at": "2026-04-28T02:33:04.400877+00:00"
+}
