@@ -18,8 +18,7 @@
 //  ComposeWatch.swift
 //  Container-Compose
 //
-//  Phase 5C — polling-based filesystem watcher for compose watch.
-//  TODO: Upgrade to FSEvents or DispatchSource for lower-latency watching.
+//  Phase 5C — filesystem watcher for compose watch.
 //
 
 import ArgumentParser
@@ -105,11 +104,12 @@ actor WatchLoop {
     ///   - pollInterval: Seconds between polls (default 2 s).
     ///   - dryRun: If true, print actions but do not execute them.
     ///   - cwd: Working directory for shelling out.
-    func run(
+    func runPolling(
         rules: [(serviceName: String, rule: WatchRule)],
         pollInterval: TimeInterval = 2,
         dryRun: Bool,
-        cwd: String
+        cwd: String,
+        maxPolls: Int? = nil
     ) async {
         // Initialise snapshots.
         for (_, rule) in rules {
@@ -121,14 +121,47 @@ actor WatchLoop {
             print("compose watch: --dry-run enabled; no actions will be executed")
         }
 
-        while true {
+        var completedPolls = 0
+        while !Task.isCancelled {
+            if let maxPolls, completedPolls >= maxPolls { break }
             try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            if Task.isCancelled { break }
+            completedPolls += 1
 
             for (serviceName, rule) in rules {
                 guard checkForChange(at: rule.path) != nil else { continue }
 
                 print("[watch] \(serviceName): change detected at '\(rule.path)' → action: \(rule.action.rawValue)")
 
+                await handleAction(rule.action, serviceName: serviceName, rule: rule, dryRun: dryRun, cwd: cwd)
+            }
+        }
+    }
+
+    /// Run the FSEvents-backed watch loop indefinitely. FSEvents reports
+    /// recursive file-level events for the watched root paths; action handling
+    /// intentionally remains identical to the polling path once a rule matches.
+    func runFSEvents(
+        rules: [(serviceName: String, rule: WatchRule)],
+        dryRun: Bool,
+        cwd: String,
+        watcher: any FSWatcher = FSWatcherEnvironment.current
+    ) async {
+        let paths = Array(Set(rules.map { $0.rule.path })).sorted()
+
+        print(
+            "compose watch: monitoring \(rules.count) rule(s) — FSEvents " +
+                "(\(Int(FSEventsWatcher.coalesceInterval * 1000))ms coalesce)"
+        )
+        if dryRun {
+            print("compose watch: --dry-run enabled; no actions will be executed")
+        }
+
+        for await event in watcher.watch(paths: paths) {
+            if Task.isCancelled { break }
+            let matches = matchingRules(for: event, in: rules)
+            for (serviceName, rule) in matches {
+                print("[watch] \(serviceName): change detected at '\(rule.path)' → action: \(rule.action.rawValue)")
                 await handleAction(rule.action, serviceName: serviceName, rule: rule, dryRun: dryRun, cwd: cwd)
             }
         }
@@ -204,6 +237,22 @@ actor WatchLoop {
         }
     }
 
+    private func matchingRules(
+        for event: FSEvent,
+        in rules: [(serviceName: String, rule: WatchRule)]
+    ) -> [(serviceName: String, rule: WatchRule)] {
+        rules.filter { _, rule in
+            path(event.path, isInsideOrEqualTo: rule.path)
+        }
+    }
+
+    private func path(_ eventPath: String, isInsideOrEqualTo watchedPath: String) -> Bool {
+        let normalizedEventPath = URL(fileURLWithPath: eventPath).standardized.path
+        let normalizedWatchedPath = URL(fileURLWithPath: watchedPath).standardized.path
+        return normalizedEventPath == normalizedWatchedPath ||
+            normalizedEventPath.hasPrefix(normalizedWatchedPath + "/")
+    }
+
     /// Fire-and-forget shell execution routed through the
     /// `RunCommandRunner` seam (PR-5 of the recorder migration; see
     /// `docs/plans/PLAN-recorder-seam.md` §2 / §7 / §9 PR-5). The watch loop
@@ -247,6 +296,12 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
 
     @Flag(name: [.long], help: "Print actions that would be taken without executing them")
     var dryRun: Bool = false
+
+    /// Explicit CLI fallback knob for CI/debugging and hosts where FSEvents is
+    /// undesirable. Chosen over an env var so the behavior is visible in
+    /// `container-compose watch --help` and straightforward to exercise in tests.
+    @Flag(name: [.long], help: "Use legacy polling instead of the default FSEvents watcher")
+    var polling: Bool = false
 
     @OptionGroup
     var process: Flags.Process
@@ -349,6 +404,10 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
         }
 
         let loop = WatchLoop()
-        await loop.run(rules: resolvedRules, dryRun: dryRun, cwd: cwd)
+        if polling {
+            await loop.runPolling(rules: resolvedRules, dryRun: dryRun, cwd: cwd)
+        } else {
+            await loop.runFSEvents(rules: resolvedRules, dryRun: dryRun, cwd: cwd)
+        }
     }
 }
