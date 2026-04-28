@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import ContainerCommands
 
 // MARK: - RunRequest
 
@@ -43,14 +44,37 @@ public struct RunRequest: Sendable, Equatable {
         /// Production binding spawns and checks status==0; recorder binding
         /// returns a stubbed bool keyed on the probe argv.
         case probe
+        /// In-process call into the upstream `container` Swift package
+        /// (e.g. `Application.ImagePull.parse(argv).run()`,
+        /// `Application.NetworkCreate.parse(argv).run()`,
+        /// `Application.BuildCommand.parse(argv).validate()/.run()`).
+        ///
+        /// The `name` is a stable identifier ("ImagePull", "NetworkCreate",
+        /// "BuildCommand") used by the production binding to dispatch to the
+        /// correct upstream type, and by recorders to filter / assert.
+        ///
+        /// `RunRequest.argv` for this kind represents the arguments that
+        /// would be handed to `Application.<name>.parse(argv)`, byte-for-byte.
+        ///
+        /// Per plan §9 PR-6 (pulled forward to unblock CI for `RuntimeArgvTests`),
+        /// routing these in-process calls through the seam means a
+        /// `RecordingRunner`-bound test never reaches Apple `container` for
+        /// pullImage / setupNetwork / build, even on hosts where the runtime
+        /// is unavailable.
+        case swiftAPI(name: String)
     }
 
     public let kind: Kind
-    /// First element is the executable (today always `"container"`, but the
-    /// `ComposeWatch` helpers shell out to `"container-compose"` — we admit
-    /// any executable the seam might be asked to run).
+    /// For shell-out kinds (`.streaming` / `.awaitOnly` / `.probe`) the first
+    /// element is the executable (today always `"container"`, but the
+    /// `ComposeWatch` helpers shell out to `"container-compose"`).
+    ///
+    /// For `.swiftAPI(name:)` this is the parsed-argument array that would
+    /// be handed to `Application.<name>.parse(argv)` — there is no executable
+    /// prefix because the call is in-process.
     public let argv: [String]
     /// Optional working directory; nil means "inherit caller's cwd".
+    /// Ignored by `.swiftAPI` (in-process calls inherit the host process cwd).
     public let cwd: String?
 
     public init(kind: Kind, argv: [String], cwd: String? = nil) {
@@ -169,6 +193,40 @@ public struct ProductionRunner: RunCommandRunner {
                 cwd: request.cwd
             )
             return RunResult(exitCode: ok ? 0 : 1, probeAvailable: ok)
+
+        case .swiftAPI(let name):
+            try await dispatchSwiftAPI(name: name, argv: request.argv)
+            return RunResult(exitCode: 0, probeAvailable: false)
+        }
+    }
+
+    /// Production dispatch for `.swiftAPI(name:)` requests. Each branch is
+    /// the byte-for-byte equivalent of the original in-process call site
+    /// (see plan §5 byte-for-byte invariant).
+    ///
+    /// Adding a new `.swiftAPI(name:)` value here is the contract for
+    /// extending the seam with another upstream call.
+    private func dispatchSwiftAPI(name: String, argv: [String]) async throws {
+        switch name {
+        case "ImagePull":
+            let cmd = try Application.ImagePull.parse(argv)
+            try await cmd.run()
+        case "NetworkCreate":
+            let cmd = try Application.NetworkCreate.parse(argv)
+            try await cmd.run()
+        case "BuildCommand":
+            var cmd = try Application.BuildCommand.parse(argv)
+            try cmd.validate()
+            try await cmd.run()
+        default:
+            throw NSError(
+                domain: "RunCommandRunner",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "ProductionRunner has no swiftAPI dispatch for name=\(name); add it in Sources/Container-Compose/Runtime/RunCommandRunner.swift."
+                ]
+            )
         }
     }
 
