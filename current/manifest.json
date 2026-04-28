@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "cb6f6cba2ecb9b1dea36155fd9442bc776a65ec8",
-  "short": "cb6f6cb",
+  "commit": "b13ee400ada3ce39b918a94c2601b4efb4e8094a",
+  "short": "b13ee40",
   "target": "current",
-  "message": "docs: refresh AGENTS.md + flip 2 stale miss rows post-CHAOS-1299 (#29)",
-  "published_at": "2026-04-28T12:08:58.334443+00:00"
+  "message": "chore: rename SwiftPM package + binary to container-compose; add merge_group CI trigger (#28)",
+  "published_at": "2026-04-28T12:12:44.325591+00:00"
 }
