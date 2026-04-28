@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1326-test-parallelization",
+  "commit": "fc2a2d94c1b82e4546adeecd3621f51d19bdf412",
+  "short": "fc2a2d9",
+  "target": "fc2a2d9",
+  "message": "ci: serialize LineBuffer tests for parallel Swift Testing (CHAOS-1326)",
+  "published_at": "2026-04-28T19:06:42.156987+00:00"
+}
