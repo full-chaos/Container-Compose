@@ -30,7 +30,7 @@ import Foundation
 /// (`endToEndChunkedStdoutProducesOneLineAtATime`) drives a real
 /// `/bin/sh` subprocess through `ProductionRunner` and is the regression
 /// guard against the column-wrap bug returning.
-@Suite("LineBuffer")
+@Suite("LineBuffer", .serialized)
 struct LineBufferTests {
 
     // MARK: - Helpers

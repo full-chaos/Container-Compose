@@ -284,13 +284,11 @@ Dynamic tests self-skip on hosts without the Apple `container` runtime
 run in CI. Verify locally with the runtime installed before committing
 schema changes that ripple into `up`/`down`/`build`.
 
-### Known CI flake
-`swiftpm-testing-helper` occasionally exits with `signal code 10`
-(SIGBUS) **after** `Test Suite 'All tests' passed` is reported. Cause
-is upstream Swift Testing harness, not project code. Merge queue's
-`grouping_strategy: ALLGREEN` retries help absorb it; long-term fix
-likely requires `swift test --no-parallel` or `@Suite(.serialized)` on
-a culprit suite (TBD).
+### Resolved CI flake
+CHAOS-1326 isolated the `swiftpm-testing-helper` signal-10/SIGBUS flake
+to `LineBufferTests` under parallel Swift Testing. That suite now carries
+`@Suite(.serialized)`, allowing CI to run plain `swift test` again without
+the broad `--no-parallel` workaround from CHAOS-1314.
 
 ### Sample compose files
 - `Sample Compose Files/Healthchecked Redis/docker-compose.yaml` — single-service,
