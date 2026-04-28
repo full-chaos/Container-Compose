@@ -1,0 +1,8 @@
+{
+  "branch": "fix/CHAOS-1329-1331-drop-ghost-flags",
+  "commit": "aca436e708f9f5a01a285a425c7dc843c21832ea",
+  "short": "aca436e",
+  "target": "aca436e",
+  "message": "fix: drop ghost container flags (CHAOS-1329 CHAOS-1330 CHAOS-1331)",
+  "published_at": "2026-04-28T17:46:44.245534+00:00"
+}
