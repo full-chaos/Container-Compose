@@ -36,20 +36,22 @@ Sources/
     Application.swift         ← root AsyncParsableCommand wiring subcommands
     Errors.swift              ← YamlError, ComposeError enums
     Helper Functions.swift    ← env loading, var substitution, port parsing, paths
-    Codable Structs/          ← Compose schema → Swift model layer (20 files)
-    Commands/
-      ComposeUp.swift         ← `compose up`
-      ComposeDown.swift       ← `compose down`
-      ComposeBuild.swift      ← `compose build`
-      Version.swift           ← `compose version`
+    PreSubcommandFlagPromotion.swift  ← global flag normalization
+    ProjectFlags.swift        ← shared @OptionGroup for project flags
+    Codable Structs/          ← Compose schema → Swift model layer (36 files)
+    Commands/                 ← AsyncParsableCommand + per-concern argv builders (31 files)
+    Runtime/                  ← ContainerClientProvider + RunCommandRunner seams
 
 Tests/
-  Container-Compose-StaticTests/   ← parsing + helper unit tests (Swift Testing)
-  Container-Compose-DynamicTests/  ← integration tests against real `container` runtime
-  TestHelpers/                     ← shared fixtures (DockerComposeYamlFiles.swift)
+  Container-Compose-StaticTests/   ← parsing + argv-shape tests (53 files, 724 @Test cases)
+  Container-Compose-DynamicTests/  ← integration tests against real `container` runtime (11 @Test cases)
+  TestHelpers/                     ← shared fixtures, RecordingRunner, RecordingContainerClientProvider
 
 Sample Compose Files/         ← runnable example compose files
-.github/                      ← CI workflows
+scripts/regen-coverage.sh     ← extracts coverage.json from coverage.html
+.github/workflows/            ← CI workflows (Tests, gh-pages, CodeQL via default-setup)
+coverage.html                 ← canonical compose-spec coverage matrix (source of truth)
+coverage.json                 ← derived from coverage.html, gitignored
 Package.swift                 ← SwiftPM manifest
 Package.resolved              ← pinned deps
 Makefile                      ← build, install, clean targets
@@ -106,7 +108,7 @@ service for reverse-graph queries.
 
 ### 3.2 Commands
 
-All subcommands conform to `AsyncParsableCommand`. There are **15 subcommands**
+All subcommands conform to `AsyncParsableCommand`. There are **19 subcommands**
 registered in `Application.swift`:
 
 | Subcommand     | Purpose                                                |
@@ -128,6 +130,10 @@ registered in `Application.swift`:
 | `rm`           | Remove stopped project containers                      |
 | `create`       | Provision containers without starting (capability-probed) |
 | `watch`        | Polling-based file monitor honoring `develop.watch[]`  |
+| `top`          | Shell out to `container exec <id> ps -ef` per running project container |
+| `port`         | Resolve `<service> <private-port>` against `service.ports` |
+| `events`       | 1s-polling synthetic event stream (create/start/stop/die/destroy) |
+| `push`         | Shell out to `container image push <image>` per service |
 | `version`      | Print tool version                                      |
 
 `up` performs:
@@ -184,25 +190,41 @@ Re-used across commands:
 ## 4. Coverage vs. compose-spec
 
 The full feature-coverage matrix lives in **`coverage.html`** at the repo
-root. Open it in a browser; the inline JSON data is also extracted to
-`coverage.json` by `scripts/regen-coverage.sh`. Current totals:
+root (canonical source of truth). The inline JSON data is also extracted
+to `coverage.json` by `scripts/regen-coverage.sh` for downstream tooling.
+`coverage.json` is gitignored — regenerate it locally if your tooling
+needs it.
 
-| Status      | Count   | %    |
-| ----------- | ------- | ---- |
-| Implemented | **130** | 67%  |
-| Partial     | 30      | 15%  |
-| Missing     | 34      | 18%  |
-| **Total**   | **194** | 100% |
+Current totals (post-CHAOS-1299 + coverage hygiene sweep):
+
+| Status      | Count   | %     |
+| ----------- | ------- | ----- |
+| Implemented | **135** | 69.6% |
+| Partial     | 54      | 27.8% |
+| Missing     | 5       | 2.6%  |
+| **Total**   | **194** | 100%  |
 
 The remaining "partial" and "missing" rows fall into three buckets:
-1. **Apple-container-runtime limitations**  — e.g. healthcheck condition can't
-   read a true health status because `ContainerSnapshot` doesn't surface a
-   `health` field; `--restart` isn't accepted by `container run`; a handful of
-   network flags (`--ip-range`, `--gateway`) lack CLI equivalents.
-2. **Swarm-only / orchestrator features**  — `deploy.replicas`, `deploy.update_config`,
-   `deploy.placement`, `endpoint_mode`, etc.
-3. **Deprecated or rarely-used fields**  — `links`, `external_links`,
-   `volumes_from`, `cgroup_parent`.
+1. **Apple-container-runtime limitations** — e.g. healthcheck
+   condition can't read a true health status because
+   `ContainerSnapshot` doesn't surface a `health` field; `--restart`
+   isn't accepted by `container run`; `compose logs
+   --since/--timestamps` and the event-stream API lack
+   `ContainerClient` surface.
+2. **Swarm-only / orchestrator features** — `deploy.replicas`,
+   `deploy.update_config`, `deploy.rollback_config`,
+   `deploy.placement`, `endpoint_mode`, `mode`. Decoded as stubs.
+3. **Newer compose-spec or deprecated features** — `top.models`,
+   `service.models`, `service.provider` (newer LLM/AI plumbing,
+   decode pending); `service.external_links`, `service.links`
+   (deprecated, won't implement).
+
+The 5 remaining `miss` rows:
+
+| Row | Group | Why |
+| --- | --- | --- |
+| `top.models`, `service.models`, `service.provider` | top / service | Newer spec, not yet decoded |
+| `service.external_links`, `service.links` | service | Deprecated; intentional skip |
 
 ### Anchor section: `depends_on` (compose-spec.json L277-L310)
 
@@ -226,28 +248,49 @@ End-to-end status:
 
 Two test targets, both using **Swift Testing** (`@Test` macro, not XCTest).
 
-### Static (parsing / unit)
-`Tests/Container-Compose-StaticTests/` — 9 files, ~98 tests:
-- `DockerComposeParsingTests` (27)
-- `EnvironmentVariableTests` (12)
-- `HealthcheckConfigurationTests` (10)
-- `HelperFunctionsTests` (9)
-- `ServiceDependencyTests` (8)  ← list-form `depends_on` only
-- `ComposeBuildParsingTests` (8)
-- `BuildConfigurationTests` (8)
-- `EnvFileLoadingTests` (8)
-- `NetworkConfigurationTests` (8)
+### Static (parsing / unit / argv-shape)
+`Tests/Container-Compose-StaticTests/` — **53 files, 724 `@Test` cases**.
+Covers schema decoding, command flag parsing, per-concern argv emission,
+and runtime seams (`RecordingRunner`, `RecordingContainerClientProvider`).
+Categorical breakdown:
 
-`TestHelpers/DockerComposeYamlFiles.swift` provides shared fixture YAML.
+- **Compose-schema parsing**: `DockerComposeParsingTests`, `*ParsingTests`,
+  `BuildConfigurationTests`, `HealthcheckConfigurationTests`,
+  `NetworkConfigurationTests`, `DeployStubsParsingTests`,
+  `ServicePropertiesParsingTests`, `DependsOnParsingTests`, etc.
+- **Per-concern argv builders**: `LifecycleArgsTests`, `SecurityArgsTests`,
+  `ResourceArgsTests`, `NetworkArgsTests`, `StorageArgsTests`,
+  `LabelsArgsTests`, `LoggingArgsTests`, `GpusBlkioTests`.
+- **Subcommand parsing + argv shape**: `Compose<Name>ParsingTests`
+  + `RuntimeArgvTests` + per-command `Compose<Name>RuntimeArgvTests`.
+- **Helpers**: `HelperFunctionsTests`, `EnvironmentVariableTests`,
+  `EnvFileLoadingTests`, `WaitForConditionTests`,
+  `PreSubcommandFlagPromotionTests`, `LineBufferTests`,
+  `ProfilesTests`, `ScaleTests`, `IncludeTests`, `ExtendsTests`.
+
+`TestHelpers/` provides:
+- `DockerComposeYamlFiles.swift` — shared fixture YAML
+- `RecordingRunner.swift` — captures `container <…>` argv for assertion
+- `RecordingContainerClientProvider.swift` — synthetic `ContainerClient`
+- `RuntimeAvailability.swift` — gates dynamic tests off when Apple
+  `container` is not installed (CI-safe)
 
 ### Dynamic (integration against `container` runtime)
-`Tests/Container-Compose-DynamicTests/`:
-- `ComposeUpTests` (4 active, ~6 commented `TODO: Reenable`)
-- `ComposeDownTests` (2)
-- `ComposeBuildTests` (5)
+`Tests/Container-Compose-DynamicTests/` — 11 `@Test` cases:
+- `ComposeUpTests`, `ComposeDownTests`, `ComposeBuildTests`
 
-Dynamic tests require a working Apple `container` runtime and do **not** run
-in CI by default. Verify locally before committing.
+Dynamic tests self-skip on hosts without the Apple `container` runtime
+(via `RuntimeAvailability.isAvailable()`), so `swift test` is safe to
+run in CI. Verify locally with the runtime installed before committing
+schema changes that ripple into `up`/`down`/`build`.
+
+### Known CI flake
+`swiftpm-testing-helper` occasionally exits with `signal code 10`
+(SIGBUS) **after** `Test Suite 'All tests' passed` is reported. Cause
+is upstream Swift Testing harness, not project code. Merge queue's
+`grouping_strategy: ALLGREEN` retries help absorb it; long-term fix
+likely requires `swift test --no-parallel` or `@Suite(.serialized)` on
+a culprit suite (TBD).
 
 ### Sample compose files
 - `Sample Compose Files/Healthchecked Redis/docker-compose.yaml` — single-service,
@@ -280,40 +323,60 @@ in CI by default. Verify locally before committing.
 
 ### High-leverage open work
 
-The big-ticket items listed in the original AGENTS.md (depends_on object
-form, healthcheck-gated startup, the property block, and the missing
-subcommands) all landed in Phases 1-5. The remaining work is upstream-
-dependent or scope-deferred:
+CHAOS-1299 closed the four missing CLI subcommands (`top`, `port`,
+`events`, `push`). Recent B-sweep PRs (#19–#23) decoded a pile of
+service/healthcheck/deploy/secret/config niche fields. Remaining work
+sorts into three tiers:
 
-1. **True `service_healthy` enforcement** — depends on Apple's `container`
-   package surfacing a health field on `ContainerSnapshot`. Currently
-   `Compose+Wait.swift` falls back to `.running` with a one-time warning.
-2. **Exit-code verification for `service_completed_successfully`** — same
-   class of issue: `ContainerSnapshot` doesn't expose exit code today, so
-   we wait for `.stopped` only.
-3. **`restart` policy actually applied** — Apple `container run` doesn't
-   support `--restart`. When the container package adds a higher-level
-   restart manager, route `service.restart` through it (and the
-   `DependsOnEntry.restart` field too).
-4. **FSEvents-based watcher** — `compose watch` currently polls. Upgrade to
-   `FSEventStream` for low-latency change detection on macOS.
-5. **`compose logs --since` / `--timestamps`** — parsed but unsupported
-   because `ContainerClient.logs(id:)` lacks those parameters.
-6. **`compose run` / `exec` flag namespacing** — both commands use
-   `--run-env`/`--exec-env`/etc. to avoid clashes with `Flags.Process`.
-   When `Flags.Process` allows opt-out of those names, switch to standard
-   `-e`/`-u`/`-w`.
-7. **Cross-file `extends`** (`extends: { service: foo, file: ./other.yml }`)
-   currently warn-and-skips. Reuse `loadAndMerge`-style cross-file loading
-   to actually pull `foo` from another file.
-8. **DRY pull helpers** — `ComposePull` and `ComposeCreate` each carry a
-   private copy of `pullImage`. Lift to a shared internal helper.
-9. **The 34 `miss` rows in coverage.html** — most are Swarm-only
-   (`deploy.replicas`, `deploy.update_config`, etc.) or deprecated
-   (`links`, `external_links`). A small set is genuine leftover work:
-   `cgroup_parent`, `credential_spec`, `isolation`, `label_file`,
-   `models`, `post_start`, `pre_stop`, `provider`, `pull_refresh_after`,
-   `use_api_socket`, plus `compose top`, `compose port`, `compose events`.
+#### Tier 1 — Actionable now (no upstream dependencies)
+
+1. **Coverage-row hygiene** — `compose watch` and `service.ulimits` are
+   marked `miss` but actually implemented. Audit + flip to `ok`.
+2. **CI flake fix** — investigate `swiftpm-testing-helper` signal-10
+   exit. Likely needs `@Suite(.serialized)` on the offending suite or
+   `swift test --no-parallel` in CI.
+3. **DRY pull helpers** — `ComposePull` and `ComposeCreate` each carry
+   a private copy of `pullImage`. Lift to a shared internal helper.
+4. **Cross-file `extends`** (`extends: { service: foo, file: ./other.yml }`)
+   currently warn-and-skips. Reuse `loadAndMerge`-style cross-file
+   loading to actually pull `foo` from another file.
+5. **FSEvents-based watcher** — `compose watch` currently polls.
+   Upgrade to `FSEventStream` for low-latency change detection.
+6. **Newer-spec decoding** — decode `top.models`, `service.models`,
+   `service.provider` (LLM/AI provider plumbing). Parse-only; runtime
+   wiring optional.
+
+#### Tier 2 — Upstream-dependent (apple/container)
+
+These need a Swift API addition in `apple/container` first; the
+`mcrich23/container` fork is *ahead* of apple/container, not where new
+platform features come from.
+
+7. **True `service_healthy` enforcement** — needs `health` field on
+   `ContainerSnapshot`. Currently `Compose+Wait.swift` falls back to
+   `.running` with a one-time warning.
+8. **Exit-code verification for `service_completed_successfully`** —
+   `ContainerSnapshot` doesn't expose exit code; we wait for `.stopped`
+   only.
+9. **`restart` policy actually applied** — `container run` doesn't
+   accept `--restart`. Needs a higher-level restart manager in the
+   container package.
+10. **`compose logs --since` / `--timestamps`** — parsed but
+    `ContainerClient.logs(id:)` lacks those parameters.
+11. **`compose events` native streaming** — currently 1s polling
+    fallback. Needs an event-stream API on `ContainerClient`.
+12. **`compose run` / `exec` standard flag names** — currently use
+    `--run-env`/`--exec-env`/etc. to avoid clashes with
+    `Flags.Process`. When `Flags.Process` allows opt-out, switch to
+    standard `-e`/`-u`/`-w`.
+
+#### Tier 3 — Scope-deferred / won't-do
+
+13. **Swarm-only deploy fields** — `replicas`, `update_config`,
+    `rollback_config`, `placement`, `endpoint_mode`, `mode`. Decoded as
+    stubs; runtime semantics belong to a different orchestrator class.
+14. **Deprecated fields** — `links`, `external_links`, `volumes_from`.
+    Either decoded as no-op or intentionally skipped.
 
 ---
 
