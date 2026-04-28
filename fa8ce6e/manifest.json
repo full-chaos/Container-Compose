@@ -1,0 +1,8 @@
+{
+  "branch": "chore/repo-housekeeping",
+  "commit": "fa8ce6ea285c1360c2ae19338adebd31f4220def",
+  "short": "fa8ce6e",
+  "target": "fa8ce6e",
+  "message": "chore(.gitignore): ignore /release symlink, .linear.yaml, and root CLAUDE.md",
+  "published_at": "2026-04-28T09:18:28.461751+00:00"
+}
