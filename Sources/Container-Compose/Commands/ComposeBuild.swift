@@ -252,6 +252,14 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--shm-size", shmSize])
         }
 
+        // build.entitlements: Detected, But Not Supported.
+        // Application.BuildCommand does not expose an --allow flag; entitlements
+        // are ignored at build time. When the upstream container package adds
+        // support, plumb through as `--allow <entitlement>` per buildkit CLI.
+        if let entitlements = buildConfig.entitlements, !entitlements.isEmpty {
+            print("Warning: 'build.entitlements' [\(entitlements.joined(separator: ", "))] Detected, But Not Supported for service '\(serviceName)'. Entitlements will be ignored.")
+        }
+
         let cpuCount = Int64(service.deploy?.resources?.limits?.cpus ?? "2") ?? 2
         let memoryLimit = service.deploy?.resources?.limits?.memory ?? "2048MB"
         commands.append(contentsOf: ["--cpus", "\(cpuCount)", "--memory", memoryLimit])
