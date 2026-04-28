@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "0a587635cbb7640cf569736590ed2e0cfb946d0a",
-  "short": "0a58763",
+  "commit": "8b4c826c371e845e54b8c8bb4091b624338ffefc",
+  "short": "8b4c826",
   "target": "current",
-  "message": "fix: qualify image refs for apple container (CHAOS-1328) (#40)",
-  "published_at": "2026-04-28T19:02:56.323981+00:00"
+  "message": "ci: serialize LineBuffer tests for parallel Swift Testing (CHAOS-1326) (#41)",
+  "published_at": "2026-04-28T19:23:16.405986+00:00"
 }
