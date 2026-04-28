@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b13ee400ada3ce39b918a94c2601b4efb4e8094a",
-  "short": "b13ee40",
+  "commit": "f30b84d26cb5f53aa64836cc1c5cdf2475a1bef1",
+  "short": "f30b84d",
   "target": "current",
-  "message": "chore: rename SwiftPM package + binary to container-compose; add merge_group CI trigger (#28)",
-  "published_at": "2026-04-28T12:12:44.325591+00:00"
+  "message": "ci: fix swiftpm-testing-helper signal-10 flake (CHAOS-1314) (#30)",
+  "published_at": "2026-04-28T12:53:24.220924+00:00"
 }
