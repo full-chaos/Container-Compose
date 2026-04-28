@@ -238,8 +238,8 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         let containerName = "\(projectName)-\(serviceName)"
 
-        let client = ContainerClient()
-        let container = try await client.get(id: containerName)
+        let provider = ContainerClientEnvironment.current
+        let container = try await provider.get(id: containerName)
         let ip = container.networks.compactMap { $0.ipv4Gateway.description }.first
 
         return ip
@@ -256,11 +256,11 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         let containerName = "\(projectName)-\(serviceName)"
 
         let deadline = Date().addingTimeInterval(timeout)
-        let client = ContainerClient()
+        let provider = ContainerClientEnvironment.current
 
         while Date() < deadline {
             try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-            let container = try? await client.get(id: containerName)
+            let container = try? await provider.get(id: containerName)
             if container?.status == .running {
                 return
             }
@@ -279,17 +279,17 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         for container in containers {
             print("Stopping container: \(container)")
-            let client = ContainerClient()
-            guard let container = try? await client.get(id: container) else { continue }
+            let provider = ContainerClientEnvironment.current
+            guard let container = try? await provider.get(id: container) else { continue }
 
             do {
-                try await client.stop(id: container.id)
+                try await provider.stop(id: container.id, opts: .default)
             } catch {
                 print("Error Stopping Container: \(error)")
             }
             if remove {
                 do {
-                    try await client.delete(id: container.id)
+                    try await provider.delete(id: container.id, force: false)
                 } catch {
                     print("Error Removing Container: \(error)")
                 }
@@ -421,7 +421,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
             print("Creating network: \(networkName) (Actual name: \(actualNetworkName))")
             print("Executing container network create with args: \(commands.joined(separator: " "))")
-            guard (try? await NetworkClient().get(id: actualNetworkName)) == nil else {
+            guard (try? await ContainerClientEnvironment.current.networkGet(id: actualNetworkName)) == nil else {
                 print("Network '\(networkName)' already exists")
                 return
             }
@@ -645,7 +645,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             effectivePolicy = "missing"
         }
 
-        let imageList = try await ClientImage.list()
+        let imageList = try await ContainerClientEnvironment.current.imageList()
         let imageExists = imageList.contains(where: {
             $0.description.reference.components(separatedBy: "/").last == imageName
         })
@@ -698,7 +698,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         // Determine image tag for built image
         let imageToRun = service.image ?? "\(serviceName):latest"
-        let imageList = try await ClientImage.list()
+        let imageList = try await ContainerClientEnvironment.current.imageList()
         if !rebuild, imageList.contains(where: { $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
             return imageToRun
         }

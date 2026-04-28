@@ -149,23 +149,23 @@ public struct ComposeDown: AsyncParsableCommand {
             }
 
             print("Stopping container: \(containerName)")
-            
-            let client = ContainerClient()
-            
-            guard let container = try? await client.get(id: containerName) else {
+
+            let provider = ContainerClientEnvironment.current
+
+            guard let container = try? await provider.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")
                 continue
             }
 
             do {
-                try await client.stop(id: container.id)
+                try await provider.stop(id: container.id, opts: .default)
                 print("Successfully stopped container: \(containerName)")
             } catch {
                 print("Error Stopping Container: \(error)")
             }
             if remove {
                 do {
-                    try await client.delete(id: container.id)
+                    try await provider.delete(id: container.id, force: false)
                     print("Successfully removed container: \(containerName)")
                 } catch {
                     print("Error Removing Container: \(error)")

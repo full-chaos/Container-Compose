@@ -147,7 +147,7 @@ public struct ComposeRm: AsyncParsableCommand {
     }
 
     func removeServices(_ services: some Sequence<(serviceName: String, service: Service)>, projectName: String) async throws {
-        let client = ContainerClient()
+        let provider = ContainerClientEnvironment.current
 
         for (serviceName, service) in services {
             let containerName: String
@@ -157,7 +157,7 @@ public struct ComposeRm: AsyncParsableCommand {
                 containerName = "\(projectName)-\(serviceName)"
             }
 
-            guard let container = try? await client.get(id: containerName) else {
+            guard let container = try? await provider.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")
                 continue
             }
@@ -172,7 +172,7 @@ public struct ComposeRm: AsyncParsableCommand {
             if isRunning && force && stop {
                 print("Stopping container before removal: \(containerName)")
                 do {
-                    try await client.stop(id: container.id)
+                    try await provider.stop(id: container.id, opts: .default)
                     print("Successfully stopped container: \(containerName)")
                 } catch {
                     print("Error stopping container '\(containerName)': \(error)")
@@ -185,7 +185,7 @@ public struct ComposeRm: AsyncParsableCommand {
 
             print("Removing container: \(containerName)")
             do {
-                try await client.delete(id: container.id)
+                try await provider.delete(id: container.id, force: false)
                 print("Successfully removed container: \(containerName)")
             } catch {
                 print("Error removing container '\(containerName)': \(error)")

@@ -138,7 +138,7 @@ public struct ComposeKill: AsyncParsableCommand {
                 containerName = "\(projectName)-\(serviceName)"
             }
 
-            guard let container = try? await ContainerClient().get(id: containerName) else {
+            guard let container = try? await ContainerClientEnvironment.current.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")
                 continue
             }
