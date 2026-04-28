@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "d8e45932dcb3df2adb6ccb8adc8fff6e47cf8849",
-  "short": "d8e4593",
+  "commit": "57a1053ba561e11d44ae4bd5046f80978dba0eab",
+  "short": "57a1053",
   "target": "current",
-  "message": "feat: route ComposeUp through RunCommandRunner + add RuntimeArgvTests (PR-2 of recorder migration) (#10)",
-  "published_at": "2026-04-27T22:58:16.810286+00:00"
+  "message": "feat: route ComposeRun through seam + fix entrypoint ordering (PR-3 of recorder migration) (#11)",
+  "published_at": "2026-04-28T00:13:11.404988+00:00"
 }
