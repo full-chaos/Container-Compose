@@ -209,6 +209,39 @@ public func composePortToRunArg(_ portSpec: String) -> String {
     }
 }
 
+extension ComposeUp {
+    /// Qualifies Docker-style image references for Apple container APIs, which
+    /// require an explicit registry host.
+    internal static func qualifyImageReference(_ ref: String) -> String {
+        guard !ref.isEmpty else { return ref }
+
+        let host: String
+        let path: String
+
+        if let slashIndex = ref.firstIndex(of: "/") {
+            let firstPart = String(ref[..<slashIndex])
+            let rest = String(ref[ref.index(after: slashIndex)...])
+
+            if firstPart.contains(".") || firstPart.contains(":") || firstPart == "localhost" {
+                host = firstPart
+                path = rest
+            } else {
+                host = "docker.io"
+                path = ref
+            }
+        } else {
+            host = "docker.io"
+            path = "library/\(ref)"
+        }
+
+        if path.contains(":") || path.contains("@") {
+            return "\(host)/\(path)"
+        }
+
+        return "\(host)/\(path):latest"
+    }
+}
+
 extension String: @retroactive Error {}
 
 /// A structure representing the result of a command-line process execution.

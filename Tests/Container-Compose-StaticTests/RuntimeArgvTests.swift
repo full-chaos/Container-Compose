@@ -160,7 +160,7 @@ struct RuntimeArgvTests {
             try ComposeUp.parse(["--detach", "-f", compose.path])
         }
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
-        let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
+        let imgIdx = try #require(argv.firstIndex(of: "docker.io/library/alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
         #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
     }
@@ -186,7 +186,7 @@ struct RuntimeArgvTests {
             try ComposeRun.parse(["-f", compose.path, "app"])
         }
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
-        let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
+        let imgIdx = try #require(argv.firstIndex(of: "docker.io/library/alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
         #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
     }
@@ -218,7 +218,7 @@ struct RuntimeArgvTests {
         }
 
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
-        let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
+        let imgIdx = try #require(argv.firstIndex(of: "docker.io/library/alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
         #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
     }
@@ -243,7 +243,7 @@ struct RuntimeArgvTests {
 
         // Locate landmarks.
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
-        let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
+        let imgIdx = try #require(argv.firstIndex(of: "docker.io/library/alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must precede the image")
         // Head element of compose `entrypoint` lands as the --entrypoint value.
         #expect(argv[entryIdx + 1] == "/sbin/tini")
@@ -479,7 +479,7 @@ struct RuntimeArgvTests {
         // ImagePull's argv begins with the image name (positional), per
         // pullImage's `var commands = [imageName]` construction.
         #expect(
-            pull.first == "alpine:latest",
+            pull.first == "docker.io/library/alpine:latest",
             "ImagePull argv[0] should be the image name (got: \(pull))"
         )
         // Streaming run argv must start with ["container", "run", ...].
@@ -488,7 +488,7 @@ struct RuntimeArgvTests {
             "streaming run argv must start with [container, run] (got: \(run))"
         )
         #expect(
-            run.contains("alpine:latest"),
+            run.contains("docker.io/library/alpine:latest"),
             "streaming run argv must include the image name (got: \(run))"
         )
     }
