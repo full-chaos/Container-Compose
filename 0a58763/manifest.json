@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-40-41d338169b8be9481f6d8a5ee0230a9f7fc21650",
+  "commit": "0a587635cbb7640cf569736590ed2e0cfb946d0a",
+  "short": "0a58763",
+  "target": "0a58763",
+  "message": "fix: qualify image refs for apple container (CHAOS-1328) (#40)",
+  "published_at": "2026-04-28T18:55:18.202029+00:00"
+}

@@ -1,0 +1,1697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Container-Compose · compose-spec coverage</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232c;
+    --border: #2a313c;
+    --text: #e6edf3;
+    --muted: #9ba9b6;
+    --accent: #58a6ff;
+    --good: #2ea043;
+    --good-bg: rgba(46,160,67,.12);
+    --warn: #d29922;
+    --warn-bg: rgba(210,153,34,.14);
+    --bad: #f85149;
+    --bad-bg: rgba(248,81,73,.14);
+    --neutral: #6e7681;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa;
+      --panel: #ffffff;
+      --panel-2: #f0f3f6;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --muted: #57606a;
+      --accent: #0969da;
+      --good: #1a7f37;
+      --good-bg: rgba(26,127,55,.12);
+      --warn: #9a6700;
+      --warn-bg: rgba(154,103,0,.14);
+      --bad: #cf222e;
+      --bad-bg: rgba(207,34,46,.10);
+      --neutral: #6e7681;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header {
+    padding: 28px 32px 12px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header nav { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+  header nav a { font-size: 13px; }
+  main { padding: 24px 32px 60px; max-width: 1280px; margin: 0 auto; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+    gap: 12px; margin-bottom: 24px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); }
+  .stat .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .stat .pct  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .controls {
+    display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 14px;
+  }
+  .controls .group { display: flex; gap: 6px; align-items: center; }
+  .controls .group span.lbl { font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+  .chip {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; cursor: pointer; user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip[aria-pressed="true"] { background: var(--accent); color: white;
+    border-color: var(--accent); }
+  .controls input[type="search"] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; font: inherit; min-width: 220px; flex: 1;
+  }
+  .group-section { margin-top: 28px; }
+  .group-section h2 {
+    font-size: 16px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 10px;
+  }
+  .group-section h2 .meta {
+    font-size: 12px; color: var(--muted); font-weight: 400;
+  }
+  .group-section .note {
+    color: var(--muted); font-size: 12px; margin-bottom: 8px;
+  }
+  table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left; padding: 9px 12px; font-size: 13px;
+    border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  th {
+    background: var(--panel-2); color: var(--muted);
+    font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    cursor: pointer; user-select: none;
+  }
+  th[data-sort]::after { content: " ↕"; color: var(--neutral); font-size: 10px; }
+  th.sorted-asc::after  { content: " ↑"; color: var(--accent); }
+  th.sorted-desc::after { content: " ↓"; color: var(--accent); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.feature { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; }
+  td.notes { color: var(--muted); font-size: 12px; max-width: 480px; }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  }
+  .pill.ok      { color: var(--good); background: var(--good-bg); }
+  .pill.partial { color: var(--warn); background: var(--warn-bg); }
+  .pill.miss    { color: var(--bad);  background: var(--bad-bg);  }
+  .bar {
+    display: inline-block; width: 96px; height: 8px; background: var(--panel-2);
+    border-radius: 4px; overflow: hidden; vertical-align: middle; margin-right: 8px;
+  }
+  .bar > span { display: block; height: 100%; float: left; }
+  .bar .ok      { background: var(--good); }
+  .bar .partial { background: var(--warn); }
+  footer {
+    color: var(--muted); font-size: 12px; padding: 24px 32px;
+    border-top: 1px solid var(--border); text-align: center;
+  }
+  .empty { padding: 32px; text-align: center; color: var(--muted); display: none; }
+  .empty.shown { display: block; }
+  .anchor-callout {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 6px;
+    padding: 12px 16px; margin: 0 0 18px; font-size: 13px;
+  }
+  .anchor-callout strong { color: var(--accent); }
+  .anchor-callout code {
+    background: var(--panel-2); padding: 1px 5px; border-radius: 4px;
+    font-size: 12px;
+  }
+  #download-json { font-size: 12px; color: var(--accent); margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Container-Compose · compose-spec coverage</h1>
+  <div class="sub">
+    Feature-by-feature compliance audit of <code>Container-Compose</code> against
+    <a href="https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json">compose-spec.json</a>.
+    Anchored on <a href="https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json#L277-L310"><code>depends_on</code> (L277-L310)</a>.
+  </div>
+  <nav>
+    <a href="https://github.com/Mcrich23/Container-Compose">Repository</a>
+    <a href="./AGENTS.md">AGENTS.md</a>
+    <a href="https://github.com/compose-spec/compose-spec/blob/main/spec.md">Compose-spec docs</a>
+    <a href="https://github.com/apple/container">Apple Container</a>
+  </nav>
+</header>
+
+<main>
+  <div class="anchor-callout">
+    <strong>Anchor section: <code>depends_on</code> (compose-spec.json L277-L310)</strong>
+    Schema accepts either a list of service names or an object map with
+    <code>condition</code> ∈ {<code>service_started</code>, <code>service_healthy</code>,
+    <code>service_completed_successfully</code>}, <code>required</code> (bool),
+    <code>restart</code> (bool|string).
+    Container-Compose currently supports the <strong>list form only</strong>; the object form is rejected
+    by <code>Service.init(from:)</code> and no health/restart conditions gate startup.
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="controls" id="controls">
+    <div class="group">
+      <span class="lbl">Status</span>
+      <button class="chip" data-filter="status" data-value="all" aria-pressed="true">All</button>
+      <button class="chip" data-filter="status" data-value="ok">Implemented</button>
+      <button class="chip" data-filter="status" data-value="partial">Partial</button>
+      <button class="chip" data-filter="status" data-value="miss">Missing</button>
+    </div>
+    <div class="group">
+      <span class="lbl">Tested</span>
+      <button class="chip" data-filter="tested" data-value="all" aria-pressed="true">Any</button>
+      <button class="chip" data-filter="tested" data-value="yes">Yes</button>
+      <button class="chip" data-filter="tested" data-value="no">No</button>
+    </div>
+    <input id="search" type="search" placeholder="Search feature, notes…" autocomplete="off" />
+  </div>
+
+  <div id="groups"></div>
+  <div class="empty" id="empty">No features match the current filter.</div>
+</main>
+
+<footer>
+  Container-Compose · MIT License · Generated <span id="ts"></span>
+</footer>
+
+<script id="coverage-data" type="application/json">
+{
+  "anchor": "compose-spec.json#L277-L310",
+  "groups": [
+    {
+      "id": "depends_on",
+      "title": "depends_on (anchor \u2014 compose-spec.json L277-L310)",
+      "note": "User-anchored section. Object-form support is the largest gap.",
+      "rows": [
+        [
+          "depends_on (list form)",
+          "ok",
+          "yes",
+          "[String]? on Service; topologically sorted with cycle detection in Service.topoSortConfiguredServices."
+        ],
+        [
+          "depends_on (object form)",
+          "ok",
+          "yes",
+          "DependsOn type accepts list/single/object form. Service.dependsOn: DependsOn?."
+        ],
+        [
+          "condition: service_started",
+          "ok",
+          "yes",
+          "waitForCondition(.serviceStarted) gates dependents in configService."
+        ],
+        [
+          "condition: service_healthy",
+          "partial",
+          "yes",
+          "Honored at the gate; underlying ContainerSnapshot doesn't expose health, so falls back to .running with a TODO warning."
+        ],
+        [
+          "condition: service_completed_successfully",
+          "ok",
+          "yes",
+          "Honored at the gate; verifies snapshot.lastExitCode == 0 and throws ComposeWaitError.nonZeroExitCode otherwise. Falls back to .stopped-only if lastExitCode is nil (e.g., older runtime)."
+        ],
+        [
+          "required (bool, default true)",
+          "ok",
+          "yes",
+          "DependsOnEntry.required gates whether errors propagate or are warned."
+        ],
+        [
+          "restart (bool|string)",
+          "partial",
+          "yes",
+          "Parsed on DependsOnEntry. Restart manager wiring is Phase-future since Apple container's restart manager is also pending."
+        ]
+      ]
+    },
+    {
+      "id": "top",
+      "title": "Top-level Compose keys",
+      "note": "Fields directly under the compose-file root.",
+      "rows": [
+        [
+          "version",
+          "ok",
+          "yes",
+          "Decoded; logged but otherwise ignored at runtime."
+        ],
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as project prefix for container names."
+        ],
+        [
+          "services",
+          "ok",
+          "yes",
+          "[String: Service?] map; service-by-service orchestration in ComposeUp."
+        ],
+        [
+          "networks",
+          "ok",
+          "yes",
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority."
+        ],
+        [
+          "volumes",
+          "partial",
+          "yes",
+          "Parsed; named volumes fall back to ~/.containers/Volumes/<project>/<name> hard-link directories."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "configs",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:<target> per service.configs entry; uid/gid/mode parsed but not enforced via -v."
+        ],
+        [
+          "include",
+          "ok",
+          "yes",
+          "DockerCompose.loadAndMerge resolves includes recursively with cycle protection."
+        ],
+        [
+          "models",
+          "partial",
+          "yes",
+          "Decoded as top-level Model definitions; compose up warn-skips because AI model provisioning is not wired to Apple container."
+        ]
+      ]
+    },
+    {
+      "id": "service",
+      "title": "Service properties (89 in spec)",
+      "note": "Implemented at parse-and-runtime, parse-only, or unmodeled.",
+      "rows": [
+        [
+          "image",
+          "ok",
+          "yes",
+          "Pulled via ClientImage.list / ImagePull before running."
+        ],
+        [
+          "build",
+          "ok",
+          "yes",
+          "Build struct (context, dockerfile, args). Routed to Application.BuildCommand."
+        ],
+        [
+          "command",
+          "ok",
+          "yes",
+          "Accepts string or [String]; appended after image in argv."
+        ],
+        [
+          "container_name",
+          "ok",
+          "yes",
+          "Overrides default <project>-<service>."
+        ],
+        [
+          "depends_on",
+          "partial",
+          "yes",
+          "List form only. See anchor section above."
+        ],
+        [
+          "deploy",
+          "partial",
+          "yes",
+          "Parsed; only deploy.resources.limits.cpus/memory honored at runtime."
+        ],
+        [
+          "entrypoint",
+          "ok",
+          "yes",
+          "Accepts string or [String]; passed via --entrypoint."
+        ],
+        [
+          "env_file",
+          "ok",
+          "yes",
+          "List of paths; loaded via loadEnvFile() and merged."
+        ],
+        [
+          "environment",
+          "ok",
+          "yes",
+          "Map; ${VAR} substitution; running container IPs replace bare service-name values."
+        ],
+        [
+          "healthcheck",
+          "partial",
+          "yes",
+          "Parsed (test/interval/timeout/retries/start_period). Not enforced \u2014 startup never waits on healthy state."
+        ],
+        [
+          "hostname",
+          "ok",
+          "yes",
+          "--hostname applied; ${VAR} resolved."
+        ],
+        [
+          "platform",
+          "ok",
+          "yes",
+          "--platform applied; split into --os/--arch for builds."
+        ],
+        [
+          "ports",
+          "ok",
+          "yes",
+          "Parsed via composePortToRunArg; supports IPv4/IPv6, protocol, host:container."
+        ],
+        [
+          "privileged",
+          "ok",
+          "yes",
+          "Adds --privileged."
+        ],
+        [
+          "read_only",
+          "ok",
+          "yes",
+          "Adds --read-only."
+        ],
+        [
+          "restart",
+          "partial",
+          "yes",
+          "Decoded but NOT applied \u2014 container run does not support --restart. Code path commented out."
+        ],
+        [
+          "stdin_open",
+          "ok",
+          "yes",
+          "Adds -i flag."
+        ],
+        [
+          "tty",
+          "ok",
+          "yes",
+          "Adds -t flag."
+        ],
+        [
+          "user",
+          "ok",
+          "yes",
+          "Adds --user."
+        ],
+        [
+          "volumes",
+          "ok",
+          "yes",
+          "[String] of source:dest[:mode]; bind mounts created if missing."
+        ],
+        [
+          "working_dir",
+          "ok",
+          "yes",
+          "Adds --workdir."
+        ],
+        [
+          "configs",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:<target> per service.configs entry; uid/gid/mode parsed but not enforced via -v."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "networks",
+          "partial",
+          "yes",
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority; service-level aliases are parsed but ignored at runtime with a warning because Apple container does not support --alias."
+        ],
+        [
+          "annotations",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "attach",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "blkio_config",
+          "ok",
+          "yes",
+          "BlkioConfig.swift; ResourceArgs emits --blkio-weight, --blkio-weight-device, --device-{read,write}-{bps,iops}."
+        ],
+        [
+          "cap_add",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --cap-add per item."
+        ],
+        [
+          "cap_drop",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --cap-drop per item."
+        ],
+        [
+          "cgroup",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "cgroup_parent",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "cpu_count",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-count."
+        ],
+        [
+          "cpu_percent",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-percent."
+        ],
+        [
+          "cpu_period",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-period."
+        ],
+        [
+          "cpu_quota",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-quota."
+        ],
+        [
+          "cpu_rt_period",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-rt-period."
+        ],
+        [
+          "cpu_rt_runtime",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-rt-runtime."
+        ],
+        [
+          "cpu_shares",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpu-shares."
+        ],
+        [
+          "cpus",
+          "ok",
+          "yes",
+          "Top-level service.cpus \u2192 --cpus; falls back to deploy.resources.limits.cpus."
+        ],
+        [
+          "cpuset",
+          "ok",
+          "yes",
+          "ResourceArgs emits --cpuset-cpus."
+        ],
+        [
+          "credential_spec",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "develop",
+          "ok",
+          "yes",
+          "Develop schema parsed; compose watch implements polling-based watcher with sync/rebuild/restart actions."
+        ],
+        [
+          "device_cgroup_rules",
+          "partial",
+          "yes",
+          "Parsed; warn-and-skip \u2014 not supported by Apple container runtime."
+        ],
+        [
+          "devices",
+          "ok",
+          "yes",
+          "StorageArgs emits --device per item; runtime may reject unsupported mappings."
+        ],
+        [
+          "dns",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns per item with ${VAR} substitution."
+        ],
+        [
+          "dns_opt",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns-option per item."
+        ],
+        [
+          "dns_search",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns-search per item."
+        ],
+        [
+          "domainname",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --domainname."
+        ],
+        [
+          "expose",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --expose per item."
+        ],
+        [
+          "extends",
+          "ok",
+          "yes",
+          "DockerCompose.resolvingExtends() resolves at parse time with cycle detection (same-file)."
+        ],
+        [
+          "external_links",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "extra_hosts",
+          "partial",
+          "yes",
+          "Parsed; map form serialized to host:ip, but ignored at runtime with a warning because Apple container does not support --add-host."
+        ],
+        [
+          "gpus",
+          "ok",
+          "yes",
+          "Gpus.swift handles 'all' shorthand or array form; ResourceArgs emits --gpus."
+        ],
+        [
+          "group_add",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --group-add per item."
+        ],
+        [
+          "init",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --init when true."
+        ],
+        [
+          "ipc",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --ipc."
+        ],
+        [
+          "isolation",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "label_file",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "links",
+          "miss",
+          "no",
+          "(deprecated in compose-spec)"
+        ],
+        [
+          "logging",
+          "partial",
+          "yes",
+          "logging.driver and logging.options are parsed but ignored at runtime with warnings because Apple container does not support --log-driver or --log-opt."
+        ],
+        [
+          "mac_address",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --mac-address."
+        ],
+        [
+          "mem_limit",
+          "ok",
+          "yes",
+          "Top-level service.mem_limit \u2192 --memory; overrides deploy.resources.limits.memory."
+        ],
+        [
+          "mem_reservation",
+          "ok",
+          "yes",
+          "ResourceArgs emits --memory-reservation."
+        ],
+        [
+          "mem_swappiness",
+          "ok",
+          "yes",
+          "ResourceArgs emits --memory-swappiness."
+        ],
+        [
+          "memswap_limit",
+          "ok",
+          "yes",
+          "ResourceArgs emits --memory-swap."
+        ],
+        [
+          "models",
+          "partial",
+          "yes",
+          "Decoded as service model references; compose up warn-skips because AI model provisioning is not wired to Apple container."
+        ],
+        [
+          "network_mode",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --network MODE."
+        ],
+        [
+          "oom_kill_disable",
+          "ok",
+          "yes",
+          "ResourceArgs emits --oom-kill-disable when true."
+        ],
+        [
+          "oom_score_adj",
+          "ok",
+          "yes",
+          "ResourceArgs emits --oom-score-adj."
+        ],
+        [
+          "pid",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --pid."
+        ],
+        [
+          "pids_limit",
+          "ok",
+          "yes",
+          "ResourceArgs emits --pids-limit."
+        ],
+        [
+          "post_start",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "pre_stop",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "profiles",
+          "ok",
+          "yes",
+          "Service.filterByProfiles filters services in up/down/build/etc; --profile flag + COMPOSE_PROFILES env."
+        ],
+        [
+          "provider",
+          "partial",
+          "yes",
+          "Decoded as external provider config; compose up warn-skips because provider lifecycle wiring is not implemented."
+        ],
+        [
+          "pull_policy",
+          "ok",
+          "yes",
+          "Routed through pullImage with always/never/build/missing branches."
+        ],
+        [
+          "pull_refresh_after",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "runtime",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --runtime."
+        ],
+        [
+          "scale",
+          "ok",
+          "yes",
+          "ComposeUp expands services with scale > 1 into <name>-1, <name>-2, ... -N replicas."
+        ],
+        [
+          "security_opt",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --security-opt per item."
+        ],
+        [
+          "shm_size",
+          "ok",
+          "yes",
+          "ResourceArgs emits --shm-size."
+        ],
+        [
+          "stop_grace_period",
+          "ok",
+          "yes",
+          "LifecycleArgs parses Go-duration format \u2192 --stop-timeout."
+        ],
+        [
+          "stop_signal",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --stop-signal."
+        ],
+        [
+          "storage_opt",
+          "partial",
+          "yes",
+          "Parsed; warn-and-skip \u2014 not supported by Apple container runtime."
+        ],
+        [
+          "sysctls",
+          "ok",
+          "yes",
+          "StorageArgs emits --sysctl key=value per entry."
+        ],
+        [
+          "tmpfs",
+          "ok",
+          "yes",
+          "StorageArgs emits --tmpfs per item."
+        ],
+        [
+          "ulimits",
+          "ok",
+          "yes",
+          "Service.ulimits decoded as [String: Ulimit]? (scalar Int and {soft,hard} forms). ResourceArgs emits sorted --ulimit name=value (or soft:hard) per entry."
+        ],
+        [
+          "use_api_socket",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at runtime — Apple container has no equivalent."
+        ],
+        [
+          "userns_mode",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --userns."
+        ],
+        [
+          "uts",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --uts."
+        ],
+        [
+          "volumes_from",
+          "partial",
+          "yes",
+          "Parsed; warn-and-skip \u2014 not supported by Apple container runtime."
+        ]
+      ]
+    },
+    {
+      "id": "build",
+      "title": "Service.build sub-properties",
+      "rows": [
+        [
+          "context",
+          "ok",
+          "yes",
+          "Resolved relative to compose file directory."
+        ],
+        [
+          "dockerfile",
+          "ok",
+          "yes",
+          "Defaults to ./Dockerfile if absent."
+        ],
+        [
+          "args",
+          "ok",
+          "yes",
+          "Map; ${VAR} substitution applied."
+        ],
+        [
+          "dockerfile_inline",
+          "ok",
+          "yes",
+          "Inline content written to a temp file and passed via --file; cleaned up via defer."
+        ],
+        [
+          "entitlements",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at build time — Application.BuildCommand has no --allow flag equivalent."
+        ],
+        [
+          "cache_from",
+          "ok",
+          "yes",
+          "buildService emits --cache-from per item; runtime may reject."
+        ],
+        [
+          "cache_to",
+          "ok",
+          "yes",
+          "buildService emits --cache-to per item; runtime may reject."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "network",
+          "ok",
+          "yes",
+          "buildService emits --network."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "ssh",
+          "ok",
+          "yes",
+          "buildService emits --ssh per item; runtime may reject."
+        ],
+        [
+          "target",
+          "ok",
+          "yes",
+          "buildService emits --target."
+        ],
+        [
+          "platforms",
+          "ok",
+          "yes",
+          "First platform picked; warn if more than one declared."
+        ],
+        [
+          "shm_size",
+          "ok",
+          "yes",
+          "ResourceArgs emits --shm-size."
+        ],
+        [
+          "no_cache (--no-cache flag)",
+          "ok",
+          "yes",
+          "Honored via CLI flag, not the build.no_cache key."
+        ]
+      ]
+    },
+    {
+      "id": "healthcheck",
+      "title": "Service.healthcheck",
+      "rows": [
+        [
+          "test (CMD / CMD-SHELL / NONE / string)",
+          "partial",
+          "yes",
+          "Decoded; not enforced before dependents start."
+        ],
+        [
+          "interval",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "timeout",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "retries",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "start_period",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "start_interval",
+          "partial",
+          "yes",
+          "Decoded only; enforcement gated on ContainerSnapshot health surface."
+        ],
+        [
+          "disable",
+          "partial",
+          "yes",
+          "Decoded only; enforcement gated on ContainerSnapshot health surface."
+        ]
+      ]
+    },
+    {
+      "id": "deploy",
+      "title": "Service.deploy",
+      "rows": [
+        [
+          "mode",
+          "partial",
+          "no",
+          "Parsed; not used (no orchestrator)."
+        ],
+        [
+          "replicas",
+          "partial",
+          "no",
+          "Parsed; not used."
+        ],
+        [
+          "restart_policy",
+          "partial",
+          "no",
+          "Parsed; not used."
+        ],
+        [
+          "resources.limits.cpus",
+          "ok",
+          "yes",
+          "Applied to container run --cpus and build --cpus."
+        ],
+        [
+          "resources.limits.memory",
+          "ok",
+          "yes",
+          "Applied to container run --memory and build --memory."
+        ],
+        [
+          "resources.reservations.cpus",
+          "partial",
+          "no",
+          "Parsed; not applied."
+        ],
+        [
+          "resources.reservations.memory",
+          "partial",
+          "no",
+          "Parsed; not applied."
+        ],
+        [
+          "resources.reservations.devices",
+          "partial",
+          "no",
+          "DeviceReservation parsed; not applied."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "placement",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ],
+        [
+          "rollback_config",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ],
+        [
+          "update_config",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ],
+        [
+          "endpoint_mode",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ]
+      ]
+    },
+    {
+      "id": "network",
+      "title": "Top-level Network",
+      "rows": [
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as actual network name."
+        ],
+        [
+          "external",
+          "ok",
+          "yes",
+          "Boolean and {name: \u2026} forms via ExternalNetwork; assumed pre-existing."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "attachable",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "enable_ipv6",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "internal",
+          "partial",
+          "yes",
+          "Parsed (as isInternal); warned-and-ignored."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "ipam",
+          "ok",
+          "yes",
+          "Phase 5B Ipam struct; --subnet/--subnet-v6 emitted; ip-range/gateway warn-skip."
+        ]
+      ]
+    },
+    {
+      "id": "volume",
+      "title": "Top-level Volume",
+      "rows": [
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as actual volume name."
+        ],
+        [
+          "external",
+          "ok",
+          "yes",
+          "Bool and object form via ExternalVolume."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "no",
+          "Parsed; not applied."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ]
+      ]
+    },
+    {
+      "id": "secret",
+      "title": "Top-level Secret",
+      "rows": [
+        [
+          "file",
+          "partial",
+          "no",
+          "Parsed; not mounted at runtime."
+        ],
+        [
+          "environment",
+          "partial",
+          "no",
+          "Custom extension; parsed only."
+        ],
+        [
+          "external",
+          "ok",
+          "no",
+          "Bool and object form via ExternalSecret."
+        ],
+        [
+          "name",
+          "ok",
+          "no",
+          "Parsed."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "yes",
+          "Decoded only; bind-mount source support is a follow-up."
+        ],
+        [
+          "template_driver",
+          "partial",
+          "yes",
+          "Decoded only; bind-mount source support is a follow-up."
+        ]
+      ]
+    },
+    {
+      "id": "config",
+      "title": "Top-level Config",
+      "rows": [
+        [
+          "file",
+          "partial",
+          "no",
+          "Parsed; not mounted."
+        ],
+        [
+          "external",
+          "ok",
+          "no",
+          "Bool and object form via ExternalConfig."
+        ],
+        [
+          "name",
+          "ok",
+          "no",
+          "Parsed."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "content",
+          "partial",
+          "yes",
+          "Decoded only; bind-mount source support is a follow-up."
+        ],
+        [
+          "environment",
+          "partial",
+          "yes",
+          "Decoded only; bind-mount source support is a follow-up."
+        ],
+        [
+          "template_driver",
+          "partial",
+          "yes",
+          "Decoded only; bind-mount source support is a follow-up."
+        ]
+      ]
+    },
+    {
+      "id": "cli",
+      "title": "Compose CLI subcommands",
+      "note": "Versus the canonical docker compose CLI surface.",
+      "rows": [
+        [
+          "compose up",
+          "ok",
+          "yes",
+          "Topo-sorted startup, network/volume creation, image pull/build."
+        ],
+        [
+          "compose down",
+          "ok",
+          "yes",
+          "Stops (and optionally removes) project containers."
+        ],
+        [
+          "compose build",
+          "ok",
+          "yes",
+          "Builds without running. Honors --no-cache, -f."
+        ],
+        [
+          "compose version",
+          "ok",
+          "yes",
+          "Prints tool version (0.11.0)."
+        ],
+        [
+          "compose pull",
+          "ok",
+          "yes",
+          "ComposePull subcommand respects --policy / service.pull_policy."
+        ],
+        [
+          "compose push",
+          "ok",
+          "yes",
+          "ComposePush shells out to `container image push <image>` per service via RunnerEnvironment. Honors profile filter, --include-deps, --ignore-push-failures, --quiet. Build-only services skipped with note."
+        ],
+        [
+          "compose logs",
+          "ok",
+          "yes",
+          "ComposeLogs subcommand streams logs via ContainerClient.logs() with prefixed colored output."
+        ],
+        [
+          "compose ps",
+          "ok",
+          "yes",
+          "ComposePs lists project containers with name/image/status/ports table."
+        ],
+        [
+          "compose run",
+          "ok",
+          "yes",
+          "ComposeRun spawns one-off container with overrides; ports skipped unless --service-ports."
+        ],
+        [
+          "compose exec",
+          "ok",
+          "yes",
+          "ComposeExec runs a command inside an existing project container."
+        ],
+        [
+          "compose start",
+          "ok",
+          "yes",
+          "ComposeStart starts existing containers in topo-sort order."
+        ],
+        [
+          "compose stop",
+          "ok",
+          "yes",
+          "ComposeStop stops in reverse topo-sort order via ContainerClient.stop()."
+        ],
+        [
+          "compose restart",
+          "ok",
+          "yes",
+          "ComposeRestart shares stop+start helpers."
+        ],
+        [
+          "compose kill",
+          "ok",
+          "yes",
+          "ComposeKill shells out to container kill --signal."
+        ],
+        [
+          "compose rm",
+          "ok",
+          "yes",
+          "ComposeRm uses ContainerClient.delete; --force/--stop/--volumes flags."
+        ],
+        [
+          "compose create",
+          "ok",
+          "yes",
+          "ComposeCreate provisions without starting; capability-probe falls back if Apple container lacks 'create'."
+        ],
+        [
+          "compose config",
+          "ok",
+          "yes",
+          "ComposeConfig emits resolved YAML via Yams.YAMLEncoder; --services/--volumes/--profiles."
+        ],
+        [
+          "compose port",
+          "ok",
+          "yes",
+          "ComposePort resolves <service> <private-port> [--protocol tcp|udp] against service.ports via composePortToRunArg; prints 0.0.0.0:<host-port> or exits non-zero if unmapped."
+        ],
+        [
+          "compose top",
+          "ok",
+          "yes",
+          "ComposeTop shells out to `container exec <id> ps -ef` per running project container via RunnerEnvironment. Apple `container` runtime exposes no native top API."
+        ],
+        [
+          "compose events",
+          "partial",
+          "yes",
+          "ComposeEvents implemented via 1s polling fallback (synthetic create/start/stop/die/destroy diff) because Apple `container` ContainerClient exposes no native event stream. Plain or --json output. True streaming pending upstream support."
+        ],
+        [
+          "compose ls",
+          "ok",
+          "yes",
+          "ComposeLs groups containers by project-name prefix."
+        ],
+        [
+          "compose watch",
+          "ok",
+          "yes",
+          "ComposeWatch is a polling-based file monitor honoring develop.watch[]. FSEvents upgrade is a follow-up improvement, not a missing feature."
+        ]
+      ]
+    }
+  ]
+}
+</script>
+
+<script>
+"use strict";
+
+/* -------- helpers: safe DOM construction -------- */
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === "class") node.className = attrs[k];
+      else if (k === "text") node.textContent = attrs[k];
+      else if (k.indexOf("data-") === 0) node.setAttribute(k, attrs[k]);
+      else if (k === "title" || k === "type" || k === "placeholder" ||
+               k === "id" || k === "href" || k === "download" ||
+               k === "autocomplete" || k === "value" || k === "role" ||
+               k === "aria-pressed") {
+        node.setAttribute(k, attrs[k]);
+      }
+    }
+  }
+  if (children) {
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i];
+      if (c == null) continue;
+      if (typeof c === "string") node.appendChild(document.createTextNode(c));
+      else node.appendChild(c);
+    }
+  }
+  return node;
+}
+
+/* -------- load static data from inline JSON script tag -------- */
+const dataNode = document.getElementById("coverage-data");
+const data = JSON.parse(dataNode.textContent);
+/* Each row is [feature, status, tested, notes] in JSON; expand for readability */
+const groups = data.groups.map(g => ({
+  id: g.id,
+  title: g.title,
+  note: g.note || "",
+  rows: g.rows.map(r => ({ f: r[0], s: r[1], t: r[2], n: r[3] || "" })),
+}));
+
+const labels = { ok: "Implemented", partial: "Partial", miss: "Missing" };
+function pct(n, total) { return total === 0 ? 0 : Math.round((n / total) * 100); }
+function counts(rows) {
+  const c = { ok: 0, partial: 0, miss: 0 };
+  for (let i = 0; i < rows.length; i++) c[rows[i].s]++;
+  return c;
+}
+
+/* -------- render summary -------- */
+function renderSummary() {
+  const all = groups.flatMap(g => g.rows);
+  const c = counts(all);
+  const total = all.length;
+  const tested = all.filter(r => r.t === "yes").length;
+  const stats = [
+    { label: "Features audited",  value: total, pct: "" },
+    { label: "Implemented",       value: c.ok,      pct: pct(c.ok, total) + "% of audited" },
+    { label: "Partial",           value: c.partial, pct: pct(c.partial, total) + "% of audited" },
+    { label: "Missing",           value: c.miss,    pct: pct(c.miss, total) + "% of audited" },
+    { label: "Has test coverage", value: tested,    pct: pct(tested, total) + "% of audited" },
+  ];
+  const root = document.getElementById("summary");
+  for (let i = 0; i < stats.length; i++) {
+    const s = stats[i];
+    root.appendChild(el("div", { class: "stat" }, [
+      el("div", { class: "label", text: s.label }),
+      el("div", { class: "value", text: String(s.value) }),
+      el("div", { class: "pct",   text: s.pct }),
+    ]));
+  }
+}
+
+/* -------- render grouped tables -------- */
+function renderGroups() {
+  const root = document.getElementById("groups");
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const c = counts(g.rows);
+    const total = g.rows.length;
+    const okPct = pct(c.ok, total);
+    const partialPct = pct(c.partial, total);
+
+    const bar = el("span", { class: "bar",
+      title: c.ok + " ok · " + c.partial + " partial · " + c.miss + " missing" }, [
+      Object.assign(el("span", { class: "ok" }), { style: "width:" + okPct + "%" }),
+      Object.assign(el("span", { class: "partial" }), { style: "width:" + partialPct + "%" }),
+    ]);
+    /* set inline width safely */
+    bar.children[0].style.width = okPct + "%";
+    bar.children[1].style.width = partialPct + "%";
+
+    const meta = el("span", { class: "meta" }, [
+      bar,
+      " " + c.ok + " / " + total + " implemented · " + c.partial + " partial · " + c.miss + " missing",
+    ]);
+
+    const h2 = el("h2", null, [g.title + "  ", meta]);
+    const section = el("section", { class: "group-section", "data-group-id": g.id }, [h2]);
+
+    if (g.note) section.appendChild(el("div", { class: "note", text: g.note }));
+
+    const thead = el("thead", null, [
+      el("tr", null, [
+        el("th", { "data-sort": "feature", text: "Feature" }),
+        el("th", { "data-sort": "status",  text: "Status" }),
+        el("th", { "data-sort": "tested",  text: "Tested" }),
+        el("th", { text: "Notes" }),
+      ]),
+    ]);
+
+    const tbody = el("tbody");
+    for (let ri = 0; ri < g.rows.length; ri++) {
+      const r = g.rows[ri];
+      const haystack = (r.f + " " + (r.n || "")).toLowerCase();
+      tbody.appendChild(el("tr", {
+        "data-status": r.s,
+        "data-tested": r.t,
+        "data-haystack": haystack,
+      }, [
+        el("td", { class: "feature", text: r.f }),
+        el("td", null, [el("span", { class: "pill " + r.s, text: labels[r.s] })]),
+        el("td", { text: r.t === "yes" ? "✓" : "—" }),
+        el("td", { class: "notes", text: r.n || "" }),
+      ]));
+    }
+
+    const table = el("table", { "data-table": "true" }, [thead, tbody]);
+    section.appendChild(table);
+    root.appendChild(section);
+  }
+}
+
+/* -------- filtering -------- */
+const filterState = { status: "all", tested: "all", q: "" };
+
+function applyFilters() {
+  const q = filterState.q.trim().toLowerCase();
+  let visible = 0;
+  const sections = document.querySelectorAll("section.group-section");
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    let groupVisible = 0;
+    const rows = section.querySelectorAll("tbody tr");
+    for (let j = 0; j < rows.length; j++) {
+      const tr = rows[j];
+      const matchStatus = filterState.status === "all" || tr.getAttribute("data-status") === filterState.status;
+      const matchTested = filterState.tested === "all" || tr.getAttribute("data-tested") === filterState.tested;
+      const matchQ = !q || tr.getAttribute("data-haystack").indexOf(q) !== -1;
+      const show = matchStatus && matchTested && matchQ;
+      tr.style.display = show ? "" : "none";
+      if (show) { groupVisible++; visible++; }
+    }
+    section.style.display = groupVisible === 0 ? "none" : "";
+  }
+  document.getElementById("empty").classList.toggle("shown", visible === 0);
+}
+
+function bindFilters() {
+  const chips = document.querySelectorAll(".chip");
+  for (let i = 0; i < chips.length; i++) {
+    const btn = chips[i];
+    btn.addEventListener("click", function() {
+      const f = btn.getAttribute("data-filter");
+      const v = btn.getAttribute("data-value");
+      const peers = document.querySelectorAll('.chip[data-filter="' + f + '"]');
+      for (let j = 0; j < peers.length; j++) peers[j].setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      filterState[f] = v;
+      applyFilters();
+    });
+  }
+  document.getElementById("search").addEventListener("input", function(e) {
+    filterState.q = e.target.value;
+    applyFilters();
+  });
+}
+
+/* -------- sorting -------- */
+const sortRank = { ok: 0, partial: 1, miss: 2 };
+function bindSorting() {
+  const tables = document.querySelectorAll("table[data-table]");
+  for (let ti = 0; ti < tables.length; ti++) {
+    const table = tables[ti];
+    const ths = table.querySelectorAll("th[data-sort]");
+    for (let hi = 0; hi < ths.length; hi++) {
+      const th = ths[hi];
+      th.addEventListener("click", function() {
+        const key = th.getAttribute("data-sort");
+        const tbody = table.querySelector("tbody");
+        const rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+        const isAsc = th.classList.contains("sorted-asc");
+        const next = isAsc ? "desc" : "asc";
+        const allTh = table.querySelectorAll("th");
+        for (let k = 0; k < allTh.length; k++) {
+          allTh[k].classList.remove("sorted-asc", "sorted-desc");
+        }
+        th.classList.add(next === "asc" ? "sorted-asc" : "sorted-desc");
+        rows.sort(function(a, b) {
+          let va, vb;
+          if (key === "feature") {
+            va = a.children[0].textContent.toLowerCase();
+            vb = b.children[0].textContent.toLowerCase();
+          } else if (key === "status") {
+            va = sortRank[a.getAttribute("data-status")];
+            vb = sortRank[b.getAttribute("data-status")];
+          } else if (key === "tested") {
+            va = a.getAttribute("data-tested") === "yes" ? 0 : 1;
+            vb = b.getAttribute("data-tested") === "yes" ? 0 : 1;
+          }
+          if (va < vb) return next === "asc" ? -1 : 1;
+          if (va > vb) return next === "asc" ?  1 : -1;
+          return 0;
+        });
+        for (let k = 0; k < rows.length; k++) tbody.appendChild(rows[k]);
+      });
+    }
+  }
+}
+
+/* -------- machine-readable JSON download -------- */
+function attachJson() {
+  const all = groups.map(g => ({
+    id: g.id, title: g.title, note: g.note || null,
+    counts: counts(g.rows),
+    rows: g.rows.map(r => ({ feature: r.f, status: r.s, tested: r.t === "yes", notes: r.n })),
+  }));
+  const summary = {
+    generated_at: new Date().toISOString(),
+    anchor: data.anchor,
+    counts: counts(groups.flatMap(g => g.rows)),
+    groups: all,
+  };
+  const json = JSON.stringify(summary, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { id: "download-json", href: url, download: "coverage.json", text: "Download JSON" });
+  document.getElementById("controls").appendChild(a);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("ts").textContent = new Date().toISOString().slice(0, 10);
+  renderSummary();
+  renderGroups();
+  bindFilters();
+  bindSorting();
+  attachJson();
+});
+</script>
+</body>
+</html>
