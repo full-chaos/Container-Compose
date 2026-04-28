@@ -16,21 +16,24 @@
 
 import Testing
 import Foundation
+import ArgumentParser
 @testable import ContainerComposeCore
 import TestHelpers
 
-/// Static argv-shape regression tests for `compose up` (PR-2 of the recorder
-/// seam migration; see `docs/plans/PLAN-recorder-seam.md` §8).
+/// Static argv-shape regression tests for the `RunCommandRunner` seam
+/// (PRs-2..5 of the recorder migration; see `docs/plans/PLAN-recorder-seam.md`
+/// §8).
 ///
-/// Each test writes a temp compose YAML, parses `ComposeUp`, binds a
-/// `RecordingRunner` via `RunnerEnvironment.$current.withValue(...)`, then
-/// invokes `cmd.run()` and asserts the recorded `container run` argv.
+/// Each test writes a temp compose YAML, parses one of the `Compose*`
+/// subcommands, binds a `RecordingRunner` via
+/// `RunnerEnvironment.$current.withValue(...)`, then invokes `cmd.run()` and
+/// asserts the recorded `container run` argv.
 ///
-/// The recorder consumes the `streaming` request that PR-2 routed through
-/// the seam (replacing the deleted `ComposeUp.streamCommand`); all other
-/// shell-out sites (run/create/kill/start/exec/watch) continue to use their
-/// own helpers until PR-3..5 land. Build / image-pull / network-create stay
-/// in-process per plan §3 / §10 Q1 and are not recorded.
+/// The recorder consumes the `streaming` requests that PRs-2/3 routed through
+/// the seam (replacing `ComposeUp.streamCommand` and `ComposeRun.streamCommand`).
+/// Remaining shell-out sites (create/kill/start/exec/watch) continue to use
+/// their own helpers until PR-4..5 land. Build / image-pull / network-create
+/// stay in-process per plan §3 / §10 Q1 and are not recorded.
 @Suite("Runtime argv recording")
 struct RuntimeArgvTests {
 
@@ -50,42 +53,41 @@ struct RuntimeArgvTests {
         return (dir, compose)
     }
 
-    /// Parse `ComposeUp` with `-f <composePath>` (post-subcommand form, since
-    /// `ComposeUp.parse(...)` bypasses the global-flag normaliser). `--detach`
-    /// is appended so `run()` returns instead of blocking on `waitForever()`.
-    private func parseComposeUp(composePath: String) throws -> ComposeUp {
-        try ComposeUp.parse(["--detach", "-f", composePath])
-    }
-
-    /// Detach `ComposeUp.run()` for `composePath` under a fresh
-    /// `RecordingRunner` task-local binding, poll the recorder until the
-    /// first `container run` argv is captured, then cancel the run task
-    /// and return the argv.
+    /// Detach `cmd.run()` (where `cmd` is whatever the `parse` closure
+    /// returns) under a fresh `RecordingRunner` task-local binding, poll the
+    /// recorder until the first `container run` argv is captured, then cancel
+    /// the run task and return the argv.
     ///
-    /// Why detach + cancel: `cmd.run()`'s post-runner `waitUntilServiceIsRunning`
-    /// polls the live `ContainerClient` until its 30s timeout (no real
-    /// container ever starts under the recorder). Awaiting `cmd.run()` to
-    /// completion would pay that 30s on every test. Spawning it in a
-    /// detached `Task` and cancelling once the recorder has the argv keeps
-    /// the test fast (locally <100 ms; cancellation propagates through the
-    /// `Task.sleep` calls inside the polling loop).
+    /// Generalised over the parsing closure so this scaffolding can serve
+    /// every `Compose*` subcommand (`up`, `run`, `create`, …) — PR-3 of the
+    /// recorder migration extends the helper from PR-2's `ComposeUp`-only
+    /// shape. Each call site supplies the concrete `parse([...])` invocation.
+    ///
+    /// Why detach + cancel: `cmd.run()`'s post-runner work (e.g.
+    /// `ComposeUp.waitUntilServiceIsRunning`) polls the live `ContainerClient`
+    /// until its 30 s timeout (no real container ever starts under the
+    /// recorder). Awaiting `cmd.run()` to completion would pay that on every
+    /// test. Spawning it in a detached `Task` and cancelling once the
+    /// recorder has the argv keeps the test fast (locally <100 ms;
+    /// cancellation propagates through the `Task.sleep` calls inside the
+    /// polling loop).
     ///
     /// Why the timeout is 60 s and not 5 s: CI runners do not have Apple
-    /// `container` installed, so the `pullImage` path that runs *before*
-    /// the runner Task spawns inside `configService` (line ~472 in
-    /// `ComposeUp.swift`) calls into `ClientImage.list()` /
-    /// `Application.ImagePull.parse(...).run()` and takes several seconds
-    /// to flow through before the runner call is reached. Locally these
-    /// short-circuit in milliseconds. 60 s is comfortably above the
-    /// observed CI path-to-runner latency without masking real failures.
-    private func recordedRunArgv(
-        composePath: String,
-        timeout: TimeInterval = 60
+    /// `container` installed, so the `pullImage` path that runs *before* the
+    /// runner call (in `ComposeUp.configService` and `ComposeRun.run()`)
+    /// calls into `ClientImage.list()` / `Application.ImagePull.parse(...)
+    /// .run()` and takes several seconds to flow through before the runner
+    /// call is reached. Locally these short-circuit in milliseconds. 60 s is
+    /// comfortably above the observed CI path-to-runner latency without
+    /// masking real failures.
+    private func recordedRunArgv<C: AsyncParsableCommand>(
+        timeout: TimeInterval = 60,
+        parse: @escaping @Sendable () throws -> C
     ) async throws -> [String] {
         let recorder = RecordingRunner()
         let runTask = Task {
             try? await RunnerEnvironment.$current.withValue(recorder) {
-                var cmd = try parseComposeUp(composePath: composePath)
+                var cmd = try parse()
                 try await cmd.run()
             }
         }
@@ -126,7 +128,35 @@ struct RuntimeArgvTests {
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let argv = try await recordedRunArgv(composePath: compose.path)
+        let argv = try await recordedRunArgv {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
+        let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
+        let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
+        #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
+        #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
+    }
+
+    // MARK: - Plan §8 #2 — `compose run` entrypoint placement (PR-3 regression)
+
+    @Test("run: --entrypoint precedes image (regression for ComposeRun §1 bug)")
+    func run_emits_entrypoint_before_image() async throws {
+        let yaml = """
+        services:
+          app:
+            image: alpine:latest
+            entrypoint: ["/app/entrypoint.sh"]
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // `ComposeRun.parse(["-f", composePath, "app"])`: -f is an @Option
+        // (parsed before the @Argument), "app" is the @Argument serviceName,
+        // and no trailing tokens means the captureForPassthrough `command`
+        // remains empty so the service-level `entrypoint` is honored.
+        let argv = try await recordedRunArgv {
+            try ComposeRun.parse(["-f", compose.path, "app"])
+        }
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
         let imgIdx = try #require(argv.firstIndex(of: "alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
@@ -147,7 +177,9 @@ struct RuntimeArgvTests {
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let argv = try await recordedRunArgv(composePath: compose.path)
+        let argv = try await recordedRunArgv {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
 
         // Locate landmarks.
         let entryIdx = try #require(argv.firstIndex(of: "--entrypoint"))
@@ -184,7 +216,9 @@ struct RuntimeArgvTests {
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        let argv = try await recordedRunArgv(composePath: compose.path)
+        let argv = try await recordedRunArgv {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
 
         // Expected -p value pairs (per `composePortToRunArg` semantics in
         // `Helper Functions.swift`): explicit-IP form preserved, no-IP form
@@ -242,7 +276,9 @@ struct RuntimeArgvTests {
         let compose = dir.appendingPathComponent("docker-compose.yml")
         try yaml.write(to: compose, atomically: true, encoding: .utf8)
 
-        let argv = try await recordedRunArgv(composePath: compose.path)
+        let argv = try await recordedRunArgv {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
 
         // Collect every `-e <K=V>` pair.
         var envPairs: [String] = []

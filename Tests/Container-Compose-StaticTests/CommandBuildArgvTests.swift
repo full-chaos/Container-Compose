@@ -106,3 +106,116 @@ struct CommandBuildArgvTests {
         #expect(argv == ["--entrypoint", "a", image, "b", "c", "d", "e"])
     }
 }
+
+/// Static argv-shape tests for `ComposeRun.imageAndEntrypointTail`.
+///
+/// Mirrors `CommandBuildArgvTests` for `compose up`, with one extra wrinkle:
+/// `compose run`'s CLI command override (`compose run [--] SVC CMD…`)
+/// suppresses the service-level `entrypoint` AND `command`, and the supplied
+/// tokens become positional args after the image with no `--entrypoint` flag
+/// emitted. PR-3 of the recorder seam migration introduces this helper as the
+/// fix for `docs/plans/PLAN.md` §1 at the `compose run` site (the previous
+/// 9-line block placed `--entrypoint` *after* the image).
+@Suite("ComposeRun Argv Tail Tests")
+struct ComposeRunArgvTailTests {
+
+    private let image = "alpine:latest"
+
+    // MARK: - CLI command override (highest precedence)
+
+    @Test("CLI command non-empty + entrypoint set → CLI wins, no --entrypoint emitted")
+    func cliCommandSuppressesServiceEntrypoint() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: ["x"],
+            entrypoint: ["/app/foo"],
+            command: nil
+        )
+        // `docker compose run svc x` semantics: image's default ENTRYPOINT
+        // stays, x is the in-container command. Service entrypoint is dropped.
+        #expect(argv == [image, "x"])
+    }
+
+    @Test("CLI command non-empty + entrypoint + service command → CLI wins; service command suppressed")
+    func cliCommandSuppressesBothEntrypointAndServiceCommand() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: ["x", "y"],
+            entrypoint: ["/app/foo", "bar"],
+            command: ["baz"]
+        )
+        #expect(argv == [image, "x", "y"])
+    }
+
+    @Test("CLI command non-empty, no entrypoint or command → CLI tokens after image")
+    func cliCommandOnlyAfterImage() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: ["echo", "hello"],
+            entrypoint: nil,
+            command: nil
+        )
+        #expect(argv == [image, "echo", "hello"])
+    }
+
+    // MARK: - No CLI override → mirrors ComposeUp behaviour
+
+    @Test("empty CLI, single-token entrypoint → --entrypoint precedes image")
+    func singleEntrypointNoCliCommand() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: [],
+            entrypoint: ["/app/foo"],
+            command: nil
+        )
+        #expect(argv == ["--entrypoint", "/app/foo", image])
+    }
+
+    @Test("empty CLI, multi-token entrypoint + service command → head as flag, rest + command after image")
+    func multiEntrypointWithServiceCommand() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: [],
+            entrypoint: ["a", "b"],
+            command: ["c"]
+        )
+        #expect(argv == ["--entrypoint", "a", image, "b", "c"])
+    }
+
+    @Test("empty CLI, no entrypoint, command only → image then command tokens")
+    func commandOnlyNoCliNoEntrypoint() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: [],
+            entrypoint: nil,
+            command: ["x"]
+        )
+        #expect(argv == [image, "x"])
+    }
+
+    @Test("empty CLI, neither entrypoint nor command → image alone")
+    func imageOnlyNoCli() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: [],
+            entrypoint: nil,
+            command: nil
+        )
+        #expect(argv == [image])
+    }
+
+    // MARK: - Edge case: empty entrypoint array
+
+    // Intentional contract: an empty entrypoint array and nil are deliberately
+    // treated as the same case in `imageAndEntrypointTail`.
+    @Test("empty CLI + empty entrypoint array behaves like nil — image first")
+    func emptyEntrypointArrayBehavesLikeNil() {
+        let argv = ComposeRun.imageAndEntrypointTail(
+            image: image,
+            cliCommand: [],
+            entrypoint: [],
+            command: ["x"]
+        )
+        #expect(argv == [image, "x"])
+    }
+}
