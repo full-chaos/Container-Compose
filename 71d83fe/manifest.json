@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-27-e0449af16d43bdcaf4361a113a888c6c18b08849",
+  "commit": "71d83fe5e34afbcdd370ff54b1f0009aee4adb69",
+  "short": "71d83fe",
+  "target": "71d83fe",
+  "message": "feat: implement compose top/port/events/push subcommands (CHAOS-1299) (#27)",
+  "published_at": "2026-04-28T10:37:40.462677+00:00"
+}
