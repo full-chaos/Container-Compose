@@ -1,0 +1,8 @@
+{
+  "branch": "chore/coverage-refresh-after-b-sweep",
+  "commit": "0dfc991ad2476d0f80947576b15d5d4154df2411",
+  "short": "0dfc991",
+  "target": "0dfc991",
+  "message": "chore: refresh coverage.html after B sweep \u2014 flip 23 rows from miss \u2192 partial",
+  "published_at": "2026-04-28T09:18:33.953368+00:00"
+}
