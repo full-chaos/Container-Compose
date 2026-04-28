@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Container-Compose",
+    name: "container-compose",
     platforms: [.macOS(.v15)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.1"),
@@ -36,7 +36,7 @@ let package = Package(
         
         // Executable target
         .executableTarget(
-            name: "Container-Compose",
+            name: "container-compose",
             dependencies: [
                 "ContainerComposeCore"
             ],
