@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "1bcbfa2090e4f11af09cf4d95a88500e66c89c76",
-  "short": "1bcbfa2",
+  "commit": "1ce05059110710b13f7785bbfa247b826282620c",
+  "short": "1ce0505",
   "target": "current",
-  "message": "feat: decode niche secret + config fields (CHAOS-1306) (#22)",
-  "published_at": "2026-04-28T08:28:05.799973+00:00"
+  "message": "feat: decode parity for 11 service-level spec fields (CHAOS-1303) (#23)",
+  "published_at": "2026-04-28T08:45:03.212408+00:00"
 }
