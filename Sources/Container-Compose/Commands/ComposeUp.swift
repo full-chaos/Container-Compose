@@ -334,6 +334,21 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         try? fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)
     }
 
+    /// Maps a compose `networks.<name>.driver` value to the argv fragment for
+    /// `container network create`'s `--plugin` flag.
+    ///
+    /// Docker Compose's default driver is `bridge`, which does not exist in
+    /// apple/container's plugin registry (only `container-network-vmnet` ships,
+    /// and is the runtime's own `--plugin` default). Emitting `--plugin bridge`
+    /// fails with *"unable to locate network plugin bridge"*. We therefore
+    /// treat `nil`, `""`, and `"bridge"` as "use the runtime default" and emit
+    /// nothing; any other driver is passed through so users can explicitly
+    /// target a custom plugin.
+    internal static func networkPluginArgs(for driver: String?) -> [String] {
+        guard let driver, !driver.isEmpty, driver != "bridge" else { return [] }
+        return ["--plugin", driver]
+    }
+
     private func setupNetwork(name networkName: String, config networkConfig: Network?) async throws {
         let actualNetworkName = networkConfig?.name ?? networkName  // Use explicit name or key as name
 
@@ -343,11 +358,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         } else {
             var commands: [String] = [actualNetworkName]
 
-            // --plugin: NetworkCreate uses --plugin instead of --driver.
-            // Compose 'driver' is mapped to '--plugin' when non-empty.
-            if let driver = networkConfig?.driver, !driver.isEmpty {
-                commands.append(contentsOf: ["--plugin", driver])
-            }
+            commands.append(contentsOf: Self.networkPluginArgs(for: networkConfig?.driver))
 
             // driver_opts: NetworkCreate has no --opt flag; warn and skip.
             if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
