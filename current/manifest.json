@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9d2c99c0ac05c757581b96a38c353e013ca6f1ad",
-  "short": "9d2c99c",
+  "commit": "3a506463b3070f05b4656a896cb438b29e4d1fb7",
+  "short": "3a50646",
   "target": "current",
-  "message": "fix: line-buffer streaming relay so multi-line output isn't fragmented (PLAN.md \u00a74) (#16)",
-  "published_at": "2026-04-28T02:42:00.853023+00:00"
+  "message": "ci: opt into Node 24 for JavaScript actions + pin Swift version (#17)",
+  "published_at": "2026-04-28T03:15:29.892864+00:00"
 }
