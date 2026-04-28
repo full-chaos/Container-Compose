@@ -461,9 +461,9 @@
         ],
         [
           "networks",
-          "ok",
+          "partial",
           "yes",
-          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority."
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority; service-level aliases are parsed but ignored at runtime with a warning because Apple container does not support --alias."
         ],
         [
           "annotations",
@@ -629,9 +629,9 @@
         ],
         [
           "extra_hosts",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --add-host per item; map form serialized to host:ip."
+          "Parsed; map form serialized to host:ip, but ignored at runtime with a warning because Apple container does not support --add-host."
         ],
         [
           "gpus",
@@ -683,9 +683,9 @@
         ],
         [
           "logging",
-          "ok",
+          "partial",
           "yes",
-          "LifecycleArgs emits --log-driver and --log-opt per option."
+          "logging.driver and logging.options are parsed but ignored at runtime with warnings because Apple container does not support --log-driver or --log-opt."
         ],
         [
           "mac_address",

@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "ed1a89d1954d05368f8524db47c73f1393ed581b",
-  "short": "ed1a89d",
+  "commit": "41d338169b8be9481f6d8a5ee0230a9f7fc21650",
+  "short": "41d3381",
   "target": "current",
-  "message": "fix: skip --plugin emission for Docker default 'bridge' driver (CHAOS-1327) (#38)",
-  "published_at": "2026-04-28T17:44:01.900232+00:00"
+  "message": "fix: drop ghost container flags (CHAOS-1329 CHAOS-1330 CHAOS-1331) (#39)",
+  "published_at": "2026-04-28T17:48:45.431781+00:00"
 }
