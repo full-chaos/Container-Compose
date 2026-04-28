@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "41d338169b8be9481f6d8a5ee0230a9f7fc21650",
-  "short": "41d3381",
+  "commit": "0a587635cbb7640cf569736590ed2e0cfb946d0a",
+  "short": "0a58763",
   "target": "current",
-  "message": "fix: drop ghost container flags (CHAOS-1329 CHAOS-1330 CHAOS-1331) (#39)",
-  "published_at": "2026-04-28T17:48:45.431781+00:00"
+  "message": "fix: qualify image refs for apple container (CHAOS-1328) (#40)",
+  "published_at": "2026-04-28T19:02:56.323981+00:00"
 }
