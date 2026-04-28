@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b56706b8e1c3569f8066f41f7719300e7bd8ea96",
-  "short": "b56706b",
+  "commit": "36839cee48958a9f29e0de5cc4667136799c51ba",
+  "short": "36839ce",
   "target": "current",
-  "message": "feat: implement cross-file extends with cycle detection (CHAOS-1317) (#34)",
-  "published_at": "2026-04-28T13:22:58.934822+00:00"
+  "message": "Update FUNDING.yml (#35)",
+  "published_at": "2026-04-28T13:31:05.941027+00:00"
 }
