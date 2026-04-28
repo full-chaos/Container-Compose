@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-37-2f4502c7613fec54081fffd161df5d93d7a7b47c",
+  "commit": "40dfca94b48899e8539ab9511107a3e20b189c5b",
+  "short": "40dfca9",
+  "target": "40dfca9",
+  "message": "feat: enforce service_completed_successfully via lastExitCode (CHAOS-1320) (#37)",
+  "published_at": "2026-04-28T16:34:18.388620+00:00"
+}
