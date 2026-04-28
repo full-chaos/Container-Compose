@@ -259,6 +259,23 @@ public struct DockerComposeYamlFiles {
             """
     }
 
+    public static let crossFileExtendsBaseYaml = """
+        services:
+          base:
+            image: alpine:3.18
+            command: ["echo", "from-base"]
+            restart: always
+        """
+
+    public static let crossFileExtendsChildYaml = """
+        services:
+          child:
+            image: alpine:edge
+            extends:
+              service: base
+              file: ./base.yml
+        """
+
     /// Represents a temporary Docker Compose project copied to a temporary location for testing.
     public struct TemporaryProject {
         /// The URL of the temporary docker-compose.yaml file.
