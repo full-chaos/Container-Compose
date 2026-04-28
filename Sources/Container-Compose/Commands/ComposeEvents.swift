@@ -22,96 +22,9 @@
 import ArgumentParser
 import ContainerCommands
 import ContainerAPIClient
+import ContainerResource
 import Foundation
 import Yams
-
-// MARK: - EventStreamPoller
-
-internal struct EventStreamPoller: Sendable {
-    internal struct Snapshot: Sendable, Equatable {
-        var id: String
-        var image: String
-        var name: String
-        var status: String
-    }
-
-    internal struct Event: Codable, Sendable, Equatable {
-        var timestamp: String
-        var type: String
-        var action: String
-        var id: String
-        var image: String
-        var name: String
-    }
-
-    func diff(prev previous: [Snapshot], current: [Snapshot], at date: Date = Date()) -> [Event] {
-        let previousByID = Dictionary(uniqueKeysWithValues: previous.map { ($0.id, $0) })
-        let currentByID = Dictionary(uniqueKeysWithValues: current.map { ($0.id, $0) })
-        let timestamp = Self.timestamp(from: date)
-        var events: [Event] = []
-
-        for snapshot in current.sorted(by: { $0.id < $1.id }) where previousByID[snapshot.id] == nil {
-            events.append(event("create", snapshot: snapshot, timestamp: timestamp))
-            if Self.isRunning(snapshot.status) {
-                events.append(event("start", snapshot: snapshot, timestamp: timestamp))
-            }
-        }
-
-        for snapshot in previous.sorted(by: { $0.id < $1.id }) where currentByID[snapshot.id] == nil {
-            if Self.isRunning(snapshot.status) {
-                events.append(event("die", snapshot: snapshot, timestamp: timestamp))
-            }
-            events.append(event("destroy", snapshot: snapshot, timestamp: timestamp))
-        }
-
-        for snapshot in current.sorted(by: { $0.id < $1.id }) {
-            guard let old = previousByID[snapshot.id], old.status != snapshot.status else { continue }
-            events.append(contentsOf: transitionEvents(from: old, to: snapshot, timestamp: timestamp))
-        }
-
-        return events
-    }
-
-    private func transitionEvents(from old: Snapshot, to new: Snapshot, timestamp: String) -> [Event] {
-        if !Self.isRunning(old.status), Self.isRunning(new.status) {
-            return [event("start", snapshot: new, timestamp: timestamp)]
-        }
-        if Self.isRunning(old.status), Self.isStopped(new.status) {
-            return [
-                event("stop", snapshot: new, timestamp: timestamp),
-                event("die", snapshot: new, timestamp: timestamp),
-            ]
-        }
-        if Self.isStopping(old.status), Self.isStopped(new.status) {
-            return [event("die", snapshot: new, timestamp: timestamp)]
-        }
-        if Self.isRunning(old.status), Self.isStopping(new.status) {
-            return [event("stop", snapshot: new, timestamp: timestamp)]
-        }
-        return []
-    }
-
-    private func event(_ action: String, snapshot: Snapshot, timestamp: String) -> Event {
-        Event(
-            timestamp: timestamp,
-            type: "container",
-            action: action,
-            id: snapshot.id,
-            image: snapshot.image,
-            name: snapshot.name
-        )
-    }
-
-    private static func isRunning(_ status: String) -> Bool { status == "running" }
-
-    private static func isStopped(_ status: String) -> Bool { status == "stopped" }
-
-    private static func isStopping(_ status: String) -> Bool { status == "stopping" }
-
-    private static func timestamp(from date: Date) -> String {
-        ISO8601DateFormatter().string(from: date)
-    }
-}
 
 // MARK: - ComposeEvents
 
@@ -143,8 +56,6 @@ public struct ComposeEvents: AsyncParsableCommand {
 
     private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
     private var effectiveProjectDirectory: String {
         resolveProjectDirectory(
             cliOverride: projectFlags.projectDirectory,
@@ -175,14 +86,7 @@ public struct ComposeEvents: AsyncParsableCommand {
         return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
     }
 
-    // MARK: - Path B (polling fallback)
-
-    /// The upstream `ContainerClientProvider` exposes list/get/stop/delete/logs,
-    /// but no native event or subscription method, so this command synthesizes
-    /// lifecycle events by diffing `ContainerClient.list()` snapshots every 1s.
     public mutating func run() async throws {
-        printFallbackWarning()
-
         let dockerCompose = try DockerCompose
             .loadAndMerge(mainPath: composePath)
             .resolvingExtends()
@@ -194,17 +98,26 @@ public struct ComposeEvents: AsyncParsableCommand {
         )
         let targetNames = targetContainerNames(in: dockerCompose, projectName: projectName)
         let provider = ContainerClientEnvironment.current
-        let poller = EventStreamPoller()
-        var previous = try await currentSnapshots(provider: provider, projectName: projectName, targetNames: targetNames)
         let encoder = JSONEncoder()
+        let formatter = ISO8601DateFormatter()
+        var lastTimestamp: Date? = nil
 
         while true {
             try await Task.sleep(nanoseconds: 1_000_000_000)
-            let current = try await currentSnapshots(provider: provider, projectName: projectName, targetNames: targetNames)
-            for event in poller.diff(prev: previous, current: current) {
-                emit(event, encoder: encoder)
+            let allEvents = try await provider.events()
+            let newEvents = allEvents.filter { event in
+                if let last = lastTimestamp, event.timestamp <= last {
+                    return false
+                }
+                return matchesProject(containerId: event.containerId, projectName: projectName, targetNames: targetNames)
             }
-            previous = current
+
+            for event in newEvents {
+                emit(event, encoder: encoder, formatter: formatter)
+                if lastTimestamp == nil || event.timestamp > lastTimestamp! {
+                    lastTimestamp = event.timestamp
+                }
+            }
         }
     }
 
@@ -223,47 +136,35 @@ public struct ComposeEvents: AsyncParsableCommand {
         })
     }
 
-    private func currentSnapshots(
-        provider: any ContainerClientProvider,
-        projectName: String,
-        targetNames: Set<String>
-    ) async throws -> [EventStreamPoller.Snapshot] {
-        let allContainers = try await provider.list(filters: .all)
-        return allContainers.compactMap { container in
-            guard matches(containerID: container.configuration.id, projectName: projectName, targetNames: targetNames) else {
-                return nil
-            }
-            return EventStreamPoller.Snapshot(
-                id: container.configuration.id,
-                image: container.configuration.image.reference,
-                name: container.configuration.id,
-                status: container.status.rawValue
-            )
-        }
-    }
-
-    private func matches(containerID: String, projectName: String, targetNames: Set<String>) -> Bool {
+    private func matchesProject(containerId: String, projectName: String, targetNames: Set<String>) -> Bool {
         if services.isEmpty {
-            return targetNames.contains(containerID) || containerID.hasPrefix("\(projectName)-")
+            return targetNames.contains(containerId) || containerId.hasPrefix("\(projectName)-")
         }
         return targetNames.contains { targetName in
-            containerID == targetName || containerID.hasPrefix("\(targetName)-")
+            containerId == targetName || containerId.hasPrefix("\(targetName)-")
         }
     }
 
-    private func emit(_ event: EventStreamPoller.Event, encoder: JSONEncoder) {
+    private func emit(_ event: ContainerEvent, encoder: JSONEncoder, formatter: ISO8601DateFormatter) {
+        let timestamp = formatter.string(from: event.timestamp)
         if json {
-            guard let data = try? encoder.encode(event), let line = String(data: data, encoding: .utf8) else { return }
+            let jsonEvent = JSONEvent(
+                timestamp: timestamp,
+                type: "container",
+                action: event.action.rawValue,
+                id: event.containerId
+            )
+            guard let data = try? encoder.encode(jsonEvent), let line = String(data: data, encoding: .utf8) else { return }
             print(line)
         } else {
-            print("\(event.timestamp) container \(event.action) \(event.id) (image=\(event.image), name=\(event.name))")
+            print("\(timestamp) container \(event.action.rawValue) \(event.containerId)")
         }
     }
+}
 
-    private func printFallbackWarning() {
-        print(
-            "compose events: native event stream unavailable upstream — falling back to 1s polling. " +
-            "Detected, But Partially Supported"
-        )
-    }
+private struct JSONEvent: Codable {
+    var timestamp: String
+    var type: String
+    var action: String
+    var id: String
 }

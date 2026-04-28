@@ -1,5 +1,5 @@
 {
-  "originHash" : "4305de9f7652ac7b964214731f72b213ec7b98882a4f3b7c2f02e19786dbc788",
+  "originHash" : "396648dc011f6fd4e0ae9ba72d12b3d875e31e620fb7290e24ca293657582b1d",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/full-chaos/container",
       "state" : {
-        "branch" : "feat/CHAOS-1320-last-exit-code-on-snapshot",
-        "revision" : "ac52ced81f321efc6fe0f58d8c0c66359027bd34"
+        "branch" : "tier2-fork-patches",
+        "revision" : "6f944985e33345c6ad892c77194cb4e12cf83a58"
       }
     },
     {

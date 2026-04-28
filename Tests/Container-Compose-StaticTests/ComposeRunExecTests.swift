@@ -65,21 +65,21 @@ struct ComposeRunExecTests {
         #expect(cmd.servicePorts == true)
     }
 
-    @Test("ComposeRun parses --run-env single")
+    @Test("ComposeRun parses -e single")
     func composeRunParsesEnvSingle() throws {
-        let cmd = try ComposeRun.parse(["--run-env", "DEBUG=true", "web"])
+        let cmd = try ComposeRun.parse(["-e", "DEBUG=true", "web"])
         #expect(cmd.environment == ["DEBUG=true"])
     }
 
-    @Test("ComposeRun parses --run-env multiple")
+    @Test("ComposeRun parses -e multiple")
     func composeRunParsesEnvMultiple() throws {
-        let cmd = try ComposeRun.parse(["--run-env", "FOO=bar", "--run-env", "BAZ=qux", "web"])
+        let cmd = try ComposeRun.parse(["-e", "FOO=bar", "-e", "BAZ=qux", "web"])
         #expect(cmd.environment == ["FOO=bar", "BAZ=qux"])
     }
 
-    @Test("ComposeRun parses --run-user flag")
+    @Test("ComposeRun parses -u flag")
     func composeRunParsesUser() throws {
-        let cmd = try ComposeRun.parse(["--run-user", "nobody", "web"])
+        let cmd = try ComposeRun.parse(["-u", "nobody", "web"])
         #expect(cmd.user == "nobody")
     }
 
@@ -89,15 +89,15 @@ struct ComposeRunExecTests {
         #expect(cmd.name == "my-one-off")
     }
 
-    @Test("ComposeRun parses --run-volume single")
+    @Test("ComposeRun parses -v single")
     func composeRunParsesVolumeSingle() throws {
-        let cmd = try ComposeRun.parse(["--run-volume", "/tmp/data:/data", "web"])
+        let cmd = try ComposeRun.parse(["-v", "/tmp/data:/data", "web"])
         #expect(cmd.volumes == ["/tmp/data:/data"])
     }
 
-    @Test("ComposeRun parses --run-volume multiple")
+    @Test("ComposeRun parses -v multiple")
     func composeRunParsesVolumeMultiple() throws {
-        let cmd = try ComposeRun.parse(["--run-volume", "/tmp/a:/a", "--run-volume", "/tmp/b:/b", "web"])
+        let cmd = try ComposeRun.parse(["-v", "/tmp/a:/a", "-v", "/tmp/b:/b", "web"])
         #expect(cmd.volumes == ["/tmp/a:/a", "/tmp/b:/b"])
     }
 
@@ -137,45 +137,45 @@ struct ComposeRunExecTests {
         #expect(cmd.tty == true)
     }
 
-    @Test("ComposeExec --no-exec-interactive disables interactive")
+    @Test("ComposeExec --no-interactive disables interactive")
     func composeExecNoInteractive() throws {
-        let cmd = try ComposeExec.parse(["--no-exec-interactive", "web", "--", "sh"])
+        let cmd = try ComposeExec.parse(["--no-interactive", "web", "--", "sh"])
         #expect(cmd.interactive == false)
     }
 
-    @Test("ComposeExec --no-exec-tty disables tty")
+    @Test("ComposeExec --no-tty disables tty")
     func composeExecNoTty() throws {
-        let cmd = try ComposeExec.parse(["--no-exec-tty", "web", "--", "sh"])
+        let cmd = try ComposeExec.parse(["--no-tty", "web", "--", "sh"])
         #expect(cmd.tty == false)
     }
 
-    @Test("ComposeExec parses --exec-detach flag")
+    @Test("ComposeExec parses -d flag")
     func composeExecParsesDetach() throws {
-        let cmd = try ComposeExec.parse(["--exec-detach", "web", "--", "sh"])
+        let cmd = try ComposeExec.parse(["-d", "web", "--", "sh"])
         #expect(cmd.detach == true)
     }
 
-    @Test("ComposeExec parses --exec-user flag")
+    @Test("ComposeExec parses -u flag")
     func composeExecParsesUser() throws {
-        let cmd = try ComposeExec.parse(["--exec-user", "root", "web", "--", "sh"])
+        let cmd = try ComposeExec.parse(["-u", "root", "web", "--", "sh"])
         #expect(cmd.user == "root")
     }
 
-    @Test("ComposeExec parses --exec-workdir flag")
+    @Test("ComposeExec parses -w flag")
     func composeExecParsesWorkdir() throws {
-        let cmd = try ComposeExec.parse(["--exec-workdir", "/app", "web", "--", "sh"])
+        let cmd = try ComposeExec.parse(["-w", "/app", "web", "--", "sh"])
         #expect(cmd.workdir == "/app")
     }
 
-    @Test("ComposeExec parses --exec-env flag")
+    @Test("ComposeExec parses -e flag")
     func composeExecParsesEnv() throws {
-        let cmd = try ComposeExec.parse(["--exec-env", "NODE_ENV=production", "web", "--", "node", "app.js"])
+        let cmd = try ComposeExec.parse(["-e", "NODE_ENV=production", "web", "--", "node", "app.js"])
         #expect(cmd.environment == ["NODE_ENV=production"])
     }
 
-    @Test("ComposeExec parses multiple --exec-env flags")
+    @Test("ComposeExec parses multiple -e flags")
     func composeExecParsesEnvMultiple() throws {
-        let cmd = try ComposeExec.parse(["--exec-env", "FOO=1", "--exec-env", "BAR=2", "web", "--", "sh"])
+        let cmd = try ComposeExec.parse(["-e", "FOO=1", "-e", "BAR=2", "web", "--", "sh"])
         #expect(cmd.environment == ["FOO=1", "BAR=2"])
     }
 

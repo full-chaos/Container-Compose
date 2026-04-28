@@ -116,6 +116,8 @@ private actor TopTestContainerProvider: ContainerClientProvider {
     func stop(id: String, opts: ContainerStopOptions) async throws {}
     func delete(id: String, force: Bool) async throws {}
     func logs(id: String) async throws -> [FileHandle] { [] }
+    func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle] { [] }
+    func events() async throws -> [ContainerEvent] { [] }
 
     func networkGet(id: String) async throws -> NetworkState {
         throw NSError(

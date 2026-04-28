@@ -21,6 +21,7 @@
 
 import ArgumentParser
 import ContainerAPIClient
+import ContainerResource
 import Foundation
 @preconcurrency import Rainbow
 import Yams
@@ -45,10 +46,10 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
     @Option(name: [.long], help: "Number of lines to show from the end of the logs (e.g. '100' or 'all')")
     var tail: String?
 
-    @Option(name: [.long], help: "Show logs since timestamp or relative duration (warning: not supported by 'container logs')")
+    @Option(name: [.long], help: "Show logs since timestamp or relative duration (e.g. '2025-01-01T00:00:00Z' or '10m')")
     var since: String?
 
-    @Flag(name: [.long], help: "Show timestamps (warning: not supported by 'container logs')")
+    @Flag(name: [.long], help: "Show timestamps in log output")
     var timestamps: Bool = false
 
     @Flag(name: [.long], help: "Disable colour prefixes in log output")
@@ -116,14 +117,6 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
     // MARK: - run()
 
     public mutating func run() async throws {
-        // Warn about unsupported flags that would be passed to `container logs`
-        if since != nil {
-            print("Warning: --since is not supported by 'container logs' and will be ignored.")
-        }
-        if timestamps {
-            print("Warning: --timestamps is not supported by 'container logs' and will be ignored.")
-        }
-
         // 1. Load and merge compose file
         let dockerCompose = try DockerCompose
             .loadAndMerge(mainPath: composePath)
@@ -175,8 +168,9 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
 
         // 7. Stream logs
         let noColorFlag = noColor
+        let sinceDate = Self.parseSinceDate(since)
+        let showTimestamps = timestamps
         if follow {
-            // Concurrent follow mode — each service runs in its own Task
             await withTaskGroup(of: Void.self) { group in
                 for (index, (serviceName, containerName)) in targets.enumerated() {
                     let serviceColor = color(for: index)
@@ -188,13 +182,14 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
                             serviceColor: serviceColor,
                             noColor: noColorFlag,
                             numLines: lines,
-                            follow: true
+                            follow: true,
+                            since: sinceDate,
+                            timestamps: showTimestamps
                         )
                     }
                 }
             }
         } else {
-            // Sequential mode — read each container's logs in order
             for (index, (serviceName, containerName)) in targets.enumerated() {
                 let serviceColor = color(for: index)
                 await ComposeLogs.streamLogs(
@@ -203,7 +198,9 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
                     serviceColor: serviceColor,
                     noColor: noColorFlag,
                     numLines: numLines,
-                    follow: false
+                    follow: false,
+                    since: sinceDate,
+                    timestamps: showTimestamps
                 )
             }
         }
@@ -217,13 +214,16 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
         serviceColor: NamedColor,
         noColor: Bool,
         numLines: Int?,
-        follow: Bool
+        follow: Bool,
+        since: Date?,
+        timestamps: Bool
     ) async {
         let provider = ContainerClientEnvironment.current
+        let options = ContainerLogOptions(since: since, timestamps: timestamps)
 
         let fhs: [FileHandle]
         do {
-            fhs = try await provider.logs(id: containerName)
+            fhs = try await provider.logs(id: containerName, options: options)
         } catch {
             let msg = "Warning: Could not retrieve logs for container '\(containerName)': \(error.localizedDescription)"
             print(noColor ? msg : msg.applyingColor(.red))
@@ -304,5 +304,28 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
                 print(prefixed(line))
             }
         }
+    }
+
+    static func parseSinceDate(_ raw: String?) -> Date? {
+        guard let raw, !raw.isEmpty else { return nil }
+
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = iso.date(from: raw) { return d }
+
+        let fallback = ISO8601DateFormatter()
+        fallback.formatOptions = [.withInternetDateTime]
+        if let d = fallback.date(from: raw) { return d }
+
+        let suffixMap: [(String, TimeInterval)] = [
+            ("s", 1), ("m", 60), ("h", 3600), ("d", 86400),
+        ]
+        for (suffix, multiplier) in suffixMap {
+            if raw.hasSuffix(suffix), let val = Double(raw.dropLast(suffix.count)) {
+                return Date().addingTimeInterval(-val * multiplier)
+            }
+        }
+
+        return nil
     }
 }

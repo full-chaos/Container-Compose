@@ -61,11 +61,8 @@ extension ComposeUp {
                 args.append(contentsOf: ["--runtime", runtime])
             }
 
-            // restart: parsed but NOT emitted as a flag — `container run` does
-            // not expose --restart. Route through the Apple container restart
-            // manager when available.
-            if ctx.service.restart != nil {
-                print("Note: 'restart' policy not yet routed through Apple container restart manager.")
+            if let restart = ctx.service.restart {
+                args.append(contentsOf: ["--restart", restart])
             }
 
             // logging: parsed, but Apple container does not expose

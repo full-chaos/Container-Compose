@@ -83,8 +83,15 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func logs(id: String) async throws -> [FileHandle] {
         entries.append(.logs(id: id))
-        // Throw to mimic "container not found" — `ComposeLogs.streamLogs`
-        // catches and prints a warning, then returns cleanly.
+        throw NSError(
+            domain: "RecordingContainerClientProvider",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "no logs for container '\(id)' (recorded fake)"]
+        )
+    }
+
+    public func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle] {
+        entries.append(.logs(id: id))
         throw NSError(
             domain: "RecordingContainerClientProvider",
             code: 1,
@@ -107,10 +114,6 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func imageList() async throws -> [ClientImage] {
         entries.append(.imageList)
-        // Empty by default — `pullImage` and `buildService` short-circuit on
-        // "image already exists?" and otherwise proceed to the seam-routed
-        // pull/build invocation. Tests can pass `imageReferences` to exercise
-        // the local-cache short-circuit path.
         return imageReferences.map { reference in
             ClientImage(description: ImageDescription(
                 reference: reference,
@@ -121,6 +124,10 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
                 )
             ))
         }
+    }
+
+    public func events() async throws -> [ContainerEvent] {
+        return []
     }
 
     // MARK: - Test affordances

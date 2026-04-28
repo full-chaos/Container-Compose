@@ -49,13 +49,13 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
     @Flag(name: [.customLong("service-ports")], help: "Publish the service's ports to the host")
     var servicePorts: Bool = false
 
-    @Option(name: [.customLong("run-env")], help: "Set an environment variable KEY=VALUE (can be repeated)")
+    @Option(name: [.short, .long], help: "Set an environment variable KEY=VALUE (can be repeated)")
     var environment: [String] = []
 
-    @Option(name: [.customLong("run-volume")], help: "Bind-mount a volume (can be repeated)")
+    @Option(name: [.customShort("v"), .customLong("volume")], help: "Bind-mount a volume (can be repeated)")
     var volumes: [String] = []
 
-    @Option(name: [.customLong("run-user")], help: "Run as specified username or uid")
+    @Option(name: [.short, .long], help: "Run as specified username or uid")
     var user: String?
 
     @Option(name: [.long], help: "Override the container name")
@@ -68,7 +68,7 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
     var profile: [String] = []
 
     @OptionGroup
-    var process: Flags.Process
+    var process: Flags.ProcessBase
 
     @OptionGroup
     var projectFlags: ProjectFlags

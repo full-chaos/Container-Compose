@@ -59,11 +59,17 @@ public protocol ContainerClientProvider: Sendable {
     /// cleanly under tests, never blocking on a real `ContainerClient` call.
     func logs(id: String) async throws -> [FileHandle]
 
+    func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle]
+
     /// Mirrors `NetworkClient.get(id:)`. Returns `NetworkState` — note this is
     /// `NetworkState`, not `NetworkConfiguration`, per the upstream API. Throws
     /// `ContainerizationError(.notFound)` when no network with the given id
     /// exists (existing call sites use `try?` + `== nil` to mean "create it").
     func networkGet(id: String) async throws -> NetworkState
+
+    /// Mirrors `ContainerClient.events()`. Returns buffered lifecycle events
+    /// recorded by the container runtime (create, start, stop, die, destroy).
+    func events() async throws -> [ContainerEvent]
 
     /// Mirrors the static `ClientImage.list()` upstream call. Used by
     /// `pullImage` and `buildService` paths to short-circuit a pull when the
@@ -101,6 +107,14 @@ public struct ProductionContainerClientProvider: ContainerClientProvider {
 
     public func logs(id: String) async throws -> [FileHandle] {
         try await ContainerClient().logs(id: id)
+    }
+
+    public func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle] {
+        try await ContainerClient().logs(id: id, options: options)
+    }
+
+    public func events() async throws -> [ContainerEvent] {
+        try await ContainerClient().events()
     }
 
     public func networkGet(id: String) async throws -> NetworkState {
