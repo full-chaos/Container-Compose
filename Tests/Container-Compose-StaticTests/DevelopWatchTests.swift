@@ -23,6 +23,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -204,6 +205,12 @@ struct ComposeWatchParsingTests {
         #expect(cmd.dryRun == true)
     }
 
+    @Test("ComposeWatch parses --polling fallback flag")
+    func composeWatchParsesPolling() throws {
+        let cmd = try ComposeWatch.parse(["--polling"])
+        #expect(cmd.polling == true)
+    }
+
     @Test("ComposeWatch parses service-name filter")
     func composeWatchParsesServiceFilter() throws {
         let cmd = try ComposeWatch.parse(["web", "api"])
@@ -294,5 +301,170 @@ struct SnapshotPathTests {
         let snapshot = snapshotPath(tempFile.path)
         #expect(snapshot.fileCount == 1)
         #expect(snapshot.mtime > 0)
+    }
+}
+
+// MARK: - FSEvents Watch Loop Tests
+
+@Suite("FSEvents Watch Loop Tests")
+struct FSEventsWatchLoopTests {
+
+    @Test("FSEvents event maps to matching develop.watch action")
+    func fseventsEventMapsToWatchAction() async throws {
+        let runner = RecordingRunner()
+        let watcher = FakeFSWatcher(events: [
+            FSEvent(path: "/tmp/project/config/settings.json", kind: .modified)
+        ])
+        let loop = WatchLoop()
+        let rule = WatchRule(path: "/tmp/project/config", action: .syncRestart, target: "/app/config")
+
+        await RunnerEnvironment.$current.withValue(runner) {
+            await loop.runFSEvents(
+                rules: [(serviceName: "web", rule: rule)],
+                dryRun: false,
+                cwd: "/tmp/project",
+                watcher: watcher
+            )
+        }
+
+        #expect(await runner.argvs() == [["container-compose", "restart", "web"]])
+        #expect(watcher.watchedPathsSnapshot() == ["/tmp/project/config"])
+    }
+
+    @Test("Forced polling fallback still detects changes")
+    func pollingFallbackDetectsChanges() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("watch-polling-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let runner = RecordingRunner()
+        let loop = WatchLoop()
+        let rule = WatchRule(path: tempDir.path, action: .restart)
+
+        let task = Task {
+            await RunnerEnvironment.$current.withValue(runner) {
+                await loop.runPolling(
+                    rules: [(serviceName: "web", rule: rule)],
+                    pollInterval: 0.05,
+                    dryRun: false,
+                    cwd: tempDir.path,
+                    maxPolls: 10
+                )
+            }
+        }
+
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try "changed".write(
+            to: tempDir.appendingPathComponent("changed.txt"),
+            atomically: true,
+            encoding: .utf8
+        )
+        await task.value
+
+        #expect(await runner.argvs().contains(["container-compose", "restart", "web"]))
+    }
+
+    @Test("Cancelling FSEvents watch loop terminates stream")
+    func cancellationTerminatesFSEventsStream() async throws {
+        let watcher = FakeFSWatcher(events: [], finishImmediately: false)
+        let loop = WatchLoop()
+        let rule = WatchRule(path: "/tmp/project/src", action: .restart)
+
+        let task = Task {
+            await loop.runFSEvents(
+                rules: [(serviceName: "web", rule: rule)],
+                dryRun: true,
+                cwd: "/tmp/project",
+                watcher: watcher
+            )
+        }
+
+        for _ in 0..<20 {
+            if watcher.started { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        task.cancel()
+
+        for _ in 0..<20 {
+            if watcher.cancelled { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        if !watcher.cancelled {
+            watcher.finish()
+        }
+        await task.value
+
+        #expect(watcher.cancelled == true)
+    }
+}
+
+private final class FakeFSWatcher: FSWatcher, @unchecked Sendable {
+    private let events: [FSEvent]
+    private let finishImmediately: Bool
+    private let lock = NSLock()
+    private var continuation: AsyncStream<FSEvent>.Continuation?
+    private var watchedPaths: [String] = []
+    private var didStart = false
+    private var didCancel = false
+
+    init(events: [FSEvent], finishImmediately: Bool = true) {
+        self.events = events
+        self.finishImmediately = finishImmediately
+    }
+
+    var started: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return didStart
+    }
+
+    var cancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return didCancel
+    }
+
+    func watchedPathsSnapshot() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return watchedPaths
+    }
+
+    func finish() {
+        lock.lock()
+        let continuation = continuation
+        lock.unlock()
+        continuation?.finish()
+    }
+
+    func watch(paths: [String]) -> AsyncStream<FSEvent> {
+        lock.lock()
+        watchedPaths = paths
+        didStart = true
+        lock.unlock()
+
+        return AsyncStream { continuation in
+            lock.lock()
+            self.continuation = continuation
+            lock.unlock()
+
+            continuation.onTermination = { termination in
+                if case .cancelled = termination {
+                    self.lock.lock()
+                    self.didCancel = true
+                    self.lock.unlock()
+                }
+            }
+
+            for event in events {
+                continuation.yield(event)
+            }
+            if finishImmediately {
+                continuation.finish()
+            }
+        }
     }
 }
