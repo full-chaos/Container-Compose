@@ -1,0 +1,8 @@
+{
+  "branch": "feat/CHAOS-1315-dry-pull-helper",
+  "commit": "27c8951f85ac50b7c6f92a9a82d8ca4ed31abb38",
+  "short": "27c8951",
+  "target": "27c8951",
+  "message": "refactor: extract shared pullImage helper into Compose+Pull (CHAOS-1315)",
+  "published_at": "2026-04-28T12:29:35.543688+00:00"
+}
