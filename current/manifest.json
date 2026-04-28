@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "2f4502c7613fec54081fffd161df5d93d7a7b47c",
-  "short": "2f4502c",
+  "commit": "40dfca94b48899e8539ab9511107a3e20b189c5b",
+  "short": "40dfca9",
   "target": "current",
-  "message": "chore: switch container dep from mcrich23 to full-chaos fork (CHAOS-1325) (#36)",
-  "published_at": "2026-04-28T14:45:29.763758+00:00"
+  "message": "feat: enforce service_completed_successfully via lastExitCode (CHAOS-1320) (#37)",
+  "published_at": "2026-04-28T16:45:28.071662+00:00"
 }
