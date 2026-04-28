@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "ce4bc2eec2ebee37f32295c4eb9bc20133bc1b16",
-  "short": "ce4bc2e",
+  "commit": "e0dedcb06d818472a4c0d281f3652142568fd9f3",
+  "short": "e0dedcb",
   "target": "current",
-  "message": "feat: route ComposeCreate through seam + fix entrypoint ordering (PR-4 of recorder migration, closes \u00a71) (#14)",
-  "published_at": "2026-04-28T02:01:31.092205+00:00"
+  "message": "feat: route Kill/Start/Exec/Watch through seam (PR-5 of recorder migration, completes seam migration) (#15)",
+  "published_at": "2026-04-28T02:24:06.650851+00:00"
 }
