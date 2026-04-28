@@ -16,6 +16,7 @@
 
 import ContainerAPIClient
 import ContainerResource
+import ContainerizationOCI
 import Foundation
 @testable import ContainerComposeCore
 
@@ -45,8 +46,11 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     }
 
     public private(set) var entries: [Entry] = []
+    private let imageReferences: [String]
 
-    public init() {}
+    public init(imageReferences: [String] = []) {
+        self.imageReferences = imageReferences
+    }
 
     // MARK: - ContainerClientProvider
 
@@ -103,11 +107,20 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func imageList() async throws -> [ClientImage] {
         entries.append(.imageList)
-        // Empty list — `pullImage` and `buildService` short-circuit on
+        // Empty by default — `pullImage` and `buildService` short-circuit on
         // "image already exists?" and otherwise proceed to the seam-routed
-        // pull/build invocation. Returning [] forces the seam call to
-        // fire so the `RunCommandRunner` recorder captures it.
-        return []
+        // pull/build invocation. Tests can pass `imageReferences` to exercise
+        // the local-cache short-circuit path.
+        return imageReferences.map { reference in
+            ClientImage(description: ImageDescription(
+                reference: reference,
+                descriptor: Descriptor(
+                    mediaType: "application/vnd.oci.image.index.v1+json",
+                    digest: "sha256:\(String(repeating: "0", count: 64))",
+                    size: 0
+                )
+            ))
+        }
     }
 
     // MARK: - Test affordances

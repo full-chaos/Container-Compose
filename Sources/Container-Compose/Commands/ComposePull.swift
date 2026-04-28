@@ -148,7 +148,12 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
             let effectivePolicy = policy ?? service.pull_policy ?? "missing"
 
             do {
-                try await pullImage(imageName, platform: service.platform, policy: effectivePolicy)
+                try await pullImage(
+                    image: imageName,
+                    policy: effectivePolicy,
+                    platform: service.platform,
+                    loggingArguments: logging.passThroughCommands()
+                )
             } catch {
                 if ignorePullFailures {
                     print("Warning: Failed to pull image '\(imageName)' for service '\(serviceName)': \(error.localizedDescription)")
@@ -169,59 +174,4 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
         }
     }
 
-    // MARK: - Pull image helper (copied from ComposeUp.pullImage)
-
-    private func pullImage(_ imageName: String, platform: String?, policy: String? = nil) async throws {
-        // Normalise policy: nil and "if_not_present" are aliases for "missing".
-        let effectivePolicy: String
-        switch policy?.lowercased() {
-        case nil, "missing", "if_not_present":
-            effectivePolicy = "missing"
-        case "always":
-            effectivePolicy = "always"
-        case "never":
-            effectivePolicy = "never"
-        case "build":
-            effectivePolicy = "build"
-        default:
-            effectivePolicy = "missing"
-        }
-
-        let imageList = try await ContainerClientEnvironment.current.imageList()
-        let imageExists = imageList.contains(where: {
-            $0.description.reference.components(separatedBy: "/").last == imageName
-        })
-
-        switch effectivePolicy {
-        case "never", "build":
-            // Image must already be present; pull is forbidden.
-            guard imageExists else {
-                throw ComposeError.imageNotFound(imageName)
-            }
-            return
-
-        case "always":
-            // Always pull, regardless of whether the image is cached locally.
-            break
-
-        default:
-            // "missing": short-circuit if image already exists.
-            guard !imageExists else { return }
-        }
-
-        print("Pulling Image \(imageName)...")
-
-        var commands = [imageName]
-
-        if let platform {
-            commands.append(contentsOf: ["--platform", platform])
-        }
-
-        let imagePullArgv = commands + logging.passThroughCommands()
-        _ = try await RunnerEnvironment.current.run(
-            RunRequest(kind: .swiftAPI(name: "ImagePull"), argv: imagePullArgv, cwd: nil),
-            onStdout: nil,
-            onStderr: nil
-        )
-    }
 }

@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import ContainerComposeCore
 
 @Suite("ComposePull Parsing Tests")
@@ -106,5 +107,54 @@ struct ComposePullTests {
         #expect(cmd.ignorePullFailures == true)
         #expect(cmd.profile == ["production"])
         #expect(cmd.services == ["web", "api"])
+    }
+
+    @Test("Shared pullImage helper respects pull policies")
+    func sharedPullImageHelperRespectsPullPolicies() async throws {
+        let alwaysRunner = RecordingRunner()
+        let alwaysClient = RecordingContainerClientProvider()
+        try await pullImage(
+            image: "redis:latest",
+            policy: "always",
+            client: alwaysClient,
+            runner: alwaysRunner
+        )
+        #expect(await alwaysClient.entriesSnapshot() == [.imageList])
+        #expect(await alwaysRunner.swiftAPIArgvs(named: "ImagePull") == [["redis:latest"]])
+
+        let neverRunner = RecordingRunner()
+        let neverClient = RecordingContainerClientProvider()
+        await #expect(throws: (any Error).self) {
+            try await pullImage(
+                image: "postgres:latest",
+                policy: "never",
+                client: neverClient,
+                runner: neverRunner
+            )
+        }
+        #expect(await neverClient.entriesSnapshot() == [.imageList])
+        #expect(await neverRunner.swiftAPIArgvs(named: "ImagePull").isEmpty)
+
+        let missingAbsentRunner = RecordingRunner()
+        let missingAbsentClient = RecordingContainerClientProvider()
+        try await pullImage(
+            image: "nginx:latest",
+            policy: "missing",
+            client: missingAbsentClient,
+            runner: missingAbsentRunner
+        )
+        #expect(await missingAbsentClient.entriesSnapshot() == [.imageList])
+        #expect(await missingAbsentRunner.swiftAPIArgvs(named: "ImagePull") == [["nginx:latest"]])
+
+        let missingPresentRunner = RecordingRunner()
+        let missingPresentClient = RecordingContainerClientProvider(imageReferences: ["docker.io/library/nginx:latest"])
+        try await pullImage(
+            image: "nginx:latest",
+            policy: "missing",
+            client: missingPresentClient,
+            runner: missingPresentRunner
+        )
+        #expect(await missingPresentClient.entriesSnapshot() == [.imageList])
+        #expect(await missingPresentRunner.swiftAPIArgvs(named: "ImagePull").isEmpty)
     }
 }
