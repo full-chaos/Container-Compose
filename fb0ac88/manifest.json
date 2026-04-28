@@ -1,0 +1,8 @@
+{
+  "branch": "feat/parity-deploy-stubs",
+  "commit": "fb0ac88cfbcb3822ccf9e32134a8e0779805b44b",
+  "short": "fb0ac88",
+  "target": "fb0ac88",
+  "message": "feat: decode swarm-only deploy stubs (placement, update_config, rollback_config, endpoint_mode) (CHAOS-1305)",
+  "published_at": "2026-04-28T07:54:45.268530+00:00"
+}
