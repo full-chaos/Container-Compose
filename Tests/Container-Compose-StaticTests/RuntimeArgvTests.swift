@@ -300,6 +300,88 @@ struct RuntimeArgvTests {
         }
     }
 
+    // MARK: - Named volume target preservation (dev-health regression)
+
+    @Test("up: named volume emulation preserves full container target")
+    func up_named_volume_preserves_full_container_target() async throws {
+        let yaml = """
+        services:
+          postgres:
+            image: postgres:alpine
+            volumes:
+              - postgres_data:/var/lib/postgresql/data/devhealth
+        volumes:
+          postgres_data:
+            driver: local
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let projectName = "dev-health-\(UUID().uuidString.lowercased())"
+        let projectVolumeRoot = URL.homeDirectory
+            .appending(path: ".containers/Volumes/\(projectName)")
+        defer { try? FileManager.default.removeItem(at: projectVolumeRoot) }
+
+        let argv = try await recordedRunArgv {
+            try ComposeUp.parse(["--detach", "--project-name", projectName, "-f", compose.path])
+        }
+
+        let volumePath = projectVolumeRoot
+            .appending(path: "postgres_data")
+            .path(percentEncoded: false)
+        let expected = "\(volumePath):/var/lib/postgresql/data/devhealth"
+        let volumeArgs = volumeValues(in: argv)
+        #expect(
+            volumeArgs.contains(expected),
+            "named volume target must preserve the full compose destination (got: \(volumeArgs), argv: \(argv))"
+        )
+    }
+
+    @Test("create: named volume emulation preserves full container target")
+    func create_named_volume_preserves_full_container_target() async throws {
+        let yaml = """
+        services:
+          postgres:
+            image: postgres:alpine
+            volumes:
+              - postgres_data:/var/lib/postgresql/data/devhealth
+        volumes:
+          postgres_data:
+            driver: local
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let projectName = "dev-health-\(UUID().uuidString.lowercased())"
+        let projectVolumeRoot = URL.homeDirectory
+            .appending(path: ".containers/Volumes/\(projectName)")
+        defer { try? FileManager.default.removeItem(at: projectVolumeRoot) }
+
+        let argv = try await recordedFirstArgv(
+            matching: { $0.starts(with: ["container", "create", "--name"]) },
+            description: "container create"
+        ) {
+            try ComposeCreate.parse(["--project-name", projectName, "-f", compose.path])
+        }
+
+        let volumePath = projectVolumeRoot
+            .appending(path: "postgres_data")
+            .path(percentEncoded: false)
+        let expected = "\(volumePath):/var/lib/postgresql/data/devhealth"
+        let volumeArgs = volumeValues(in: argv)
+        #expect(
+            volumeArgs.contains(expected),
+            "named volume target must preserve the full compose destination (got: \(volumeArgs), argv: \(argv))"
+        )
+    }
+
+    private func volumeValues(in argv: [String]) -> [String] {
+        argv.indices.compactMap { index in
+            guard argv[index] == "-v", argv.indices.contains(index + 1) else {
+                return nil
+            }
+            return argv[index + 1]
+        }
+    }
+
     // MARK: - Plan §8 #6 — env_file + environment merging + ${BASE} substitution
 
     @Test("up: inline environment overrides env_file values; ${VAR} resolves from env_file")
