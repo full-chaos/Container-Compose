@@ -161,7 +161,12 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         let imageToRun: String
         if let img = service.image {
             let qualifiedImage = ComposeUp.qualifyImageReference(img)
-            try await pullImage(qualifiedImage, platform: service.platform, policy: service.pull_policy, logging: logging)
+            try await pullImage(
+                image: qualifiedImage,
+                policy: service.pull_policy,
+                platform: service.platform,
+                loggingArguments: logging.passThroughCommands()
+            )
             imageToRun = qualifiedImage
         } else if service.build != nil {
             // Build-only service — use the derived image tag
@@ -347,55 +352,6 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         )
     }
 
-    // MARK: - Pull image helper
-
-    private func pullImage(_ imageName: String, platform: String?, policy: String? = nil, logging: Flags.Logging) async throws {
-        let qualifiedImageName = ComposeUp.qualifyImageReference(imageName)
-        let effectivePolicy: String
-        switch policy?.lowercased() {
-        case nil, "missing", "if_not_present":
-            effectivePolicy = "missing"
-        case "always":
-            effectivePolicy = "always"
-        case "never":
-            effectivePolicy = "never"
-        case "build":
-            effectivePolicy = "build"
-        default:
-            effectivePolicy = "missing"
-        }
-
-        let imageList = try await ContainerClientEnvironment.current.imageList()
-        let imageExists = imageList.contains(where: {
-            $0.description.reference == qualifiedImageName || $0.description.reference.components(separatedBy: "/").last == imageName
-        })
-
-        switch effectivePolicy {
-        case "never", "build":
-            guard imageExists else {
-                throw ComposeError.imageNotFound(qualifiedImageName)
-            }
-            return
-        case "always":
-            break
-        default:
-            guard !imageExists else { return }
-        }
-
-        print("Pulling Image \(qualifiedImageName)...")
-
-        var commands = [qualifiedImageName]
-        if let platform {
-            commands.append(contentsOf: ["--platform", platform])
-        }
-
-        let imagePullArgv = commands + logging.passThroughCommands()
-        _ = try await RunnerEnvironment.current.run(
-            RunRequest(kind: .swiftAPI(name: "ImagePull"), argv: imagePullArgv, cwd: nil),
-            onStdout: nil,
-            onStderr: nil
-        )
-    }
 }
 
 // MARK: Argv tail (image + entrypoint/command, with `compose run`'s CLI override)
