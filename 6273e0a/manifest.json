@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-52-3f7a4dc31f000f727616ab33179ee83657a4289b",
+  "commit": "6273e0ae6b806aae81f74840351dc543a252b0c1",
+  "short": "6273e0a",
+  "target": "6273e0a",
+  "message": "ci: report Build and Test on PRs that touch no buildable code (#52)",
+  "published_at": "2026-04-29T19:43:38.474203+00:00"
+}
