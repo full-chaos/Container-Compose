@@ -321,23 +321,15 @@ CHAOS-1299 closed the four missing CLI subcommands (`top`, `port`,
 service/healthcheck/deploy/secret/config niche fields. Remaining work
 sorts into three tiers:
 
-#### Tier 1 — Actionable now (no upstream dependencies)
+All Tier 1 items shipped (CHAOS-1314 through CHAOS-1318 series); see the new "Currently no-upstream-actionable" subsection below for active work.
 
-1. **Coverage-row hygiene** — `compose watch` and `service.ulimits` are
-   marked `miss` but actually implemented. Audit + flip to `ok`.
-2. **CI flake fix** — investigate `swiftpm-testing-helper` signal-10
-   exit. Likely needs `@Suite(.serialized)` on the offending suite or
-   `swift test --no-parallel` in CI.
-3. **DRY pull helpers** — `ComposePull` and `ComposeCreate` each carry
-   a private copy of `pullImage`. Lift to a shared internal helper.
-4. **Cross-file `extends`** (`extends: { service: foo, file: ./other.yml }`)
-   currently warn-and-skips. Reuse `loadAndMerge`-style cross-file
-   loading to actually pull `foo` from another file.
-5. **FSEvents-based watcher** — `compose watch` currently polls.
-   Upgrade to `FSEventStream` for low-latency change detection.
-6. **Newer-spec decoding** — decode `top.models`, `service.models`,
-   `service.provider` (LLM/AI provider plumbing). Parse-only; runtime
-   wiring optional.
+#### Currently no-upstream-actionable
+
+The no-upstream queue is mostly drained. Active items include:
+- **CHAOS-1333** — Compose configs + secrets: runtime bind-mount support
+- **CHAOS-1338** — [Tracked tech debt] Compose fields with no apple/container equivalent (coverage portion only)
+
+All other open Linear issues (CHAOS-1332, CHAOS-1334, CHAOS-1335, CHAOS-1336, CHAOS-1337) are upstream-blocked and tracked separately in Tier 2 and Tier 3.
 
 #### Tier 2 — Upstream-dependent (apple/container)
 
@@ -346,7 +338,6 @@ six items below shipped via fork patches + Container-Compose wiring; the
 fork itself is *ahead* of `apple/container`, not where new platform
 features come from.
 
-Shipped:
 - ✅ **CHAOS-1319** — `service_healthy` enforcement via
   `ContainerSnapshot.health`
 - ✅ **CHAOS-1320** — `service_completed_successfully` exit-code
