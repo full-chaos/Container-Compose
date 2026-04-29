@@ -496,12 +496,12 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             guard let projectName else { return [] }
             let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(source)")
             let volumePath = volumeUrl.path(percentEncoded: false)
-            let destinationUrl = URL(fileURLWithPath: destination).deletingLastPathComponent()
-            let destinationPath = destinationUrl.path(percentEncoded: false)
 
             print("Warning: Volume source '\(source)' is a named volume. Linking to \(volumePath).")
             try fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)
-            runCommandArgs.append(contentsOf: ["-v", "\(volumePath):\(destinationPath)"])
+            // Preserve the Compose target exactly; only replace the named
+            // volume source with the host directory used to emulate it.
+            runCommandArgs.append(contentsOf: ["-v", "\(volumePath):\(destination)"])
         }
 
         return runCommandArgs

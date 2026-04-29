@@ -866,9 +866,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(source)")
             let volumePath = volumeUrl.path(percentEncoded: false)
 
-            let destinationUrl = URL(fileURLWithPath: destination).deletingLastPathComponent()
-            let destinationPath = destinationUrl.path(percentEncoded: false)
-
             print(
                 "Warning: Volume source '\(source)' appears to be a named volume reference. The 'container' tool does not support named volume references in 'container run -v' command. Linking to \(volumePath) instead."
             )
@@ -876,8 +873,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
             // Host path exists and is a directory, add the volume
             runCommandArgs.append("-v")
-            // Reconstruct the volume string without mode, ensuring it's source:destination
-            runCommandArgs.append("\(volumePath):\(destinationPath)")  // Use original source for command argument
+            // Preserve the Compose target exactly; only replace the named
+            // volume source with the host directory used to emulate it.
+            runCommandArgs.append("\(volumePath):\(destination)")
         }
 
         return runCommandArgs
