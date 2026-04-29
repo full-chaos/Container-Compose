@@ -1,0 +1,8 @@
+{
+  "branch": "fix/down-help-options",
+  "commit": "e3649b8cde42338c564b2b3c5d2698316b44b916",
+  "short": "e3649b8",
+  "target": "e3649b8",
+  "message": "fix: drop process option leakage from compose down",
+  "published_at": "2026-04-29T19:15:34.281346+00:00"
+}
