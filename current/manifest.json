@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b4b138a1dbb3d7b581fc2173473dc657f76c30f1",
-  "short": "b4b138a",
+  "commit": "9f2f616e6e0ea378c291f19ebcf582e32c4b4a9d",
+  "short": "9f2f616",
   "target": "current",
-  "message": "Add coverage report section and update issue link (#44)",
-  "published_at": "2026-04-29T02:12:58.677108+00:00"
+  "message": "docs: clean up AGENTS.md after Tier 2 fork-patch wiring (#42) (#43)",
+  "published_at": "2026-04-29T02:14:19.621577+00:00"
 }

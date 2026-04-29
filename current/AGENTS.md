@@ -195,36 +195,29 @@ to `coverage.json` by `scripts/regen-coverage.sh` for downstream tooling.
 `coverage.json` is gitignored — regenerate it locally if your tooling
 needs it.
 
-Current totals (post-CHAOS-1299 + coverage hygiene sweep):
+Current totals (post-Tier-2 fork-patch wiring):
 
 | Status      | Count   | %     |
 | ----------- | ------- | ----- |
-| Implemented | **135** | 69.6% |
-| Partial     | 54      | 27.8% |
-| Missing     | 5       | 2.6%  |
+| Implemented | **137** | 70.6% |
+| Partial     | 55      | 28.4% |
+| Missing     | 2       | 1.0%  |
 | **Total**   | **194** | 100%  |
 
-The remaining "partial" and "missing" rows fall into three buckets:
-1. **Apple-container-runtime limitations** — e.g. healthcheck
-   condition can't read a true health status because
-   `ContainerSnapshot` doesn't surface a `health` field; `--restart`
-   isn't accepted by `container run`; `compose logs
-   --since/--timestamps` and the event-stream API lack
-   `ContainerClient` surface.
-2. **Swarm-only / orchestrator features** — `deploy.replicas`,
+The remaining "partial" rows fall into two buckets:
+1. **Swarm-only / orchestrator features** — `deploy.replicas`,
    `deploy.update_config`, `deploy.rollback_config`,
-   `deploy.placement`, `endpoint_mode`, `mode`. Decoded as stubs.
-3. **Newer compose-spec or deprecated features** — `top.models`,
-   `service.models`, `service.provider` (newer LLM/AI plumbing,
-   decode pending); `service.external_links`, `service.links`
-   (deprecated, won't implement).
+   `deploy.placement`, `endpoint_mode`, `mode`. Decoded as stubs;
+   runtime semantics belong in a different orchestrator class.
+2. **Newer compose-spec features pending wiring** — `top.models`,
+   `service.models`, `service.provider` (LLM/AI provider plumbing).
 
-The 5 remaining `miss` rows:
+The 2 remaining `miss` rows are both intentional skips:
 
 | Row | Group | Why |
 | --- | --- | --- |
-| `top.models`, `service.models`, `service.provider` | top / service | Newer spec, not yet decoded |
-| `service.external_links`, `service.links` | service | Deprecated; intentional skip |
+| `service.external_links` | service | Deprecated in compose-spec |
+| `service.links` | service | Deprecated in compose-spec |
 
 ### Anchor section: `depends_on` (compose-spec.json L277-L310)
 
@@ -233,14 +226,16 @@ End-to-end status:
 - ✅ list form (`depends_on: [db, redis]`) — `DependsOn.list(...)` factory
 - ✅ object form (`depends_on: {db: {condition: service_healthy}}`) — `DependsOn.entries`
 - ✅ `condition: service_started` — `waitForCondition(.serviceStarted)`
-- ⚠️ `condition: service_healthy` — gated, but underlying fallback to `.running`
-  (TODO: true health when ContainerSnapshot exposes it)
-- ⚠️ `condition: service_completed_successfully` — gated to `.stopped`,
-  no exit-code verification (TODO)
+- ✅ `condition: service_healthy` — `waitForCondition(.serviceHealthy)`
+  reads `ContainerSnapshot.health` from the fork (CHAOS-1319). Falls back
+  to `.running` only when no healthcheck is configured on the service.
+- ✅ `condition: service_completed_successfully` — gated to `.stopped`
+  with `lastExitCode == 0` verification (CHAOS-1320). Throws
+  `ComposeWaitError.nonZeroExitCode` on non-zero exit.
 - ✅ `required: true|false` — `DependsOnEntry.required` controls whether
   errors propagate or are warned
-- ⚠️ `restart` — parsed on `DependsOnEntry`; pending Apple container's
-  restart manager exposure
+- ✅ `restart` — parsed on `DependsOnEntry`; emitted as `--restart`
+  via fork-patched `container run` support (CHAOS-1321)
 
 ---
 
@@ -346,35 +341,32 @@ sorts into three tiers:
 
 #### Tier 2 — Upstream-dependent (apple/container)
 
-These need a Swift API addition in `apple/container` first; the
-`mcrich23/container` fork is *ahead* of apple/container, not where new
-platform features come from.
+The `full-chaos/container` fork closes the original Tier 2 backlog. All
+six items below shipped via fork patches + Container-Compose wiring; the
+fork itself is *ahead* of `apple/container`, not where new platform
+features come from.
 
-7. **True `service_healthy` enforcement** — needs `health` field on
-   `ContainerSnapshot`. Currently `Compose+Wait.swift` falls back to
-   `.running` with a one-time warning.
-8. **Exit-code verification for `service_completed_successfully`** —
-   `ContainerSnapshot` doesn't expose exit code; we wait for `.stopped`
-   only.
-9. **`restart` policy actually applied** — `container run` doesn't
-   accept `--restart`. Needs a higher-level restart manager in the
-   container package.
-10. **`compose logs --since` / `--timestamps`** — parsed but
-    `ContainerClient.logs(id:)` lacks those parameters.
-11. **`compose events` native streaming** — currently 1s polling
-    fallback. Needs an event-stream API on `ContainerClient`.
-12. **`compose run` / `exec` standard flag names** — currently use
-    `--run-env`/`--exec-env`/etc. to avoid clashes with
-    `Flags.Process`. When `Flags.Process` allows opt-out, switch to
-    standard `-e`/`-u`/`-w`.
+Shipped:
+- ✅ **CHAOS-1319** — `service_healthy` enforcement via
+  `ContainerSnapshot.health`
+- ✅ **CHAOS-1320** — `service_completed_successfully` exit-code
+  verification via `ContainerSnapshot.lastExitCode`
+- ✅ **CHAOS-1321** — `restart` policy emitted as `--restart` flag on
+  `container run`
+- ✅ **CHAOS-1322** — `compose logs --since` / `--timestamps` via
+  `ContainerLogOptions`
+- ✅ **CHAOS-1323** — `compose events` native streaming via
+  `ContainerClient.events()`
+- ✅ **CHAOS-1324** — standard `-e`/`-u`/`-w`/`-d` flags on
+  `compose run` / `exec` via `Flags.ProcessBase`
 
 #### Tier 3 — Scope-deferred / won't-do
 
-13. **Swarm-only deploy fields** — `replicas`, `update_config`,
-    `rollback_config`, `placement`, `endpoint_mode`, `mode`. Decoded as
-    stubs; runtime semantics belong to a different orchestrator class.
-14. **Deprecated fields** — `links`, `external_links`, `volumes_from`.
-    Either decoded as no-op or intentionally skipped.
+7. **Swarm-only deploy fields** — `replicas`, `update_config`,
+   `rollback_config`, `placement`, `endpoint_mode`, `mode`. Decoded as
+   stubs; runtime semantics belong to a different orchestrator class.
+8. **Deprecated fields** — `links`, `external_links`, `volumes_from`.
+   Either decoded as no-op or intentionally skipped.
 
 ---
 
