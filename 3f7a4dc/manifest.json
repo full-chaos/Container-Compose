@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-51-c5dc3a9319900d06ea67ba3c51971145d83913f9",
+  "commit": "3f7a4dc31f000f727616ab33179ee83657a4289b",
+  "short": "3f7a4dc",
+  "target": "3f7a4dc",
+  "message": "fix: drop process option leakage from compose down (#51)",
+  "published_at": "2026-04-29T19:28:41.280542+00:00"
+}
