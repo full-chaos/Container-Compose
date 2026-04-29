@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "23eeea59e27992fcd54952a96643f052a44d5629",
-  "short": "23eeea5",
+  "commit": "c5dc3a9319900d06ea67ba3c51971145d83913f9",
+  "short": "c5dc3a9",
   "target": "current",
-  "message": "fix: preserve named-volume mount targets (CHAOS-1339) (#49)",
-  "published_at": "2026-04-29T18:31:32.614018+00:00"
+  "message": "docs: add coverage row drilldowns (#50)",
+  "published_at": "2026-04-29T19:02:34.828332+00:00"
 }
