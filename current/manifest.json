@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "57f1c9eef64af98f36f5680748e80aabac3701b0",
-  "short": "57f1c9e",
+  "commit": "561ca5c3b643abb5e0ba0dbea79cdc457548b138",
+  "short": "561ca5c",
   "target": "current",
-  "message": "Phase 2+3: env-merge consolidation + configs/secrets full source (CHAOS-1333) (#46)",
-  "published_at": "2026-04-29T14:45:11.582347+00:00"
+  "message": "Create dependabot.yml (#47)",
+  "published_at": "2026-04-29T14:51:34.583445+00:00"
 }
