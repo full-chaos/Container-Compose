@@ -191,11 +191,32 @@ struct LifecycleArgsTests {
         #expect(!args.contains("--runtime"))
     }
 
-    // MARK: - restart: no --restart flag emitted
+    // MARK: - restart: --restart flag emitted
 
-    @Test("restart present does not emit --restart flag")
-    func restartNoFlag() {
+    @Test("restart present emits --restart flag with value")
+    func restartEmitsFlag() {
         let svc = Service(image: "alpine", restart: "always")
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+        #expect(args.contains("--restart"))
+        if let idx = args.firstIndex(of: "--restart") {
+            #expect(args[args.index(after: idx)] == "always")
+        }
+    }
+
+    @Test("restart on-failure emits correct value")
+    func restartOnFailure() {
+        let svc = Service(image: "alpine", restart: "on-failure")
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+        if let idx = args.firstIndex(of: "--restart") {
+            #expect(args[args.index(after: idx)] == "on-failure")
+        } else {
+            Issue.record("--restart flag not found")
+        }
+    }
+
+    @Test("restart absent does not emit --restart flag")
+    func restartAbsentNoFlag() {
+        let svc = Service(image: "alpine")
         let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
         #expect(!args.contains("--restart"))
     }

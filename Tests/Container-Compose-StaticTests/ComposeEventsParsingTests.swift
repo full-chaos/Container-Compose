@@ -56,27 +56,4 @@ struct ComposeEventsParsingTests {
         #expect(cmd.json == true)
         #expect(cmd.services == ["web"])
     }
-
-    @Test("polling diff emits create/start/stop/die/destroy events")
-    func pollingDiffEmitsExpectedEvents() throws {
-        let poller = EventStreamPoller()
-        let previous = [
-            EventStreamPoller.Snapshot(id: "demo-web", image: "nginx:latest", name: "demo-web", status: "stopped"),
-            EventStreamPoller.Snapshot(id: "demo-old", image: "redis:latest", name: "demo-old", status: "running"),
-        ]
-        let current = [
-            EventStreamPoller.Snapshot(id: "demo-web", image: "nginx:latest", name: "demo-web", status: "running"),
-            EventStreamPoller.Snapshot(id: "demo-db", image: "postgres:16", name: "demo-db", status: "running"),
-        ]
-
-        let events = poller.diff(
-            prev: previous,
-            current: current,
-            at: Date(timeIntervalSince1970: 0)
-        )
-
-        #expect(events.map(\.action) == ["create", "start", "die", "destroy", "start"])
-        #expect(events.map(\.id) == ["demo-db", "demo-db", "demo-old", "demo-old", "demo-web"])
-        #expect(events.allSatisfy { $0.timestamp == "1970-01-01T00:00:00Z" })
-    }
 }

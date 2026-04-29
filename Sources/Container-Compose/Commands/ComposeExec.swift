@@ -38,33 +38,29 @@ public struct ComposeExec: AsyncParsableCommand, @unchecked Sendable {
     @Argument(parsing: .captureForPassthrough, help: "Command to execute")
     var command: [String]
 
-    @Flag(name: [.customLong("exec-detach")], help: "Run command in the background")
+    @Flag(name: [.short, .long], help: "Run command in the background")
     var detach: Bool = false
 
-    /// When true (the default), passes -i to `container exec`.
-    /// Pass --no-exec-interactive to suppress.
-    @Flag(name: [.customLong("no-exec-interactive")], help: "Disable STDIN passthrough (default: interactive is on)")
+    @Flag(name: [.customLong("no-interactive")], help: "Disable STDIN passthrough (default: interactive is on)")
     var noInteractive: Bool = false
 
-    /// When true (the default), passes -t to `container exec`.
-    /// Pass --no-exec-tty to suppress.
-    @Flag(name: [.customLong("no-exec-tty")], help: "Disable TTY allocation (default: tty is on)")
+    @Flag(name: [.customLong("no-tty")], help: "Disable TTY allocation (default: tty is on)")
     var noTty: Bool = false
 
-    @Option(name: [.customLong("exec-env")], help: "Set an environment variable KEY=VALUE (can be repeated)")
+    @Option(name: [.short, .long], help: "Set an environment variable KEY=VALUE (can be repeated)")
     var environment: [String] = []
 
-    @Option(name: [.customLong("exec-user")], help: "Run as specified username or uid")
+    @Option(name: [.short, .long], help: "Run as specified username or uid")
     var user: String?
 
-    @Option(name: [.customLong("exec-workdir")], help: "Working directory inside the container")
+    @Option(name: [.customShort("w"), .customLong("workdir")], help: "Working directory inside the container")
     var workdir: String?
 
     @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")
     var composeFilename: String?
 
     @OptionGroup
-    var process: Flags.Process
+    var process: Flags.ProcessBase
 
     @OptionGroup
     var projectFlags: ProjectFlags

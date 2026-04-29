@@ -15,35 +15,10 @@
 //===----------------------------------------------------------------------===//
 
 import ContainerAPIClient
+import ContainerResource
 import Foundation
 
 extension ComposeUp {
-    /// Polls the Apple `container` runtime until the named container satisfies
-    /// the given `DependsOnCondition`, or throws on timeout.
-    ///
-    /// Condition semantics:
-    /// - **serviceStarted**: returns when `container.status == .running`.
-    /// - **serviceHealthy**: returns when `status == .running`. The Apple `container`
-    ///   runtime package (`ContainerSnapshot`) does not currently expose a health / liveness
-    ///   field on the container snapshot. Until it does, this condition falls back to
-    ///   `.running` and emits a one-time warning.
-    ///   // TODO: Re-implement true health check once the upstream Swift container package
-    ///   // surfaces a health field on ContainerSnapshot.
-    /// - **serviceCompletedSuccessfully**: returns when `container.status == .stopped`
-    ///   AND `container.lastExitCode == 0`. Throws `ComposeWaitError.nonZeroExitCode` if
-    ///   the container stopped with a non-zero exit code. If `lastExitCode` is `nil`
-    ///   (e.g., the container exited before the daemon captured the code, or the daemon
-    ///   was restarted between exit and read), falls back to treating `.stopped` as
-    ///   sufficient and returns normally.
-    ///
-    /// - Parameters:
-    ///   - serviceName: The logical service name (e.g. "db"). The container name is
-    ///     derived as `"\(projectName)-\(serviceName)"`.
-    ///   - condition: The `DependsOnCondition` that must be satisfied.
-    ///   - timeout: Maximum number of seconds to wait before throwing. Defaults to 60 s.
-    ///   - interval: Polling interval in seconds. Defaults to 0.5 s.
-    /// - Throws: `ComposeWaitError.timeout` if the condition is not met within `timeout`
-    ///   seconds, or any error thrown by `ContainerClient`.
     func waitForCondition(
         _ serviceName: String,
         condition: DependsOnCondition,
@@ -51,8 +26,6 @@ extension ComposeUp {
         interval: TimeInterval = 0.5
     ) async throws {
         guard let projectName else {
-            // If there is no project name we cannot form a container name;
-            // treat as a no-op (mirrors the behavior of waitUntilServiceIsRunning).
             return
         }
 
@@ -60,42 +33,30 @@ extension ComposeUp {
         let deadline = Date().addingTimeInterval(timeout)
         let provider = ContainerClientEnvironment.current
 
-        // Emit one-time warnings for conditions that cannot be fully implemented
-        // with the current ContainerSnapshot API surface.
-        switch condition {
-        case .serviceHealthy:
-            print(
-                "Warning: waitForCondition(.serviceHealthy) for '\(serviceName)': " +
-                "The Apple container runtime does not currently expose a health field on " +
-                "ContainerSnapshot. Falling back to status == .running. " +
-                "// TODO: Enforce true health check once upstream package surfaces health."
-            )
-        case .serviceCompletedSuccessfully, .serviceStarted:
-            break
-        }
-
         while Date() < deadline {
             try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
             let container = try? await provider.get(id: containerName)
 
             guard let container else {
-                // Container not found yet; keep polling.
                 continue
             }
 
             let status = container.status
             switch condition {
             case .serviceStarted:
-                // Condition satisfied when the container is running.
                 if status == .running {
                     return
                 }
 
             case .serviceHealthy:
-                // TODO: Re-implement true health check once ContainerSnapshot exposes health.
-                // Fall back to running status as the best available proxy for "healthy".
                 if status == .running {
-                    return
+                    if let health = container.health {
+                        if health == .healthy {
+                            return
+                        }
+                    } else {
+                        return
+                    }
                 }
 
             case .serviceCompletedSuccessfully:
