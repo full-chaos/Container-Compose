@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "561ca5c3b643abb5e0ba0dbea79cdc457548b138",
-  "short": "561ca5c",
+  "commit": "7855bd4c78fb3efdf02c9ff5188284c742da2650",
+  "short": "7855bd4",
   "target": "current",
-  "message": "Create dependabot.yml (#47)",
-  "published_at": "2026-04-29T14:51:34.583445+00:00"
+  "message": "Phase 4+5: coverage flip (CHAOS-1338) + AGENTS.md totals refresh (#48)",
+  "published_at": "2026-04-29T15:14:11.856710+00:00"
 }
