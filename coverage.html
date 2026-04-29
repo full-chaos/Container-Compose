@@ -111,10 +111,62 @@
   th.sorted-asc::after  { content: " ↑"; color: var(--accent); }
   th.sorted-desc::after { content: " ↓"; color: var(--accent); }
   tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: var(--panel-2); }
+  tbody tr.coverage-row:hover { background: var(--panel-2); }
+  tbody tr.coverage-row.drillable { cursor: pointer; }
+  tbody tr.coverage-row.drillable:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: -2px;
+  }
+  tbody tr.coverage-row.open { background: var(--panel-2); }
+  tbody tr.coverage-row.open td { border-bottom-color: transparent; }
   td.feature { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 12.5px; }
+  .feature-wrap { display: flex; align-items: center; gap: 8px; }
+  .drill-cue {
+    width: 18px; height: 18px; border: 1px solid var(--border); border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); font: 11px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    transition: border-color .16s ease, color .16s ease, transform .16s ease;
+    flex: 0 0 auto;
+  }
+  tr.drillable:hover .drill-cue,
+  tr.drillable.open .drill-cue { border-color: var(--accent); color: var(--accent); }
+  tr.drillable.open .drill-cue { transform: rotate(90deg); }
   td.notes { color: var(--muted); font-size: 12px; max-width: 480px; }
+  .detail-row { display: none; background: linear-gradient(180deg, var(--panel-2), var(--panel)); }
+  .detail-row.open { display: table-row; }
+  .detail-cell { padding: 0 12px 14px 42px; border-bottom: 1px solid var(--border); }
+  .detail-panel {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: var(--panel); box-shadow: 0 14px 32px rgba(0,0,0,.18);
+  }
+  .detail-head {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 12px 14px; background: var(--panel-2); border-bottom: 1px solid var(--border);
+  }
+  .detail-title { font-weight: 700; letter-spacing: -.01em; }
+  .detail-kicker { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .detail-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0; border-top: 0;
+  }
+  .detail-card { padding: 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .detail-card:nth-child(4n) { border-right: none; }
+  .detail-card h3 {
+    margin: 0 0 7px; color: var(--muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .08em;
+  }
+  .detail-card p { margin: 0; color: var(--text); font-size: 13px; }
+  .detail-card ul { margin: 0; padding-left: 18px; color: var(--text); }
+  .detail-card li { margin: 3px 0; }
+  .detail-card code,
+  .anchor-chip {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 1px 5px; font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .anchor-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .drilldown-hint {
+    color: var(--muted); font-size: 12px; margin: -4px 0 16px;
+  }
   .pill {
     display: inline-block; padding: 2px 9px; border-radius: 999px;
     font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
@@ -171,8 +223,8 @@
     <code>condition</code> ∈ {<code>service_started</code>, <code>service_healthy</code>,
     <code>service_completed_successfully</code>}, <code>required</code> (bool),
     <code>restart</code> (bool|string).
-    Container-Compose currently supports the <strong>list form only</strong>; the object form is rejected
-    by <code>Service.init(from:)</code> and no health/restart conditions gate startup.
+    Container-Compose supports list and object forms, including condition gates for started,
+    healthy, and completed-successfully dependencies; click the rows below for implementation anchors.
   </div>
 
   <div class="summary" id="summary"></div>
@@ -193,6 +245,7 @@
     </div>
     <input id="search" type="search" placeholder="Search feature, notes…" autocomplete="off" />
   </div>
+  <div class="drilldown-hint">Click any feature row to drill into what works, where it is implemented, and what remains for Compose parity.</div>
 
   <div id="groups"></div>
   <div class="empty" id="empty">No features match the current filter.</div>
@@ -209,7 +262,7 @@
     {
       "id": "depends_on",
       "title": "depends_on (anchor \u2014 compose-spec.json L277-L310)",
-      "note": "User-anchored section. Object-form support is the largest gap.",
+      "note": "User-anchored section. List/object forms and condition gates are wired end-to-end.",
       "rows": [
         [
           "depends_on (list form)",
@@ -347,9 +400,9 @@
         ],
         [
           "depends_on",
-          "partial",
+          "ok",
           "yes",
-          "List form only. See anchor section above."
+          "List and object forms are decoded through DependsOn; condition/required/restart semantics are covered in the anchor section above."
         ],
         [
           "deploy",
@@ -1458,7 +1511,8 @@ function el(tag, attrs, children) {
       else if (k === "title" || k === "type" || k === "placeholder" ||
                k === "id" || k === "href" || k === "download" ||
                k === "autocomplete" || k === "value" || k === "role" ||
-               k === "aria-pressed") {
+               k === "tabindex" || k === "colspan" || k === "aria-pressed" ||
+               k === "aria-expanded" || k === "aria-controls" || k === "aria-hidden") {
         node.setAttribute(k, attrs[k]);
       }
     }
@@ -1477,20 +1531,187 @@ function el(tag, attrs, children) {
 /* -------- load static data from inline JSON script tag -------- */
 const dataNode = document.getElementById("coverage-data");
 const data = JSON.parse(dataNode.textContent);
-/* Each row is [feature, status, tested, notes] in JSON; expand for readability */
+/* Each row is [feature, status, tested, notes, details?] in JSON; expand for readability */
 const groups = data.groups.map(g => ({
   id: g.id,
   title: g.title,
   note: g.note || "",
-  rows: g.rows.map(r => ({ f: r[0], s: r[1], t: r[2], n: r[3] || "" })),
+  rows: g.rows.map(r => ({ f: r[0], s: r[1], t: r[2], n: r[3] || "", d: r[4] || null })),
 }));
 
 const labels = { ok: "Implemented", partial: "Partial", miss: "Missing" };
+const statusGuidance = {
+  ok: {
+    what: "Implemented in the current runtime path and represented in the coverage matrix as active support.",
+    left: "No row-level parity gap is currently tracked. Keep regression coverage in place as the Compose spec and Apple container evolve."
+  },
+  partial: {
+    what: "Partially supported: Container-Compose parses or handles part of the Compose behavior, but some runtime semantics remain incomplete.",
+    left: "Close the unsupported sub-behavior called out in the note, usually by adding runtime wiring, a fork patch, or a clearer won't-do classification."
+  },
+  miss: {
+    what: "Not runtime-supported today. The field may still decode for schema tolerance, but Container-Compose does not map it to Apple container behavior.",
+    left: "Parity needs a compatible Apple container capability, a deliberate emulation strategy, or an explicit won't-do decision."
+  }
+};
+const groupAnchors = {
+  depends_on: {
+    schema: "Codable Structs/DependsOn.swift + Service.swift",
+    runtime: "Commands/Compose+Wait.swift + ComposeUp.configService",
+    tests: "DependsOnParsingTests.swift + WaitForConditionTests.swift",
+    parity: "Dependency ordering, optionality, restart, and condition gates are tracked here."
+  },
+  top: {
+    schema: "Codable Structs/DockerCompose.swift",
+    runtime: "Application.swift + command-specific loaders",
+    tests: "DockerComposeParsingTests.swift + IncludeTests.swift",
+    parity: "Root keys either feed project orchestration or are decoded as future-facing metadata."
+  },
+  service: {
+    schema: "Codable Structs/Service.swift",
+    runtime: "Commands/Compose+Args*.swift + ComposeUp.configService",
+    tests: "ServicePropertiesParsingTests.swift + *ArgsTests.swift",
+    parity: "Service rows span parse-only fields, direct container flags, and orchestration behavior."
+  },
+  build: {
+    schema: "Codable Structs/Build.swift",
+    runtime: "Commands/ComposeBuild.swift + buildService helpers",
+    tests: "BuildConfigurationTests.swift + BuildSubFeaturesTests.swift + CommandBuildArgvTests.swift",
+    parity: "Build rows map Compose build options to Apple container build support where flags exist."
+  },
+  healthcheck: {
+    schema: "Codable Structs/Healthcheck.swift",
+    runtime: "Compose+ArgsLifecycle.swift + Compose+Wait.swift",
+    tests: "HealthcheckConfigurationTests.swift + WaitForConditionTests.swift",
+    parity: "Health rows distinguish parsed healthcheck shape from dependency gates that consume health status."
+  },
+  deploy: {
+    schema: "Codable Structs/Deploy*.swift",
+    runtime: "Compose+ArgsResource.swift for supported limits",
+    tests: "DeployStubsParsingTests.swift + ResourceArgsTests.swift",
+    parity: "Most deploy fields are swarm/orchestrator semantics rather than single-container runtime flags."
+  },
+  network: {
+    schema: "Codable Structs/Network.swift + ServiceNetworks.swift",
+    runtime: "Compose+ArgsNetworking.swift + network setup in ComposeUp/ComposeCreate",
+    tests: "NetworkConfigurationTests.swift + NetworkArgsTests.swift + NetworkIpamTests.swift",
+    parity: "Networking rows depend heavily on what Apple container exposes for network creation/run flags."
+  },
+  volume: {
+    schema: "Codable Structs/Volume.swift + ExternalVolume.swift",
+    runtime: "ComposeUp.configVolume + ComposeCreate.configVolume",
+    tests: "VolumeDriverTests.swift + RuntimeArgvTests.swift",
+    parity: "Named-volume support currently uses host-directory emulation unless native container volume support is wired."
+  },
+  secret: {
+    schema: "Codable Structs/Secret.swift + ServiceSecret.swift",
+    runtime: "Commands/Compose+ConfigsAndSecrets.swift",
+    tests: "SecretConfigNicheTests.swift + ConfigsSecretsRuntimeTests.swift",
+    parity: "Secrets are materialized as bind-mounted files; uid/gid/mode/template semantics remain constrained by bind mounts."
+  },
+  config: {
+    schema: "Codable Structs/Config.swift + ServiceConfig.swift",
+    runtime: "Commands/Compose+ConfigsAndSecrets.swift",
+    tests: "SecretConfigNicheTests.swift + ConfigsSecretsRuntimeTests.swift",
+    parity: "Configs are materialized as bind-mounted files; uid/gid/mode/template semantics remain constrained by bind mounts."
+  },
+  cli: {
+    schema: "Application.swift command registration",
+    runtime: "Commands/Compose*.swift",
+    tests: "Compose*ParsingTests.swift + Compose*RuntimeArgvTests.swift",
+    parity: "CLI rows track Docker Compose subcommand shape, not only schema decoding."
+  }
+};
+const featureAnchors = [
+  { match: /^(ports|expose|networks|hostname|dns|dns_opt|dns_search|extra_hosts|domainname|mac_address|network_mode|ipc|pid|uts)$/, runtime: "Commands/Compose+ArgsNetworking.swift", tests: "NetworkArgsTests.swift" },
+  { match: /^(cpus|cpu_.*|mem_.*|memswap.*|oom_.*|pids.*|shm_size|ulimits|gpus|blkio_config|deploy.*|resources.*)$/, runtime: "Commands/Compose+ArgsResource.swift", tests: "ResourceArgsTests.swift + GpusBlkioTests.swift" },
+  { match: /^(user|privileged|read_only|cap_add|cap_drop|security_opt|userns_mode|group_add)$/, runtime: "Commands/Compose+ArgsSecurity.swift", tests: "SecurityArgsTests.swift" },
+  { match: /^(working_dir|tmpfs|devices|sysctls|volumes|volumes_from|storage_opt|device_cgroup_rules)$/, runtime: "Commands/Compose+ArgsStorage.swift + command-local volume helpers", tests: "StorageArgsTests.swift + RuntimeArgvTests.swift" },
+  { match: /^(image|command|entrypoint|container_name|restart|stdin_open|tty|init|stop_signal|stop_grace_period|runtime|logging)$/, runtime: "Commands/Compose+ArgsLifecycle.swift", tests: "LifecycleArgsTests.swift + LoggingArgsTests.swift" },
+  { match: /^labels$/, group: "service", runtime: "Commands/Compose+ArgsLabels.swift", tests: "LabelsArgsTests.swift" },
+  { match: /^(configs|secrets|file|content|environment|template_driver|driver_opts)$/, runtime: "Commands/Compose+ConfigsAndSecrets.swift", tests: "ConfigsSecretsRuntimeTests.swift + SecretConfigNicheTests.swift" },
+  { match: /^(build|context|dockerfile|dockerfile_inline|args|target|cache_from|cache_to|labels|network|ssh|platforms|entitlements)$/, group: "build", runtime: "Commands/ComposeBuild.swift", tests: "BuildConfigurationTests.swift + BuildSubFeaturesTests.swift" },
+  { match: /^(depends_on|condition:|required|restart \(bool|string\))/, runtime: "Commands/Compose+Wait.swift", tests: "DependsOnParsingTests.swift + WaitForConditionTests.swift" }
+];
 function pct(n, total) { return total === 0 ? 0 : Math.round((n / total) * 100); }
 function counts(rows) {
   const c = { ok: 0, partial: 0, miss: 0 };
   for (let i = 0; i < rows.length; i++) c[rows[i].s]++;
   return c;
+}
+
+function detailOverride(row, key) {
+  if (!row.d) return "";
+  if (typeof row.d === "string") return key === "what" ? row.d : "";
+  return row.d[key] || "";
+}
+
+function anchorsFor(group, row) {
+  const base = Object.assign({}, groupAnchors[group.id] || groupAnchors.service);
+  for (let i = 0; i < featureAnchors.length; i++) {
+    if ((!featureAnchors[i].group || featureAnchors[i].group === group.id) && featureAnchors[i].match.test(row.f)) {
+      base.runtime = featureAnchors[i].runtime;
+      base.tests = featureAnchors[i].tests;
+      break;
+    }
+  }
+  return base;
+}
+
+function parityText(row, anchors) {
+  const explicit = detailOverride(row, "left");
+  if (explicit) return explicit;
+  if (row.n.indexOf("no apple/container equivalent") !== -1) {
+    return "No Apple container equivalent is available today; parity depends on an upstream runtime capability or an explicit Container-Compose emulation decision.";
+  }
+  if (row.n.indexOf("warn") !== -1 || row.n.indexOf("ignored") !== -1 || row.n.indexOf("not enforced") !== -1) {
+    return "The next parity step is to replace the current warning/ignore path with runtime behavior, or keep the row classified as intentionally unsupported.";
+  }
+  return detailOverride(row, "parity") || anchors.parity || statusGuidance[row.s].left;
+}
+
+function detailModel(group, row) {
+  const anchors = anchorsFor(group, row);
+  return {
+    what: detailOverride(row, "what") || statusGuidance[row.s].what + (row.n ? " Current note: " + row.n : ""),
+    how: detailOverride(row, "how") || "Schema/model support starts at " + anchors.schema + "; runtime behavior is handled in " + anchors.runtime + ".",
+    evidence: detailOverride(row, "evidence") || (row.t === "yes" ? "Covered by tests around " + anchors.tests + "." : "No dedicated test is recorded in this coverage row yet."),
+    left: parityText(row, anchors),
+    anchors: [anchors.schema, anchors.runtime, anchors.tests].filter(Boolean)
+  };
+}
+
+function detailCard(title, body, anchors) {
+  const children = [el("h3", { text: title })];
+  if (Array.isArray(body)) {
+    children.push(el("ul", null, body.map(item => el("li", { text: item }))));
+  } else {
+    children.push(el("p", { text: body }));
+  }
+  if (anchors && anchors.length) {
+    children.push(el("div", { class: "anchor-list" }, anchors.map(a => el("span", { class: "anchor-chip", text: a }))));
+  }
+  return el("div", { class: "detail-card" }, children);
+}
+
+function detailRow(group, row, id) {
+  const model = detailModel(group, row);
+  const panel = el("div", { class: "detail-panel" }, [
+    el("div", { class: "detail-head" }, [
+      el("span", { class: "detail-title", text: row.f }),
+      el("span", { class: "pill " + row.s, text: labels[row.s] }),
+      el("span", { class: "detail-kicker", text: row.t === "yes" ? "Tested" : "No test recorded" }),
+    ]),
+    el("div", { class: "detail-grid" }, [
+      detailCard("What works", model.what),
+      detailCard("How it maps", model.how, model.anchors),
+      detailCard("Evidence", model.evidence),
+      detailCard("Left to parity", model.left),
+    ]),
+  ]);
+  return el("tr", { class: "detail-row", id: id, "aria-hidden": "true" }, [
+    el("td", { class: "detail-cell", colspan: "4" }, [panel]),
+  ]);
 }
 
 /* -------- render summary -------- */
@@ -1527,14 +1748,14 @@ function renderGroups() {
     const okPct = pct(c.ok, total);
     const partialPct = pct(c.partial, total);
 
-    const bar = el("span", { class: "bar",
-      title: c.ok + " ok · " + c.partial + " partial · " + c.miss + " missing" }, [
-      Object.assign(el("span", { class: "ok" }), { style: "width:" + okPct + "%" }),
-      Object.assign(el("span", { class: "partial" }), { style: "width:" + partialPct + "%" }),
-    ]);
-    /* set inline width safely */
-    bar.children[0].style.width = okPct + "%";
-    bar.children[1].style.width = partialPct + "%";
+    const okSegment = el("span", { class: "ok" });
+    okSegment.style.width = okPct + "%";
+    const partialSegment = el("span", { class: "partial" });
+    partialSegment.style.width = partialPct + "%";
+    const bar = el("span", {
+      class: "bar",
+      title: c.ok + " ok · " + c.partial + " partial · " + c.miss + " missing",
+    }, [okSegment, partialSegment]);
 
     const meta = el("span", { class: "meta" }, [
       bar,
@@ -1559,16 +1780,29 @@ function renderGroups() {
     for (let ri = 0; ri < g.rows.length; ri++) {
       const r = g.rows[ri];
       const haystack = (r.f + " " + (r.n || "")).toLowerCase();
-      tbody.appendChild(el("tr", {
+      const detailId = "detail-" + g.id + "-" + ri;
+      const row = el("tr", {
+        class: "coverage-row drillable",
         "data-status": r.s,
         "data-tested": r.t,
         "data-haystack": haystack,
+        role: "button",
+        tabindex: "0",
+        "aria-expanded": "false",
+        "aria-controls": detailId,
       }, [
-        el("td", { class: "feature", text: r.f }),
+        el("td", { class: "feature" }, [
+          el("span", { class: "feature-wrap" }, [
+            el("span", { class: "drill-cue", text: "›" }),
+            el("span", { text: r.f }),
+          ]),
+        ]),
         el("td", null, [el("span", { class: "pill " + r.s, text: labels[r.s] })]),
         el("td", { text: r.t === "yes" ? "✓" : "—" }),
         el("td", { class: "notes", text: r.n || "" }),
-      ]));
+      ]);
+      tbody.appendChild(row);
+      tbody.appendChild(detailRow(g, r, detailId));
     }
 
     const table = el("table", { "data-table": "true" }, [thead, tbody]);
@@ -1587,7 +1821,7 @@ function applyFilters() {
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     let groupVisible = 0;
-    const rows = section.querySelectorAll("tbody tr");
+    const rows = section.querySelectorAll("tbody tr.coverage-row");
     for (let j = 0; j < rows.length; j++) {
       const tr = rows[j];
       const matchStatus = filterState.status === "all" || tr.getAttribute("data-status") === filterState.status;
@@ -1595,11 +1829,38 @@ function applyFilters() {
       const matchQ = !q || tr.getAttribute("data-haystack").indexOf(q) !== -1;
       const show = matchStatus && matchTested && matchQ;
       tr.style.display = show ? "" : "none";
+      const detail = document.getElementById(tr.getAttribute("aria-controls"));
+      if (detail) detail.style.display = show && tr.getAttribute("aria-expanded") === "true" ? "" : "none";
       if (show) { groupVisible++; visible++; }
     }
     section.style.display = groupVisible === 0 ? "none" : "";
   }
   document.getElementById("empty").classList.toggle("shown", visible === 0);
+}
+
+function toggleDrilldown(row) {
+  const detail = document.getElementById(row.getAttribute("aria-controls"));
+  if (!detail) return;
+  const open = row.getAttribute("aria-expanded") !== "true";
+  row.setAttribute("aria-expanded", open ? "true" : "false");
+  row.classList.toggle("open", open);
+  detail.classList.toggle("open", open);
+  detail.setAttribute("aria-hidden", open ? "false" : "true");
+  detail.style.display = open ? "" : "none";
+}
+
+function bindDrilldowns() {
+  const rows = document.querySelectorAll("tbody tr.coverage-row.drillable");
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    row.addEventListener("click", function() { toggleDrilldown(row); });
+    row.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleDrilldown(row);
+      }
+    });
+  }
 }
 
 function bindFilters() {
@@ -1634,7 +1895,7 @@ function bindSorting() {
       th.addEventListener("click", function() {
         const key = th.getAttribute("data-sort");
         const tbody = table.querySelector("tbody");
-        const rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+        const rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.coverage-row"));
         const isAsc = th.classList.contains("sorted-asc");
         const next = isAsc ? "desc" : "asc";
         const allTh = table.querySelectorAll("th");
@@ -1658,7 +1919,11 @@ function bindSorting() {
           if (va > vb) return next === "asc" ?  1 : -1;
           return 0;
         });
-        for (let k = 0; k < rows.length; k++) tbody.appendChild(rows[k]);
+        for (let k = 0; k < rows.length; k++) {
+          tbody.appendChild(rows[k]);
+          const detail = document.getElementById(rows[k].getAttribute("aria-controls"));
+          if (detail) tbody.appendChild(detail);
+        }
       });
     }
   }
@@ -1669,7 +1934,7 @@ function attachJson() {
   const all = groups.map(g => ({
     id: g.id, title: g.title, note: g.note || null,
     counts: counts(g.rows),
-    rows: g.rows.map(r => ({ feature: r.f, status: r.s, tested: r.t === "yes", notes: r.n })),
+    rows: g.rows.map(r => ({ feature: r.f, status: r.s, tested: r.t === "yes", notes: r.n, details: r.d || null })),
   }));
   const summary = {
     generated_at: new Date().toISOString(),
@@ -1688,6 +1953,7 @@ document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("ts").textContent = new Date().toISOString().slice(0, 10);
   renderSummary();
   renderGroups();
+  bindDrilldowns();
   bindFilters();
   bindSorting();
   attachJson();
