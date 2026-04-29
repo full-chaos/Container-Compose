@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c5dc3a9319900d06ea67ba3c51971145d83913f9",
-  "short": "c5dc3a9",
+  "commit": "3f7a4dc31f000f727616ab33179ee83657a4289b",
+  "short": "3f7a4dc",
   "target": "current",
-  "message": "docs: add coverage row drilldowns (#50)",
-  "published_at": "2026-04-29T19:02:34.828332+00:00"
+  "message": "fix: drop process option leakage from compose down (#51)",
+  "published_at": "2026-04-29T19:40:15.356558+00:00"
 }
