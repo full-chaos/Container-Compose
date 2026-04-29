@@ -1,0 +1,19 @@
+services:
+  smoke:
+    image: docker.io/library/alpine:3
+    command: ["sh", "-c", "cat /run/secrets/env_secret; cat /etc/inline_cfg; cat /etc/env_cfg; sleep 2"]
+    configs:
+      - source: inline_cfg
+        target: /etc/inline_cfg
+      - source: env_cfg
+        target: /etc/env_cfg
+    secrets:
+      - source: env_secret
+configs:
+  inline_cfg:
+    content: "hello-from-content"
+  env_cfg:
+    environment: SMOKE_CFG_VAR
+secrets:
+  env_secret:
+    environment: SMOKE_SECRET_VAR

@@ -14,6 +14,7 @@
 // limitations under the License.
 //===----------------------------------------------------------------------===//
 
+import CryptoKit
 import Foundation
 
 extension ComposeUp {
@@ -21,13 +22,14 @@ extension ComposeUp {
     ///
     /// For each `ServiceConfig` / `ServiceSecret` referenced by a service, this
     /// enum looks up the corresponding top-level `Config` / `Secret` definition
-    /// to find its `file:` source path, then emits a `-v <hostPath>:<target>`
-    /// pair for `container run`.
+    /// to resolve its `file:`, `content:`, or `environment:` source, then emits
+    /// a `-v <hostPath>:<target>` pair for `container run`.
     ///
     /// Warnings are printed (not thrown) for unsupported or unresolvable cases:
     /// - Config / secret not present in the top-level map
     /// - Config / secret declared as `external:` (no local source file available)
-    /// - Config / secret with a `file:` of nil
+    /// - Config / secret with no supported local source
+    /// - Config / secret whose `environment:` variable is missing on the host
     /// - `uid`, `gid`, or `mode` fields — parsed but not enforceable via `-v`
     enum ConfigsSecretsArgs {
         /// Returns bind-mount argv for all service-level configs and secrets.
@@ -49,17 +51,14 @@ extension ComposeUp {
                         continue
                     }
 
-                    guard let sourceFile = topLevel.file else {
-                        print("Warning: Config '\(sc.source)' has no 'file:' source; skipping.")
-                        continue
-                    }
-
                     if topLevel.templateDriver != nil {
                         print("Note: 'template_driver' for config '\(sc.source)' Detected, But Not Supported by the current runtime; the raw file will be mounted as-is.")
                     }
 
                     let target = sc.target ?? "/\(sc.source)"
-                    let resolvedSource = (sourceFile as NSString).expandingTildeInPath
+                    guard let resolvedSource = try? resolveConfigSource(topLevel, sourceName: sc.source, projectName: ctx.projectName) else {
+                        continue
+                    }
                     args.append(contentsOf: ["-v", "\(resolvedSource):\(target)"])
 
                     if sc.uid != nil || sc.gid != nil || sc.mode != nil {
@@ -83,17 +82,14 @@ extension ComposeUp {
                         continue
                     }
 
-                    guard let sourceFile = topLevel.file else {
-                        print("Warning: Secret '\(ss.source)' has no 'file:' source; skipping.")
-                        continue
-                    }
-
                     if topLevel.templateDriver != nil {
                         print("Note: 'template_driver' for secret '\(ss.source)' Detected, But Not Supported by the current runtime; the raw file will be mounted as-is.")
                     }
 
                     let target = ss.target ?? "/run/secrets/\(ss.source)"
-                    let resolvedSource = (sourceFile as NSString).expandingTildeInPath
+                    guard let resolvedSource = try? resolveSecretSource(topLevel, sourceName: ss.source, projectName: ctx.projectName) else {
+                        continue
+                    }
                     args.append(contentsOf: ["-v", "\(resolvedSource):\(target)"])
 
                     if ss.uid != nil || ss.gid != nil || ss.mode != nil {
@@ -103,6 +99,77 @@ extension ComposeUp {
             }
 
             return args
+        }
+
+        private static func resolveConfigSource(_ topLevel: Config, sourceName: String, projectName: String) throws -> String? {
+            if let sourceFile = topLevel.file {
+                return (sourceFile as NSString).expandingTildeInPath
+            }
+
+            if let content = topLevel.content {
+                return try writeTempFile(
+                    content: Data(content.utf8),
+                    kind: "config",
+                    sourceName: sourceName,
+                    projectName: projectName
+                )
+            }
+
+            if let environment = topLevel.environment {
+                guard let value = ProcessInfo.processInfo.environment[environment] else {
+                    print("Warning: Config '\(sourceName)' references missing host environment variable '\(environment)'; skipping mount.")
+                    return nil
+                }
+
+                return try writeTempFile(
+                    content: Data(value.utf8),
+                    kind: "config",
+                    sourceName: sourceName,
+                    projectName: projectName
+                )
+            }
+
+            print("Warning: Config '\(sourceName)' has no 'file:' source; skipping.")
+            return nil
+        }
+
+        private static func resolveSecretSource(_ topLevel: Secret, sourceName: String, projectName: String) throws -> String? {
+            if let sourceFile = topLevel.file {
+                return (sourceFile as NSString).expandingTildeInPath
+            }
+
+            if let environment = topLevel.environment {
+                guard let value = ProcessInfo.processInfo.environment[environment] else {
+                    print("Warning: Secret '\(sourceName)' references missing host environment variable '\(environment)'; skipping mount.")
+                    return nil
+                }
+
+                return try writeTempFile(
+                    content: Data(value.utf8),
+                    kind: "secret",
+                    sourceName: sourceName,
+                    projectName: projectName
+                )
+            }
+
+            print("Warning: Secret '\(sourceName)' has no 'file:' source; skipping.")
+            return nil
+        }
+
+        private static func writeTempFile(content: Data, kind: String, sourceName: String, projectName: String) throws -> String {
+            let digest = SHA256.hash(data: content)
+            let hashPrefix = digest.map { String(format: "%02x", $0) }.joined().prefix(12)
+            let directoryPath = NSString(string: "~/.containers/Compose/\(projectName)/configs-secrets").expandingTildeInPath
+            let directoryURL = URL(fileURLWithPath: directoryPath, isDirectory: true)
+            try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+
+            let fileName = "\(kind)-\(sourceName)-\(hashPrefix)"
+            let fileURL = directoryURL.appending(path: fileName)
+            if !FileManager.default.fileExists(atPath: fileURL.path) {
+                try content.write(to: fileURL, options: .atomic)
+            }
+
+            return fileURL.path
         }
     }
 }

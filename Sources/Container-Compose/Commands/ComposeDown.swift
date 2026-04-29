@@ -134,6 +134,18 @@ public struct ComposeDown: AsyncParsableCommand {
         }
 
         try await stopOldStuff(services, remove: false)
+
+        cleanupConfigsSecretsTempDirIfFullProjectDown()
+    }
+
+    /// Removes content-addressed configs/secrets temp files only for a full-project
+    /// down. Partial down (for example, `compose down web`) leaves the directory
+    /// intact because sibling services may still mount the same shared files.
+    private func cleanupConfigsSecretsTempDirIfFullProjectDown() {
+        if self.services.isEmpty, let projectName {
+            let secretsDir = URL(fileURLWithPath: NSString(string: "~/.containers/Compose/\(projectName)/configs-secrets").expandingTildeInPath)
+            try? FileManager.default.removeItem(at: secretsDir)
+        }
     }
 
     private func stopOldStuff(_ services: [(serviceName: String, service: Service)], remove: Bool) async throws {
