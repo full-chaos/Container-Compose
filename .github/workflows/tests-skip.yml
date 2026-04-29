@@ -17,6 +17,8 @@ on:
       - 'Package.resolved'
       - '.github/workflows/tests.yml'
 
+permissions: {}
+
 # Both files share `name: Tests` so the produced check has the same
 # identity (`Tests / Build and Test`) and either satisfies a required
 # check entry. Use a file-specific concurrency group so a mixed-change
