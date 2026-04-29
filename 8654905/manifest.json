@@ -1,0 +1,8 @@
+{
+  "branch": "ci/tests-skip-required-check",
+  "commit": "8654905222bbbfd1410c4e8a7d525c5a59955934",
+  "short": "8654905",
+  "target": "8654905",
+  "message": "ci: report Build and Test on PRs that touch no buildable code",
+  "published_at": "2026-04-29T19:39:04.763161+00:00"
+}
