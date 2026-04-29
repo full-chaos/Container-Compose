@@ -1,0 +1,8 @@
+{
+  "branch": "docs/chaos-1340-docker-api-compat",
+  "commit": "8e43c6b7714f12d1af7904aad22194fa93a6debc",
+  "short": "8e43c6b",
+  "target": "8e43c6b",
+  "message": "docs: track CHAOS-1340 Docker API compatibility (\u00a72.E + \u00a72.F)",
+  "published_at": "2026-04-29T21:34:42.377297+00:00"
+}
