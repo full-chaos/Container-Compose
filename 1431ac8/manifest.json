@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-46-4f5c339f4a697ba7037c11ed5c54883cd7f9990d",
+  "commit": "1431ac842c0bea52c97681c9c2618c54886d76b6",
+  "short": "1431ac8",
+  "target": "1431ac8",
+  "message": "Phase 2+3: env-merge consolidation + configs/secrets full source (CHAOS-1333) (#46)",
+  "published_at": "2026-04-29T14:34:55.018330+00:00"
+}
