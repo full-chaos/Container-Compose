@@ -1,0 +1,8 @@
+{
+  "branch": "feat/phase-2-and-3",
+  "commit": "d24398192ee81c98961c0d87be3bbee1fc54002f",
+  "short": "d243981",
+  "target": "d243981",
+  "message": "feat: configs + secrets full source resolution (file/content/environment) (CHAOS-1333)",
+  "published_at": "2026-04-29T14:24:25.710499+00:00"
+}
