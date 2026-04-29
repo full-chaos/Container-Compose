@@ -2,7 +2,7 @@
 
 **Author:** Sisyphus
 **Date:** 2026-04-29
-**Repo:** `/Users/chris/projects/full-chaos/Container-Compose`
+**Repo:** `/Users/chris/projects/full-chaos/container/container-compose`
 **Trigger:** User asked for a plan to refactor + implement remaining Linear issues that don't require apple/container upstream changes.
 
 ---
@@ -39,6 +39,10 @@ After this plan ships, the no-upstream Linear queue for Container-Compose should
 | CHAOS-1335 (volume driver_opts + improved named-volume handling) | `container volume` API needs extension | Issue description: *"Fork-patch container if volume options API needs extension"* |
 | CHAOS-1336 (deploy.resources.reservations) | `container run` only has `--cpus`/`--memory` (hard VM allocation, not reservation semantics) | `.build/checkouts/container/docs/command-reference.md:40-41` — only limits flags exist; reservations are semantically distinct |
 | CHAOS-1337 (build.entitlements → `--allow`) | `container build` has no `--allow`/entitlement flag | `grep allow\|entitlement\|insecure` in `BuildCommand.swift` → no matches |
+| CHAOS-1340 (Epic — Docker API compatibility) | Fork-side runtime work — new `container system api` daemon translating Docker REST → `ContainerClient`. Linear is canonical. | `docs/upstream-fork-status.md` §2.E |
+| CHAOS-1341 (MVP — read-only HTTP bridge) | Sub-issue of CHAOS-1340; events/list/inspect/networks. Unblocks Traefik in `dev-health` + `script-manifest`. | `docs/upstream-fork-status.md` §2.E |
+| CHAOS-1342 (Streaming reads — stats + logs) | Sub-issue of CHAOS-1340 (depends on 1341); `/containers/{id}/stats` + `/containers/{id}/logs?follow=true`. Unblocks SigNoz `otel-collector` + Grafana Alloy. | `docs/upstream-fork-status.md` §2.E |
+| Container log file layout gap | Sibling concern to CHAOS-1340: `signoz` reads `/var/lib/docker/containers`, `alloy` reads `/var/log` — Apple `container` has no equivalent path layout. No Linear ticket yet (see §2.F). | `docs/upstream-fork-status.md` §2.F |
 | `compose watch` `sync+restart` / `sync+exec` partial | Both need `container cp` equivalent | `ComposeWatch.swift:208-211, 220-223` literally says *"requires 'container cp' equivalent (not yet available)"* |
 | CHAOS-1338 (full umbrella) | Decision-making ticket; the work portion is the coverage flip handled above | — |
 
