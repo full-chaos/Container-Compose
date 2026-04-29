@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "3f7a4dc31f000f727616ab33179ee83657a4289b",
-  "short": "3f7a4dc",
+  "commit": "6273e0ae6b806aae81f74840351dc543a252b0c1",
+  "short": "6273e0a",
   "target": "current",
-  "message": "fix: drop process option leakage from compose down (#51)",
-  "published_at": "2026-04-29T19:40:15.356558+00:00"
+  "message": "ci: report Build and Test on PRs that touch no buildable code (#52)",
+  "published_at": "2026-04-29T19:51:08.439995+00:00"
 }
