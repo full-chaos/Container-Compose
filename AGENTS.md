@@ -195,14 +195,25 @@ to `coverage.json` by `scripts/regen-coverage.sh` for downstream tooling.
 `coverage.json` is gitignored — regenerate it locally if your tooling
 needs it.
 
-Current totals (post-Tier-2 fork-patch wiring):
+Current totals (post no-upstream-sweep):
 
 | Status      | Count   | %     |
 | ----------- | ------- | ----- |
-| Implemented | **137** | 70.6% |
-| Partial     | 55      | 28.4% |
-| Missing     | 2       | 1.0%  |
+| Implemented | **142** | 73.2% |
+| Partial     | 34      | 17.5% |
+| Missing     | 18      | 9.3%  |
 | **Total**   | **194** | 100%  |
+
+Recent shifts: Phase 3 added inline-content + env-var sources for
+top-level `configs` (file / content / environment) and env-var sources
+for `secrets` (file / environment), promoting those rows from `partial`
+to `ok`. Phase 4 reclassified 14 decode-only service fields with no
+apple/container equivalent (`annotations`, `attach`, `cgroup`,
+`cgroup_parent`, `credential_spec`, `device_cgroup_rules`, `isolation`,
+`label_file`, `post_start`, `pre_stop`, `pull_refresh_after`,
+`storage_opt`, `use_api_socket`, `volumes_from`) from `partial` to
+`miss` for honesty — they're decoded with a runtime warn-and-skip but
+will not be wired further without an upstream change.
 
 The remaining "partial" rows fall into two buckets:
 1. **Swarm-only / orchestrator features** — `deploy.replicas`,
@@ -212,12 +223,10 @@ The remaining "partial" rows fall into two buckets:
 2. **Newer compose-spec features pending wiring** — `top.models`,
    `service.models`, `service.provider` (LLM/AI provider plumbing).
 
-The 2 remaining `miss` rows are both intentional skips:
-
-| Row | Group | Why |
-| --- | --- | --- |
-| `service.external_links` | service | Deprecated in compose-spec |
-| `service.links` | service | Deprecated in compose-spec |
+`miss` rows split into two intentional buckets: deprecated compose-spec
+fields (`service.external_links`, `service.links`) and the 14
+decode-only service fields above plus a small set of network/volume
+options where apple/container has no equivalent flag yet.
 
 ### Anchor section: `depends_on` (compose-spec.json L277-L310)
 
