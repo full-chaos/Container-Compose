@@ -1,0 +1,8 @@
+{
+  "branch": "agents-md-tier2-cleanup",
+  "commit": "049689327a470e6732c2088a40c3528736a97693",
+  "short": "0496893",
+  "target": "0496893",
+  "message": "docs: clean up AGENTS.md after Tier 2 fork-patch wiring (#42)",
+  "published_at": "2026-04-29T00:59:28.363997+00:00"
+}
