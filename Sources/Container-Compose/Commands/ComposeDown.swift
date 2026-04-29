@@ -22,7 +22,6 @@
 //
 
 import ArgumentParser
-import ContainerCommands
 import ContainerAPIClient
 import Foundation
 import Yams
@@ -41,13 +40,13 @@ public struct ComposeDown: AsyncParsableCommand {
     @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
     var profile: [String] = []
 
-    @OptionGroup
-    var process: Flags.Process
+    @Option(name: .customLong("cwd"), help: "Host working directory for locating the Compose file")
+    var hostCwd: String?
 
     @OptionGroup
     var projectFlags: ProjectFlags
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
+    private var cwd: String { hostCwd ?? FileManager.default.currentDirectoryPath }
 
     /// Project root for outside-container relative-path resolution. Honors
     /// `--project-directory`, falls back to the compose file's directory.
