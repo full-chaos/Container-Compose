@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9f2f616e6e0ea378c291f19ebcf582e32c4b4a9d",
-  "short": "9f2f616",
+  "commit": "4f5c339f4a697ba7037c11ed5c54883cd7f9990d",
+  "short": "4f5c339",
   "target": "current",
-  "message": "docs: clean up AGENTS.md after Tier 2 fork-patch wiring (#42) (#43)",
-  "published_at": "2026-04-29T02:14:19.621577+00:00"
+  "message": "Phase 1: pullImage dedupe + AGENTS.md refresh (#45)",
+  "published_at": "2026-04-29T14:08:49.066467+00:00"
 }
