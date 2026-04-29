@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "7855bd4c78fb3efdf02c9ff5188284c742da2650",
-  "short": "7855bd4",
+  "commit": "23eeea59e27992fcd54952a96643f052a44d5629",
+  "short": "23eeea5",
   "target": "current",
-  "message": "Phase 4+5: coverage flip (CHAOS-1338) + AGENTS.md totals refresh (#48)",
-  "published_at": "2026-04-29T15:14:11.856710+00:00"
+  "message": "fix: preserve named-volume mount targets (CHAOS-1339) (#49)",
+  "published_at": "2026-04-29T18:31:32.614018+00:00"
 }
