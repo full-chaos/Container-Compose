@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "4f5c339f4a697ba7037c11ed5c54883cd7f9990d",
-  "short": "4f5c339",
+  "commit": "57f1c9eef64af98f36f5680748e80aabac3701b0",
+  "short": "57f1c9e",
   "target": "current",
-  "message": "Phase 1: pullImage dedupe + AGENTS.md refresh (#45)",
-  "published_at": "2026-04-29T14:08:49.066467+00:00"
+  "message": "Phase 2+3: env-merge consolidation + configs/secrets full source (CHAOS-1333) (#46)",
+  "published_at": "2026-04-29T14:45:11.582347+00:00"
 }
