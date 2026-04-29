@@ -4,6 +4,12 @@ Container-Compose brings (limited) Docker Compose support to [Apple Container](h
 
 > **Note:** Container-Compose does not automatically configure DNS for macOS 15 (Sequoia). Use macOS 26 (Tahoe) for an optimal experience.
 
+### Coverage Report
+
+<img width="1807" height="458" alt="image" src="https://github.com/user-attachments/assets/2b02b64c-18a5-4851-9d6a-e5fd886f92af" />
+
+[Compose feature coverage report](https://full-chaos.github.io/container-compose/)
+
 ## Features
 
 - **Compose file support:** Parse and interpret `docker-compose.yml` files to configure Apple Containers.
@@ -80,8 +86,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Support
 
-If you encounter issues or have questions, please open an [Issue](https://github.com/Mcrich23/Container-Compose/issues).
+If you encounter issues or have questions, please open an [Issue](https://github.com/full-chaos/container-compose/issues).
 
 ---
 
 Happy Coding! 🚀
+
+
+<img width="1026" height="1005" alt="image" src="https://github.com/user-attachments/assets/d39c2dd6-6fa4-494e-9fbb-b825e3f61e47" />
