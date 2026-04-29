@@ -1,0 +1,8 @@
+{
+  "branch": "feat/no-upstream-sweep",
+  "commit": "3d49b95d05f15d2059297f9b8a15792ddd40ca73",
+  "short": "3d49b95",
+  "target": "3d49b95",
+  "message": "docs: refresh AGENTS.md \u2014 Tier 1/2 fully shipped, document no-upstream queue",
+  "published_at": "2026-04-29T13:49:07.743622+00:00"
+}
