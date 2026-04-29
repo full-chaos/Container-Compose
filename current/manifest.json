@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "6273e0ae6b806aae81f74840351dc543a252b0c1",
-  "short": "6273e0a",
+  "commit": "b9cdfa961ef2dae9128a5fc156cecb6e543673da",
+  "short": "b9cdfa9",
   "target": "current",
-  "message": "ci: report Build and Test on PRs that touch no buildable code (#52)",
-  "published_at": "2026-04-29T19:51:08.439995+00:00"
+  "message": "docs: track CHAOS-1340 Docker API compatibility (\u00a72.E + \u00a72.F) (#53)",
+  "published_at": "2026-04-29T21:38:23.263738+00:00"
 }
