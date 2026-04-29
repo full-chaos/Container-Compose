@@ -1,0 +1,8 @@
+{
+  "branch": "ci/tests-skip-required-check",
+  "commit": "c9b1ed0e7a8d3413552bb7c38a80ffe2463c7f9a",
+  "short": "c9b1ed0",
+  "target": "c9b1ed0",
+  "message": "Potential fix for pull request finding 'CodeQL / Workflow does not contain permissions'",
+  "published_at": "2026-04-29T19:42:15.472103+00:00"
+}
