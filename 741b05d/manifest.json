@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-42-8b4c826c371e845e54b8c8bb4091b624338ffefc",
+  "commit": "741b05da2b2d2d1ff0f2da3dc30c84f4f7a7a6ac",
+  "short": "741b05d",
+  "target": "741b05d",
+  "message": "feat: wire all 5 Tier 2 fork patches (CHAOS-1319/1321/1322/1323/1324) (#42)",
+  "published_at": "2026-04-29T00:30:06.682799+00:00"
+}
