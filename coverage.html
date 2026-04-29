@@ -1205,15 +1205,15 @@
       "rows": [
         [
           "file",
-          "partial",
+          "ok",
           "no",
-          "Parsed; not mounted at runtime."
+          "Mounted via `-v hostFile:/run/secrets/<source>` per service.secrets entry."
         ],
         [
           "environment",
-          "partial",
+          "ok",
           "no",
-          "Custom extension; parsed only."
+          "Resolved from host env var; written to content-addressed temp file under `~/.containers/Compose/<project>/configs-secrets/`; bind-mounted via `-v`."
         ],
         [
           "external",
@@ -1247,9 +1247,9 @@
         ],
         [
           "template_driver",
-          "partial",
+          "miss",
           "yes",
-          "Decoded only; bind-mount source support is a follow-up."
+          "No templating engine; warn-skip stays."
         ]
       ]
     },
@@ -1259,9 +1259,9 @@
       "rows": [
         [
           "file",
-          "partial",
+          "ok",
           "no",
-          "Parsed; not mounted."
+          "Mounted via `-v hostFile:<target>` per service.configs entry."
         ],
         [
           "external",
@@ -1283,21 +1283,21 @@
         ],
         [
           "content",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only; bind-mount source support is a follow-up."
+          "Inline content written to content-addressed temp file; bind-mounted via `-v`."
         ],
         [
           "environment",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only; bind-mount source support is a follow-up."
+          "Resolved from host env var; written to content-addressed temp file; bind-mounted via `-v`."
         ],
         [
           "template_driver",
-          "partial",
+          "miss",
           "yes",
-          "Decoded only; bind-mount source support is a follow-up."
+          "No templating engine; warn-skip stays."
         ]
       ]
     },

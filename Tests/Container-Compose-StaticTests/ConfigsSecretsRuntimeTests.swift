@@ -25,12 +25,17 @@ struct ConfigsSecretsRuntimeTests {
     // MARK: - Helpers
 
     /// Build an ArgsContext with the given service and DockerCompose.
-    private func makeContext(service: Service, dockerCompose: DockerCompose) -> ComposeUp.ArgsContext {
+    private func makeContext(
+        service: Service,
+        dockerCompose: DockerCompose,
+        projectName: String = "testproject",
+        serviceName: String = "svc"
+    ) -> ComposeUp.ArgsContext {
         ComposeUp.ArgsContext(
             service: service,
-            serviceName: "svc",
-            projectName: "testproject",
-            containerName: "testproject-svc",
+            serviceName: serviceName,
+            projectName: projectName,
+            containerName: "\(projectName)-\(serviceName)",
             detach: false,
             environmentVariables: [:],
             dockerCompose: dockerCompose,
@@ -52,6 +57,28 @@ struct ConfigsSecretsRuntimeTests {
             configs: configs,
             secrets: secrets
         )
+    }
+
+    private func tempProjectName(_ prefix: String) -> String {
+        "\(prefix)-\(UUID().uuidString.lowercased())"
+    }
+
+    private func configsSecretsDir(projectName: String) -> URL {
+        URL(fileURLWithPath: NSString(string: "~/.containers/Compose/\(projectName)/configs-secrets").expandingTildeInPath, isDirectory: true)
+    }
+
+    private func volumeMounts(from args: [String]) -> [String] {
+        args.indices.compactMap { index in
+            guard args[index] == "-v", args.indices.contains(index + 1) else {
+                return nil
+            }
+
+            return args[index + 1]
+        }
+    }
+
+    private func hostPath(from mount: String) -> String {
+        mount.split(separator: ":", maxSplits: 1).first.map(String.init) ?? ""
     }
 
     // MARK: - Configs
@@ -123,6 +150,117 @@ struct ConfigsSecretsRuntimeTests {
         #expect(!args.contains("-v"))
     }
 
+    @Test("Config file source still emits expected -v arg")
+    func fileSourceStillEmitsExpectedVolumeArg() {
+        let sc = ServiceConfig(source: "file_cfg", target: "/etc/file_cfg")
+        let topConfig = Config(file: "~/configs/file_cfg")
+        let service = Service(image: "alpine:latest", configs: [sc])
+        let dc = makeDockerCompose(configs: ["file_cfg": topConfig])
+        let ctx = makeContext(service: service, dockerCompose: dc)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mounts = volumeMounts(from: args)
+        #expect(mounts.count == 1)
+        let expectedHost = NSString(string: "~/configs/file_cfg").expandingTildeInPath
+        #expect(mounts.first == "\(expectedHost):/etc/file_cfg")
+    }
+
+    @Test("Config content source writes content-addressed temp file")
+    func configContentSourceWritesTempFile() throws {
+        let projectName = tempProjectName("cfg-content")
+        let dir = configsSecretsDir(projectName: projectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let sc = ServiceConfig(source: "inline_cfg", target: "/etc/inline_cfg")
+        let topConfig = Config(content: "hello-from-content")
+        let service = Service(image: "alpine:latest", configs: [sc])
+        let dc = makeDockerCompose(configs: ["inline_cfg": topConfig])
+        let ctx = makeContext(service: service, dockerCompose: dc, projectName: projectName)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mount = try #require(volumeMounts(from: args).first)
+        let tempPath = hostPath(from: mount)
+        #expect(tempPath.hasPrefix(dir.path + "/"))
+        #expect(URL(fileURLWithPath: tempPath).lastPathComponent.hasPrefix("config-inline_cfg-"))
+        #expect(URL(fileURLWithPath: tempPath).lastPathComponent.split(separator: "-").last?.count == 12)
+        #expect(mount == "\(tempPath):/etc/inline_cfg")
+        #expect(FileManager.default.fileExists(atPath: tempPath))
+        #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "hello-from-content")
+    }
+
+    @Test("Config environment source writes host env value to temp file")
+    func configEnvironmentSourceWritesTempFile() throws {
+        let projectName = tempProjectName("cfg-env")
+        let dir = configsSecretsDir(projectName: projectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let envName = "PHASE3_CFG_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+        setenv(envName, "hello-from-env", 1)
+        defer { unsetenv(envName) }
+
+        let sc = ServiceConfig(source: "env_cfg", target: "/etc/env_cfg")
+        let topConfig = Config(environment: envName)
+        let service = Service(image: "alpine:latest", configs: [sc])
+        let dc = makeDockerCompose(configs: ["env_cfg": topConfig])
+        let ctx = makeContext(service: service, dockerCompose: dc, projectName: projectName)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mount = try #require(volumeMounts(from: args).first)
+        let tempPath = hostPath(from: mount)
+        #expect(tempPath.hasPrefix(dir.path + "/"))
+        #expect(URL(fileURLWithPath: tempPath).lastPathComponent.hasPrefix("config-env_cfg-"))
+        #expect(mount == "\(tempPath):/etc/env_cfg")
+        #expect(FileManager.default.fileExists(atPath: tempPath))
+        #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "hello-from-env")
+    }
+
+    @Test("Missing config environment source skips mount")
+    func missingConfigEnvironmentSkipsMount() {
+        let envName = "PHASE3_MISSING_CFG_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+        unsetenv(envName)
+        let sc = ServiceConfig(source: "missing_env_cfg", target: "/etc/missing")
+        let topConfig = Config(environment: envName)
+        let service = Service(image: "alpine:latest", configs: [sc])
+        let dc = makeDockerCompose(configs: ["missing_env_cfg": topConfig])
+        let ctx = makeContext(service: service, dockerCompose: dc)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        #expect(!args.contains("-v"))
+    }
+
+    @Test("Two services sharing content source reuse one temp file")
+    func sharedContentSourceReusesTempFileWithoutRewrite() throws {
+        let projectName = tempProjectName("cfg-shared")
+        let dir = configsSecretsDir(projectName: projectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let sc = ServiceConfig(source: "shared_cfg", target: "/etc/shared")
+        let topConfig = Config(content: "shared-content")
+        let firstService = Service(image: "alpine:latest", configs: [sc])
+        let secondService = Service(image: "alpine:latest", configs: [sc])
+        let dc = makeDockerCompose(configs: ["shared_cfg": topConfig])
+        let firstCtx = makeContext(service: firstService, dockerCompose: dc, projectName: projectName, serviceName: "web")
+        let secondCtx = makeContext(service: secondService, dockerCompose: dc, projectName: projectName, serviceName: "worker")
+
+        let firstArgs = ComposeUp.ConfigsSecretsArgs.build(firstCtx)
+        let firstMount = try #require(volumeMounts(from: firstArgs).first)
+        let firstPath = hostPath(from: firstMount)
+        try "preserve-existing-file".write(toFile: firstPath, atomically: true, encoding: .utf8)
+
+        let secondArgs = ComposeUp.ConfigsSecretsArgs.build(secondCtx)
+        let secondMount = try #require(volumeMounts(from: secondArgs).first)
+        let secondPath = hostPath(from: secondMount)
+
+        #expect(firstPath == secondPath)
+        #expect(try String(contentsOfFile: secondPath, encoding: .utf8) == "preserve-existing-file")
+    }
+
     // MARK: - Secrets
 
     @Test("Secret with explicit target emits -v hostPath:target")
@@ -178,6 +316,33 @@ struct ConfigsSecretsRuntimeTests {
 
         let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
         #expect(!args.contains("-v"))
+    }
+
+    @Test("Secret environment source writes host env value to temp file")
+    func secretEnvironmentSourceWritesTempFile() throws {
+        let projectName = tempProjectName("secret-env")
+        let dir = configsSecretsDir(projectName: projectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let envName = "PHASE3_SECRET_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+        setenv(envName, "super-secret-value", 1)
+        defer { unsetenv(envName) }
+
+        let ss = ServiceSecret(source: "env_secret")
+        let topSecret = Secret(environment: envName)
+        let service = Service(image: "alpine:latest", secrets: [ss])
+        let dc = makeDockerCompose(secrets: ["env_secret": topSecret])
+        let ctx = makeContext(service: service, dockerCompose: dc, projectName: projectName)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mount = try #require(volumeMounts(from: args).first)
+        let tempPath = hostPath(from: mount)
+        #expect(tempPath.hasPrefix(dir.path + "/"))
+        #expect(URL(fileURLWithPath: tempPath).lastPathComponent.hasPrefix("secret-env_secret-"))
+        #expect(mount == "\(tempPath):/run/secrets/env_secret")
+        #expect(FileManager.default.fileExists(atPath: tempPath))
+        #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "super-secret-value")
     }
 
     // MARK: - Tilde expansion
