@@ -1,0 +1,8 @@
+{
+  "branch": "investigate/dev-health-compose-mapping",
+  "commit": "df6405c087cc5e60888ee81a5990f768c6bea947",
+  "short": "df6405c",
+  "target": "df6405c",
+  "message": "fix: preserve named-volume mount targets (CHAOS-1339)",
+  "published_at": "2026-04-29T18:18:16.204220+00:00"
+}
