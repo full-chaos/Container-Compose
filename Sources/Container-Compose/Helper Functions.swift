@@ -60,6 +60,45 @@ public func loadEnvFile(path: String) -> [String: String] {
     return envVars
 }
 
+/// Merge service env preserving Container-Compose's current precedence:
+///   1. Start from `baseline` (caller-provided; today loaded from project `.env`).
+///   2. For each entry in `serviceEnvFile` (declared order), load the file and merge with
+///      first-writer-wins semantics — baseline values and earlier env_file entries are
+///      NEVER overridden. `entry.required == false` with a missing file is silent-skipped.
+///   3. Merge `serviceEnvironment` on top: a key is overridden ONLY when the new value does
+///      NOT contain `${`. Values with `${` keep the existing key (caller runs substitution
+///      AFTER calling this helper).
+/// The helper does NOT perform substitution, runtime overrides, or service-name → IP
+/// rewriting. Those stay in the caller.
+public func mergeServiceEnvironment(
+    baseline: [String: String],
+    serviceEnvFile: [EnvFileEntry]?,
+    serviceEnvironment: [String: String]?,
+    projectDirectory: String
+) -> [String: String] {
+    var combinedEnv: [String: String] = baseline
+
+    if let envFiles = serviceEnvFile {
+        for entry in envFiles {
+            let resolved = URL(fileURLWithPath: entry.path, relativeTo: URL(fileURLWithPath: projectDirectory)).path
+            if !entry.required && !FileManager.default.fileExists(atPath: resolved) {
+                continue
+            }
+            let additionalEnvVars = loadEnvFile(path: resolved)
+            combinedEnv.merge(additionalEnvVars) { current, _ in current }
+        }
+    }
+
+    if let serviceEnv = serviceEnvironment {
+        combinedEnv.merge(serviceEnv) { old, new in
+            guard !new.contains("${") else { return old }
+            return new
+        }
+    }
+
+    return combinedEnv
+}
+
 /// Resolves environment variables within a string (e.g., ${VAR:-default}, ${VAR:?error}).
 /// This function supports default values and error-on-missing variable syntax.
 /// - Parameters:

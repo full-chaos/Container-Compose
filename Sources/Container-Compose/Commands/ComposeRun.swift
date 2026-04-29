@@ -268,23 +268,12 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         runArgs.append(contentsOf: ComposeUp.LabelsArgs.build(ctx))
 
         // Combined env: .env file + service env
-        var combinedEnv = environmentVariables
-        if let envFiles = service.env_file {
-            for entry in envFiles {
-                let resolved = URL(fileURLWithPath: entry.path, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path
-                if !entry.required && !FileManager.default.fileExists(atPath: resolved) {
-                    continue
-                }
-                let additionalEnvVars = loadEnvFile(path: resolved)
-                combinedEnv.merge(additionalEnvVars) { current, _ in current }
-            }
-        }
-        if let serviceEnv = service.environment {
-            combinedEnv.merge(serviceEnv) { old, new in
-                guard !new.contains("${") else { return old }
-                return new
-            }
-        }
+        var combinedEnv = mergeServiceEnvironment(
+            baseline: environmentVariables,
+            serviceEnvFile: service.env_file,
+            serviceEnvironment: service.environment,
+            projectDirectory: effectiveProjectDirectory
+        )
         combinedEnv = combinedEnv.mapValues { value in
             guard value.contains("${") else { return value }
             let varName = String(value.replacingOccurrences(of: "${", with: "").dropLast())

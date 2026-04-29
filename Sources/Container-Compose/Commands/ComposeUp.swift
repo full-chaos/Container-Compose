@@ -581,25 +581,12 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         // Build the merged env: .env files → service env_file paths → service
         // environment map → ${VAR} substitution → service-name → IP rewrite.
-        var combinedEnv: [String: String] = environmentVariables
-
-        if let envFiles = service.env_file {
-            for entry in envFiles {
-                let resolved = URL(fileURLWithPath: entry.path, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path
-                if !entry.required && !FileManager.default.fileExists(atPath: resolved) {
-                    continue
-                }
-                let additionalEnvVars = loadEnvFile(path: resolved)
-                combinedEnv.merge(additionalEnvVars) { (current, _) in current }
-            }
-        }
-
-        if let serviceEnv = service.environment {
-            combinedEnv.merge(serviceEnv) { (old, new) in
-                guard !new.contains("${") else { return old }
-                return new
-            }  // Service env overrides .env files
-        }
+        var combinedEnv = mergeServiceEnvironment(
+            baseline: environmentVariables,
+            serviceEnvFile: service.env_file,
+            serviceEnvironment: service.environment,
+            projectDirectory: effectiveProjectDirectory
+        )
 
         combinedEnv = combinedEnv.mapValues({ value in
             guard value.contains("${") else { return value }
