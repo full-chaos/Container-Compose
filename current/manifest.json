@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "1a6cbdf65931a48b38f0889b616c6868fd2087ea",
-  "short": "1a6cbdf",
+  "commit": "b4b138a1dbb3d7b581fc2173473dc657f76c30f1",
+  "short": "b4b138a",
   "target": "current",
-  "message": "feat: wire all 5 Tier 2 fork patches (CHAOS-1319/1321/1322/1323/1324) (#42)",
-  "published_at": "2026-04-29T00:34:12.962299+00:00"
+  "message": "Add coverage report section and update issue link (#44)",
+  "published_at": "2026-04-29T02:12:58.677108+00:00"
 }
