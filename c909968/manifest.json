@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1369-deprecation-cleanup",
+  "commit": "c9099684c4c65aac5418cf67d855531a9e6c1809",
+  "short": "c909968",
+  "target": "c909968",
+  "message": "chore: remove deprecated APIStatsErrorResponse/APIErrorResponse route-level extensions",
+  "published_at": "2026-05-01T22:26:12.553479+00:00"
+}
