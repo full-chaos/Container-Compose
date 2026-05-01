@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1373-device-sysctl",
+  "commit": "0cddbf0d0495fde2b2117afa053b01ff0b22947f",
+  "short": "0cddbf0",
+  "target": "0cddbf0",
+  "message": "feat(args): warn-and-skip --device / --sysctl",
+  "published_at": "2026-05-01T23:25:16.910282+00:00"
+}
