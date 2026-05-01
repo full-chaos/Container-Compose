@@ -1,0 +1,8 @@
+{
+  "branch": "feat/feature-parity-inventory-and-docs",
+  "commit": "66591d9350ebae642d4cde57aff0331efcf4943b",
+  "short": "66591d9",
+  "target": "66591d9",
+  "message": "docs(coverage): track Tier 0 silent failures + fork dependencies in public matrix",
+  "published_at": "2026-05-01T18:16:23.065537+00:00"
+}
