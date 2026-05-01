@@ -17,40 +17,51 @@
 import Foundation
 import Hummingbird
 
-/// CHAOS-1347 network routes for `GET /networks`.
-/// CHAOS-1353 extends with `POST /networks` and `DELETE /networks/{id}`.
-/// Phase 3 will wire endpoint/MAC/IPv4 attachment details into the runtime
-/// model; for now those fields are stubbed as empty strings.
-public enum NetworkRoutes {
+/// CHAOS-1353 volume routes:
+///   GET    /volumes            — list all volumes
+///   POST   /volumes            — create a volume
+///   DELETE /volumes/{name}     — remove a volume by name
+///
+/// Volume driver support is limited to `local` in Phase 8 per the CHAOS-1353
+/// ticket boundary. Additional drivers are out of scope.
+public enum VolumeRoutes {
     public static func register(router: Router<BasicRequestContext>) {
-        // GET /networks — list all networks
-        router.get("/networks") { _, _ in
-            let runtime = RuntimeEnvironment.current
-            let networks = try await runtime.listNetworks()
-            return networks.map(toSummary)
-        }
 
-        // POST /networks — create a network (CHAOS-1353)
-        router.post("/networks") { request, context -> Response in
-            let body = try await request.decode(as: APICreateNetworkRequest.self, context: context)
+        // GET /volumes — list all volumes
+        router.get("/volumes") { request, context -> Response in
             let runtime = RuntimeEnvironment.current
             do {
-                let network = try await runtime.createNetwork(
-                    spec: RuntimeCreateNetworkSpec(
+                let volumes = try await runtime.listVolumes()
+                let resp = APIVolumeListResponse(volumes: volumes.map(toSummary))
+                return try EditedResponse(response: resp)
+                    .response(from: request, context: context)
+            } catch RuntimeError.notSupported(let op, let conformer) {
+                return try EditedResponse(
+                    status: .notImplemented,
+                    response: APIErrorResponse(message: "operation '\(op)' not supported by '\(conformer)'")
+                ).response(from: request, context: context)
+            }
+        }
+
+        // POST /volumes — create a volume
+        router.post("/volumes") { request, context -> Response in
+            let body = try await request.decode(as: APICreateVolumeRequest.self, context: context)
+            let runtime = RuntimeEnvironment.current
+            do {
+                let volume = try await runtime.createVolume(
+                    spec: RuntimeCreateVolumeSpec(
                         name: body.name,
-                        driver: body.driver ?? "bridge",
-                        subnet: body.subnet,
-                        gateway: body.gateway,
+                        driver: body.driver ?? "local",
                         labels: body.labels ?? [:]
                     )
                 )
-                let resp = APICreateNetworkResponse(id: network.id, name: network.name)
+                let resp = toSummary(volume)
                 return try EditedResponse(status: .created, response: resp)
                     .response(from: request, context: context)
             } catch RuntimeError.alreadyExists {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(message: "network '\(body.name)' already exists")
+                    response: APIErrorResponse(message: "volume '\(body.name)' already exists")
                 ).response(from: request, context: context)
             } catch RuntimeError.notSupported(let op, let conformer) {
                 return try EditedResponse(
@@ -60,17 +71,17 @@ public enum NetworkRoutes {
             }
         }
 
-        // DELETE /networks/{id} — remove a network (CHAOS-1353)
-        router.delete("/networks/:id") { request, context -> Response in
-            let id = try context.parameters.require("id")
+        // DELETE /volumes/{name} — remove a volume by name
+        router.delete("/volumes/:name") { request, context -> Response in
+            let name = try context.parameters.require("name")
             let runtime = RuntimeEnvironment.current
             do {
-                try await runtime.removeNetwork(id: id)
+                try await runtime.removeVolume(name: name)
                 return Response(status: .noContent)
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "network '\(id)' not found")
+                    response: APIErrorResponse(message: "volume '\(name)' not found")
                 ).response(from: request, context: context)
             } catch RuntimeError.notSupported(let op, let conformer) {
                 return try EditedResponse(
@@ -81,20 +92,15 @@ public enum NetworkRoutes {
         }
     }
 
-    private static func toSummary(_ n: RuntimeNetwork) -> APINetworkSummary {
-        let attached = Dictionary(uniqueKeysWithValues: n.attachedContainerIds.map { id in
-            (id, APIAttachedContainer(endpointID: "", macAddress: "", ipv4Address: ""))
-        })
-
-        return APINetworkSummary(
-            id: n.id,
-            name: n.name,
-            driver: n.driver,
-            labels: n.labels,
-            containers: attached
+    private static func toSummary(_ v: RuntimeVolume) -> APIVolumeSummary {
+        APIVolumeSummary(
+            name: v.name,
+            driver: v.driver,
+            labels: v.labels,
+            createdAt: v.createdAt
         )
     }
 }
 
-extension APINetworkSummary: ResponseEncodable {}
-extension APICreateNetworkResponse: ResponseEncodable {}
+extension APIVolumeSummary: ResponseEncodable {}
+extension APIVolumeListResponse: ResponseEncodable {}

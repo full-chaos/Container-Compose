@@ -514,3 +514,148 @@ public struct APIErrorResponse: Codable, Sendable, Hashable {
         self.message = message
     }
 }
+
+// MARK: - Resource CRUD Schemas (CHAOS-1353)
+
+// MARK: POST /networks
+
+/// Request body for `POST /networks`. `subnet` and `gateway` are optional
+/// CIDR/IP strings; if omitted the backend assigns them automatically.
+/// Advanced IPAM (subnet pools, multiple subnets) is out of scope per CHAOS-1353.
+public struct APICreateNetworkRequest: Codable, Sendable, Hashable {
+    public let name: String
+    public let driver: String?
+    public let subnet: String?
+    public let gateway: String?
+    public let labels: [String: String]?
+
+    public init(
+        name: String,
+        driver: String? = nil,
+        subnet: String? = nil,
+        gateway: String? = nil,
+        labels: [String: String]? = nil
+    ) {
+        self.name = name
+        self.driver = driver
+        self.subnet = subnet
+        self.gateway = gateway
+        self.labels = labels
+    }
+}
+
+/// Response body for `POST /networks` (201 Created).
+public struct APICreateNetworkResponse: Codable, Sendable, Hashable {
+    public let id: String
+    public let name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+// MARK: GET /volumes
+
+public struct APIVolumeSummary: Codable, Sendable, Hashable {
+    public let name: String
+    public let driver: String
+    public let labels: [String: String]
+    public let createdAt: Date?
+
+    public init(
+        name: String,
+        driver: String,
+        labels: [String: String],
+        createdAt: Date?
+    ) {
+        self.name = name
+        self.driver = driver
+        self.labels = labels
+        self.createdAt = createdAt
+    }
+}
+
+/// Envelope for `GET /volumes` to allow future addition of `warnings` /
+/// `filters` fields without breaking the response shape.
+public struct APIVolumeListResponse: Codable, Sendable, Hashable {
+    public let volumes: [APIVolumeSummary]
+
+    public init(volumes: [APIVolumeSummary]) {
+        self.volumes = volumes
+    }
+}
+
+// MARK: POST /volumes
+
+public struct APICreateVolumeRequest: Codable, Sendable, Hashable {
+    public let name: String
+    public let driver: String?
+    public let labels: [String: String]?
+
+    public init(
+        name: String,
+        driver: String? = nil,
+        labels: [String: String]? = nil
+    ) {
+        self.name = name
+        self.driver = driver
+        self.labels = labels
+    }
+}
+
+// MARK: GET /secrets
+
+public struct APISecretSummary: Codable, Sendable, Hashable {
+    public let name: String
+    public let labels: [String: String]
+    public let createdAt: Date?
+
+    public init(
+        name: String,
+        labels: [String: String],
+        createdAt: Date?
+    ) {
+        self.name = name
+        self.labels = labels
+        self.createdAt = createdAt
+    }
+}
+
+// MARK: POST /secrets
+
+/// Request body for `POST /secrets`.
+///
+/// Secret body shape decision (CHAOS-1353 PR note):
+/// - `value` is an inline UTF-8 string. The caller is responsible for reading
+///   the file when `secret.file:` is specified in a Compose document and passing
+///   the contents as `value`. The server does NOT accept a `filePath` parameter —
+///   file I/O on the server side would require the daemon to have access to the
+///   client's local filesystem, which is not guaranteed in production deployments.
+///   This matches how Docker handles `POST /secrets` (value-in-body only).
+/// - `labels` is optional metadata for secret grouping / filtering.
+public struct APICreateSecretRequest: Codable, Sendable, Hashable {
+    public let name: String
+    public let value: String
+    public let labels: [String: String]?
+
+    public init(
+        name: String,
+        value: String,
+        labels: [String: String]? = nil
+    ) {
+        self.name = name
+        self.value = value
+        self.labels = labels
+    }
+}
+
+/// Response body for `POST /secrets` (201 Created).
+/// The secret `value` is intentionally omitted — it is never echoed back.
+public struct APICreateSecretResponse: Codable, Sendable, Hashable {
+    public let name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+}

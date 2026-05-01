@@ -315,4 +315,90 @@ public actor AppleContainerizationRuntime: Runtime {
     }
 }
 
+// MARK: - Resource CRUD (CHAOS-1353)
+
+extension AppleContainerizationRuntime {
+
+    // MARK: Networks
+
+    /// The native `apple/containerization` Swift package has no public Swift API
+    /// for programmatic network creation or deletion as of Phase 8. The `container`
+    /// CLI wraps platform networking via shell process invocations; we do not
+    /// replicate those here. Documented as abstraction leak in
+    /// `docs/plans/runtime-abstraction-leaks.md` (Leak #9).
+    public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
+        throw RuntimeError.notSupported(
+            operation: "createNetwork",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    /// See `createNetwork` for rationale. Documented as Leak #9.
+    public func removeNetwork(id: String) async throws {
+        throw RuntimeError.notSupported(
+            operation: "removeNetwork",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    // MARK: Volumes
+
+    /// The native `apple/containerization` Swift package has no volume management
+    /// surface. Container filesystems are immutable root images; bind-mounts are
+    /// the current workaround. Volume CRUD is deferred until the containerization
+    /// library exposes a public API for mutable volume stores. Documented as
+    /// abstraction leak in `docs/plans/runtime-abstraction-leaks.md` (Leak #10).
+    public func listVolumes() async throws -> [RuntimeVolume] {
+        throw RuntimeError.notSupported(
+            operation: "listVolumes",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    /// See `listVolumes` for rationale. Documented as Leak #10.
+    public func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
+        throw RuntimeError.notSupported(
+            operation: "createVolume",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    /// See `listVolumes` for rationale. Documented as Leak #10.
+    public func removeVolume(name: String) async throws {
+        throw RuntimeError.notSupported(
+            operation: "removeVolume",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    // MARK: Secrets
+
+    /// The native `apple/containerization` Swift package has no secret management
+    /// surface. Phase 8 ships in-memory secrets only via `MockRuntime`; a durable
+    /// backend (e.g. macOS Keychain) is deferred to Phase 9+. Documented as
+    /// abstraction leak in `docs/plans/runtime-abstraction-leaks.md` (Leak #11).
+    public func listSecrets() async throws -> [RuntimeSecret] {
+        throw RuntimeError.notSupported(
+            operation: "listSecrets",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    /// See `listSecrets` for rationale. Documented as Leak #11.
+    public func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret {
+        throw RuntimeError.notSupported(
+            operation: "createSecret",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+
+    /// See `listSecrets` for rationale. Documented as Leak #11.
+    public func removeSecret(name: String) async throws {
+        throw RuntimeError.notSupported(
+            operation: "removeSecret",
+            conformer: "AppleContainerizationRuntime"
+        )
+    }
+}
+
 #endif

@@ -114,6 +114,49 @@ public protocol Runtime: Sendable {
     /// Single polled statistics snapshot. For streaming, the API server's
     /// stats endpoint maintains its own polling loop on top of this.
     func statistics(for id: String) async throws -> RuntimeStatistics
+
+    // MARK: - Resource CRUD (CHAOS-1353)
+
+    // MARK: Networks
+
+    /// Create a network from the given spec. Returns the newly created network.
+    /// Conformers throw `RuntimeError.alreadyExists(id:)` (using the name as id)
+    /// if a network with that name already exists.
+    func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork
+
+    /// Remove a network by id. Conformers throw `RuntimeError.notFound(id:)` if
+    /// no network with that id exists.
+    func removeNetwork(id: String) async throws
+
+    // MARK: Volumes
+
+    /// Return all volumes visible to this runtime.
+    func listVolumes() async throws -> [RuntimeVolume]
+
+    /// Create a volume from the given spec. Returns the newly created volume.
+    /// Conformers throw `RuntimeError.alreadyExists(id:)` (using the name as id)
+    /// if a volume with that name already exists.
+    func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume
+
+    /// Remove a volume by name. Conformers throw `RuntimeError.notFound(id:)` if
+    /// no volume with that name exists.
+    func removeVolume(name: String) async throws
+
+    // MARK: Secrets
+
+    /// Return all secret metadata visible to this runtime. Secret values are
+    /// NEVER included in the response; only metadata (name, labels, createdAt).
+    func listSecrets() async throws -> [RuntimeSecret]
+
+    /// Create a secret from the given spec. Returns the newly created secret
+    /// metadata (the value is not echoed back). Conformers throw
+    /// `RuntimeError.alreadyExists(id:)` (using the name as id) if a secret
+    /// with that name already exists.
+    func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret
+
+    /// Remove a secret by name. Conformers throw `RuntimeError.notFound(id:)`
+    /// if no secret with that name exists.
+    func removeSecret(name: String) async throws
 }
 
 // MARK: - RuntimeError

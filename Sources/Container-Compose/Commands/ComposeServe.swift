@@ -230,6 +230,8 @@ public enum ServeDaemon {
         SystemRoutes.register(router: router)
         ContainerRoutes.register(router: router)
         NetworkRoutes.register(router: router)
+        VolumeRoutes.register(router: router)
+        SecretRoutes.register(router: router)
         ProjectRoutes.register(router: router)
         EventsRoutes.register(router: router)
         LogsRoutes.register(router: router)

@@ -364,3 +364,86 @@ public struct BridgeContainerClientRuntime: Runtime {
         #endif
     }
 }
+
+// MARK: - Resource CRUD (CHAOS-1353)
+
+extension BridgeContainerClientRuntime {
+
+    // MARK: Networks
+
+    /// The `apple/container` XPC client (`ContainerAPIClient`) has no public
+    /// API for network creation or deletion; those operations are delegated to
+    /// the `container network create/remove` CLI in the existing Compose command
+    /// paths. Throwing `.notSupported` here is intentional and documented as an
+    /// abstraction leak in `docs/plans/runtime-abstraction-leaks.md` (Leak #9).
+    public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
+        throw RuntimeError.notSupported(
+            operation: "createNetwork",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    /// See `createNetwork` for rationale. Documented as Leak #9.
+    public func removeNetwork(id: String) async throws {
+        throw RuntimeError.notSupported(
+            operation: "removeNetwork",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    // MARK: Volumes
+
+    /// The `apple/container` XPC client has no volume management API surface.
+    /// Documented as abstraction leak in `docs/plans/runtime-abstraction-leaks.md`
+    /// (Leak #10).
+    public func listVolumes() async throws -> [RuntimeVolume] {
+        throw RuntimeError.notSupported(
+            operation: "listVolumes",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    /// See `listVolumes` for rationale. Documented as Leak #10.
+    public func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
+        throw RuntimeError.notSupported(
+            operation: "createVolume",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    /// See `listVolumes` for rationale. Documented as Leak #10.
+    public func removeVolume(name: String) async throws {
+        throw RuntimeError.notSupported(
+            operation: "removeVolume",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    // MARK: Secrets
+
+    /// The `apple/container` XPC client has no secret management API surface.
+    /// Documented as abstraction leak in `docs/plans/runtime-abstraction-leaks.md`
+    /// (Leak #11).
+    public func listSecrets() async throws -> [RuntimeSecret] {
+        throw RuntimeError.notSupported(
+            operation: "listSecrets",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    /// See `listSecrets` for rationale. Documented as Leak #11.
+    public func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret {
+        throw RuntimeError.notSupported(
+            operation: "createSecret",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+
+    /// See `listSecrets` for rationale. Documented as Leak #11.
+    public func removeSecret(name: String) async throws {
+        throw RuntimeError.notSupported(
+            operation: "removeSecret",
+            conformer: "BridgeContainerClientRuntime"
+        )
+    }
+}

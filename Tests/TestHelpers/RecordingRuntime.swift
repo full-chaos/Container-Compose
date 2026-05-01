@@ -41,11 +41,22 @@ public actor RecordingRuntime: Runtime {
         case logs(id: String, options: RuntimeLogOptions)
         case events
         case statistics(id: String)
+        // CHAOS-1353
+        case createNetwork(name: String)
+        case removeNetwork(id: String)
+        case listVolumes
+        case createVolume(name: String)
+        case removeVolume(name: String)
+        case listSecrets
+        case createSecret(name: String)
+        case removeSecret(name: String)
     }
 
     public private(set) var entries: [Entry] = []
     private let stubbedContainers: [RuntimeContainer]
     private let stubbedNetworks: [RuntimeNetwork]
+    private let stubbedVolumes: [RuntimeVolume]
+    private let stubbedSecrets: [RuntimeSecret]
     private let stubbedEvents: [RuntimeContainerEvent]
     private let stubbedLogFrames: [RuntimeLogFrame]
     private let eventsError: RuntimeError?
@@ -61,6 +72,8 @@ public actor RecordingRuntime: Runtime {
     public init(
         stubbedContainers: [RuntimeContainer] = [],
         stubbedNetworks: [RuntimeNetwork] = [],
+        stubbedVolumes: [RuntimeVolume] = [],
+        stubbedSecrets: [RuntimeSecret] = [],
         stubbedEvents: [RuntimeContainerEvent] = [],
         stubbedLogFrames: [RuntimeLogFrame] = [],
         eventsError: RuntimeError? = nil,
@@ -71,6 +84,8 @@ public actor RecordingRuntime: Runtime {
     ) {
         self.stubbedContainers = stubbedContainers
         self.stubbedNetworks = stubbedNetworks
+        self.stubbedVolumes = stubbedVolumes
+        self.stubbedSecrets = stubbedSecrets
         self.stubbedEvents = stubbedEvents
         self.stubbedLogFrames = stubbedLogFrames
         self.eventsError = eventsError
@@ -201,6 +216,69 @@ public actor RecordingRuntime: Runtime {
             }
         }
         return RuntimeStatistics(id: id, sampledAt: Date())
+    }
+
+    // MARK: - CHAOS-1353 resource CRUD
+
+    public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
+        entries.append(.createNetwork(name: spec.name))
+        return RuntimeNetwork(
+            id: UUID().uuidString,
+            name: spec.name,
+            driver: spec.driver,
+            labels: spec.labels,
+            attachedContainerIds: []
+        )
+    }
+
+    public func removeNetwork(id: String) async throws {
+        entries.append(.removeNetwork(id: id))
+        guard stubbedNetworks.contains(where: { $0.id == id }) else {
+            throw RuntimeError.notFound(id: id)
+        }
+    }
+
+    public func listVolumes() async throws -> [RuntimeVolume] {
+        entries.append(.listVolumes)
+        return stubbedVolumes
+    }
+
+    public func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
+        entries.append(.createVolume(name: spec.name))
+        return RuntimeVolume(
+            name: spec.name,
+            driver: spec.driver,
+            labels: spec.labels,
+            createdAt: Date()
+        )
+    }
+
+    public func removeVolume(name: String) async throws {
+        entries.append(.removeVolume(name: name))
+        guard stubbedVolumes.contains(where: { $0.name == name }) else {
+            throw RuntimeError.notFound(id: name)
+        }
+    }
+
+    public func listSecrets() async throws -> [RuntimeSecret] {
+        entries.append(.listSecrets)
+        return stubbedSecrets
+    }
+
+    public func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret {
+        entries.append(.createSecret(name: spec.name))
+        return RuntimeSecret(
+            name: spec.name,
+            labels: spec.labels,
+            createdAt: Date()
+        )
+    }
+
+    public func removeSecret(name: String) async throws {
+        entries.append(.removeSecret(name: name))
+        guard stubbedSecrets.contains(where: { $0.name == name }) else {
+            throw RuntimeError.notFound(id: name)
+        }
     }
 
     // MARK: - Test affordances
