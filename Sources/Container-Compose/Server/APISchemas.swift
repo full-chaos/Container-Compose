@@ -695,6 +695,232 @@ public struct APICreateSecretResponse: Codable, Sendable, Hashable {
     }
 }
 
+// MARK: - Project Lifecycle Schemas (CHAOS-1360)
+
+// MARK: POST /projects/{name}/up
+
+/// Request body for `POST /projects/{name}/up`.
+/// All fields are optional; `detached` defaults to `true` (run services in the
+/// background — the standard compose up mode). `profiles` filters which services
+/// participate. `build` rebuilds images before starting. `pull` controls the
+/// pull policy.
+public struct APIProjectUpRequest: Codable, Sendable, Hashable {
+    /// When `true` (default) services start detached; the route returns once all
+    /// containers reach the `.running` state. When `false` the caller is expected
+    /// to stream logs separately; the route still returns 200 once containers are
+    /// running (no indefinite block — a separate logs follow-up is needed).
+    public let detached: Bool?
+    /// Compose profiles to activate. Nil means activate no profiles (only
+    /// services without `profiles:` declarations start).
+    public let profiles: [String]?
+    /// When `true`, rebuild images before starting (equivalent to `--build`).
+    public let build: Bool?
+    /// Pull policy: `"always"`, `"missing"`, `"never"`. Nil uses the service's
+    /// declared `pull_policy` (or `"missing"` as the built-in default).
+    public let pull: String?
+
+    public init(
+        detached: Bool? = nil,
+        profiles: [String]? = nil,
+        build: Bool? = nil,
+        pull: String? = nil
+    ) {
+        self.detached = detached
+        self.profiles = profiles
+        self.build = build
+        self.pull = pull
+    }
+}
+
+/// Per-service state entry in `APIProjectUpResponse`.
+public struct APIProjectServiceState: Codable, Sendable, Hashable {
+    public let service: String
+    public let containerId: String
+    public let status: String
+
+    public init(service: String, containerId: String, status: String) {
+        self.service = service
+        self.containerId = containerId
+        self.status = status
+    }
+}
+
+/// Response body for `POST /projects/{name}/up` (200 OK).
+public struct APIProjectUpResponse: Codable, Sendable, Hashable {
+    public let project: String
+    public let services: [APIProjectServiceState]
+
+    public init(project: String, services: [APIProjectServiceState]) {
+        self.project = project
+        self.services = services
+    }
+}
+
+// MARK: POST /projects/{name}/down
+
+/// Request body for `POST /projects/{name}/down`.
+public struct APIProjectDownRequest: Codable, Sendable, Hashable {
+    /// When `true`, also remove named volumes declared in the compose file.
+    /// Defaults to `false`.
+    public let removeVolumes: Bool?
+    /// When `true` (default), stop and remove containers not declared in the
+    /// compose file but sharing the project name prefix.
+    public let removeOrphans: Bool?
+    /// Seconds to wait for each container to stop gracefully before SIGKILL.
+    public let timeout: Int?
+
+    public init(removeVolumes: Bool? = nil, removeOrphans: Bool? = nil, timeout: Int? = nil) {
+        self.removeVolumes = removeVolumes
+        self.removeOrphans = removeOrphans
+        self.timeout = timeout
+    }
+}
+
+/// Response body for `POST /projects/{name}/down` (200 OK).
+public struct APIProjectDownResponse: Codable, Sendable, Hashable {
+    public let project: String
+    public let stopped: [String]
+    public let removed: [String]
+
+    public init(project: String, stopped: [String], removed: [String]) {
+        self.project = project
+        self.stopped = stopped
+        self.removed = removed
+    }
+}
+
+// MARK: POST /projects/{name}/restart
+
+/// Request body for `POST /projects/{name}/restart`.
+public struct APIProjectRestartRequest: Codable, Sendable, Hashable {
+    /// Restrict restart to named services. Nil or empty means restart all
+    /// services in the project.
+    public let services: [String]?
+    /// Seconds to wait for each container to stop gracefully before SIGKILL.
+    public let timeout: Int?
+
+    public init(services: [String]? = nil, timeout: Int? = nil) {
+        self.services = services
+        self.timeout = timeout
+    }
+}
+
+/// Response body for `POST /projects/{name}/restart` (200 OK).
+public struct APIProjectRestartResponse: Codable, Sendable, Hashable {
+    public let project: String
+    public let restarted: [String]
+
+    public init(project: String, restarted: [String]) {
+        self.project = project
+        self.restarted = restarted
+    }
+}
+
+// MARK: POST /projects/{name}/build  (NDJSON streaming)
+
+/// Request body for `POST /projects/{name}/build`.
+/// Response is NDJSON `APIProjectBuildFrame` lines, `Content-Type: application/x-ndjson`.
+public struct APIProjectBuildRequest: Codable, Sendable, Hashable {
+    /// Restrict build to named services. Nil or empty means build all services
+    /// with a `build:` block.
+    public let services: [String]?
+    /// Skip the layer cache.
+    public let noCache: Bool?
+    /// Pull fresh base images before building.
+    public let pull: Bool?
+
+    public init(services: [String]? = nil, noCache: Bool? = nil, pull: Bool? = nil) {
+        self.services = services
+        self.noCache = noCache
+        self.pull = pull
+    }
+}
+
+/// One NDJSON line emitted by `POST /projects/{name}/build`.
+public struct APIProjectBuildFrame: Codable, Sendable, Hashable {
+    /// The service being built.
+    public let service: String
+    /// Log line from the build output (stdout/stderr merged).
+    public let line: String
+    /// ISO-8601 timestamp.
+    public let timestamp: Date
+    /// `"log"` during the build, `"done"` on success, `"error"` on failure.
+    public let type: String
+
+    public init(service: String, line: String, timestamp: Date, type: String) {
+        self.service = service
+        self.line = line
+        self.timestamp = timestamp
+        self.type = type
+    }
+}
+
+// MARK: POST /projects/{name}/pull  (NDJSON streaming)
+
+/// Request body for `POST /projects/{name}/pull`.
+/// Response is NDJSON `APIProjectPullFrame` lines.
+public struct APIProjectPullRequest: Codable, Sendable, Hashable {
+    /// Restrict pull to named services. Nil or empty means pull all services.
+    public let services: [String]?
+    /// When `true`, continue pulling other services even if one fails.
+    public let ignoreFailures: Bool?
+
+    public init(services: [String]? = nil, ignoreFailures: Bool? = nil) {
+        self.services = services
+        self.ignoreFailures = ignoreFailures
+    }
+}
+
+/// One NDJSON line emitted by `POST /projects/{name}/pull`.
+public struct APIProjectPullFrame: Codable, Sendable, Hashable {
+    /// The service whose image is being pulled.
+    public let service: String
+    /// Image reference being pulled.
+    public let image: String
+    /// Timestamp of this frame.
+    public let timestamp: Date
+    /// `"pulling"` while in progress, `"done"` on success, `"error"` on failure.
+    public let type: String
+    /// Optional progress or error message.
+    public let message: String?
+
+    public init(service: String, image: String, timestamp: Date, type: String, message: String? = nil) {
+        self.service = service
+        self.image = image
+        self.timestamp = timestamp
+        self.type = type
+        self.message = message
+    }
+}
+
+// MARK: POST /projects/{name}/services/{service}/scale
+
+/// Request body for `POST /projects/{name}/services/{service}/scale`.
+public struct APIProjectScaleRequest: Codable, Sendable, Hashable {
+    /// Desired number of replicas for the service.
+    public let replicas: Int
+
+    public init(replicas: Int) {
+        self.replicas = replicas
+    }
+}
+
+/// Response body for `POST /projects/{name}/services/{service}/scale` (200 OK).
+public struct APIProjectScaleResponse: Codable, Sendable, Hashable {
+    public let project: String
+    public let service: String
+    public let replicas: Int
+    /// Container IDs now running for this service.
+    public let containers: [String]
+
+    public init(project: String, service: String, replicas: Int, containers: [String]) {
+        self.project = project
+        self.service = service
+        self.replicas = replicas
+        self.containers = containers
+    }
+}
+
 // MARK: - Lifecycle Schemas (CHAOS-1354)
 
 /// Request body for `POST /containers/{id}/stop`.

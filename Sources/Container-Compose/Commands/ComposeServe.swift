@@ -235,6 +235,7 @@ public enum ServeDaemon {
         VolumeRoutes.register(router: router)
         SecretRoutes.register(router: router)
         ProjectRoutes.register(router: router)
+        ProjectLifecycleRoutes.register(router: router)
         EventsRoutes.register(router: router)
         LogsRoutes.register(router: router)
         StatsRoutes.register(router: router)
