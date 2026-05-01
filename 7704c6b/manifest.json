@@ -1,0 +1,8 @@
+{
+  "branch": "feat/mock-runtime-CHAOS-1348",
+  "commit": "7704c6b467c62c538a1afb8098a50d520a10d857",
+  "short": "7704c6b",
+  "target": "7704c6b",
+  "message": "fix(commands): make warnUnsupportedRuntimeFieldOnce thread-safe",
+  "published_at": "2026-05-01T08:10:01.515885+00:00"
+}
