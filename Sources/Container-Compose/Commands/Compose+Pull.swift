@@ -53,9 +53,12 @@ func pullImage(
 
     var commands = [qualifiedImageName]
 
-    if let platform {
-        commands.append(contentsOf: ["--platform", platform])
-    }
+    // Always pin --platform: Apple `container`'s ImagePull defaults to
+    // linux/amd64 when no platform is given, even on Apple Silicon hosts.
+    // Honor the service-declared platform first; otherwise fall back to the
+    // host architecture so arm64 hosts pull arm64 images natively (CHAOS-1344).
+    let effectivePlatform = platform ?? defaultRuntimePlatform()
+    commands.append(contentsOf: ["--platform", effectivePlatform])
 
     let imagePullArgv = commands + loggingArguments
     _ = try await runner.run(

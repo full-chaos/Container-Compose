@@ -248,6 +248,28 @@ public func composePortToRunArg(_ portSpec: String) -> String {
     }
 }
 
+/// Returns the OCI platform string (e.g. `linux/arm64`, `linux/amd64`) for
+/// the host's architecture. Used as the fallback platform when a Compose
+/// service does not declare an explicit `platform:` field.
+///
+/// Without this fallback, Apple's `container` runtime defaults to
+/// `linux/amd64` even on Apple Silicon hosts, causing image pulls and runs
+/// to silently fetch the wrong architecture (CHAOS-1344). The OS component
+/// is hard-coded to `linux` because Apple `container` only runs Linux
+/// guests today.
+public func defaultRuntimePlatform() -> String {
+    #if arch(arm64)
+    return "linux/arm64"
+    #elseif arch(x86_64)
+    return "linux/amd64"
+    #else
+    // Defensive fallback for architectures Apple `container` does not target
+    // (e.g. armv7). Mirrors Docker's historical Linux default rather than
+    // emitting an invalid platform string.
+    return "linux/amd64"
+    #endif
+}
+
 extension ComposeUp {
     /// Qualifies Docker-style image references for Apple container APIs, which
     /// require an explicit registry host.
