@@ -231,11 +231,11 @@ Plug routes into the Phase 2.0 skeleton: `/version`, `/info`, `/containers` (lis
 - Routes: `/version`, `/info`, `/containers`, `/containers/{id}`, `/networks`, `/projects`, `/projects/{name}/services`. All read-only, all backed by Bridge or Apple runtime as configured.
 - 501 stubs for the stream routes (`/events`, `/logs`, `/stats`) — endpoint exists, returns documented 501 Not Implemented.
 
-#### Phase 2.B — streaming routes (follow-up PR, stacked on Phase 2.A)
+#### Phase 2.B — streaming routes — **SHIPPED (CHAOS-1350, this PR)**
 
-- `/events`: BridgeContainerClientRuntime.events() wires through CHAOS-1323's native event stream (already shipped).
-- `/containers/{id}/logs`: BridgeContainerClientRuntime.logs() wires through CHAOS-1322's logs --since/--timestamps (already shipped).
-- `/containers/{id}/stats`: ships the polling-loop route handler skeleton; backend remains 501 until Phase 3 wires AppleContainerizationRuntime.statistics() to the real apple/containerization VM-stats vsock path.
+- `/events`: ships NDJSON streaming and `BridgeContainerClientRuntime.events()` wiring through `ContainerClientProvider.events()` / CHAOS-1323. The bridge polls the provider's buffered event snapshot at the established 1s cadence and emits only newly observed events.
+- `/containers/{id}/logs`: ships NDJSON streaming and `BridgeContainerClientRuntime.logs()` wiring through `ContainerClientProvider.logs(id:options:)` / CHAOS-1322, including route-level `follow`, `tail`, `since`, and `timestamps` query parsing.
+- `/containers/{id}/stats`: reserves the path with an explicit 501 + `X-ContainerCompose-Deferral: stats-backend`; backend remains deferred until Phase 3 wires `Runtime.statistics(for:)` to the real apple/containerization VM-stats vsock path.
 
 ### Phase 2.x — launchd LaunchAgent (deferred follow-up)
 
@@ -255,9 +255,10 @@ Implement a second `Runtime` conformer (`MockRuntime` for tests). Validate the b
 | CHAOS-1343 (upstream advocacy) | Closed (done) — issue filed, response received, no further action |
 | CHAOS-1345 (architecture PRD) | Updated with the "stay AWAY from Docker" stance |
 | CHAOS-1346 (Phase 1: runtime abstraction) | Done — PR #54 merged 2026-05-01 |
-| CHAOS-1347 (Phase 2: REST server skeleton) | In Progress — Phase 2.A (read-only routes + foundation) underway |
+| CHAOS-1347 (Phase 2: REST server skeleton) | In Progress — Phase 2.A read-only routes shipped; Phase 2.B streaming routes shipped in CHAOS-1350 |
 | CHAOS-1348 (Phase 3: MockRuntime) | Backlog — depends on Phase 2 |
 | CHAOS-1349 (this lock-in) | This PR |
+| CHAOS-1350 (Phase 2.B: streaming routes) | Done — NDJSON events/logs shipped; stats route reserved with Phase 3 deferral |
 
 ## Open questions
 
@@ -285,6 +286,7 @@ All Phase 0 + Phase 1 open questions are now resolved. Remaining items are defer
 - CHAOS-1347 (Phase 2, blocked-on-this): https://linear.app/fullchaos/issue/CHAOS-1347
 - CHAOS-1348 (Phase 3, future): https://linear.app/fullchaos/issue/CHAOS-1348
 - CHAOS-1349 (this PR): https://linear.app/fullchaos/issue/CHAOS-1349
+- CHAOS-1350 (Phase 2.B, shipped): https://linear.app/fullchaos/issue/CHAOS-1350
 - apple/container#1476 (closed; rejection rationale informs the "no upstream advocacy" rule): https://github.com/apple/container/issues/1476
 - Socktainer's design we're explicitly diverging from: https://github.com/socktainer/socktainer
 - apple/containerization (the direct backend target): https://github.com/apple/containerization

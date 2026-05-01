@@ -41,15 +41,24 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         case stop(id: String)
         case delete(id: String, force: Bool)
         case logs(id: String)
+        case events
         case networkGet(id: String)
         case imageList
     }
 
     public private(set) var entries: [Entry] = []
     private let imageReferences: [String]
+    private let logHandles: [FileHandle]?
+    private let containerEvents: [ContainerEvent]
 
-    public init(imageReferences: [String] = []) {
+    public init(
+        imageReferences: [String] = [],
+        logHandles: [FileHandle]? = nil,
+        containerEvents: [ContainerEvent] = []
+    ) {
         self.imageReferences = imageReferences
+        self.logHandles = logHandles
+        self.containerEvents = containerEvents
     }
 
     // MARK: - ContainerClientProvider
@@ -92,6 +101,9 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle] {
         entries.append(.logs(id: id))
+        if let logHandles {
+            return logHandles
+        }
         throw NSError(
             domain: "RecordingContainerClientProvider",
             code: 1,
@@ -127,7 +139,8 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     }
 
     public func events() async throws -> [ContainerEvent] {
-        return []
+        entries.append(.events)
+        return containerEvents
     }
 
     // MARK: - Test affordances

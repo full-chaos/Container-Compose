@@ -305,7 +305,34 @@ public struct APIAttachedContainer: Codable, Sendable, Hashable {
     }
 }
 
-// MARK: - GET /events  (PR-B will wire the stream — schema defined now)
+// MARK: - GET /events
+
+/// CHAOS-1350 NDJSON lifecycle-event frame emitted by `GET /events`.
+/// The wire shape stays intentionally flat so clients do not observe Swift enum
+/// associated-value encoding details from `RuntimeContainerEvent`.
+public struct APIEventFrame: Codable, Sendable, Hashable {
+    public let type: String
+    public let id: String
+    public let timestamp: Date
+    public let exitCode: Int32?
+    public let signal: Int32?
+
+    public init(
+        type: String,
+        id: String,
+        timestamp: Date,
+        exitCode: Int32?,
+        signal: Int32?
+    ) {
+        self.type = type
+        self.id = id
+        self.timestamp = timestamp
+        self.exitCode = exitCode
+        self.signal = signal
+    }
+}
+
+// MARK: - GET /events  (legacy Phase 2.A schema reservation)
 
 public struct APIEvent: Codable, Sendable, Hashable {
     public let type: String
@@ -329,8 +356,11 @@ public struct APIEvent: Codable, Sendable, Hashable {
     }
 }
 
-// MARK: - GET /containers/{id}/logs  (PR-B will wire the stream — schema defined now)
+// MARK: - GET /containers/{id}/logs
 
+/// CHAOS-1350 NDJSON log frame emitted by `GET /containers/{id}/logs`.
+/// `line` is UTF-8 text decoded from `RuntimeLogFrame.data`; `stream` is
+/// derived from the runtime frame source (`stdout` / `stderr`).
 public struct APILogFrame: Codable, Sendable, Hashable {
     public let stream: String
     public let timestamp: Date
@@ -340,6 +370,22 @@ public struct APILogFrame: Codable, Sendable, Hashable {
         self.stream = stream
         self.timestamp = timestamp
         self.line = line
+    }
+}
+
+// MARK: - Streaming deferral envelope
+
+/// CHAOS-1350 501 response envelope for streaming routes whose backend is
+/// intentionally deferred (currently stats, and runtime-specific events gaps).
+public struct APIStatsErrorResponse: Codable, Sendable, Hashable {
+    public let error: String
+    public let message: String
+    public let deferralPhase: String
+
+    public init(error: String, message: String, deferralPhase: String) {
+        self.error = error
+        self.message = message
+        self.deferralPhase = deferralPhase
     }
 }
 

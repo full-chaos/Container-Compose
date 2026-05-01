@@ -38,7 +38,7 @@ public actor RecordingRuntime: Runtime {
         case kill(id: String, signal: Int32)
         case wait(id: String)
         case remove(id: String, force: Bool)
-        case logs(id: String)
+        case logs(id: String, options: RuntimeLogOptions)
         case events
         case statistics(id: String)
     }
@@ -46,13 +46,25 @@ public actor RecordingRuntime: Runtime {
     public private(set) var entries: [Entry] = []
     private let stubbedContainers: [RuntimeContainer]
     private let stubbedNetworks: [RuntimeNetwork]
+    private let stubbedEvents: [RuntimeContainerEvent]
+    private let stubbedLogFrames: [RuntimeLogFrame]
+    private let eventsError: RuntimeError?
+    private let logsError: RuntimeError?
 
     public init(
         stubbedContainers: [RuntimeContainer] = [],
-        stubbedNetworks: [RuntimeNetwork] = []
+        stubbedNetworks: [RuntimeNetwork] = [],
+        stubbedEvents: [RuntimeContainerEvent] = [],
+        stubbedLogFrames: [RuntimeLogFrame] = [],
+        eventsError: RuntimeError? = nil,
+        logsError: RuntimeError? = nil
     ) {
         self.stubbedContainers = stubbedContainers
         self.stubbedNetworks = stubbedNetworks
+        self.stubbedEvents = stubbedEvents
+        self.stubbedLogFrames = stubbedLogFrames
+        self.eventsError = eventsError
+        self.logsError = logsError
     }
 
     // MARK: - Runtime
@@ -129,15 +141,29 @@ public actor RecordingRuntime: Runtime {
     }
 
     public func logs(id: String, options: RuntimeLogOptions) async throws -> AsyncStream<RuntimeLogFrame> {
-        entries.append(.logs(id: id))
+        entries.append(.logs(id: id, options: options))
+        if let logsError {
+            throw logsError
+        }
+        let frames = stubbedLogFrames
         return AsyncStream { continuation in
+            for frame in frames {
+                continuation.yield(frame)
+            }
             continuation.finish()
         }
     }
 
     public func events() async throws -> AsyncStream<RuntimeContainerEvent> {
         entries.append(.events)
+        if let eventsError {
+            throw eventsError
+        }
+        let events = stubbedEvents
         return AsyncStream { continuation in
+            for event in events {
+                continuation.yield(event)
+            }
             continuation.finish()
         }
     }
