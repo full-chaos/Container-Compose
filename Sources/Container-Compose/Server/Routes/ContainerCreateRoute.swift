@@ -47,7 +47,7 @@ public enum ContainerCreateRoute {
             guard bodyBuffer.readableBytes > 0 else {
                 return try EditedResponse(
                     status: .badRequest,
-                    response: APIErrorResponse(message: "Request body is required: provide JSON with at least {\"image\": \"<ref>\"}")
+                    response: APIErrorEnvelope.legacy(.badRequest, message: "Request body is required: provide JSON with at least {\"image\": \"<ref>\"}", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
 
@@ -55,7 +55,7 @@ public enum ContainerCreateRoute {
             guard let requestBody = decodeCreateRequest(from: bodyBuffer) else {
                 return try EditedResponse(
                     status: .badRequest,
-                    response: APIErrorResponse(message: "Invalid request body: expected JSON with required field 'image'")
+                    response: APIErrorEnvelope.legacy(.badRequest, message: "Invalid request body: expected JSON with required field 'image'", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
 
@@ -96,14 +96,12 @@ public enum ContainerCreateRoute {
             } catch RuntimeError.alreadyExists(let id) {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(message: "Container '\(id)' already exists")
+                    response: APIErrorEnvelope.legacy(.conflict, message: "Container '\(id)' already exists", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.notSupported(let operation, let conformer) {
                 return try EditedResponse(
                     status: .notImplemented,
-                    response: APIErrorResponse(
-                        message: "Container create is not supported by the active runtime backend '\(conformer)' (operation: \(operation)). Use 'compose up' with the bridge backend."
-                    )
+                    response: APIErrorEnvelope.legacy(.notImplemented, message: "Container create is not supported by the active runtime backend '\(conformer)' (operation: \(operation)). Use 'compose up' with the bridge backend.", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
             // All other errors propagate: Hummingbird converts to 500.

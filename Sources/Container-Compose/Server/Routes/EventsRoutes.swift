@@ -34,11 +34,7 @@ public enum EventsRoutes {
             } catch RuntimeError.notSupported {
                 return try EditedResponse(
                     status: .notImplemented,
-                    response: APIStatsErrorResponse(
-                        error: "Not Implemented",
-                        message: "Events backend is not supported by the active runtime",
-                        deferralPhase: "Phase 2.B"
-                    )
+                    response: APIErrorEnvelope.legacy(.notImplemented, message: "Events backend is not supported by the active runtime", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }

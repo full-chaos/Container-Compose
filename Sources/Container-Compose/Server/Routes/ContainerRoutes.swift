@@ -39,7 +39,7 @@ public enum ContainerRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -161,5 +161,4 @@ extension APIContainerInspect: ResponseEncodable {}
 // Hummingbird already provides `Array: ResponseEncodable where Element: Encodable`,
 // so `[APIContainerSummary]` from `GET /containers` is encodable without a
 // duplicate conditional conformance here.
-// `APIErrorResponse` already conforms in a sibling route file in this branch;
-// duplicating that conformance here would make the module fail to compile.
+// `APIErrorEnvelope: ResponseEncodable` is declared in APISchemas.swift.

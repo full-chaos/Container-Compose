@@ -50,12 +50,12 @@ public enum NetworkRoutes {
             } catch RuntimeError.alreadyExists {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(message: "network '\(body.name)' already exists")
+                    response: APIErrorEnvelope.legacy(.conflict, message: "network '\(body.name)' already exists", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.notSupported(let op, let conformer) {
                 return try EditedResponse(
                     status: .notImplemented,
-                    response: APIErrorResponse(message: "operation '\(op)' not supported by '\(conformer)'")
+                    response: APIErrorEnvelope.legacy(.notImplemented, message: "operation '\(op)' not supported by '\(conformer)'", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -70,12 +70,12 @@ public enum NetworkRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "network '\(id)' not found")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "network '\(id)' not found", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.notSupported(let op, let conformer) {
                 return try EditedResponse(
                     status: .notImplemented,
-                    response: APIErrorResponse(message: "operation '\(op)' not supported by '\(conformer)'")
+                    response: APIErrorEnvelope.legacy(.notImplemented, message: "operation '\(op)' not supported by '\(conformer)'", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }

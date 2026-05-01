@@ -136,7 +136,7 @@ struct ProjectLifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/projects/missing/up", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message.contains("missing"))
                 }
             }
@@ -184,7 +184,7 @@ struct ProjectLifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/projects/missing/down", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message.contains("missing"))
                 }
             }
@@ -488,7 +488,7 @@ struct ProjectLifecycleRoutesTests {
                     method: .post
                 ) { response in
                     #expect(response.status == .badRequest)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message.contains("replicas"))
                 }
             }

@@ -85,16 +85,12 @@ public enum StatsRoutes {
         } catch RuntimeError.notFound {
             return try EditedResponse(
                 status: .notFound,
-                response: APIErrorResponse(message: "No such container: \(id)")
+                response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
             ).response(from: request, context: context)
         } catch RuntimeError.notSupported {
             return try EditedResponse(
                 status: .notImplemented,
-                response: APIStatsErrorResponse(
-                    error: "Not Implemented",
-                    message: "Statistics backend is not supported by the active runtime",
-                    deferralPhase: "Phase 4"
-                )
+                response: APIErrorEnvelope.legacy(.notImplemented, message: "Statistics backend is not supported by the active runtime", requestId: context.id.description)
             ).response(from: request, context: context)
         }
     }
@@ -123,16 +119,12 @@ public enum StatsRoutes {
         } catch RuntimeError.notFound {
             return try EditedResponse(
                 status: .notFound,
-                response: APIErrorResponse(message: "No such container: \(id)")
+                response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
             ).response(from: request, context: context)
         } catch RuntimeError.notSupported {
             return try EditedResponse(
                 status: .notImplemented,
-                response: APIStatsErrorResponse(
-                    error: "Not Implemented",
-                    message: "Statistics backend is not supported by the active runtime",
-                    deferralPhase: "Phase 4"
-                )
+                response: APIErrorEnvelope.legacy(.notImplemented, message: "Statistics backend is not supported by the active runtime", requestId: context.id.description)
             ).response(from: request, context: context)
         }
     }

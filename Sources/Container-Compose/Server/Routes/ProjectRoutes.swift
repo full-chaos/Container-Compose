@@ -50,7 +50,7 @@ public enum ProjectRoutes {
             if services.isEmpty {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such project: \(name)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such project: \(name)", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
 
@@ -117,6 +117,8 @@ public enum ProjectRoutes {
 
 extension APIProjectSummary: ResponseEncodable {}
 extension APIServiceSummary: ResponseEncodable {}
+// APIErrorEnvelope: ResponseEncodable is declared in APISchemas.swift.
+// APIErrorResponse: ResponseEncodable retained for backward compat (deprecated).
 extension APIErrorResponse: ResponseEncodable {}
 
 // Hummingbird 2.22 already provides `Array: ResponseEncodable where Element: Encodable`.

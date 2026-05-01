@@ -70,7 +70,7 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/missing/stats?stream=false", method: .get) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decodeJSON(APIErrorResponse.self, from: response)
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -87,8 +87,8 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/web/stats?stream=false", method: .get) { response in
                     #expect(response.status == .notImplemented)
-                    let body = try Self.decodeJSON(APIStatsErrorResponse.self, from: response)
-                    #expect(body.error == "Not Implemented")
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "not_supported")
                 }
             }
         }
@@ -131,7 +131,7 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/ghost/stats", method: .get) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decodeJSON(APIErrorResponse.self, from: response)
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: ghost")
                 }
             }
@@ -146,8 +146,8 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/web/stats", method: .get) { response in
                     #expect(response.status == .notImplemented)
-                    let body = try Self.decodeJSON(APIStatsErrorResponse.self, from: response)
-                    #expect(body.error == "Not Implemented")
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "not_supported")
                 }
             }
         }

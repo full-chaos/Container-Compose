@@ -176,7 +176,7 @@ struct ContainerRoutesTests {
         #expect(await runtime.entriesSnapshot() == [.get(id: "abc")])
     }
 
-    @Test("GET /containers/missing returns 404 with APIErrorResponse {\"message\": \"No such container: missing\"}")
+    @Test("GET /containers/missing returns 404 with APIErrorEnvelope {\"error\": \"not_found\"}")
     func inspectMissingReturns404() async throws {
         let router = Router()
         ContainerRoutes.register(router: router)
@@ -187,8 +187,10 @@ struct ContainerRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing", method: .get) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
+                    #expect(body.error == "not_found")
+                    #expect(!body.requestId.isEmpty)
                 }
             }
         }

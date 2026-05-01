@@ -204,7 +204,7 @@ struct VolumeRoutesTests {
                     body: body
                 ) { response in
                     #expect(response.status == .conflict)
-                    let err = try Self.decode(APIErrorResponse.self, from: response)
+                    let err = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(err.message.contains("existing-vol"))
                 }
             }
@@ -269,7 +269,7 @@ struct VolumeRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/volumes/ghost-vol", method: .delete) { response in
                     #expect(response.status == .notFound)
-                    let err = try Self.decode(APIErrorResponse.self, from: response)
+                    let err = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(err.message.contains("ghost-vol"))
                 }
             }

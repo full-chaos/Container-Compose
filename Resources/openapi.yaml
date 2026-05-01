@@ -1,0 +1,1025 @@
+openapi: "3.1.0"
+info:
+  title: container-compose API
+  version: "v1"
+  description: |
+    Container REST API for the container-compose daemon (CHAOS-1351).
+    Hand-written spec — see docs/plans/native-api-server.md for architecture decisions.
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: "http+unix://{socket}"
+    description: Unix domain socket (default)
+    variables:
+      socket:
+        default: "%7E%2F.container-compose%2Fapi.sock"
+
+components:
+  schemas:
+    APIErrorEnvelope:
+      type: object
+      required: [error, message, code, requestId]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error key (e.g. "not_found")
+        message:
+          type: string
+          description: Human-readable description
+        code:
+          type: string
+          description: Short error code (e.g. "E_404")
+        requestId:
+          type: string
+          description: Correlates with X-Request-Id response header
+
+    ContainerSummary:
+      type: object
+      required: [id, names, image, state, status, createdAt, ports, labels]
+      properties:
+        id:
+          type: string
+        names:
+          type: array
+          items:
+            type: string
+        image:
+          type: string
+        state:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        ports:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortMapping"
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    PortMapping:
+      type: object
+      required: [privatePort, proto]
+      properties:
+        privatePort:
+          type: integer
+        publicPort:
+          type: integer
+          nullable: true
+        proto:
+          type: string
+        ip:
+          type: string
+          nullable: true
+
+    ContainerInspect:
+      type: object
+      required: [id, created, name, image, state, config, networkSettings]
+      properties:
+        id:
+          type: string
+        created:
+          type: string
+          format: date-time
+        name:
+          type: string
+        image:
+          type: string
+        state:
+          $ref: "#/components/schemas/ContainerState"
+        config:
+          $ref: "#/components/schemas/ContainerConfig"
+        networkSettings:
+          $ref: "#/components/schemas/NetworkSettings"
+
+    ContainerState:
+      type: object
+      required: [status, running]
+      properties:
+        status:
+          type: string
+        running:
+          type: boolean
+        exitCode:
+          type: integer
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        health:
+          type: string
+          nullable: true
+
+    ContainerConfig:
+      type: object
+      required: [hostname, env, cmd, workingDir, labels]
+      properties:
+        hostname:
+          type: string
+        env:
+          type: array
+          items:
+            type: string
+        cmd:
+          type: array
+          items:
+            type: string
+        workingDir:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    NetworkSettings:
+      type: object
+      required: [ports]
+      properties:
+        ipAddress:
+          type: string
+          nullable: true
+        ports:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortMapping"
+
+    CreateContainerRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+        name:
+          type: string
+          nullable: true
+        cpus:
+          type: integer
+          nullable: true
+        memoryBytes:
+          type: integer
+          format: uint64
+          nullable: true
+        hostname:
+          type: string
+          nullable: true
+        env:
+          type: array
+          items:
+            type: string
+        cmd:
+          type: array
+          items:
+            type: string
+        workingDir:
+          type: string
+          nullable: true
+        publishedPorts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreatePortMapping"
+
+    CreatePortMapping:
+      type: object
+      required: [hostPort, containerPort]
+      properties:
+        hostPort:
+          type: integer
+        containerPort:
+          type: integer
+        proto:
+          type: string
+          nullable: true
+        hostAddress:
+          type: string
+          nullable: true
+
+    CreateContainerResponse:
+      type: object
+      required: [id, warnings]
+      properties:
+        id:
+          type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    VersionResponse:
+      type: object
+      required: [apiVersion, version, serverName, runtimeBackend, arch]
+      properties:
+        apiVersion:
+          type: string
+        version:
+          type: string
+        serverName:
+          type: string
+        runtimeBackend:
+          type: string
+        arch:
+          type: string
+
+    InfoResponse:
+      type: object
+      required: [id, name, containerCount, containersRunning, containersPaused, containersStopped, serverVersion, runtimeBackend, uptimeNanoseconds]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        containerCount:
+          type: integer
+        containersRunning:
+          type: integer
+        containersPaused:
+          type: integer
+        containersStopped:
+          type: integer
+        serverVersion:
+          type: string
+        runtimeBackend:
+          type: string
+        uptimeNanoseconds:
+          type: integer
+          format: int64
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorEnvelope"
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorEnvelope"
+    NotImplemented:
+      description: Operation not supported by the active backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorEnvelope"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIErrorEnvelope"
+
+paths:
+  /_ping:
+    get:
+      summary: Daemon liveness probe
+      operationId: ping
+      responses:
+        "200":
+          description: Daemon is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  server:
+                    type: string
+                  version:
+                    type: string
+
+  /version:
+    get:
+      summary: Return daemon version metadata
+      operationId: getVersion
+      responses:
+        "200":
+          description: Version response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionResponse"
+
+  /info:
+    get:
+      summary: Return daemon info and container counts
+      operationId: getInfo
+      responses:
+        "200":
+          description: Info response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfoResponse"
+
+  /containers:
+    get:
+      summary: List containers
+      operationId: listContainers
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of containers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContainerSummary"
+
+  /containers/create:
+    post:
+      summary: Create a container
+      operationId: createContainer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContainerRequest"
+      responses:
+        "201":
+          description: Container created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateContainerResponse"
+        "400":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /containers/{id}:
+    get:
+      summary: Inspect a container
+      operationId: inspectContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Container inspect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContainerInspect"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Remove a container
+      operationId: removeContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: force
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "204":
+          description: Container removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /containers/{id}/start:
+    post:
+      summary: Start a container
+      operationId: startContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Container started
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /containers/{id}/stop:
+    post:
+      summary: Stop a container
+      operationId: stopContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signal:
+                  type: integer
+                  nullable: true
+                timeoutSeconds:
+                  type: integer
+                  nullable: true
+      responses:
+        "204":
+          description: Container stopped
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /containers/{id}/restart:
+    post:
+      summary: Restart a container
+      operationId: restartContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Container restarted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /containers/{id}/kill:
+    post:
+      summary: Send a signal to a container
+      operationId: killContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signal:
+                  type: integer
+                  nullable: true
+      responses:
+        "204":
+          description: Signal delivered
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /containers/{id}/wait:
+    post:
+      summary: Wait for a container to exit
+      operationId: waitContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Container exited
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exitCode:
+                    type: integer
+                  exitedAt:
+                    type: string
+                    format: date-time
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "408":
+          description: Timeout waiting for container
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorEnvelope"
+
+  /containers/{id}/logs:
+    get:
+      summary: Stream container logs (NDJSON)
+      operationId: containerLogs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: follow
+          in: query
+          schema:
+            type: boolean
+        - name: tail
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: NDJSON log stream
+          content:
+            application/x-ndjson:
+              schema:
+                type: object
+                properties:
+                  stream:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  line:
+                    type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /containers/{id}/stats:
+    get:
+      summary: Stream container stats (NDJSON)
+      operationId: containerStats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stream
+          in: query
+          schema:
+            type: boolean
+        - name: interval
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: NDJSON stats stream
+          content:
+            application/x-ndjson:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /networks:
+    get:
+      summary: List networks
+      operationId: listNetworks
+      responses:
+        "200":
+          description: List of networks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: Create a network
+      operationId: createNetwork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                driver:
+                  type: string
+                  nullable: true
+                subnet:
+                  type: string
+                  nullable: true
+                gateway:
+                  type: string
+                  nullable: true
+                labels:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "201":
+          description: Network created
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /networks/{id}:
+    delete:
+      summary: Remove a network
+      operationId: removeNetwork
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Network removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /volumes:
+    get:
+      summary: List volumes
+      operationId: listVolumes
+      responses:
+        "200":
+          description: List of volumes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  volumes:
+                    type: array
+                    items:
+                      type: object
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+    post:
+      summary: Create a volume
+      operationId: createVolume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                driver:
+                  type: string
+                  nullable: true
+                labels:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "201":
+          description: Volume created
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /volumes/{name}:
+    delete:
+      summary: Remove a volume
+      operationId: removeVolume
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Volume removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /secrets:
+    get:
+      summary: List secret metadata
+      operationId: listSecrets
+      responses:
+        "200":
+          description: List of secret metadata (values never returned)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+    post:
+      summary: Create a secret
+      operationId: createSecret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, value]
+              properties:
+                name:
+                  type: string
+                value:
+                  type: string
+                labels:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "201":
+          description: Secret created
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /secrets/{name}:
+    delete:
+      summary: Remove a secret
+      operationId: removeSecret
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Secret removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /events:
+    get:
+      summary: Stream lifecycle events (NDJSON)
+      operationId: events
+      responses:
+        "200":
+          description: NDJSON event stream
+          content:
+            application/x-ndjson:
+              schema:
+                type: object
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /projects:
+    get:
+      summary: List compose projects
+      operationId: listProjects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /projects/{name}/services:
+    get:
+      summary: List services in a project
+      operationId: listProjectServices
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /projects/{name}/up:
+    post:
+      summary: Bring up a project
+      operationId: projectUp
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Project up
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /projects/{name}/down:
+    post:
+      summary: Take down a project
+      operationId: projectDown
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Project down
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /projects/{name}/restart:
+    post:
+      summary: Restart a project
+      operationId: projectRestart
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Project restarted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /projects/{name}/build:
+    post:
+      summary: Build project images (NDJSON streaming)
+      operationId: projectBuild
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: NDJSON build stream
+          content:
+            application/x-ndjson:
+              schema:
+                type: object
+
+  /projects/{name}/pull:
+    post:
+      summary: Pull project images (NDJSON streaming)
+      operationId: projectPull
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: NDJSON pull stream
+          content:
+            application/x-ndjson:
+              schema:
+                type: object
+
+  /projects/{name}/services/{service}/scale:
+    post:
+      summary: Scale a service
+      operationId: projectScaleService
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: service
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [replicas]
+              properties:
+                replicas:
+                  type: integer
+      responses:
+        "200":
+          description: Service scaled
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIErrorEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /metrics:
+    get:
+      summary: Prometheus metrics exposition
+      operationId: metrics
+      responses:
+        "200":
+          description: Prometheus text format 0.0.4
+          content:
+            "text/plain; version=0.0.4; charset=utf-8":
+              schema:
+                type: string
+
+  /openapi.yaml:
+    get:
+      summary: This OpenAPI specification
+      operationId: getOpenAPISpec
+      responses:
+        "200":
+          description: OpenAPI 3.1 YAML spec
+          content:
+            application/yaml:
+              schema:
+                type: string
