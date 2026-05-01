@@ -1,5 +1,11 @@
 # Upstream / Fork Status
 
+> **See also:** [`docs/feature-parity.md`](./feature-parity.md) — the
+> canonical cross-cutting view of compose-spec gaps with Tier 0-5
+> classification, ticket map, and verified apple/container CLI surface.
+> This document focuses specifically on **fork-side** dependencies and
+> upstream advocacy state.
+
 This document catalogs **what container-compose depends on from the
 `full-chaos/container` fork** and **what's still blocked by gaps in
 `apple/container` upstream**.
