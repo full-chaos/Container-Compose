@@ -223,11 +223,20 @@ public struct APINetworkSettings: Codable, Sendable, Hashable {
     }
 }
 
-// MARK: - POST /containers/create  (DEFERRED in PR-A; schema reserved for v2)
+// MARK: - POST /containers/create  (CHAOS-1352 v2 — shipped)
 
-/// Reserved for a future PR that ships POST /containers/create. Defined now
-/// so the schema file is the single source of truth for all endpoint shapes,
-/// even those not wired yet.
+/// Request body for `POST /containers/create`. All fields except `image` are
+/// optional; sensible defaults are applied by `RuntimeCreateConfiguration`.
+///
+/// `publishedPorts` accepts host→container port mappings that are forwarded to
+/// `RuntimeCreateConfiguration.publishedPorts`. The `proto` field defaults to
+/// `"tcp"` when omitted.
+///
+/// Decision #9 v2: the body covers the minimal Compose-driven field set.
+/// Labels, networks, and volumes are deliberately omitted from Phase 6:
+/// - labels: no label-passing surface on `RuntimeContainer` yet (Phase 3 TODO)
+/// - networks: created/attached separately via POST /networks (CHAOS-1353)
+/// - volumes: bound separately via POST /volumes (CHAOS-1353)
 public struct APICreateContainerRequest: Codable, Sendable, Hashable {
     public let image: String
     public let name: String?
@@ -237,16 +246,20 @@ public struct APICreateContainerRequest: Codable, Sendable, Hashable {
     public let env: [String]?
     public let cmd: [String]?
     public let workingDir: String?
+    /// Port mappings to publish. Each entry becomes a `RuntimePublishedPort` in
+    /// `RuntimeCreateConfiguration.publishedPorts`.
+    public let publishedPorts: [APICreatePortMapping]?
 
     public init(
         image: String,
-        name: String?,
-        cpus: Int?,
-        memoryBytes: UInt64?,
-        hostname: String?,
-        env: [String]?,
-        cmd: [String]?,
-        workingDir: String?
+        name: String? = nil,
+        cpus: Int? = nil,
+        memoryBytes: UInt64? = nil,
+        hostname: String? = nil,
+        env: [String]? = nil,
+        cmd: [String]? = nil,
+        workingDir: String? = nil,
+        publishedPorts: [APICreatePortMapping]? = nil
     ) {
         self.image = image
         self.name = name
@@ -256,6 +269,28 @@ public struct APICreateContainerRequest: Codable, Sendable, Hashable {
         self.env = env
         self.cmd = cmd
         self.workingDir = workingDir
+        self.publishedPorts = publishedPorts
+    }
+}
+
+/// Port mapping entry in `APICreateContainerRequest.publishedPorts`.
+/// `proto` defaults to `"tcp"` when absent; `hostAddress` defaults to `"0.0.0.0"`.
+public struct APICreatePortMapping: Codable, Sendable, Hashable {
+    public let hostPort: UInt16
+    public let containerPort: UInt16
+    public let proto: String?
+    public let hostAddress: String?
+
+    public init(
+        hostPort: UInt16,
+        containerPort: UInt16,
+        proto: String? = nil,
+        hostAddress: String? = nil
+    ) {
+        self.hostPort = hostPort
+        self.containerPort = containerPort
+        self.proto = proto
+        self.hostAddress = hostAddress
     }
 }
 
@@ -263,7 +298,7 @@ public struct APICreateContainerResponse: Codable, Sendable, Hashable {
     public let id: String
     public let warnings: [String]
 
-    public init(id: String, warnings: [String]) {
+    public init(id: String, warnings: [String] = []) {
         self.id = id
         self.warnings = warnings
     }
