@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9ffdaa608d011185f55f95245f133bf1dc385e94",
-  "short": "9ffdaa6",
+  "commit": "4e0eb8d606247961f1285feaf82f127096bf952b",
+  "short": "4e0eb8d",
   "target": "current",
-  "message": "feat(runtime): introduce protocol Runtime + AppleContainerizationRuntime conformer (CHAOS-1346) (#54)",
-  "published_at": "2026-05-01T01:53:51.453956+00:00"
+  "message": "feat(serve): daemon lifecycle skeleton + system status (CHAOS-1349) (#55)",
+  "published_at": "2026-05-01T02:52:36.131623+00:00"
 }
