@@ -210,7 +210,14 @@ public struct ProductionRunner: RunCommandRunner {
         switch name {
         case "ImagePull":
             let cmd = try Application.ImagePull.parse(argv)
-            try await cmd.run()
+            do {
+                try await cmd.run()
+            } catch {
+                if let mapped = Self.imagePullNotFoundError(from: error, argv: argv) {
+                    throw mapped
+                }
+                throw error
+            }
         case "NetworkCreate":
             let cmd = try Application.NetworkCreate.parse(argv)
             try await cmd.run()
@@ -228,6 +235,54 @@ public struct ProductionRunner: RunCommandRunner {
                 ]
             )
         }
+    }
+
+    static func imagePullNotFoundError(from error: Error, argv: [String]) -> RuntimeError? {
+        guard isImageNotFoundError(error) else { return nil }
+
+        return RuntimeError.imageNotFound(
+            reference: imageReference(fromImagePullArgv: argv)
+        )
+    }
+
+    private static func isImageNotFoundError(_ error: Error) -> Bool {
+        let descriptions = [
+            String(describing: error),
+            String(reflecting: error),
+            (error as NSError).localizedDescription
+        ]
+
+        return descriptions.contains { description in
+            let lowercased = description.lowercased()
+            return lowercased.contains("not found") || containsStatus404(lowercased)
+        }
+    }
+
+    private static func containsStatus404(_ description: String) -> Bool {
+        description.split(whereSeparator: { !$0.isNumber }).contains { $0 == "404" }
+    }
+
+    private static func imageReference(fromImagePullArgv argv: [String]) -> String {
+        var skipNextValue = false
+        for arg in argv {
+            if skipNextValue {
+                skipNextValue = false
+                continue
+            }
+
+            if arg == "--platform" {
+                skipNextValue = true
+                continue
+            }
+
+            if arg.hasPrefix("--platform=") || arg.hasPrefix("-") {
+                continue
+            }
+
+            return arg
+        }
+
+        return "<unknown>"
     }
 
     // MARK: - Private spawners
