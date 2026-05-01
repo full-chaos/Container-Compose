@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "5292d2266a3ded402c7a962bbab38fb69889ef97",
-  "short": "5292d22",
+  "commit": "6859d5f065d89c1be7d6c91a7f14a9945f6f9518",
+  "short": "6859d5f",
   "target": "current",
-  "message": "feat(serve): TCP transport + TLS for container-compose serve (CHAOS-1359) (#68)",
-  "published_at": "2026-05-01T15:18:08.373637+00:00"
+  "message": "feat(serve): API key auth (Bearer) + mTLS (CHAOS-1356) (#69)",
+  "published_at": "2026-05-01T16:12:04.879341+00:00"
 }
