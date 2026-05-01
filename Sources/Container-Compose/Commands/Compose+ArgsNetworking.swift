@@ -48,17 +48,15 @@ extension ComposeUp {
                             "Note: 'networks.<name>.aliases' for service networks is parsed but not supported by Apple container; ignored."
                         )
                     }
-                    // ipv4_address: emit --ip if present.
-                    if let ipv4 = config.ipv4_address {
-                        let resolvedIP = resolveVariable(ipv4, with: ctx.environmentVariables)
-                        print("Warning: ipv4_address for service-network '\(name)' may not be honored by Apple container; --ip flag emitted regardless.")
-                        args.append(contentsOf: ["--ip", resolvedIP])
+                    // ipv4_address: parsed, but Apple container does not expose
+                    // standalone --ip on `container run`.
+                    if config.ipv4_address != nil {
+                        warnUnsupportedRuntimeFieldOnce("service.networks.ipv4_address", "Note: 'networks.<name>.ipv4_address' is parsed but not supported by Apple container; ignored.")
                     }
-                    // ipv6_address: emit --ip6 if present.
-                    if let ipv6 = config.ipv6_address {
-                        let resolvedIP = resolveVariable(ipv6, with: ctx.environmentVariables)
-                        print("Warning: ipv6_address for service-network '\(name)' may not be honored by Apple container; --ip6 flag emitted regardless.")
-                        args.append(contentsOf: ["--ip6", resolvedIP])
+                    // ipv6_address: parsed, but Apple container does not expose
+                    // standalone --ip6 on `container run`.
+                    if config.ipv6_address != nil {
+                        warnUnsupportedRuntimeFieldOnce("service.networks.ipv6_address", "Note: 'networks.<name>.ipv6_address' is parsed but not supported by Apple container; ignored.")
                     }
                 }
             }
@@ -118,10 +116,10 @@ extension ComposeUp {
                 }
             }
 
-            // --mac-address MAC
-            if let macAddress = ctx.service.mac_address {
-                let resolved = resolveVariable(macAddress, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--mac-address", resolved])
+            // mac_address: parsed, but Apple container does not expose standalone
+            // --mac-address on `container run`.
+            if ctx.service.mac_address != nil {
+                warnUnsupportedRuntimeFieldOnce("service.mac_address", "Note: 'mac_address' is parsed but not supported by Apple container; ignored.")
             }
 
             // --network MODE (network_mode overrides; distinct from the networks list above)
@@ -130,22 +128,19 @@ extension ComposeUp {
                 args.append(contentsOf: ["--network", resolved])
             }
 
-            // --ipc MODE
-            if let ipc = ctx.service.ipc {
-                let resolved = resolveVariable(ipc, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--ipc", resolved])
+            // ipc: parsed, but Apple container does not expose --ipc on `container run`.
+            if ctx.service.ipc != nil {
+                warnUnsupportedRuntimeFieldOnce("service.ipc", "Note: 'ipc' is parsed but not supported by Apple container; ignored.")
             }
 
-            // --pid MODE
-            if let pid = ctx.service.pid {
-                let resolved = resolveVariable(pid, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--pid", resolved])
+            // pid: parsed, but Apple container does not expose --pid on `container run`.
+            if ctx.service.pid != nil {
+                warnUnsupportedRuntimeFieldOnce("service.pid", "Note: 'pid' is parsed but not supported by Apple container; ignored.")
             }
 
-            // --uts MODE
-            if let uts = ctx.service.uts {
-                let resolved = resolveVariable(uts, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--uts", resolved])
+            // uts: parsed, but Apple container does not expose --uts on `container run`.
+            if ctx.service.uts != nil {
+                warnUnsupportedRuntimeFieldOnce("service.uts", "Note: 'uts' is parsed but not supported by Apple container; ignored.")
             }
 
             return args

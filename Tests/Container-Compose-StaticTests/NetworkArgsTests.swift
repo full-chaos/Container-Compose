@@ -19,10 +19,16 @@ import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+
 /// Tests for Phase 2C — NetworkingArgs.build: dns, dns_opt, dns_search,
 /// extra_hosts, domainname, expose, mac_address, network_mode, ipc, pid, uts.
 /// This suite is distinct from NetworkConfigurationTests (which tests parsing).
-@Suite("Network Args Tests")
+@Suite("Network Args Tests", .serialized)
 struct NetworkArgsTests {
 
     // MARK: - Helpers
@@ -57,6 +63,41 @@ struct NetworkArgsTests {
     /// Convenience: build args from a service.
     private func args(for service: Service, env: [String: String] = [:]) -> [String] {
         ComposeUp.NetworkingArgs.build(ctx(service, env: env))
+    }
+
+    private func captureStandardOutput<T>(_ body: () throws -> T) throws -> (T, String) {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        guard original >= 0 else { throw CaptureError.dupFailed }
+
+        let pipe = Pipe()
+        guard dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0 else {
+            close(original)
+            throw CaptureError.dupFailed
+        }
+
+        do {
+            let value = try body()
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return (value, String(data: data, encoding: .utf8) ?? "")
+        } catch {
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            _ = pipe.fileHandleForReading.readDataToEndOfFile()
+            throw error
+        }
+    }
+
+    private func restoreStandardOutput(original: Int32, pipe: Pipe) {
+        _ = dup2(original, STDOUT_FILENO)
+        close(original)
+        pipe.fileHandleForWriting.closeFile()
+    }
+
+    private enum CaptureError: Error {
+        case dupFailed
     }
 
     // MARK: - DNS
@@ -137,15 +178,36 @@ struct NetworkArgsTests {
 
     // MARK: - mac_address
 
-    @Test("mac_address emits --mac-address MAC")
-    func macAddressEmitsFlag() {
+    @Test("mac_address warns and emits no unsupported --mac-address flag")
+    func macAddressWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", mac_address: "02:42:ac:11:00:02")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--mac-address")
-        #expect(idx != nil)
-        if let idx = idx {
-            #expect(result[idx + 1] == "02:42:ac:11:00:02")
-        }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--mac-address"))
+        #expect(output.contains("Note: 'mac_address' is parsed but not supported by Apple container; ignored."))
+    }
+
+    @Test("networks ipv4_address warns and emits no unsupported --ip flag")
+    func serviceNetworkIPv4WarnsAndEmitsNoUnsupportedFlag() throws {
+        let config = ServiceNetworkConfig(ipv4_address: "10.0.0.5")
+        let serviceNetworks = ServiceNetworks(entries: [("mynet", config)])
+        let svc = Service(image: "alpine", networks: serviceNetworks)
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+
+        #expect(result.contains("--network"))
+        #expect(!result.contains("--ip"))
+        #expect(output.contains("Note: 'networks.<name>.ipv4_address' is parsed but not supported by Apple container; ignored."))
+    }
+
+    @Test("networks ipv6_address warns and emits no unsupported --ip6 flag")
+    func serviceNetworkIPv6WarnsAndEmitsNoUnsupportedFlag() throws {
+        let config = ServiceNetworkConfig(ipv6_address: "2001:db8::5")
+        let serviceNetworks = ServiceNetworks(entries: [("mynet", config)])
+        let svc = Service(image: "alpine", networks: serviceNetworks)
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+
+        #expect(result.contains("--network"))
+        #expect(!result.contains("--ip6"))
+        #expect(output.contains("Note: 'networks.<name>.ipv6_address' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - network_mode
@@ -173,31 +235,28 @@ struct NetworkArgsTests {
 
     // MARK: - ipc / pid / uts
 
-    @Test("ipc emits --ipc MODE")
-    func ipcEmitsFlag() {
+    @Test("ipc warns and emits no unsupported --ipc flag")
+    func ipcWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", ipc: "host")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--ipc")
-        #expect(idx != nil)
-        if let idx = idx { #expect(result[idx + 1] == "host") }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--ipc"))
+        #expect(output.contains("Note: 'ipc' is parsed but not supported by Apple container; ignored."))
     }
 
-    @Test("pid emits --pid MODE")
-    func pidEmitsFlag() {
+    @Test("pid warns and emits no unsupported --pid flag")
+    func pidWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", pid: "host")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--pid")
-        #expect(idx != nil)
-        if let idx = idx { #expect(result[idx + 1] == "host") }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--pid"))
+        #expect(output.contains("Note: 'pid' is parsed but not supported by Apple container; ignored."))
     }
 
-    @Test("uts emits --uts MODE")
-    func utsEmitsFlag() {
+    @Test("uts warns and emits no unsupported --uts flag")
+    func utsWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", uts: "host")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--uts")
-        #expect(idx != nil)
-        if let idx = idx { #expect(result[idx + 1] == "host") }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--uts"))
+        #expect(output.contains("Note: 'uts' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - Variable substitution

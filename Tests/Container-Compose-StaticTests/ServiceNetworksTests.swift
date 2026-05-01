@@ -280,7 +280,7 @@ struct ServiceNetworksTests {
 
     @Test("Map form without aliases does not emit --alias flags")
     func mapFormNoAliasesNoAliasFlag() {
-        let config = ServiceNetworkConfig(ipv4_address: "10.0.0.5")
+        let config = ServiceNetworkConfig()
         let sn = ServiceNetworks(entries: [("mynet", config)])
         let svc = Service(image: "alpine", networks: sn)
         let result = networkArgs(for: svc)
@@ -289,16 +289,11 @@ struct ServiceNetworksTests {
             .map { result[$0 + 1] }
         #expect(networkPairs == ["mynet"])
         #expect(!result.contains("--alias"))
-        // --ip should be emitted for ipv4_address
-        let ipPairs = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--ip" }
-            .map { result[$0 + 1] }
-        #expect(ipPairs == ["10.0.0.5"])
     }
 
-    @Test("Map form with aliases and ipv4 emits network/ip but no unsupported --alias flags")
-    func mapFormWithAliasesAndIPv4() {
-        let config = ServiceNetworkConfig(aliases: ["svc-alias"], ipv4_address: "192.168.1.10")
+    @Test("Map form with aliases emits network but no unsupported alias/ip flags")
+    func mapFormWithAliasesEmitsNoUnsupportedFlags() {
+        let config = ServiceNetworkConfig(aliases: ["svc-alias"])
         let sn = ServiceNetworks(entries: [("appnet", config)])
         let svc = Service(image: "alpine", networks: sn)
         let result = networkArgs(for: svc)
@@ -307,10 +302,7 @@ struct ServiceNetworksTests {
             .map { result[$0 + 1] }
         #expect(networkPairs == ["appnet"])
         #expect(!result.contains("--alias"))
-        let ipPairs = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--ip" }
-            .map { result[$0 + 1] }
-        #expect(ipPairs == ["192.168.1.10"])
+        #expect(!result.contains("--ip"))
     }
 
     // MARK: - Ordering
