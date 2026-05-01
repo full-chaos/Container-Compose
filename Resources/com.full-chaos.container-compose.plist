@@ -36,6 +36,10 @@
         <string>--launchd</string>
     </array>
 
+    <!-- Throttle restarts: launchd will not relaunch within this window -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
     <!-- Auto-start at login -->
     <key>RunAtLoad</key>
     <true/>
