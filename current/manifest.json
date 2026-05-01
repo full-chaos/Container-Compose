@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "a2762a73a43f0546051593d9296167e45ff5ff90",
-  "short": "a2762a7",
+  "commit": "e15cf86f6e03df0f55797a1ab38e8ba5a22bacb7",
+  "short": "e15cf86",
   "target": "current",
-  "message": "docs(coverage): track Tier 0 silent failures + fork dependencies in public matrix (#72)",
-  "published_at": "2026-05-01T19:39:53.350596+00:00"
+  "message": "docs(plans): add no-upstream action plan v2 (5 phases, ~3-4 dev-days) (#73)",
+  "published_at": "2026-05-01T21:59:07.048582+00:00"
 }
