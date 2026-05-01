@@ -24,7 +24,13 @@ let package = Package(
         // conforms to `Service`; ServiceGroup wires SIGTERM/SIGINT into a clean drain.
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
         // MARK: - TLS deps (CHAOS-1359)
-        // (Empty placeholder — owned by PR-1; do not add HummingbirdTLS, Crypto, or X509 here)
+        // CHAOS-1359: TLS certificate generation + HTTP client for system status --address.
+        // These are transitive via containerization/hummingbird; pinned explicitly so product
+        // deps in ContainerComposeCore resolve correctly.
+        .package(url: "https://github.com/apple/swift-crypto.git", .upToNextMinor(from: "3.15.1")),
+        .package(url: "https://github.com/apple/swift-certificates.git", .upToNextMinor(from: "1.19.0")),
+        .package(url: "https://github.com/swift-server/async-http-client.git", .upToNextMinor(from: "1.33.1")),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", .upToNextMinor(from: "2.37.0")),
 
         // MARK: - Metrics deps (CHAOS-1357)
         .package(url: "https://github.com/swift-server/swift-prometheus.git", from: "2.0.0"),
@@ -57,6 +63,12 @@ let package = Package(
                     name: "ServiceLifecycle",
                     package: "swift-service-lifecycle"
                 ),
+                // MARK: - TLS deps (CHAOS-1359)
+                .product(name: "HummingbirdCore", package: "hummingbird"),
+                .product(name: "HummingbirdTLS", package: "hummingbird"),
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "X509", package: "swift-certificates"),
+                .product(name: "AsyncHTTPClient", package: "async-http-client"),
                 // MARK: - Metrics deps (CHAOS-1357)
                 .product(name: "Prometheus", package: "swift-prometheus"),
                 "Yams",
@@ -94,6 +106,7 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "HummingbirdTesting", package: "hummingbird"),
                 .product(name: "Prometheus", package: "swift-prometheus"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl")
             ]
         ),
         
