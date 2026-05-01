@@ -50,6 +50,13 @@ public actor RecordingRuntime: Runtime {
     private let stubbedLogFrames: [RuntimeLogFrame]
     private let eventsError: RuntimeError?
     private let logsError: RuntimeError?
+    private let statisticsError: RuntimeError?
+    /// Single-snapshot shorthand. If set, `statistics(for:)` always returns this value.
+    private let stubbedStatistics: RuntimeStatistics?
+    /// Sequence of snapshots for streaming tests. The polling loop drains the
+    /// sequence (one snapshot per call) and finishes the stream when exhausted.
+    private let stubbedStatisticsSequence: [RuntimeStatistics]
+    private var statisticsCallIndex: Int = 0
 
     public init(
         stubbedContainers: [RuntimeContainer] = [],
@@ -57,7 +64,10 @@ public actor RecordingRuntime: Runtime {
         stubbedEvents: [RuntimeContainerEvent] = [],
         stubbedLogFrames: [RuntimeLogFrame] = [],
         eventsError: RuntimeError? = nil,
-        logsError: RuntimeError? = nil
+        logsError: RuntimeError? = nil,
+        statisticsError: RuntimeError? = nil,
+        stubbedStatistics: RuntimeStatistics? = nil,
+        stubbedStatisticsSequence: [RuntimeStatistics] = []
     ) {
         self.stubbedContainers = stubbedContainers
         self.stubbedNetworks = stubbedNetworks
@@ -65,6 +75,9 @@ public actor RecordingRuntime: Runtime {
         self.stubbedLogFrames = stubbedLogFrames
         self.eventsError = eventsError
         self.logsError = logsError
+        self.statisticsError = statisticsError
+        self.stubbedStatistics = stubbedStatistics
+        self.stubbedStatisticsSequence = stubbedStatisticsSequence
     }
 
     // MARK: - Runtime
@@ -170,6 +183,23 @@ public actor RecordingRuntime: Runtime {
 
     public func statistics(for id: String) async throws -> RuntimeStatistics {
         entries.append(.statistics(id: id))
+        if let statisticsError {
+            throw statisticsError
+        }
+        if let stubbedStatistics {
+            return stubbedStatistics
+        }
+        // Drain the sequence: return successive snapshots, throw notFound when exhausted
+        // (signals the streaming loop that the "container is gone").
+        if !stubbedStatisticsSequence.isEmpty {
+            if statisticsCallIndex < stubbedStatisticsSequence.count {
+                let snapshot = stubbedStatisticsSequence[statisticsCallIndex]
+                statisticsCallIndex += 1
+                return snapshot
+            } else {
+                throw RuntimeError.notFound(id: id)
+            }
+        }
         return RuntimeStatistics(id: id, sampledAt: Date())
     }
 

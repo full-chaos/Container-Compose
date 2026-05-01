@@ -78,6 +78,13 @@ public protocol ContainerClientProvider: Sendable {
     /// invocation always proceeds and is captured by the `RunCommandRunner`
     /// recorder.
     func imageList() async throws -> [ClientImage]
+
+    /// Mirrors `ContainerClient.stats(id:)`. Returns a single polled statistics
+    /// snapshot for the container, suitable for feeding into the stats stream
+    /// polling loop of `BridgeContainerClientRuntime.statistics(for:)`.
+    /// Throws `ContainerizationError(.notFound)` when no container with `id`
+    /// exists — call sites translate this to `RuntimeError.notFound`.
+    func stats(id: String) async throws -> ContainerStats
 }
 
 // MARK: - ProductionContainerClientProvider
@@ -123,6 +130,10 @@ public struct ProductionContainerClientProvider: ContainerClientProvider {
 
     public func imageList() async throws -> [ClientImage] {
         try await ClientImage.list()
+    }
+
+    public func stats(id: String) async throws -> ContainerStats {
+        try await ContainerClient().stats(id: id)
     }
 }
 

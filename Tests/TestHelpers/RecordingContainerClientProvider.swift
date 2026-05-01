@@ -143,6 +143,23 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         return containerEvents
     }
 
+    public func stats(id: String) async throws -> ContainerStats {
+        // Recording fake returns an empty stub so call sites that go through
+        // BridgeContainerClientRuntime.statistics(for:) don't reach the live
+        // ContainerClient XPC daemon during tests.
+        ContainerStats(
+            id: id,
+            memoryUsageBytes: nil,
+            memoryLimitBytes: nil,
+            cpuUsageUsec: nil,
+            networkRxBytes: nil,
+            networkTxBytes: nil,
+            blockReadBytes: nil,
+            blockWriteBytes: nil,
+            numProcesses: nil
+        )
+    }
+
     // MARK: - Test affordances
 
     /// Snapshot of recorded entries in time order.
