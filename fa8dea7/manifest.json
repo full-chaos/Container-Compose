@@ -1,0 +1,8 @@
+{
+  "branch": "feat/streaming-routes-CHAOS-1350",
+  "commit": "fa8dea76cea093863ca318aba8a39cfd6e7c0e44",
+  "short": "fa8dea7",
+  "target": "fa8dea7",
+  "message": "feat(server): Phase 2.B native API streaming routes (CHAOS-1350)",
+  "published_at": "2026-05-01T07:50:02.069002+00:00"
+}
