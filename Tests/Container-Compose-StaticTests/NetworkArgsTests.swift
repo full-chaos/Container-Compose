@@ -178,15 +178,36 @@ struct NetworkArgsTests {
 
     // MARK: - mac_address
 
-    @Test("mac_address emits --mac-address MAC")
-    func macAddressEmitsFlag() {
+    @Test("mac_address warns and emits no unsupported --mac-address flag")
+    func macAddressWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", mac_address: "02:42:ac:11:00:02")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--mac-address")
-        #expect(idx != nil)
-        if let idx = idx {
-            #expect(result[idx + 1] == "02:42:ac:11:00:02")
-        }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--mac-address"))
+        #expect(output.contains("Note: 'mac_address' is parsed but not supported by Apple container; ignored."))
+    }
+
+    @Test("networks ipv4_address warns and emits no unsupported --ip flag")
+    func serviceNetworkIPv4WarnsAndEmitsNoUnsupportedFlag() throws {
+        let config = ServiceNetworkConfig(ipv4_address: "10.0.0.5")
+        let serviceNetworks = ServiceNetworks(entries: [("mynet", config)])
+        let svc = Service(image: "alpine", networks: serviceNetworks)
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+
+        #expect(result.contains("--network"))
+        #expect(!result.contains("--ip"))
+        #expect(output.contains("Note: 'networks.<name>.ipv4_address' is parsed but not supported by Apple container; ignored."))
+    }
+
+    @Test("networks ipv6_address warns and emits no unsupported --ip6 flag")
+    func serviceNetworkIPv6WarnsAndEmitsNoUnsupportedFlag() throws {
+        let config = ServiceNetworkConfig(ipv6_address: "2001:db8::5")
+        let serviceNetworks = ServiceNetworks(entries: [("mynet", config)])
+        let svc = Service(image: "alpine", networks: serviceNetworks)
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+
+        #expect(result.contains("--network"))
+        #expect(!result.contains("--ip6"))
+        #expect(output.contains("Note: 'networks.<name>.ipv6_address' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - network_mode
