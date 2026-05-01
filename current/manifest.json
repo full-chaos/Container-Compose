@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "850acec285415c5c904d920120548abc71759c57",
-  "short": "850acec",
+  "commit": "24ddfeddbd1cff96ef31f1de19c66518c862d712",
+  "short": "24ddfed",
   "target": "current",
-  "message": "feat(server): Phase 2.A read-only Container REST API routes (CHAOS-1347) (#56)",
-  "published_at": "2026-05-01T03:36:02.997893+00:00"
+  "message": "feat(server): Phase 2.B native API streaming routes (CHAOS-1350) (#58)",
+  "published_at": "2026-05-01T08:03:23.589803+00:00"
 }
