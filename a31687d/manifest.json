@@ -1,0 +1,8 @@
+{
+  "branch": "feat/coverage-tier0-tracking",
+  "commit": "a31687da1e42dc9cf0f5dbf15676fe4a68bd3f4a",
+  "short": "a31687d",
+  "target": "a31687d",
+  "message": "docs(coverage): track Tier 0 silent failures + fork dependencies in public matrix",
+  "published_at": "2026-05-01T18:17:52.206940+00:00"
+}
