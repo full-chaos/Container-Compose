@@ -1,5 +1,5 @@
 {
-  "originHash" : "4f3260bbee44b60e382f56867715894c5f8be03627fdcb0a5d9f861df765cfcd",
+  "originHash" : "1c21533914490da7300dd1d6acdefe0b5f131a675c9adc2aa4ecffd3325e7c81",
   "pins" : [
     {
       "identity" : "async-http-client",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/full-chaos/container",
       "state" : {
         "branch" : "tier2-fork-patches",
-        "revision" : "6f944985e33345c6ad892c77194cb4e12cf83a58"
+        "revision" : "9a4244e15455458a9ea0a35cab70e09006b90430"
       }
     },
     {
