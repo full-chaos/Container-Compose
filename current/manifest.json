@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "4d477217c9d256feecc7bb0bd0c7d934daf25da5",
-  "short": "4d47721",
+  "commit": "3c5fa66e8f413e22c6f64e88ba4115910339bffe",
+  "short": "3c5fa66",
   "target": "current",
-  "message": "feat(args): warn-and-skip --device / --sysctl (#81)",
-  "published_at": "2026-05-01T23:38:38.347211+00:00"
+  "message": "feat(args): warn-skip 6 networking flags (CHAOS-1372 + CHAOS-1374) (#79)",
+  "published_at": "2026-05-01T23:38:53.117431+00:00"
 }
