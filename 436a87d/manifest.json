@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1357-hardening",
+  "commit": "436a87d6290a7285d7039e47132d015b5ae0fb0b",
+  "short": "436a87d",
+  "target": "436a87d",
+  "message": "docs: mark Phase 11 SHIPPED in native-api-server.md (CHAOS-1357)",
+  "published_at": "2026-05-01T14:09:07.322190+00:00"
+}
