@@ -425,6 +425,45 @@ Compose-aware project lifecycle endpoints. Shipped 2026-05-01.
 
 **New types in APISchemas.swift:** `APIProjectUpRequest`, `APIProjectServiceState`, `APIProjectUpResponse`, `APIProjectDownRequest`, `APIProjectDownResponse`, `APIProjectRestartRequest`, `APIProjectRestartResponse`, `APIProjectBuildRequest`, `APIProjectBuildFrame`, `APIProjectPullRequest`, `APIProjectPullFrame`, `APIProjectScaleRequest`, `APIProjectScaleResponse`.
 
+### Phase 11 — SHIPPED (CHAOS-1357)
+
+API hardening: unified error envelope, Prometheus metrics, OpenAPI spec. Shipped 2026-05-01.
+
+**Three components shipped:**
+
+1. **`APIErrorEnvelope` migration** — Added `APIErrorEnvelope { error, message, code, requestId }` as the canonical error response shape. `APIErrorEnvelope.legacy()` builder maps HTTP status codes to string error keys (`not_found`, `conflict`, `not_supported`, `invalid_state`, `internal_error`). Migrated 33+ call sites across 10 route files. `APIErrorResponse` and `APIStatsErrorResponse` deprecated with `@available(*, deprecated)`.
+
+2. **Middleware pair** — `RequestIDHeaderMiddleware` stamps `X-Request-Id` on every response using `context.id.description`. `ErrorMappingMiddleware` catches `RuntimeError` thrown by route handlers and converts to `APIErrorEnvelope` (404 / 409 / 501 / 500 as appropriate) so routes don't need per-error catch blocks for uncaught runtime errors.
+
+3. **`GET /metrics`** — `MetricsRoutes` refreshes three custom Prometheus gauges (`container_compose_uptime_seconds`, `container_compose_memory_rss_bytes`, `container_compose_registry_containers`) and emits the full `PrometheusCollectorRegistry` in `text/plain; version=0.0.4` format. Uses Hummingbird's built-in `MetricsMiddleware` for per-route request counters/histograms. RSS via Darwin `task_info(MACH_TASK_BASIC_INFO)` in `ProcessRSS.swift`.
+
+4. **`GET /openapi.yaml`** — `OpenAPIRoute` serves a hand-written OpenAPI 3.1 spec from `Bundle.module` (SwiftPM resource) covering all 25 daemon routes.
+
+**New files:**
+- `Sources/Container-Compose/Server/RequestIDHeaderMiddleware.swift`
+- `Sources/Container-Compose/Server/ErrorMappingMiddleware.swift`
+- `Sources/Container-Compose/Server/ProcessRSS.swift`
+- `Sources/Container-Compose/Server/Routes/MetricsRoutes.swift`
+- `Sources/Container-Compose/Server/Routes/OpenAPIRoute.swift`
+- `Resources/openapi.yaml`
+- `Tests/.../ErrorEnvelopeTests.swift` (16 tests)
+- `Tests/.../MetricsRoutesTests.swift` (8 tests)
+- `Tests/.../OpenAPIRouteTests.swift` (6 tests)
+
+**Architecture decisions locked by CHAOS-1357:**
+
+#### Decision #14 — Error shape: envelope vs per-route custom types
+
+**Chosen:** Single `APIErrorEnvelope` with `error` (machine key), `message` (human text), `code` (E_NNN default or custom), `requestId` (per-request UUID for log correlation).
+
+**Rationale:** Callers need a stable key to branch on (`error == "not_found"`). `message` is free-text for humans. `code` enables future fine-grained error codes without changing the `error` key. `requestId` ties client errors back to server logs.
+
+#### Decision #15 — Prometheus bootstrap: singleton per process
+
+**Chosen:** `MetricsSystem.bootstrap(PrometheusMetricsFactory())` called once in `ComposeServe.run()` before `Application` construction. In tests, a file-scope lazy flag (`nonisolated(unsafe) var _metricsBootstrapped`) ensures bootstrap fires at most once even when Swift Testing creates fresh struct instances per test.
+
+**Rationale:** `MetricsSystem.bootstrap()` is a global one-time call that crashes on double invocation. The lazy-flag pattern is the standard workaround in swift-metrics tests without requiring `@_spi(Testing)` bootstrap-internal access.
+
 ## References
 
 - CHAOS-1340 (epic): https://linear.app/fullchaos/issue/CHAOS-1340
