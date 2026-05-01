@@ -18,6 +18,8 @@ import ArgumentParser
 import Foundation
 import Hummingbird
 import Logging
+import Metrics
+import Prometheus
 import ServiceLifecycle
 
 #if canImport(Darwin)
@@ -172,8 +174,31 @@ public enum ServeDaemon {
     ///     to parse. Defaults to `false` for interactive foreground use.
     public static func run(socketPath: String, launchdManaged: Bool = false) async throws {
         let logger = Logger(label: "container-compose.serve")
+        let bootTime = Date()
+
+        // MARK: - Middleware (CHAOS-1357)
+        // Bootstrap Prometheus BEFORE constructing Application so the first
+        // request emitted by MetricsMiddleware already has a registered backend.
+        MetricsSystem.bootstrap(PrometheusMetricsFactory())
 
         let router = Router()
+
+        // Middleware insertion order is significant (see plan cross-cutting decisions):
+        // 1. RequestIDHeaderMiddleware — stamps X-Request-Id on ALL responses, including errors
+        // 2. ErrorMappingMiddleware — catches RuntimeError throws → APIErrorEnvelope
+        // 3. MetricsMiddleware — counts ALL requests including 401/403 once auth lands
+        router.add(middleware: RequestIDHeaderMiddleware())
+        router.add(middleware: ErrorMappingMiddleware())
+        router.add(middleware: MetricsMiddleware())
+
+        // MARK: - Auth (CHAOS-1356)
+        // (Empty placeholder — owned by PR-3, post-Wave-A merge)
+
+        // MARK: - Server build (CHAOS-1359)
+        // (Empty placeholder — owned by PR-1)
+
+        MetricsRoutes.register(router: router, bootTime: bootTime)
+        OpenAPIRoute.register(router: router)
         registerCoreRoutes(router: router)
 
         let app = Application(

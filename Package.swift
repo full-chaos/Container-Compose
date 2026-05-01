@@ -23,6 +23,11 @@ let package = Package(
         // CHAOS-1349: signal-safe graceful shutdown. Hummingbird's `Application` natively
         // conforms to `Service`; ServiceGroup wires SIGTERM/SIGINT into a clean drain.
         .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
+        // MARK: - TLS deps (CHAOS-1359)
+        // (Empty placeholder — owned by PR-1; do not add HummingbirdTLS, Crypto, or X509 here)
+
+        // MARK: - Metrics deps (CHAOS-1357)
+        .package(url: "https://github.com/swift-server/swift-prometheus.git", from: "2.0.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a target.
@@ -52,12 +57,18 @@ let package = Package(
                     name: "ServiceLifecycle",
                     package: "swift-service-lifecycle"
                 ),
+                // MARK: - Metrics deps (CHAOS-1357)
+                .product(name: "Prometheus", package: "swift-prometheus"),
                 "Yams",
                 "Rainbow",
             ],
-            path: "Sources/Container-Compose"
+            path: "Sources/Container-Compose",
+            resources: [
+                // CHAOS-1357: hand-written OpenAPI 3.1 spec bundled for GET /openapi.yaml
+                .copy("../../Resources/openapi.yaml"),
+            ]
         ),
-        
+
         // Executable target
         .executableTarget(
             name: "container-compose",
@@ -81,7 +92,8 @@ let package = Package(
                 "ContainerComposeCore",
                 "TestHelpers",
                 .product(name: "Hummingbird", package: "hummingbird"),
-                .product(name: "HummingbirdTesting", package: "hummingbird")
+                .product(name: "HummingbirdTesting", package: "hummingbird"),
+                .product(name: "Prometheus", package: "swift-prometheus"),
             ]
         ),
         
