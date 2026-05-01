@@ -29,7 +29,13 @@ public struct ComposeSystem: AsyncParsableCommand {
     public static let configuration: CommandConfiguration = .init(
         commandName: "system",
         abstract: "Manage the container-compose daemon and runtime state",
-        subcommands: [ComposeSystemStatus.self, SystemGenerateCert.self]
+        subcommands: [
+            ComposeSystemStatus.self,
+            SystemGenerateCert.self,
+            SystemGenerateKey.self,
+            SystemRevokeKey.self,
+            SystemListKeys.self,
+        ]
     )
 
     public init() {}

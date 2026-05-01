@@ -75,11 +75,24 @@ public struct ComposeServe: AsyncParsableCommand {
     )
     var keyPath: String?
 
+    @Option(
+        name: .customLong("client-ca"),
+        help: "Path to PEM-encoded CA bundle. When provided, the daemon requires every TLS client to present a certificate signed by this CA. A verified client cert satisfies auth without a Bearer token.",
+        completion: .file()
+    )
+    var clientCAPath: String?
+
     @Flag(
         name: .customLong("insecure"),
         help: "Allow plain TCP on non-localhost addresses (warning: unencrypted)"
     )
     var insecure: Bool = false
+
+    @Flag(
+        name: .customLong("auth-required"),
+        help: "Require Bearer-token auth on Unix socket listeners (always required on TCP/TLS)."
+    )
+    var authRequired: Bool = false
 
     /// When `true` the daemon is running under launchd management (e.g. via
     /// `brew services start container-compose`). In this mode log lines are
@@ -126,9 +139,16 @@ public struct ComposeServe: AsyncParsableCommand {
             }
         }
 
+        if clientCAPath != nil,
+           !matchesTLS(listen)
+        {
+            throw ValidationError("--client-ca requires a tls:// listener")
+        }
+
         // 4. Validate TLS: resolve cert + key paths
         var resolvedCertPath: String? = certPath
         var resolvedKeyPath: String? = keyPath
+        var resolvedClientCAPath: String?
         if case .tls = listen {
             // Auto-detect from ~/.container-compose/ if not specified
             let defaultCert = ServeDaemon.defaultTLSCertPath
@@ -147,6 +167,14 @@ public struct ComposeServe: AsyncParsableCommand {
             }
             resolvedCertPath = cp
             resolvedKeyPath  = kp
+
+            if let clientCAPath {
+                let expanded = (clientCAPath as NSString).expandingTildeInPath
+                guard FileManager.default.isReadableFile(atPath: expanded) else {
+                    throw ValidationError("--client-ca file not found: \(expanded)")
+                }
+                resolvedClientCAPath = expanded
+            }
         }
 
         // 5. Idempotence detection
@@ -171,8 +199,15 @@ public struct ComposeServe: AsyncParsableCommand {
             listen: listen,
             certPath: resolvedCertPath,
             keyPath: resolvedKeyPath,
+            clientCAPath: resolvedClientCAPath,
+            authRequired: authRequired,
             launchdManaged: launchdManaged
         )
+    }
+
+    private func matchesTLS(_ listen: ListenAddress) -> Bool {
+        if case .tls = listen { return true }
+        return false
     }
 }
 
@@ -211,6 +246,13 @@ public enum ServeDaemon {
             .appending(path: ".container-compose")
             .appending(path: "key.pem")
             .path
+    }
+
+    /// Default auth store path for bearer-token records.
+    public static var defaultAuthFilePath: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".container-compose")
+            .appending(path: "auth.json")
     }
 
     public static func resolveSocketPath(override: String?) -> String {
@@ -302,6 +344,8 @@ public enum ServeDaemon {
             listen: .unix(path: socketPath),
             certPath: nil,
             keyPath: nil,
+            clientCAPath: nil,
+            authRequired: false,
             launchdManaged: launchdManaged
         )
     }
@@ -315,11 +359,16 @@ public enum ServeDaemon {
     ///   - listen: The listen address for the daemon.
     ///   - certPath: Path to TLS certificate PEM (required when listen == .tls).
     ///   - keyPath: Path to TLS private key PEM (required when listen == .tls).
+    ///   - clientCAPath: Optional CA bundle path for mutual TLS client certificate verification.
+    ///   - authRequired: Require bearer-token auth on Unix listeners. TCP/TLS
+    ///     listeners require auth regardless of this flag.
     ///   - launchdManaged: Enables timestamped log prefix for launchd output.
     public static func run(
         listen: ListenAddress,
         certPath: String?,
         keyPath: String?,
+        clientCAPath: String? = nil,
+        authRequired: Bool = false,
         launchdManaged: Bool = false
     ) async throws {
         let logger = Logger(label: "container-compose.serve")
@@ -341,7 +390,33 @@ public enum ServeDaemon {
         router.add(middleware: MetricsMiddleware())
 
         // MARK: - Auth (CHAOS-1356)
-        // (Empty placeholder — owned by PR-3, post-Wave-A merge)
+        let authIsRequired: Bool
+        switch listen {
+        case .tcp, .tls:
+            authIsRequired = true
+        case .unix:
+            authIsRequired = authRequired
+        }
+
+        if authIsRequired {
+            let authFile = ServeDaemon.defaultAuthFilePath
+            let store = try await FileAuthStore(path: authFile)
+            let mtlsBypass: (@Sendable () -> Bool)?
+            if clientCAPath != nil {
+                // When --client-ca is configured, TLSBootstrap enforces full client-cert verification.
+                // Any request that reaches Hummingbird has completed that handshake, so the route layer
+                // treats mTLS as authenticated per Decision #16.
+                mtlsBypass = { @Sendable in true }
+            } else {
+                mtlsBypass = nil
+            }
+            router.add(middleware: AuthMiddleware<FileAuthStore, BasicRequestContext>(
+                store: store,
+                logger: logger,
+                mtlsTrustEstablished: mtlsBypass
+            ))
+            logger.info("auth_enabled", metadata: ["store_path": "\(authFile.path)"])
+        }
 
         MetricsRoutes.register(router: router, bootTime: bootTime)
         OpenAPIRoute.register(router: router)
@@ -357,7 +432,7 @@ public enum ServeDaemon {
             let tlsConfig = try TLSBootstrap.makeServerConfig(
                 certPath: cp,
                 keyPath: kp,
-                clientCAPath: nil  // PR-3 plumbs clientCAPath
+                clientCAPath: clientCAPath
             )
             serverBuilder = try .tls(.http1(), tlsConfiguration: tlsConfig)
         case .unix, .tcp:
