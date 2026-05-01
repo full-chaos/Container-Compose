@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-72-de5f410e2d2ee97d394411f3a07f2311636a6b5c",
+  "commit": "a2762a73a43f0546051593d9296167e45ff5ff90",
+  "short": "a2762a7",
+  "target": "a2762a7",
+  "message": "docs(coverage): track Tier 0 silent failures + fork dependencies in public matrix (#72)",
+  "published_at": "2026-05-01T19:32:28.619092+00:00"
+}
