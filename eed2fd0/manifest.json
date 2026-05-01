@@ -1,0 +1,8 @@
+{
+  "branch": "fix/chaos-1344-pull-host-platform-default",
+  "commit": "eed2fd00a67aa6f7e006e2e3d5f15416128786e1",
+  "short": "eed2fd0",
+  "target": "eed2fd0",
+  "message": "fix(pull): default --platform to host architecture (CHAOS-1344)",
+  "published_at": "2026-05-01T16:41:36.851616+00:00"
+}
