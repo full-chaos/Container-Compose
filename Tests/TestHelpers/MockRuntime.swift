@@ -48,7 +48,9 @@ public final actor MockRuntime: Runtime {
     // MARK: - State
 
     private var containers: [String: RuntimeContainer]
-    private let networks: [RuntimeNetwork]
+    private var networks: [RuntimeNetwork]
+    private var volumes: [String: RuntimeVolume]
+    private var secrets: [String: RuntimeSecret]
     private let mockVersion: RuntimeVersion
 
     private var eventContinuations: [UUID: AsyncStream<RuntimeContainerEvent>.Continuation] = [:]
@@ -61,10 +63,14 @@ public final actor MockRuntime: Runtime {
     public init(
         containers: [RuntimeContainer] = [],
         networks: [RuntimeNetwork] = [],
+        volumes: [RuntimeVolume] = [],
+        secrets: [RuntimeSecret] = [],
         version: RuntimeVersion = .mockDefault
     ) {
         self.containers = Dictionary(uniqueKeysWithValues: containers.map { ($0.id, $0) })
         self.networks = networks
+        self.volumes = Dictionary(uniqueKeysWithValues: volumes.map { ($0.name, $0) })
+        self.secrets = Dictionary(uniqueKeysWithValues: secrets.map { ($0.name, $0) })
         self.mockVersion = version
         self.logBuffers = Dictionary(uniqueKeysWithValues: containers.map { ($0.id, []) })
     }
@@ -82,7 +88,7 @@ public final actor MockRuntime: Runtime {
     }
 
     public func listNetworks() async throws -> [RuntimeNetwork] {
-        networks
+        networks.sorted { $0.name < $1.name }
     }
 
     public func get(id: String) async throws -> RuntimeContainer {
@@ -318,4 +324,93 @@ public final actor MockRuntime: Runtime {
         "unknown"
         #endif
     }
+}
+
+// MARK: - Resource CRUD (CHAOS-1353)
+
+extension MockRuntime {
+
+    // MARK: Networks
+
+    public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
+        if networks.contains(where: { $0.name == spec.name }) {
+            throw RuntimeError.alreadyExists(id: spec.name)
+        }
+        let network = RuntimeNetwork(
+            id: UUID().uuidString,
+            name: spec.name,
+            driver: spec.driver,
+            labels: spec.labels,
+            attachedContainerIds: []
+        )
+        networks.append(network)
+        return network
+    }
+
+    public func removeNetwork(id: String) async throws {
+        guard let index = networks.firstIndex(where: { $0.id == id }) else {
+            throw RuntimeError.notFound(id: id)
+        }
+        networks.remove(at: index)
+    }
+
+    // MARK: Volumes
+
+    public func listVolumes() async throws -> [RuntimeVolume] {
+        volumes.values.sorted { $0.name < $1.name }
+    }
+
+    public func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
+        if volumes[spec.name] != nil {
+            throw RuntimeError.alreadyExists(id: spec.name)
+        }
+        let volume = RuntimeVolume(
+            name: spec.name,
+            driver: spec.driver,
+            labels: spec.labels,
+            createdAt: Date()
+        )
+        volumes[spec.name] = volume
+        return volume
+    }
+
+    public func removeVolume(name: String) async throws {
+        guard volumes[name] != nil else {
+            throw RuntimeError.notFound(id: name)
+        }
+        volumes.removeValue(forKey: name)
+    }
+
+    // MARK: Secrets
+
+    public func listSecrets() async throws -> [RuntimeSecret] {
+        secrets.values.sorted { $0.name < $1.name }
+    }
+
+    public func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret {
+        if secrets[spec.name] != nil {
+            throw RuntimeError.alreadyExists(id: spec.name)
+        }
+        let secret = RuntimeSecret(
+            name: spec.name,
+            labels: spec.labels,
+            createdAt: Date()
+        )
+        // Value is stored but never exposed via the protocol — in-memory only.
+        secrets[spec.name] = secret
+        return secret
+    }
+
+    public func removeSecret(name: String) async throws {
+        guard secrets[name] != nil else {
+            throw RuntimeError.notFound(id: name)
+        }
+        secrets.removeValue(forKey: name)
+    }
+
+    // MARK: - Test affordances (CHAOS-1353)
+
+    public func networksSnapshot() async -> [RuntimeNetwork] { networks }
+    public func volumesSnapshot() async -> [RuntimeVolume] { Array(volumes.values) }
+    public func secretsSnapshot() async -> [RuntimeSecret] { Array(secrets.values) }
 }

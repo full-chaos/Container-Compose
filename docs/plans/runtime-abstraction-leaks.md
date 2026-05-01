@@ -115,3 +115,29 @@ macOS 26 native runtime path.
   `ContainerizationError(.notFound)`) and map non-found errors to
   `RuntimeError.backendFailure(message:)` so the route can return 500 on transient
   failures vs 404 on genuine missing-container cases.
+
+## Leaks discovered during Phase 8 / CHAOS-1353 (resource CRUD)
+
+### 9. BridgeContainerClientRuntime and AppleContainerizationRuntime both throw .notSupported for all network CRUD operations
+
+- **Location:**
+  - `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `createNetwork(spec:)` and `removeNetwork(id:)` extension
+  - `Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift` — same extension
+- **Nature:** Neither the `apple/container` XPC client (`ContainerAPIClient`) nor the `apple/containerization` Swift package exposes a public Swift API for programmatic network creation or deletion. The `container` CLI handles network management via shell invocations to platform networking tools; `container-compose` currently replicates this in Compose command paths (e.g. `compose up` calls `container network create` via `RunCommandRunner`). Because the `Runtime` protocol is the boundary for API-server operations and neither backend supports these operations, both conformers return `.notSupported`.
+- **Proposed fix:** When `apple/containerization` adds network management APIs (tracked upstream), wire `AppleContainerizationRuntime` first. The bridge conformer can follow when the XPC surface grows. The `POST /networks` and `DELETE /networks/{id}` routes already translate `.notSupported` to HTTP 501.
+
+### 10. BridgeContainerClientRuntime and AppleContainerizationRuntime both throw .notSupported for all volume CRUD operations
+
+- **Location:**
+  - `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — volume CRUD extension
+  - `Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift` — same extension
+- **Nature:** The `apple/containerization` package does not have a public volume management API. Container filesystems are immutable root images and bind-mounts are the current workaround for persistent data. No volume lifecycle (`create` / `list` / `remove`) is exposed through `ContainerAPIClient` (the XPC bridge) or through any `Containerization` framework type accessible without virtualization entitlements. The `MockRuntime` ships a full in-memory implementation for route testing.
+- **Proposed fix:** When `apple/containerization` adds a named-volume abstraction (expected as part of the full Phase 2 lifecycle, or separately), extend `AppleContainerizationRuntime` to manage volumes in a per-user store (e.g. `~/.container-compose/volumes/`). The XPC bridge can follow if/when `ContainerAPIClient` exposes volume endpoints.
+
+### 11. BridgeContainerClientRuntime and AppleContainerizationRuntime both throw .notSupported for all secret CRUD operations
+
+- **Location:**
+  - `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — secret CRUD extension
+  - `Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift` — same extension
+- **Nature:** Neither `apple/containerization` nor `apple/container`'s XPC surface has a concept of secrets. Phase 8 ships in-memory secret storage only via `MockRuntime`; a durable backend (macOS Keychain, encrypted file store, or a dedicated secrets daemon) is deferred. Cross-host secret distribution is explicitly out of scope for CHAOS-1353.
+- **Proposed fix:** Implement `AppleContainerizationRuntime.createSecret` / `listSecrets` / `removeSecret` backed by the macOS Keychain (`Security.framework`, `SecItemAdd`, `SecItemCopyMatching`, `SecItemDelete`) for single-host use. When container-compose gains multi-host support (Phase N), bridge to a dedicated secrets manager (e.g. HashiCorp Vault, AWS Secrets Manager) via a pluggable backend interface.

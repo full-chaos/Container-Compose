@@ -320,6 +320,122 @@ public struct RuntimeLogFrame: Sendable, Hashable {
     }
 }
 
+// MARK: - RuntimeVolume (CHAOS-1353)
+
+/// Runtime-side volume representation for `Runtime.listVolumes()` /
+/// `createVolume()` / `removeVolume(name:)`. Volume names are the canonical
+/// key; no UUIDs are used (mirrors the Compose-spec where a volume is
+/// identified by its name under `volumes:`). The `driver` field is `local` for
+/// all volumes in Phase 8; other drivers are out of scope per the CHAOS-1353
+/// ticket boundary.
+public struct RuntimeVolume: Sendable, Hashable, Codable {
+    public let name: String
+    public let driver: String
+    public let labels: [String: String]
+    public let createdAt: Date?
+
+    public init(
+        name: String,
+        driver: String = "local",
+        labels: [String: String] = [:],
+        createdAt: Date? = nil
+    ) {
+        self.name = name
+        self.driver = driver
+        self.labels = labels
+        self.createdAt = createdAt
+    }
+}
+
+/// Spec used to create a new volume via `Runtime.createVolume(spec:)`.
+public struct RuntimeCreateVolumeSpec: Sendable, Equatable {
+    public let name: String
+    public let driver: String
+    public let labels: [String: String]
+
+    public init(
+        name: String,
+        driver: String = "local",
+        labels: [String: String] = [:]
+    ) {
+        self.name = name
+        self.driver = driver
+        self.labels = labels
+    }
+}
+
+// MARK: - RuntimeSecret (CHAOS-1353)
+
+/// Runtime-side secret representation for `Runtime.listSecrets()` /
+/// `createSecret()` / `removeSecret(name:)`. The secret value is stored
+/// only during creation (`RuntimeCreateSecretSpec.value`); subsequent
+/// `listSecrets()` / `get` calls never reveal the value in the runtime model
+/// (mirrors real secret stores). Phase 8 ships only the in-memory MockRuntime
+/// implementation; a durable backend (keychain, file-based) is a follow-up.
+public struct RuntimeSecret: Sendable, Hashable, Codable {
+    public let name: String
+    public let labels: [String: String]
+    public let createdAt: Date?
+
+    public init(
+        name: String,
+        labels: [String: String] = [:],
+        createdAt: Date? = nil
+    ) {
+        self.name = name
+        self.labels = labels
+        self.createdAt = createdAt
+    }
+}
+
+/// Spec used to create a new secret via `Runtime.createSecret(spec:)`.
+/// The value is provided inline as a UTF-8 string. File-path sourcing
+/// (Compose `secret.file:`) is the caller's responsibility — the route
+/// handler reads the file and passes the content here.
+public struct RuntimeCreateSecretSpec: Sendable, Equatable {
+    public let name: String
+    public let value: String
+    public let labels: [String: String]
+
+    public init(
+        name: String,
+        value: String,
+        labels: [String: String] = [:]
+    ) {
+        self.name = name
+        self.value = value
+        self.labels = labels
+    }
+}
+
+// MARK: - RuntimeNetworkSpec (CHAOS-1353)
+
+/// Spec used to create a new network via `Runtime.createNetwork(spec:)`.
+/// Subnet and gateway are optional; if omitted the backend assigns them
+/// automatically. Advanced IPAM (subnet pools, multiple subnets) is out of
+/// scope per the CHAOS-1353 ticket boundary.
+public struct RuntimeCreateNetworkSpec: Sendable, Equatable {
+    public let name: String
+    public let driver: String
+    public let subnet: String?
+    public let gateway: String?
+    public let labels: [String: String]
+
+    public init(
+        name: String,
+        driver: String = "bridge",
+        subnet: String? = nil,
+        gateway: String? = nil,
+        labels: [String: String] = [:]
+    ) {
+        self.name = name
+        self.driver = driver
+        self.subnet = subnet
+        self.gateway = gateway
+        self.labels = labels
+    }
+}
+
 // MARK: - RuntimeCreateConfiguration
 
 /// Minimum container creation surface needed to round-trip a Compose service
