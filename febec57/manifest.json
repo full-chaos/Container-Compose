@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1372-1374-networking",
+  "commit": "febec57d0726c791b1fbde19c646a4df64a3086d",
+  "short": "febec57",
+  "target": "febec57",
+  "message": "feat(args): warn-and-skip --ip / --ip6 / --mac-address",
+  "published_at": "2026-05-01T23:16:38.818714+00:00"
+}
