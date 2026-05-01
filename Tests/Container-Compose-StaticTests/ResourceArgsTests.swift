@@ -19,7 +19,7 @@ import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
-@Suite("Resource Args Tests")
+@Suite("Resource Args Tests", .serialized)
 struct ResourceArgsTests {
 
     // MARK: - Helpers
@@ -51,6 +51,45 @@ struct ResourceArgsTests {
     /// Build argv for the given service via ResourceArgs.
     private func args(_ service: Service) throws -> [String] {
         ComposeUp.ResourceArgs.build(try ctx(service))
+    }
+
+    private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        let pipe = Pipe()
+        guard original >= 0, dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0 else {
+            if original >= 0 { close(original) }
+            throw CaptureError.dupFailed
+        }
+
+        do {
+            let result = try args(service)
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return (String(data: data, encoding: .utf8) ?? "", result)
+        } catch {
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            _ = pipe.fileHandleForReading.readDataToEndOfFile()
+            throw error
+        }
+    }
+
+    private func restoreStandardOutput(original: Int32, pipe: Pipe) {
+        _ = dup2(original, STDOUT_FILENO)
+        close(original)
+        pipe.fileHandleForWriting.closeFile()
+    }
+
+    private enum CaptureError: Error {
+        case dupFailed
+    }
+
+    private func expectWarnSkipped(_ service: Service, flag: String, field: String) throws {
+        let captured = try capturedArgs(service)
+        #expect(!captured.args.contains(flag))
+        #expect(captured.output.contains("Note: '\(field)' is parsed but not supported by Apple container; ignored."))
     }
 
     /// Decode a service directly from YAML to pick up deploy sub-fields.
@@ -85,40 +124,40 @@ struct ResourceArgsTests {
         #expect(result[idx + 1] == "512m")
     }
 
-    @Test("mem_reservation emits --memory-reservation")
+    @Test("mem_reservation warn-skips --memory-reservation")
     func memReservationFlag() throws {
         let svc = Service(image: "alpine", mem_reservation: "256m")
-        let result = try args(svc)
-        #expect(result.contains("--memory-reservation"))
-        let idx = try #require(result.firstIndex(of: "--memory-reservation"))
-        #expect(result[idx + 1] == "256m")
+        try expectWarnSkipped(svc, flag: "--memory-reservation", field: "mem_reservation")
     }
 
-    @Test("mem_swappiness emits --memory-swappiness")
+    @Test("deploy.resources.reservations.memory warn-skips --memory-reservation")
+    func deployReservationMemoryWarnSkips() throws {
+        let svc = try decodeService("""
+          image: alpine
+          deploy:
+            resources:
+              reservations:
+                memory: "256m"
+        """)
+        try expectWarnSkipped(svc, flag: "--memory-reservation", field: "deploy.resources.reservations.memory")
+    }
+
+    @Test("mem_swappiness warn-skips --memory-swappiness")
     func memSwappinessFlag() throws {
         let svc = Service(image: "alpine", mem_swappiness: 60)
-        let result = try args(svc)
-        #expect(result.contains("--memory-swappiness"))
-        let idx = try #require(result.firstIndex(of: "--memory-swappiness"))
-        #expect(result[idx + 1] == "60")
+        try expectWarnSkipped(svc, flag: "--memory-swappiness", field: "mem_swappiness")
     }
 
-    @Test("memswap_limit emits --memory-swap")
+    @Test("memswap_limit warn-skips --memory-swap")
     func memswapLimitFlag() throws {
         let svc = Service(image: "alpine", memswap_limit: "1g")
-        let result = try args(svc)
-        #expect(result.contains("--memory-swap"))
-        let idx = try #require(result.firstIndex(of: "--memory-swap"))
-        #expect(result[idx + 1] == "1g")
+        try expectWarnSkipped(svc, flag: "--memory-swap", field: "memswap_limit")
     }
 
-    @Test("pids_limit emits --pids-limit")
+    @Test("pids_limit warn-skips --pids-limit")
     func pidsLimitFlag() throws {
         let svc = Service(image: "alpine", pids_limit: 200)
-        let result = try args(svc)
-        #expect(result.contains("--pids-limit"))
-        let idx = try #require(result.firstIndex(of: "--pids-limit"))
-        #expect(result[idx + 1] == "200")
+        try expectWarnSkipped(svc, flag: "--pids-limit", field: "pids_limit")
     }
 
     @Test("shm_size emits --shm-size")
@@ -130,11 +169,10 @@ struct ResourceArgsTests {
         #expect(result[idx + 1] == "128m")
     }
 
-    @Test("oom_kill_disable true emits --oom-kill-disable flag")
+    @Test("oom_kill_disable true warn-skips --oom-kill-disable flag")
     func oomKillDisableTrue() throws {
         let svc = Service(image: "alpine", oom_kill_disable: true)
-        let result = try args(svc)
-        #expect(result.contains("--oom-kill-disable"))
+        try expectWarnSkipped(svc, flag: "--oom-kill-disable", field: "oom_kill_disable")
     }
 
     @Test("oom_kill_disable false does not emit --oom-kill-disable flag")
@@ -144,85 +182,58 @@ struct ResourceArgsTests {
         #expect(!result.contains("--oom-kill-disable"))
     }
 
-    @Test("oom_score_adj emits --oom-score-adj")
+    @Test("oom_score_adj warn-skips --oom-score-adj")
     func oomScoreAdjFlag() throws {
         let svc = Service(image: "alpine", oom_score_adj: 300)
-        let result = try args(svc)
-        #expect(result.contains("--oom-score-adj"))
-        let idx = try #require(result.firstIndex(of: "--oom-score-adj"))
-        #expect(result[idx + 1] == "300")
+        try expectWarnSkipped(svc, flag: "--oom-score-adj", field: "oom_score_adj")
     }
 
-    @Test("cpu_shares emits --cpu-shares")
+    @Test("cpu_shares warn-skips --cpu-shares")
     func cpuSharesFlag() throws {
         let svc = Service(image: "alpine", cpu_shares: 512)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-shares"))
-        let idx = try #require(result.firstIndex(of: "--cpu-shares"))
-        #expect(result[idx + 1] == "512")
+        try expectWarnSkipped(svc, flag: "--cpu-shares", field: "cpu_shares")
     }
 
-    @Test("cpuset emits --cpuset-cpus")
+    @Test("cpuset warn-skips --cpuset-cpus")
     func cpusetFlag() throws {
         let svc = Service(image: "alpine", cpuset: "0-3")
-        let result = try args(svc)
-        #expect(result.contains("--cpuset-cpus"))
-        let idx = try #require(result.firstIndex(of: "--cpuset-cpus"))
-        #expect(result[idx + 1] == "0-3")
+        try expectWarnSkipped(svc, flag: "--cpuset-cpus", field: "cpuset")
     }
 
-    @Test("cpu_period emits --cpu-period")
+    @Test("cpu_period warn-skips --cpu-period")
     func cpuPeriodFlag() throws {
         let svc = Service(image: "alpine", cpu_period: 100000)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-period"))
-        let idx = try #require(result.firstIndex(of: "--cpu-period"))
-        #expect(result[idx + 1] == "100000")
+        try expectWarnSkipped(svc, flag: "--cpu-period", field: "cpu_period")
     }
 
-    @Test("cpu_quota emits --cpu-quota")
+    @Test("cpu_quota warn-skips --cpu-quota")
     func cpuQuotaFlag() throws {
         let svc = Service(image: "alpine", cpu_quota: 50000)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-quota"))
-        let idx = try #require(result.firstIndex(of: "--cpu-quota"))
-        #expect(result[idx + 1] == "50000")
+        try expectWarnSkipped(svc, flag: "--cpu-quota", field: "cpu_quota")
     }
 
-    @Test("cpu_rt_period emits --cpu-rt-period")
+    @Test("cpu_rt_period warn-skips --cpu-rt-period")
     func cpuRtPeriodFlag() throws {
         let svc = Service(image: "alpine", cpu_rt_period: 1000000)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-rt-period"))
-        let idx = try #require(result.firstIndex(of: "--cpu-rt-period"))
-        #expect(result[idx + 1] == "1000000")
+        try expectWarnSkipped(svc, flag: "--cpu-rt-period", field: "cpu_rt_period")
     }
 
-    @Test("cpu_rt_runtime emits --cpu-rt-runtime")
+    @Test("cpu_rt_runtime warn-skips --cpu-rt-runtime")
     func cpuRtRuntimeFlag() throws {
         let svc = Service(image: "alpine", cpu_rt_runtime: 950000)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-rt-runtime"))
-        let idx = try #require(result.firstIndex(of: "--cpu-rt-runtime"))
-        #expect(result[idx + 1] == "950000")
+        try expectWarnSkipped(svc, flag: "--cpu-rt-runtime", field: "cpu_rt_runtime")
     }
 
-    @Test("cpu_count emits --cpu-count")
+    @Test("cpu_count warn-skips --cpu-count")
     func cpuCountFlag() throws {
         let svc = Service(image: "alpine", cpu_count: 4)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-count"))
-        let idx = try #require(result.firstIndex(of: "--cpu-count"))
-        #expect(result[idx + 1] == "4")
+        try expectWarnSkipped(svc, flag: "--cpu-count", field: "cpu_count")
     }
 
-    @Test("cpu_percent emits --cpu-percent")
+    @Test("cpu_percent warn-skips --cpu-percent")
     func cpuPercentFlag() throws {
         let svc = Service(image: "alpine", cpu_percent: 75)
-        let result = try args(svc)
-        #expect(result.contains("--cpu-percent"))
-        let idx = try #require(result.firstIndex(of: "--cpu-percent"))
-        #expect(result[idx + 1] == "75")
+        try expectWarnSkipped(svc, flag: "--cpu-percent", field: "cpu_percent")
     }
 
     // MARK: - Ulimits
@@ -329,7 +340,7 @@ struct ResourceArgsTests {
 
     // MARK: - Combination test
 
-    @Test("combo: cpus_top + ulimits + pids_limit all emit correctly")
+    @Test("combo: cpus_top + ulimits emit while pids_limit warn-skips")
     func comboFlags() throws {
         let svc = Service(
             image: "alpine",
@@ -343,9 +354,7 @@ struct ResourceArgsTests {
         let cpusIdx = try #require(result.firstIndex(of: "--cpus"))
         #expect(result[cpusIdx + 1] == "1.0")
         // --pids-limit
-        #expect(result.contains("--pids-limit"))
-        let pidsIdx = try #require(result.firstIndex(of: "--pids-limit"))
-        #expect(result[pidsIdx + 1] == "100")
+        #expect(!result.contains("--pids-limit"))
         // --ulimit
         #expect(result.contains("--ulimit"))
         #expect(result.contains("nofile=1024:4096"))
