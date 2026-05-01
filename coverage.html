@@ -265,10 +265,10 @@
       "note": "User-anchored section. List/object forms and condition gates are wired end-to-end.",
       "rows": [
         [
-          "depends_on (list form)",
-          "ok",
+          "shm_size",
+          "partial",
           "yes",
-          "[String]? on Service; topologically sorted with cycle detection in Service.topoSortConfiguredServices."
+          "Decoded; emits --shm-size, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "depends_on (object form)",
@@ -286,13 +286,13 @@
           "condition: service_healthy",
           "ok",
           "yes",
-          "Honored at the gate; checks container.health == .healthy via fork-patched ContainerSnapshot.health field. Falls back to .running if no healthcheck is configured on the service."
+          "Honored at the gate; checks container.health == .healthy via fork-patched full-chaos/container (CHAOS-1319, ContainerSnapshot.health field). Falls back to .running if no healthcheck is configured. Upstream apple/container does not yet expose health on snapshots."
         ],
         [
           "condition: service_completed_successfully",
           "ok",
           "yes",
-          "Honored at the gate; verifies snapshot.lastExitCode == 0 and throws ComposeWaitError.nonZeroExitCode otherwise. Falls back to .stopped-only if lastExitCode is nil (e.g., older runtime)."
+          "Honored at the gate; verifies snapshot.lastExitCode == 0 via fork-patched full-chaos/container (CHAOS-1320). Throws ComposeWaitError.nonZeroExitCode on non-zero exit. Falls back to .stopped-only on upstream apple/container (which does not expose lastExitCode)."
         ],
         [
           "required (bool, default true)",
@@ -341,7 +341,7 @@
           "volumes",
           "partial",
           "yes",
-          "Parsed; named volumes fall back to ~/.containers/Volumes/<project>/<name> hard-link directories."
+          "Parsed; named volumes use ~/.containers/Volumes/<project>/<name>/ hardlink-dir emulation instead of `container volume create` API (CHAOS-1368). driver_opts and labels are ignored. Cross-project sharing impossible. Replacement with native volume CRUD tracked in CHAOS-1335 / CHAOS-1368."
         ],
         [
           "secrets",
@@ -468,7 +468,7 @@
           "restart",
           "ok",
           "yes",
-          "Decoded and applied — emits --restart flag via fork-patched container run support."
+          "Decoded and applied; emits --restart flag via fork-patched full-chaos/container (CHAOS-1321). Upstream apple/container does not yet have --restart — would be a Tier 0 silent failure if fork is dropped. Upstream FR tracked in CHAOS-1385."
         ],
         [
           "stdin_open",
@@ -532,9 +532,9 @@
         ],
         [
           "blkio_config",
-          "ok",
+          "partial",
           "yes",
-          "BlkioConfig.swift; ResourceArgs emits --blkio-weight, --blkio-weight-device, --device-{read,write}-{bps,iops}."
+          "Decoded (BlkioConfig.swift); emits --blkio-weight / --blkio-weight-device / --device-{read,write}-{bps,iops}, but upstream apple/container does not accept these flags (silent failure if set). Tier 0 cleanup tracked in CHAOS-1376; upstream FR in CHAOS-1380."
         ],
         [
           "cap_add",
@@ -562,45 +562,45 @@
         ],
         [
           "cpu_count",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-count."
+          "Decoded; emits --cpu-count, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpu_percent",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-percent."
+          "Decoded; emits --cpu-percent, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpu_period",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-period."
+          "Decoded; emits --cpu-period, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpu_quota",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-quota."
+          "Decoded; emits --cpu-quota, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpu_rt_period",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-rt-period."
+          "Decoded; emits --cpu-rt-period, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpu_rt_runtime",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-rt-runtime."
+          "Decoded; emits --cpu-rt-runtime, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpu_shares",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpu-shares."
+          "Decoded; emits --cpu-shares, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "cpus",
@@ -610,9 +610,9 @@
         ],
         [
           "cpuset",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --cpuset-cpus."
+          "Decoded; emits --cpuset-cpus, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "credential_spec",
@@ -634,9 +634,9 @@
         ],
         [
           "devices",
-          "ok",
+          "partial",
           "yes",
-          "StorageArgs emits --device per item; runtime may reject unsupported mappings."
+          "Decoded; emits --device, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1373."
         ],
         [
           "dns",
@@ -688,9 +688,9 @@
         ],
         [
           "gpus",
-          "ok",
+          "partial",
           "yes",
-          "Gpus.swift handles 'all' shorthand or array form; ResourceArgs emits --gpus."
+          "Decoded (Gpus.swift); emits --gpus, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1376; upstream FR in CHAOS-1379."
         ],
         [
           "group_add",
@@ -706,9 +706,9 @@
         ],
         [
           "ipc",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --ipc."
+          "Decoded; emits --ipc, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1372."
         ],
         [
           "isolation",
@@ -742,9 +742,9 @@
         ],
         [
           "mac_address",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --mac-address."
+          "Decoded; emits standalone --mac-address, but upstream apple/container only accepts mac= inside the --network <name>,mac=... syntax (silent failure if set as standalone). Tier 0 cleanup tracked in CHAOS-1374."
         ],
         [
           "mem_limit",
@@ -754,21 +754,21 @@
         ],
         [
           "mem_reservation",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --memory-reservation."
+          "Decoded; emits --memory-reservation, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "mem_swappiness",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --memory-swappiness."
+          "Decoded; emits --memory-swappiness, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "memswap_limit",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --memory-swap."
+          "Decoded; emits --memory-swap, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "models",
@@ -784,27 +784,27 @@
         ],
         [
           "oom_kill_disable",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --oom-kill-disable when true."
+          "Decoded; emits --oom-kill-disable, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "oom_score_adj",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --oom-score-adj."
+          "Decoded; emits --oom-score-adj, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "pid",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --pid."
+          "Decoded; emits --pid, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1372."
         ],
         [
           "pids_limit",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --pids-limit."
+          "Decoded; emits --pids-limit, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
         ],
         [
           "post_start",
@@ -856,9 +856,9 @@
         ],
         [
           "security_opt",
-          "ok",
+          "partial",
           "yes",
-          "SecurityArgs.build emits --security-opt per item."
+          "Decoded; emits --security-opt, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1371."
         ],
         [
           "shm_size",
@@ -886,9 +886,9 @@
         ],
         [
           "sysctls",
-          "ok",
+          "partial",
           "yes",
-          "StorageArgs emits --sysctl key=value per entry."
+          "Decoded; emits --sysctl key=value, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1373."
         ],
         [
           "tmpfs",
@@ -910,21 +910,39 @@
         ],
         [
           "userns_mode",
-          "ok",
+          "partial",
           "yes",
-          "SecurityArgs.build emits --userns."
+          "Decoded; emits --userns, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1371."
         ],
         [
           "uts",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --uts."
+          "Decoded; emits --uts, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1372."
         ],
         [
           "volumes_from",
           "miss",
           "yes",
           "Decoded; warn-and-skip — deprecated; no apple/container equivalent."
+        ],
+        [
+          "volumes (named-volume short form)",
+          "partial",
+          "yes",
+          "Compose `service.volumes: [name:/path]` (no slash in source) is detected by heuristic at ComposeUp.swift:837 and emulated via ~/.containers/Volumes/<project>/<name>/ hardlink-dir. apple/container `container volume create` exists but is not yet wired; whether `container run -v <name>:<path>` resolves named volumes upstream is unverified. Tracked in CHAOS-1368."
+        ],
+        [
+          "networks.<n>.ipv4_address",
+          "partial",
+          "yes",
+          "Decoded on ServiceNetworkConfig; emits --ip, but upstream apple/container does not accept this flag (only --network <name>,mac=...,mtu=... is supported). Silent failure if set. Tier 0 cleanup tracked in CHAOS-1374."
+        ],
+        [
+          "networks.<n>.ipv6_address",
+          "partial",
+          "yes",
+          "Decoded on ServiceNetworkConfig; emits --ip6, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1374."
         ]
       ]
     },
@@ -1198,9 +1216,9 @@
         ],
         [
           "internal",
-          "partial",
+          "ok",
           "yes",
-          "Parsed (as isInternal); warned-and-ignored."
+          "Parsed (as isInternal); emitted as --internal on `container network create` (ComposeUp.swift:372). apple/container's NetworkCreate accepts --internal as host-only mode."
         ],
         [
           "labels",
@@ -1210,9 +1228,9 @@
         ],
         [
           "ipam",
-          "ok",
+          "partial",
           "yes",
-          "Phase 5B Ipam struct; --subnet/--subnet-v6 emitted; ip-range/gateway warn-skip."
+          "Phase 5B Ipam struct. Sub-fields: config[].subnet → --subnet/--subnet-v6 (ok, supported by apple/container NetworkCreate); config[].gateway / ip_range / aux_addresses → warn-skip (no apple/container equivalent, tracked under CHAOS-1334); ipam.driver / ipam.options → warn-skip (no apple/container equivalent)."
         ]
       ]
     },
@@ -1234,21 +1252,21 @@
         ],
         [
           "driver",
-          "ok",
+          "partial",
           "yes",
-          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+          "Decoded; only 'local' driver honored \u2014 falls back to ~/.containers/Volumes/<project>/<name>/ hardlink-dir emulation. Apple `container volume create` API exists upstream but is not yet wired (CHAOS-1368). Non-local drivers warn-and-skip."
         ],
         [
           "driver_opts",
           "partial",
           "no",
-          "Parsed; not applied."
+          "Parsed; ignored \u2014 hardlink-dir emulation does not honor driver_opts. apple/container `container volume create --opt` exists; wireup tracked in CHAOS-1335."
         ],
         [
           "labels",
-          "ok",
+          "partial",
           "yes",
-          "LabelsArgs emits --label k=v per entry."
+          "Parsed; ignored for top-level volumes because runtime `container volume create --label` is not yet wired (CHAOS-1335). For service.labels, LabelsArgs does emit --label."
         ]
       ]
     },
@@ -1288,9 +1306,9 @@
         ],
         [
           "driver",
-          "ok",
+          "partial",
           "yes",
-          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+          "Decoded; only file-based mount currently honored. Driver plugin model not wired."
         ],
         [
           "driver_opts",
@@ -1302,7 +1320,7 @@
           "template_driver",
           "miss",
           "yes",
-          "No templating engine; warn-skip stays."
+          "No templating engine; upstream FR tracked in CHAOS-1384."
         ]
       ]
     },
@@ -1350,7 +1368,7 @@
           "template_driver",
           "miss",
           "yes",
-          "No templating engine; warn-skip stays."
+          "No templating engine; upstream FR tracked in CHAOS-1384."
         ]
       ]
     },
@@ -1399,7 +1417,7 @@
           "compose logs",
           "ok",
           "yes",
-          "ComposeLogs subcommand streams logs via ContainerClient.logs(id:options:) with prefixed colored output. Supports --since (ISO8601 and relative durations) and --timestamps via fork-patched ContainerLogOptions."
+          "Streams logs via ContainerClient.logs(id:options:) with prefixed colored output. Supports --since (ISO8601 and relative durations) and --timestamps via fork-patched full-chaos/container (CHAOS-1322, ContainerLogOptions)."
         ],
         [
           "compose ps",
@@ -1411,13 +1429,13 @@
           "compose run",
           "ok",
           "yes",
-          "ComposeRun spawns one-off container with overrides; ports skipped unless --service-ports."
+          "Spawns one-off container with overrides; ports skipped unless --service-ports. Standard -e/-u/-w/-d short flags via fork-patched full-chaos/container (CHAOS-1324, Flags.ProcessBase)."
         ],
         [
           "compose exec",
           "ok",
           "yes",
-          "ComposeExec runs a command inside an existing project container."
+          "Runs a command inside an existing project container. Standard -e/-u/-w/-d short flags via fork-patched full-chaos/container (CHAOS-1324, Flags.ProcessBase)."
         ],
         [
           "compose start",
@@ -1477,7 +1495,7 @@
           "compose events",
           "ok",
           "yes",
-          "ComposeEvents uses native ContainerClient.events() API via fork-patched event buffer. Polls events endpoint every 1s, filters by project/service, outputs plain or --json."
+          "Uses native ContainerClient.events() API via fork-patched full-chaos/container (CHAOS-1323). Polls events endpoint every 1s, filters by project/service, outputs plain or --json."
         ],
         [
           "compose ls",
