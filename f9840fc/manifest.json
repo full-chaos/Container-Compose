@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-68-9ff15bc9ef31c462e887430622c2fbe37dccdaea",
+  "commit": "f9840fc15c65c97526ddf42d377216372f77cecd",
+  "short": "f9840fc",
+  "target": "f9840fc",
+  "message": "feat(serve): TCP transport + TLS for container-compose serve (CHAOS-1359) (#68)",
+  "published_at": "2026-05-01T15:08:25.721409+00:00"
+}
