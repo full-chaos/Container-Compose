@@ -9,11 +9,16 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.1"),
         .package(url: "https://github.com/full-chaos/container", branch: "tier2-fork-patches"),
+        // CHAOS-1346 Phase 1: direct dependency on apple/containerization for the
+        // new `protocol Runtime` boundary. Pinned to the same minor as the Phase 0
+        // spike (0.31.x); the full-chaos/container fork already pulls 0.31.0
+        // transitively, so SwiftPM dedupes to a single resolved version.
+        .package(url: "https://github.com/apple/containerization.git", .upToNextMinor(from: "0.31.0")),
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.1"),
         .package(url: "https://github.com/onevcat/Rainbow", .upToNextMajor(from: "4.0.0")),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
+        // Targets are the basic building blocks of a package, defining a module or a target.
         // Targets can depend on other targets in this package and products from dependencies.
         
         // Library target containing core logic
@@ -23,6 +28,10 @@ let package = Package(
                 .product(
                     name: "ContainerCommands",
                     package: "container"
+                ),
+                .product(
+                    name: "Containerization",
+                    package: "containerization"
                 ),
                 .product(
                     name: "ArgumentParser",

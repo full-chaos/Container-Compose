@@ -122,42 +122,44 @@ public struct ComposePs: AsyncParsableCommand {
             service.container_name ?? "\(projectName)-\(serviceName)"
         })
 
-        // Fetch containers from the runtime.
-        // list(filters: .all) with no filters returns all containers
-        // (running + stopped). When --all is not set, filter to running
-        // containers only in Swift.
-        let provider = ContainerClientEnvironment.current
-        let allContainers = try await provider.list(filters: .all)
+        // CHAOS-1346 Phase 1: read through the new `Runtime` abstraction
+        // (`docs/plans/native-api-server.md`). Default conformer is
+        // `BridgeContainerClientRuntime`, which delegates to
+        // `ContainerClientProvider.list(filters: .all)` — so behavior is
+        // byte-identical to the pre-Phase-1 path. This is the proof-of-life
+        // wiring point that proves the abstraction.
+        let runtime = RuntimeEnvironment.current
+        let allContainers = try await runtime.list(filters: .all)
 
         // Keep only containers that belong to this project.
         // When --all is false, exclude stopped containers.
         let projectContainers = allContainers.filter { container in
-            let id = container.configuration.id
-            let belongsToProject = targetNames.contains(id) || id.hasPrefix("\(projectName)-")
+            let belongsToProject = targetNames.contains(container.id)
+                || container.id.hasPrefix("\(projectName)-")
             let statusOk = all || container.status == .running
             return belongsToProject && statusOk
         }
 
         if quiet {
             for container in projectContainers {
-                print(container.configuration.id)
+                print(container.id)
             }
             return
         }
 
         // Print formatted table.
-        let nameWidth = max(4, projectContainers.map { $0.configuration.id.count }.max() ?? 4)
-        let imageWidth = max(5, projectContainers.map { $0.configuration.image.reference.count }.max() ?? 5)
+        let nameWidth = max(4, projectContainers.map { $0.id.count }.max() ?? 4)
+        let imageWidth = max(5, projectContainers.map { $0.imageReference.count }.max() ?? 5)
         let statusWidth = max(6, projectContainers.map { $0.status.rawValue.count }.max() ?? 6)
 
         let header = padded("NAME", nameWidth) + "  " + padded("IMAGE", imageWidth) + "  " + padded("STATUS", statusWidth) + "  " + "PORTS"
         print(header)
 
         for container in projectContainers {
-            let name = padded(container.configuration.id, nameWidth)
-            let image = padded(container.configuration.image.reference, imageWidth)
+            let name = padded(container.id, nameWidth)
+            let image = padded(container.imageReference, imageWidth)
             let status = padded(container.status.rawValue, statusWidth)
-            let publishedPorts = container.configuration.publishedPorts
+            let publishedPorts = container.publishedPorts
             let ports: String
             if publishedPorts.isEmpty {
                 ports = ""
