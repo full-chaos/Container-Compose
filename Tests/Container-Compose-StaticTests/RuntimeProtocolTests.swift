@@ -54,6 +54,23 @@ struct RuntimeProtocolTests {
         #expect(entries == [.get(id: "demo-db-1"), .get(id: "missing")])
     }
 
+    @Test("MockRuntime satisfies list and get through stateful registry")
+    func mockRuntimeListsAndGetsState() async throws {
+        let runtime = MockRuntime(containers: [
+            RuntimeContainer(id: "demo-web-1", imageReference: "nginx:1", status: .running),
+            RuntimeContainer(id: "demo-db-1", imageReference: "postgres:16", status: .stopped)
+        ])
+
+        let running = try await runtime.list(filters: RuntimeListFilters(status: [.running]))
+        #expect(running.map(\.id) == ["demo-web-1"])
+
+        let db = try await runtime.get(id: "demo-db-1")
+        #expect(db.imageReference == "postgres:16")
+        await #expect(throws: RuntimeError.self) {
+            _ = try await runtime.get(id: "missing")
+        }
+    }
+
     @Test("RuntimeError carries actionable diagnostics")
     func runtimeErrorMessages() {
         let notFound = RuntimeError.notFound(id: "x").errorDescription

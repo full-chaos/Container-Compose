@@ -243,7 +243,9 @@ After the API surface stabilizes: ship `Resources/com.full-chaos.container-compo
 
 ### Phase 3 — runtime portability proof — **CHAOS-1348**
 
-Implement a second `Runtime` conformer (`MockRuntime` for tests). Validate the boundary holds; remove apple/containerization as a test-time dependency.
+Shipped in-memory `MockRuntime` as a second `Runtime` conformer for static tests. Unlike `RecordingRuntime` (call recorder only), `MockRuntime` maintains container state, emits lifecycle events, replays/follows log frames, and returns synthetic statistics. This validates the boundary against a non-apple/container backend and lets route/protocol tests prove behavior without requiring a virtualization entitlement.
+
+Deferred: the static test target still contains quarantined backend smoke tests for `AppleContainerizationRuntime` while the native skeleton is landing. The leak inventory and follow-up disposition live in `docs/plans/runtime-abstraction-leaks.md`.
 
 ## Implications for the existing CHAOS-1340 family
 
@@ -255,8 +257,8 @@ Implement a second `Runtime` conformer (`MockRuntime` for tests). Validate the b
 | CHAOS-1343 (upstream advocacy) | Closed (done) — issue filed, response received, no further action |
 | CHAOS-1345 (architecture PRD) | Updated with the "stay AWAY from Docker" stance |
 | CHAOS-1346 (Phase 1: runtime abstraction) | Done — PR #54 merged 2026-05-01 |
-| CHAOS-1347 (Phase 2: REST server skeleton) | In Progress — Phase 2.A read-only routes shipped; Phase 2.B streaming routes shipped in CHAOS-1350 |
-| CHAOS-1348 (Phase 3: MockRuntime) | Backlog — depends on Phase 2 |
+| CHAOS-1347 (Phase 2: REST server skeleton) | Done — Phase 2.A read-only routes shipped in PR #56; Phase 2.B streaming routes shipped in CHAOS-1350 |
+| CHAOS-1348 (Phase 3: MockRuntime) | Done — `MockRuntime` portability proof shipped; abstraction leaks documented |
 | CHAOS-1349 (this lock-in) | This PR |
 | CHAOS-1350 (Phase 2.B: streaming routes) | Done — NDJSON events/logs shipped; stats route reserved with Phase 3 deferral |
 
