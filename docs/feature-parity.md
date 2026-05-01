@@ -14,14 +14,14 @@
 | :--- | :---: | :--- | :--- |
 | **Tier 0 — Silent failure** | **~22 flags** | Container-Compose unconditionally emits flags `apple/container` does NOT accept. Setting these compose fields produces `unknown option` runtime errors. | **Fix in Container-Compose** (Tier 0 cleanup, file new tickets) |
 | **Tier 1 — Wireable now** | 6 fields | Runtime support exists; we just haven't wired or enforced. | **Fix in Container-Compose** (existing or new tickets) |
-| **Tier 2 — Fork-patch path** | 7 features | `apple/container` lacks the surface; `full-chaos/container` fork can add it (proven by CHAOS-1319-1324 pattern). | **PR to fork** (existing tickets) |
-| **Tier 3 — Upstream PR / FR** | 12 features | Need apple/container engineering, not a fork patch. | **File FR upstream** (new) |
+| **Tier 2 — Fork-patch path (deprecated)** | 0 active / 7 historical | Historical bucket only. The fork is frozen, so no new work should target it. | **Do not patch the fork** |
+| **Tier 3 — Upstream PR / FR** | 19 features | Need apple/container engineering, including the items previously parked in Tier 2. | **File FR upstream** |
 | **Tier 4 — Won't do** | 21 fields | Deprecated, Swarm-only, or platform-specific (Windows/Linux cgroups). | Decoded → warn-skipped → `coverage.html` `miss` |
 | **Tier 5 — Frontier** | 3 fields | AI/LLM provisioning — spec still evolving. | Track only |
 
 **Critical finding:** Tier 0 is the biggest discovery of this audit. `--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all `--blkio-*`, `--shm-size`, `--pids-limit`, `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`, `--cpu-quota`, `--cpu-rt-period`, `--cpu-rt-runtime`, `--cpu-count`, `--cpu-percent`, `--oom-kill-disable`, `--oom-score-adj`, `--sysctl`, `--ip`, `--ip6`, `--gpus`, `--mac-address` are all emitted by Container-Compose but have **no entry** in upstream `apple/container`'s `Flags.Management` / `Flags.Resource` (verified by cloning `apple/container@main` 2026-05-01 and grepping). The runtime will reject these flags. CHAOS-1329 (logging), CHAOS-1330 (extra_hosts), CHAOS-1331 (aliases) already followed this remediation pattern; the same remediation is needed for the 22 flags above.
 
-**Fork-dependency note:** Container-Compose currently builds against `full-chaos/container` (branch `tier2-fork-patches`), which carries 6 patches NOT in upstream apple/container. The most user-visible is `--restart` (CHAOS-1321). See §5.1 for the full fork-dependency table — these are working in production today but would regress to Tier 0 silent failures if we ever drop the fork. Named volumes are a separate nuanced gap with their own dedicated section — see [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive).
+**Fork-dependency note:** container-compose currently builds against `full-chaos/container` (branch `tier2-fork-patches`), which still carries 6 compose-relevant patches not in upstream `apple/container`. Those features work today for fork-pinned users, but the fork is frozen and is no longer a valid implementation path for new work. From a planning perspective, those gaps are now blocked on upstream `apple/container`. Named volumes are a separate nuanced gap with their own dedicated section — see [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive).
 
 ---
 
@@ -116,7 +116,7 @@ Runtime support exists; we just need to wire it.
 | # | Compose field | Coverage status | What's needed | Existing Linear |
 | :-: | :--- | :--- | :--- | :--- |
 | 1 | `service.healthcheck.*` enforcement (test/interval/timeout/retries/start_period/start_interval/disable) | partial (decoded only) | Wire `Compose+Wait.waitForCondition(.serviceHealthy)` to actually drive the runtime healthcheck. Healthchecks are currently never executed; only `depends_on.condition: service_healthy` reads `ContainerSnapshot.health` (already shipped via CHAOS-1319). The healthcheck **subprocess loop** must run. | Likely needs apple/container support too (no `--health-cmd` flag in upstream) — see Tier 2/3 |
-| 2 | `service.deploy.resources.reservations.cpus` | partial (parsed; not applied) | Already emit `--memory-reservation` for `service.mem_reservation`; do same for `deploy.resources.reservations.memory` and `cpus`. **CAVEAT**: this hits Tier 0 — `--memory-reservation` is itself unsupported by apple/container today. Block on Tier 0 cleanup OR fork patch. | CHAOS-1336 (open) |
+| 2 | `service.deploy.resources.reservations.cpus` | partial (parsed; not applied) | Already emit `--memory-reservation` for `service.mem_reservation`; do same for `deploy.resources.reservations.memory` and `cpus`. **CAVEAT**: this hits Tier 0 — `--memory-reservation` is itself unsupported by apple/container today. Block on Tier 0 cleanup and upstream surface expansion. | CHAOS-1336 (open) |
 | 3 | `service.deploy.resources.reservations.memory` | partial (parsed; not applied) | Same as #2 | CHAOS-1336 (open) |
 | 4 | `top.volumes` named volume runtime CRUD (replace hardlink-dir fallback) | partial | Replace `~/.containers/Volumes/<project>/<name>/` hardlink-dir fallback with `container volume create` API. **Open question** (block on resolving): does `container run -v <name>:<path>` resolve `<name>` to a registered volume, or treat as literal host path? Need 30-min smoke test on runtime-equipped host. See [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive). | CHAOS-1368 (open), CHAOS-1335 (open) |
 | 5 | `service.provider` | partial (warn-skipped) | Provider lifecycle wiring is implementation, not runtime — could be done without apple/container changes if model-provisioning is intentionally Container-Compose-side. Frontier feature though — verify spec stability before commit. | CHAOS-1332 (open) |
@@ -124,36 +124,36 @@ Runtime support exists; we just need to wire it.
 
 ---
 
-## 5. Tier 2 — Fork-patch path (`full-chaos/container`)
+## 5. Tier 2 — Fork-patch path (deprecated)
 
 ### 5.1 Already shipped via fork (production today)
-The fork carries 4 commits ahead of upstream that Container-Compose **directly depends on**. If we ever drop the fork, these regress to Tier 0 silent failures and we'd need upstream PRs filed.
+These features still work today only because container-compose remains pinned to the frozen fork. They are **not** valid new-work targets anymore; each is now effectively blocked on upstream `apple/container` landing equivalent support.
 
 | Fork addition | Compose surface that depends on it | Linear |
 | :--- | :--- | :--- |
-| `--restart` flag on `container run` | `service.restart: always\|on-failure\|unless-stopped\|no` — emitted at `Compose+ArgsLifecycle.swift:64-66` | CHAOS-1321 (Done, fork) |
-| `ContainerSnapshot.health: HealthStatus?` | `depends_on.condition: service_healthy` blocking via `Compose+Wait.swift` | CHAOS-1319 (Done, fork) |
-| `ContainerSnapshot.lastExitCode: Int32?` | `depends_on.condition: service_completed_successfully` exit-code verification | CHAOS-1320 (Done, fork) |
-| `ContainerLogOptions.{since, timestamps}` | `compose logs --since` / `--timestamps` flags | CHAOS-1322 (Done, fork) |
-| `ContainerEvent` + `events()` streaming API | `compose events` native streaming | CHAOS-1323 (Done, fork) |
-| `Flags.ProcessBase` | `compose run/exec` standard `-e/-u/-w/-d` short flags | CHAOS-1324 (Done, fork) |
+| `--restart` flag on `container run` | `service.restart: always\|on-failure\|unless-stopped\|no` — emitted at `Compose+ArgsLifecycle.swift:64-66` | CHAOS-1321 (fork-only; blocked on upstream) |
+| `ContainerSnapshot.health: HealthStatus?` | `depends_on.condition: service_healthy` blocking via `Compose+Wait.swift` | CHAOS-1319 (fork-only; blocked on upstream) |
+| `ContainerSnapshot.lastExitCode: Int32?` | `depends_on.condition: service_completed_successfully` exit-code verification | CHAOS-1320 (fork-only; blocked on upstream) |
+| `ContainerLogOptions.{since, timestamps}` | `compose logs --since` / `--timestamps` flags | CHAOS-1322 (fork-only; blocked on upstream) |
+| `ContainerEvent` + `events()` streaming API | `compose events` native streaming | CHAOS-1323 (fork-only; blocked on upstream) |
+| `Flags.ProcessBase` | `compose run/exec` standard `-e/-u/-w/-d` short flags | CHAOS-1324 (fork-only; blocked on upstream) |
 
-**Fork-drop risk:** if `full-chaos/container` is ever abandoned or merged-and-deleted, all six lines above need upstream PRs filed against `apple/container`. Tracked at `docs/upstream-fork-status.md` §1.
+**Current policy:** keep the fork pin for compatibility only; do not add to this list. Tracked at `docs/upstream-fork-status.md`.
 
 ### 5.2 Could-add-to-fork (not yet shipped)
-Gaps we **could** close in our fork using the same pattern.
+This subsection is retained only as historical context. **Do not implement any of these in the fork.** Every item below now belongs to the upstream FR / advocacy queue.
 
-| # | Feature | Why fork | Existing Linear |
+| # | Feature | Why it is now upstream-blocked | Existing Linear |
 | :-: | :--- | :--- | :--- |
-| 1 | `--ipc / --pid / --uts` namespace mode flags | Common Linux primitive; no virtualization complication | sub-issue of Tier 0 sweep (CHAOS-1372) |
-| 2 | `--security-opt` | Translates to virtio-fs / Apple Hypervisor seccomp profile | CHAOS-1371 |
-| 3 | `--device` (file passthrough) | Some virtualization wiring needed; not trivial but tractable | CHAOS-1373 |
-| 4 | `--userns` | Maps to a guest-userns config on the VM | CHAOS-1371 |
-| 5 | `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--pids-limit`, `--shm-size`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`/`-quota`/`-rt-*`/`-count`/`-percent`, `--oom-*` | All map to `Linux.Container` cgroup config — moderate fork effort | CHAOS-1375 |
-| 6 | Network IPAM extensions (`--driver-opts`, `--attachable`, `--ipv6` bare, `--ip-range`, `--gateway`, `--aux-addresses`, `--ipam-driver`/`--ipam-opt`) | `apple/container`'s `NetworkCreate` is intentionally minimal; fork can add | CHAOS-1334 (open) |
-| 7 | `--add-host`, `--alias`, `--log-driver`/`--log-opt` | Already removed via CHAOS-1329/1330/1331; fork-patch is the alternative if/when needed | tracked in upstream-fork-status.md §1 |
+| 1 | `--ipc / --pid / --uts` namespace mode flags | Needs canonical `apple/container` CLI/runtime surface | sub-issue of Tier 0 sweep (CHAOS-1372) |
+| 2 | `--security-opt` | Needs canonical `apple/container` CLI/runtime surface | CHAOS-1371 |
+| 3 | `--device` (file passthrough) | Needs canonical `apple/container` CLI/runtime surface | CHAOS-1373 |
+| 4 | `--userns` | Needs canonical `apple/container` CLI/runtime surface | CHAOS-1371 |
+| 5 | `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--pids-limit`, `--shm-size`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`/`-quota`/`-rt-*`/`-count`/`-percent`, `--oom-*` | Needs canonical `apple/container` CLI/runtime surface | CHAOS-1375 |
+| 6 | Network IPAM extensions (`--driver-opts`, `--attachable`, `--ipv6` bare, `--ip-range`, `--gateway`, `--aux-addresses`, `--ipam-driver`/`--ipam-opt`) | Needs `apple/container network create` to grow equivalent options | CHAOS-1334 (open) |
+| 7 | `--add-host`, `--alias`, `--log-driver`/`--log-opt` | Needs canonical `apple/container` CLI/runtime surface if reintroduced | tracked in upstream-fork-status.md |
 
-**Pattern:** add an `@Option` / `@Flag` to the appropriate `Flags.*` struct in `apple/container/Sources/Services/ContainerAPIService/Client/Flags.swift`, plumb to `ContainerRun`/`ContainerCreate`, surface via `ContainerClient.Configuration`. Then drop the Tier 0 warn-skip and let the flag flow through.
+**Replacement policy:** file or update upstream FRs against `apple/container`, then keep container-compose in warn-skip / blocked state until upstream lands.
 
 ---
 
@@ -207,7 +207,7 @@ Per CHAOS-1338 (Done) and the no-upstream-refactor plan, these are intentionally
 
 ## 8. Tier 5 — Frontier (track only)
 
-Compose-spec features still evolving. Do not invest fork engineering until upstream stabilizes.
+Compose-spec features still evolving. Do not invest significant implementation work until the upstream/runtime direction stabilizes.
 
 - `top.models` / `service.models` / `service.provider` — AI/LLM provider plumbing. Linear: CHAOS-1332.
 
@@ -219,12 +219,12 @@ Compose-spec features still evolving. Do not invest fork engineering until upstr
 
 | Linear | Title | What it covers |
 | :--- | :--- | :--- |
-| CHAOS-1319 | Service-healthy enforcement via `ContainerSnapshot.health` | Tier 1 → done |
-| CHAOS-1320 | Exit-code verification for `service_completed_successfully` | Tier 1 → done |
-| CHAOS-1321 | `--restart` flag on `container run` | Tier 1 → done (fork) |
-| CHAOS-1322 | `compose logs --since/--timestamps` | Tier 1 → done (fork) |
-| CHAOS-1323 | Native `compose events` streaming | Tier 1 → done (fork) |
-| CHAOS-1324 | Standard `-e/-u/-w/-d` flags on `compose run/exec` | Tier 1 → done (fork) |
+| CHAOS-1319 | Service-healthy enforcement via `ContainerSnapshot.health` | Fork-only today; blocked on upstream parity |
+| CHAOS-1320 | Exit-code verification for `service_completed_successfully` | Fork-only today; blocked on upstream parity |
+| CHAOS-1321 | `--restart` flag on `container run` | Fork-only today; blocked on upstream parity |
+| CHAOS-1322 | `compose logs --since/--timestamps` | Fork-only today; blocked on upstream parity |
+| CHAOS-1323 | Native `compose events` streaming | Fork-only today; blocked on upstream parity |
+| CHAOS-1324 | Standard `-e/-u/-w/-d` flags on `compose run/exec` | Fork-only today; blocked on upstream parity |
 | CHAOS-1327 | Map driver `bridge` → `container-network-vmnet` | Tier 0 → done |
 | CHAOS-1328 | Auto-qualify short-form image refs | Tier 0 → done |
 | CHAOS-1329 | Stop emitting `--log-driver` / `--log-opt` | Tier 0 → done |
@@ -239,15 +239,15 @@ Compose-spec features still evolving. Do not invest fork engineering until upstr
 | Linear | Title | Tier |
 | :--- | :--- | :--- |
 | CHAOS-1332 | Compose AI: wire `models` + `service.provider` runtime support | Tier 5 (frontier) |
-| CHAOS-1334 | Network `driver_opts` / `attachable` / `enable_ipv6` / `internal` / `ipam` runtime | Tier 2 (fork) |
-| CHAOS-1335 | Volume `driver_opts` runtime + improved named-volume handling | Tier 1 (wireable) + Tier 2 (fork) |
-| CHAOS-1336 | `deploy.resources.reservations` runtime application | Tier 1 (wireable, blocked on Tier 0) |
+| CHAOS-1334 | Network `driver_opts` / `attachable` / `enable_ipv6` / `internal` / `ipam` runtime | Blocked on apple/container upstream |
+| CHAOS-1335 | Volume `driver_opts` runtime + improved named-volume handling | Partly wireable; otherwise blocked on apple/container upstream |
+| CHAOS-1336 | `deploy.resources.reservations` runtime application | Tier 1 (wireable) but still constrained by upstream flag surface |
 | CHAOS-1337 | `build.entitlements` → `--allow` equivalent | Tier 3 (upstream FR) |
 | CHAOS-1366 | `RuntimeError.imageNotFound` mapping | unrelated infra |
 | CHAOS-1368 | Replace volume path-fallback with runtime CRUD | Tier 1 (wireable) |
 | CHAOS-1345 | PRD: Architecture and Docker API compatibility plan | umbrella |
 
-### 9.3 NEW tickets filed (this audit, 2026-05-01)
+### 9.3 New tickets filed (this audit, 2026-05-01)
 
 Filed automatically as part of this audit. Two umbrellas, 13 sub-issues.
 
@@ -355,9 +355,9 @@ Captured 2026-05-01 from `.build/checkouts/container/Sources/Services/ContainerA
 - `-v, --volume <spec>` (host-path bind mounts; named-volume resolution behavior unverified — see §13)
 
 ### Fork-only additions in `full-chaos/container` (NOT in upstream apple/container)
-Verified by cloning `github.com/apple/container@main` 2026-05-01 and grepping for these flags — zero matches. They live ONLY in the `tier2-fork-patches` branch we depend on.
+Verified by cloning `github.com/apple/container@main` 2026-05-01 and grepping for these flags — zero matches. They live only in the frozen `tier2-fork-patches` branch we still pin for transitional compatibility.
 
-- `--restart <no|always|on-failure[:N]|unless-stopped>` (CHAOS-1321 — added in fork commit `c63ed9a`). Container-Compose emits this from `service.restart` (NOT `service.deploy.restart_policy.condition`, which is Tier 4 won't-do per CHAOS-1338). If we ever drop the fork dependency, this regresses to a Tier 0 silent-failure flag — file an apple/container FR (proposed: append to CHAOS-1378 campaign).
+- `--restart <no|always|on-failure[:N]|unless-stopped>` (CHAOS-1321 — added in fork commit `c63ed9a`). container-compose emits this from `service.restart` (NOT `service.deploy.restart_policy.condition`, which is Tier 4 won't-do per CHAOS-1338). Treat it as blocked on upstream `apple/container`; do not extend the fork further.
 - `health: HealthStatus?` field on `ContainerSnapshot` (CHAOS-1319, fork commit `c63ed9a`) — read-only API the fork added. Upstream snapshot has no `health` field.
 - `lastExitCode: Int32?` on `ContainerSnapshot` (CHAOS-1320, fork commit `630b8c8`).
 - `ContainerLogOptions.{since, timestamps}` (CHAOS-1322).

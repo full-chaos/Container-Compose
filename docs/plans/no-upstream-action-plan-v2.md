@@ -1,3 +1,5 @@
+> ⚠️ **SUPERSEDED — DO NOT EXECUTE.** This plan's Phase 0 ("merge upstream into the fork") incorrectly conflated `apple/container` (canonical) with `full-chaos/container` (fork, now frozen). The fork is no longer modified. Phases 1.1-1.3 (CHAOS-1366/1369/1363) and Phase 2 (CHAOS-1370 family Tier 0 sweep) ARE valid and being executed in PRs #74-#80 against apple/container directly. Phase 3 / 4 / 5 need replanning. See `docs/upstream-fork-status.md` for current direction.
+
 # Plan — No-Upstream Action Plan v2
 
 **Author:** Sisyphus

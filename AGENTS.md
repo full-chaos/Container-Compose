@@ -62,14 +62,16 @@ Makefile                      ← build, install, clean targets
 | Package                | Source                                        | Purpose                          |
 | ---------------------- | --------------------------------------------- | -------------------------------- |
 | `swift-argument-parser`| github.com/apple/swift-argument-parser ≥1.5.1 | CLI parsing                      |
-| `container`            | github.com/mcrich23/container (custom branch) | Apple Container client APIs      |
+| `container`            | github.com/mcrich23/container (transitional fork pin) | Apple Container client APIs; transitional compatibility only |
 | `Yams`                 | github.com/jpsim/Yams ≥5.0.6                  | YAML decoder                     |
 | `Rainbow`              | github.com/onevcat/Rainbow ≥4.0.0             | ANSI-colored per-service output  |
 
-Note the `container` dependency points at `mcrich23/container` on branch
-`add-command-option-group-function-macro` — this is an upstream-fork that
-exposes the macro `Container-Compose` needs to compose subcommands. Keep this
-in mind when bumping versions.
+Note the `container` dependency currently points at `mcrich23/container` on
+branch `add-command-option-group-function-macro`. That fork stays pinned only
+for transitional compatibility (including the macro surface container-compose
+still needs today). **Canonical remote:** `apple/container` is the only
+upstream that should receive new runtime work. The fork is frozen — do not plan
+or file further fork patches when evaluating feature gaps.
 
 ---
 
@@ -244,7 +246,7 @@ End-to-end status:
 - ✅ `required: true|false` — `DependsOnEntry.required` controls whether
   errors propagate or are warned
 - ✅ `restart` — parsed on `DependsOnEntry`; emitted as `--restart`
-  via fork-patched `container run` support (CHAOS-1321)
+  via fork-only `container run` support today (CHAOS-1321)
 
 ---
 
@@ -335,22 +337,24 @@ opening any feature ticket. It splits every gap into:
 - **Tier 1 — Wireable now**: 6 fields where runtime support exists; we
   just haven't wired or enforced. Includes CHAOS-1336, CHAOS-1368,
   partial CHAOS-1335.
-- **Tier 2 — Fork-patch path**: 7 features where `full-chaos/container`
-  can add the surface (proven by the CHAOS-1319-1324 series, all done).
-- **Tier 3 — Upstream FR**: 12 features needing real apple/container
-  engineering. Filed as a separate FR-campaign umbrella.
+- **Tier 2 — Fork-patch path (DEPRECATED)**: historical bucket only. The fork
+  is frozen, so items previously parked here now reclassify to Tier 3.
+- **Tier 3 — Upstream FR**: 19 features needing real apple/container
+  engineering, including the old Tier 2 items. Filed as a separate FR-campaign
+  umbrella.
 - **Tier 4 — Won't do**: 21 fields (deprecated, Swarm-only, Linux/Windows-
   specific). Decoded → warn-skipped → `coverage.html miss`.
 - **Tier 5 — Frontier**: 3 AI/LLM fields, track only (CHAOS-1332).
 
-Already done from the original Tier-2 backlog (all 6 fork patches shipped):
+Fork-only features still present via the transitional pin (all reopened pending
+apple/container parity):
 
-- ✅ **CHAOS-1319** — `service_healthy` enforcement via `ContainerSnapshot.health`
-- ✅ **CHAOS-1320** — `service_completed_successfully` exit-code verification
-- ✅ **CHAOS-1321** — `restart` policy emitted as `--restart` flag
-- ✅ **CHAOS-1322** — `compose logs --since` / `--timestamps`
-- ✅ **CHAOS-1323** — `compose events` native streaming
-- ✅ **CHAOS-1324** — standard `-e`/`-u`/`-w`/`-d` flags on `compose run` / `exec`
+- ⏸️ **CHAOS-1319** — fork-only impl; reopened, blocked on apple/container upstream
+- ⏸️ **CHAOS-1320** — fork-only impl; reopened, blocked on apple/container upstream
+- ⏸️ **CHAOS-1321** — fork-only impl; reopened, blocked on apple/container upstream
+- ⏸️ **CHAOS-1322** — fork-only impl; reopened, blocked on apple/container upstream
+- ⏸️ **CHAOS-1323** — fork-only impl; reopened, blocked on apple/container upstream
+- ⏸️ **CHAOS-1324** — fork-only impl; reopened, blocked on apple/container upstream
 
 For the full ticket map (existing + newly proposed) and the verified
 apple/container CLI surface (Appendix A), see
