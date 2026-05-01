@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1355-launchd-launchagent",
+  "commit": "ceafe578a5004d06313357ca290dc4761662ec06",
+  "short": "ceafe57",
+  "target": "ceafe57",
+  "message": "feat(serve): launchd LaunchAgent + brew services autostart (CHAOS-1355)",
+  "published_at": "2026-05-01T09:15:25.921368+00:00"
+}
