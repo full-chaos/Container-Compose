@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c27d7ff5b87926ab573299c273dca5c48d76b6c7",
-  "short": "c27d7ff",
+  "commit": "5292d2266a3ded402c7a962bbab38fb69889ef97",
+  "short": "5292d22",
   "target": "current",
-  "message": "feat(api): error envelope + Prometheus metrics + OpenAPI (CHAOS-1357) (#67)",
-  "published_at": "2026-05-01T15:10:01.942105+00:00"
+  "message": "feat(serve): TCP transport + TLS for container-compose serve (CHAOS-1359) (#68)",
+  "published_at": "2026-05-01T15:18:08.373637+00:00"
 }
