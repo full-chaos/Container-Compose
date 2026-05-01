@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b6f418f029c3a0ac900cca787b0648b6e88fc846",
-  "short": "b6f418f",
+  "commit": "40c3730876c68f1fe34755eaa67eb325e894eec4",
+  "short": "40c3730",
   "target": "current",
-  "message": "test(runtime): MockRuntime conformer + abstraction-proof (CHAOS-1348) (#57)",
-  "published_at": "2026-05-01T08:22:33.805196+00:00"
+  "message": "feat(server): real /stats NDJSON streaming backend (CHAOS-1358) (#60)",
+  "published_at": "2026-05-01T10:14:57.422699+00:00"
 }

@@ -127,11 +127,20 @@ These three decisions were originally Open Questions #2, #4, #5 in the previous 
 
 **Rationale:** Container creation is orchestrated through `compose up` (which translates the Compose model into runtime calls). Direct `POST /create` requires expanding `RuntimeCreateConfiguration` to cover labels, networks, healthchecks, volumes — substantial scope creep. Ecosystem tools that want to drive container creation can call `compose up` via shell-out today; a first-class `/create` route is a v2 concern when use cases concretize. Schema is reserved so v2 doesn't have to revisit the wire shape.
 
-### Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 3
+### Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 4 (CHAOS-1358)
 
-**Choice:** `GET /containers/{id}/stats` route ships as a documented endpoint that returns HTTP 501 Not Implemented in v1. The route's polling-loop handler skeleton is in place; only the upstream `Runtime.statistics(for:)` implementations are stubbed.
+**Choice (v1):** `GET /containers/{id}/stats` route ships as a documented endpoint that returns HTTP 501 Not Implemented in v1. The route's polling-loop handler skeleton is in place; only the upstream `Runtime.statistics(for:)` implementations are stubbed.
 
-**Rationale:** Both Runtime conformers stub `statistics()` today (`AppleContainerizationRuntime` returns empty, `BridgeContainerClientRuntime` throws notSupported). Wiring real stats requires either (a) the apple/containerization VM-stats path (Phase 3 territory — vsock per call), or (b) a fork-patch to apple/container's CLI to expose stats — neither is in CHAOS-1347's scope. 501 with a documented `Phase: stats backend` deferral header signals to ecosystem tools that the route exists but isn't ready, vs returning 404 (which suggests the route doesn't exist). Logs and events streams DO ship in PR-B with real Bridge wiring (Tier 2 fork patches CHAOS-1322 + CHAOS-1323 already shipped per AGENTS.md).
+**Rationale (v1):** Both Runtime conformers stub `statistics()` today (`AppleContainerizationRuntime` returns empty, `BridgeContainerClientRuntime` throws notSupported). Wiring real stats requires either (a) the apple/containerization VM-stats path (Phase 3 territory — vsock per call), or (b) a fork-patch to apple/container's CLI to expose stats — neither is in CHAOS-1347's scope. 501 with a documented `Phase: stats backend` deferral header signals to ecosystem tools that the route exists but isn't ready, vs returning 404 (which suggests the route doesn't exist). Logs and events streams DO ship in PR-B with real Bridge wiring (Tier 2 fork patches CHAOS-1322 + CHAOS-1323 already shipped per AGENTS.md).
+
+**Phase 4 — CHAOS-1358 (shipped 2026-05-01):** The 501 stub is replaced with a real NDJSON polling loop in `StatsRoutes`. Both runtime conformers now wire real data:
+
+- **BridgeContainerClientRuntime:** delegates to `ContainerClient.stats(id:)` via the `ContainerClientProvider.stats(id:)` method added in this PR. `ContainerStats` (from `ContainerResource`) maps directly to `RuntimeStatistics`. Network stats are aggregated into a single `eth0` entry (per-interface breakdown not available via `ContainerStats`); OOM kill count is unavailable. Documented in `docs/plans/runtime-abstraction-leaks.md` as Leak #6.
+- **AppleContainerizationRuntime:** returns an empty (but structurally valid) snapshot — all CPU/memory fields are `nil`. Real vsock stats require a live `LinuxContainer` instance held per container, which is not wired until the full Phase 2 lifecycle (`ContainerManager.create` / `LinuxContainer.start`) lands. Documented in `docs/plans/runtime-abstraction-leaks.md` as Leak #7. The route produces valid NDJSON frames rather than a 501 error, with null data fields visible to clients.
+
+**Interval clamping decision:** `?interval=Ns` query parameter clamps values to `[500ms, 60s]` silently rather than returning 400. Out-of-range values from automation clients that hard-code large intervals (e.g. `120s`) would otherwise block the route response. Clamping gives a working result; clients can detect the actual cadence from frame timestamps if needed.
+
+**One-shot mode:** `?stream=false` returns a single JSON object (`Content-Type: application/json`) instead of NDJSON. Useful for scripted spot-checks without streaming.
 
 ## Phase 2 lifecycle blueprint
 
