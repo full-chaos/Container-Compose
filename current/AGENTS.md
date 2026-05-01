@@ -325,48 +325,37 @@ the broad `--no-parallel` workaround from CHAOS-1314.
 
 ### High-leverage open work
 
-CHAOS-1299 closed the four missing CLI subcommands (`top`, `port`,
-`events`, `push`). Recent B-sweep PRs (#19–#23) decoded a pile of
-service/healthcheck/deploy/secret/config niche fields. Remaining work
-sorts into three tiers:
+The canonical, cross-cutting view of compose-spec gaps is
+[`docs/feature-parity.md`](./docs/feature-parity.md). Read it before
+opening any feature ticket. It splits every gap into:
 
-All Tier 1 items shipped (CHAOS-1314 through CHAOS-1318 series); see the new "Currently no-upstream-actionable" subsection below for active work.
+- **Tier 0 — Silent failure**: ~22 flags Container-Compose emits that
+  apple/container doesn't accept. **Top priority cleanup**; pattern matches
+  CHAOS-1329/1330/1331. Filed as a sweep umbrella with sub-issues.
+- **Tier 1 — Wireable now**: 6 fields where runtime support exists; we
+  just haven't wired or enforced. Includes CHAOS-1336, CHAOS-1368,
+  partial CHAOS-1335.
+- **Tier 2 — Fork-patch path**: 7 features where `full-chaos/container`
+  can add the surface (proven by the CHAOS-1319-1324 series, all done).
+- **Tier 3 — Upstream FR**: 12 features needing real apple/container
+  engineering. Filed as a separate FR-campaign umbrella.
+- **Tier 4 — Won't do**: 21 fields (deprecated, Swarm-only, Linux/Windows-
+  specific). Decoded → warn-skipped → `coverage.html miss`.
+- **Tier 5 — Frontier**: 3 AI/LLM fields, track only (CHAOS-1332).
 
-#### Currently no-upstream-actionable
+Already done from the original Tier-2 backlog (all 6 fork patches shipped):
 
-The no-upstream queue is mostly drained. Active items include:
-- **CHAOS-1333** — Compose configs + secrets: runtime bind-mount support
-- **CHAOS-1338** — [Tracked tech debt] Compose fields with no apple/container equivalent (coverage portion only)
+- ✅ **CHAOS-1319** — `service_healthy` enforcement via `ContainerSnapshot.health`
+- ✅ **CHAOS-1320** — `service_completed_successfully` exit-code verification
+- ✅ **CHAOS-1321** — `restart` policy emitted as `--restart` flag
+- ✅ **CHAOS-1322** — `compose logs --since` / `--timestamps`
+- ✅ **CHAOS-1323** — `compose events` native streaming
+- ✅ **CHAOS-1324** — standard `-e`/`-u`/`-w`/`-d` flags on `compose run` / `exec`
 
-All other open Linear issues (CHAOS-1332, CHAOS-1334, CHAOS-1335, CHAOS-1336, CHAOS-1337) are upstream-blocked and tracked separately in Tier 2 and Tier 3.
-
-#### Tier 2 — Upstream-dependent (apple/container)
-
-The `full-chaos/container` fork closes the original Tier 2 backlog. All
-six items below shipped via fork patches + Container-Compose wiring; the
-fork itself is *ahead* of `apple/container`, not where new platform
-features come from.
-
-- ✅ **CHAOS-1319** — `service_healthy` enforcement via
-  `ContainerSnapshot.health`
-- ✅ **CHAOS-1320** — `service_completed_successfully` exit-code
-  verification via `ContainerSnapshot.lastExitCode`
-- ✅ **CHAOS-1321** — `restart` policy emitted as `--restart` flag on
-  `container run`
-- ✅ **CHAOS-1322** — `compose logs --since` / `--timestamps` via
-  `ContainerLogOptions`
-- ✅ **CHAOS-1323** — `compose events` native streaming via
-  `ContainerClient.events()`
-- ✅ **CHAOS-1324** — standard `-e`/`-u`/`-w`/`-d` flags on
-  `compose run` / `exec` via `Flags.ProcessBase`
-
-#### Tier 3 — Scope-deferred / won't-do
-
-7. **Swarm-only deploy fields** — `replicas`, `update_config`,
-   `rollback_config`, `placement`, `endpoint_mode`, `mode`. Decoded as
-   stubs; runtime semantics belong to a different orchestrator class.
-8. **Deprecated fields** — `links`, `external_links`, `volumes_from`.
-   Either decoded as no-op or intentionally skipped.
+For the full ticket map (existing + newly proposed) and the verified
+apple/container CLI surface (Appendix A), see
+[`docs/feature-parity.md`](./docs/feature-parity.md). For fork
+maintenance state, see [`docs/upstream-fork-status.md`](./docs/upstream-fork-status.md).
 
 ---
 
