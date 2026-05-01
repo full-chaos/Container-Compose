@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1363-throttle-interval",
+  "commit": "ecfc7ac0f9caf3abf863c8992fec136a86eac0b0",
+  "short": "ecfc7ac",
+  "target": "ecfc7ac",
+  "message": "chore(serve): add ThrottleInterval=10 to LaunchAgent plist for fast-crash protection",
+  "published_at": "2026-05-01T22:21:56.068806+00:00"
+}
