@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-54-b9cdfa961ef2dae9128a5fc156cecb6e543673da",
+  "commit": "9ffdaa608d011185f55f95245f133bf1dc385e94",
+  "short": "9ffdaa6",
+  "target": "9ffdaa6",
+  "message": "feat(runtime): introduce protocol Runtime + AppleContainerizationRuntime conformer (CHAOS-1346) (#54)",
+  "published_at": "2026-05-01T01:46:34.950126+00:00"
+}
