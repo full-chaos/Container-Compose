@@ -1,0 +1,8 @@
+{
+  "branch": "feat/feature-parity-inventory-and-docs",
+  "commit": "446fe8df03e3167536c1dcd273010d3997a72d0f",
+  "short": "446fe8d",
+  "target": "446fe8d",
+  "message": "docs(feature-parity): correct fork-vs-upstream conflation; deep-dive named volumes",
+  "published_at": "2026-05-01T18:00:44.263433+00:00"
+}
