@@ -75,6 +75,13 @@ public struct ComposeServe: AsyncParsableCommand {
     )
     var keyPath: String?
 
+    @Option(
+        name: .customLong("client-ca"),
+        help: "Path to PEM-encoded CA bundle. When provided, the daemon requires every TLS client to present a certificate signed by this CA. A verified client cert satisfies auth without a Bearer token.",
+        completion: .file()
+    )
+    var clientCAPath: String?
+
     @Flag(
         name: .customLong("insecure"),
         help: "Allow plain TCP on non-localhost addresses (warning: unencrypted)"
@@ -132,9 +139,16 @@ public struct ComposeServe: AsyncParsableCommand {
             }
         }
 
+        if clientCAPath != nil,
+           !matchesTLS(listen)
+        {
+            throw ValidationError("--client-ca requires a tls:// listener")
+        }
+
         // 4. Validate TLS: resolve cert + key paths
         var resolvedCertPath: String? = certPath
         var resolvedKeyPath: String? = keyPath
+        var resolvedClientCAPath: String?
         if case .tls = listen {
             // Auto-detect from ~/.container-compose/ if not specified
             let defaultCert = ServeDaemon.defaultTLSCertPath
@@ -153,6 +167,14 @@ public struct ComposeServe: AsyncParsableCommand {
             }
             resolvedCertPath = cp
             resolvedKeyPath  = kp
+
+            if let clientCAPath {
+                let expanded = (clientCAPath as NSString).expandingTildeInPath
+                guard FileManager.default.isReadableFile(atPath: expanded) else {
+                    throw ValidationError("--client-ca file not found: \(expanded)")
+                }
+                resolvedClientCAPath = expanded
+            }
         }
 
         // 5. Idempotence detection
@@ -177,9 +199,15 @@ public struct ComposeServe: AsyncParsableCommand {
             listen: listen,
             certPath: resolvedCertPath,
             keyPath: resolvedKeyPath,
+            clientCAPath: resolvedClientCAPath,
             authRequired: authRequired,
             launchdManaged: launchdManaged
         )
+    }
+
+    private func matchesTLS(_ listen: ListenAddress) -> Bool {
+        if case .tls = listen { return true }
+        return false
     }
 }
 
@@ -316,6 +344,7 @@ public enum ServeDaemon {
             listen: .unix(path: socketPath),
             certPath: nil,
             keyPath: nil,
+            clientCAPath: nil,
             authRequired: false,
             launchdManaged: launchdManaged
         )
@@ -330,6 +359,7 @@ public enum ServeDaemon {
     ///   - listen: The listen address for the daemon.
     ///   - certPath: Path to TLS certificate PEM (required when listen == .tls).
     ///   - keyPath: Path to TLS private key PEM (required when listen == .tls).
+    ///   - clientCAPath: Optional CA bundle path for mutual TLS client certificate verification.
     ///   - authRequired: Require bearer-token auth on Unix listeners. TCP/TLS
     ///     listeners require auth regardless of this flag.
     ///   - launchdManaged: Enables timestamped log prefix for launchd output.
@@ -337,6 +367,7 @@ public enum ServeDaemon {
         listen: ListenAddress,
         certPath: String?,
         keyPath: String?,
+        clientCAPath: String? = nil,
         authRequired: Bool = false,
         launchdManaged: Bool = false
     ) async throws {
@@ -370,7 +401,15 @@ public enum ServeDaemon {
         if authIsRequired {
             let authFile = ServeDaemon.defaultAuthFilePath
             let store = try await FileAuthStore(path: authFile)
-            let mtlsBypass: (@Sendable () -> Bool)? = nil
+            let mtlsBypass: (@Sendable () -> Bool)?
+            if clientCAPath != nil {
+                // When --client-ca is configured, TLSBootstrap enforces full client-cert verification.
+                // Any request that reaches Hummingbird has completed that handshake, so the route layer
+                // treats mTLS as authenticated per Decision #16.
+                mtlsBypass = { @Sendable in true }
+            } else {
+                mtlsBypass = nil
+            }
             router.add(middleware: AuthMiddleware<FileAuthStore, BasicRequestContext>(
                 store: store,
                 logger: logger,
@@ -393,7 +432,7 @@ public enum ServeDaemon {
             let tlsConfig = try TLSBootstrap.makeServerConfig(
                 certPath: cp,
                 keyPath: kp,
-                clientCAPath: nil  // PR-3 plumbs clientCAPath
+                clientCAPath: clientCAPath
             )
             serverBuilder = try .tls(.http1(), tlsConfiguration: tlsConfig)
         case .unix, .tcp:

@@ -4,9 +4,10 @@
 > decisions locked 2026-05-01 by CHAOS-1349 (daemon lifecycle, HTTP library,
 > socket location). Phase 1 (CHAOS-1346) shipped 2026-05-01.
 > **Phase 9 (CHAOS-1359): TCP transport + TLS — SHIPPED 2026-05-01.**
+> **Phase 10 (CHAOS-1356): daemon auth + mTLS — SHIPPED 2026-05-01.**
 > **Date:** 2026-04-30 (initial), 2026-05-01 (CHAOS-1349 lock-in)
 > **Supersedes:** the Docker-API-bridge framing in `docs/plans/socktainer-pivot-summary.md`. That document recommended adopting Socktainer; this one proposes building a native server inside container-compose instead.
-> **Related Linear:** CHAOS-1340 (epic), CHAOS-1345 (architecture PRD), CHAOS-1346 (Phase 1 — shipped), CHAOS-1347 (Phase 2 — HTTP server skeleton), CHAOS-1348 (Phase 3 — MockRuntime), CHAOS-1349 (this lock-in PR), CHAOS-1359 (Phase 9 — TCP/TLS — shipped).
+> **Related Linear:** CHAOS-1340 (epic), CHAOS-1345 (architecture PRD), CHAOS-1346 (Phase 1 — shipped), CHAOS-1347 (Phase 2 — HTTP server skeleton), CHAOS-1348 (Phase 3 — MockRuntime), CHAOS-1349 (this lock-in PR), CHAOS-1356 (Phase 10 — auth/mTLS — shipped), CHAOS-1359 (Phase 9 — TCP/TLS — shipped).
 > **Related upstream:** apple/container#1476 (closed by maintainer; redirected to Socktainer; that redirect was rejected here on UX-positioning grounds).
 
 ## Strategic positioning
@@ -339,7 +340,7 @@ All Phase 0 + Phase 1 open questions are now resolved. Remaining items are defer
 - **Not a Docker REST adapter or shim.** There is one API surface — ours.
 - **Not Socktainer.** Socktainer's design centers Docker UX. This server centers container-compose UX.
 - **Not a fork of apple/container.** We bypass apple/container entirely; no fork patches against its CLI/daemon layer remain in scope. (`full-chaos/container` may still hold patches consumed during transition, but the long-term direction is no fork dependency.)
-- **Not a multi-tenant API.** Single-user, single-machine. No auth model needed at v1.
+- **Not a multi-tenant API.** Single-user, single-machine. Auth is daemon-access authentication only; per-route authorization is deferred.
 - **Not auto-starting.** The daemon starts only when the user explicitly runs `container-compose serve`. See Decision #5.
 
 ### Phase 8 — SHIPPED (CHAOS-1353)
@@ -503,9 +504,40 @@ API hardening: unified error envelope, Prometheus metrics, OpenAPI spec. Shipped
 **Idempotence:** `isAlreadyServing(listenAddress:)` dispatches to the existing UnixSocketProbe for `.unix` and a new TCPProbe (SO_SNDTIMEO, 1s timeout, no TLS handshake) for `.tcp`/`.tls`.
 
 **Out of scope (deliberately deferred):**
-- Auth (CHAOS-1356, a separate PR that depends on this one for TLS plumbing)
 - Multi-bind listener (deferred to v1.2 — operational complexity vs. value unclear at v1)
 - ACME / Let's Encrypt (explicit non-goal for v1; self-signed covers the primary local use case)
-- Mutual TLS / client certificate auth (plumbed as `clientCAPath: nil` placeholder in TLSBootstrap.makeServerConfig — PR-3 wires this)
+- Per-route authorization beyond daemon-access authentication (deferred to v1.2)
 
-**PR-2 / PR-3 coordination:** `ServeDaemon.run(listen:certPath:keyPath:launchdManaged:)` reserves two MARK-section placeholders in the correct positions: `// MARK: - Middleware (CHAOS-1357)` (owned by PR-2) and `// MARK: - Auth (CHAOS-1356)` (owned by PR-3). These are pre-allocated so parallel merge of PR-2 and this PR doesn't produce edit conflicts in the server build block.
+**PR-2 / PR-3 coordination:** `ServeDaemon.run(listen:certPath:keyPath:clientCAPath:launchdManaged:)` now contains both middleware and auth wiring: `// MARK: - Middleware (CHAOS-1357)` and `// MARK: - Auth (CHAOS-1356)`.
+
+### Phase 10 — SHIPPED (CHAOS-1356)
+
+Daemon authentication and mutual TLS. Shipped 2026-05-01.
+
+**CLI surface added:**
+- `container-compose system generate-key --name <name> [--auth-file <path>]` — generates a `cc_v1_...` API token and prints the raw token once.
+- `container-compose system revoke-key <name> [--auth-file <path>]` — removes a stored key by name; exits 1 when absent.
+- `container-compose system list-keys [--auth-file <path>]` — lists key names, 8-character hash prefixes, and creation timestamps only.
+
+**Serve flags added:**
+- `--auth-required` — requires bearer-token auth on Unix socket listeners (TCP/TLS require auth regardless).
+- `--client-ca <path>` — enables mTLS for `tls://` listeners; every accepted TLS connection must present a certificate signed by the CA bundle.
+
+**Implementation notes:**
+- `AuthStore` persists only SHA-256 token hashes in `~/.container-compose/auth.json` with 0600 permissions.
+- `AuthMiddleware` returns exact `APIErrorEnvelope` responses for missing/malformed/invalid credentials and composes mTLS with bearer auth.
+- `TLSBootstrap.makeServerConfig(certPath:keyPath:clientCAPath:)` sets NIOSSL full verification and additional trust roots when `--client-ca` is provided.
+
+**Architecture decisions locked by CHAOS-1356:**
+
+#### Decision #15 — Auth credential format & storage
+
+**Chosen:** 32-byte random tokens, base64url-encoded with `cc_v1_` prefix, SHA-256 hashed for `~/.container-compose/auth.json` storage (atomic-rename writes, 0600 perms). No salt.
+
+**Rationale:** Token entropy makes salting moot. Atomic-rename is POSIX-guaranteed; no flock needed. Prefix is grep-able for accidental leaks in commits.
+
+#### Decision #16 — mTLS + bearer composition
+
+**Chosen:** OR composition — either credential suffices. Valid client cert from `--client-ca` ≡ authenticated; alternatively valid bearer ≡ authenticated. Per-route authorization deferred to v1.2.
+
+**Rationale:** Matches Docker daemon model. Simpler middleware + fewer failure modes.
