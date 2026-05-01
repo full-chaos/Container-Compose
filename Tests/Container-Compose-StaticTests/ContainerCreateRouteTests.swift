@@ -384,4 +384,71 @@ struct ContainerCreateRouteTests {
             }
         }
     }
+
+    // MARK: - RuntimeError.notSupported → 501 Not Implemented
+
+    /// Minimal `Runtime` conformer that throws `notSupported` from every method.
+    /// Used to verify the route maps `RuntimeError.notSupported` → 501. A stateless
+    /// struct is sufficient (auto-`Sendable`); no actor isolation is needed.
+    private struct NotSupportedRuntime: Runtime {
+        private static let conformer = "NotSupportedRuntime"
+        private static func unsupported(_ operation: String) -> RuntimeError {
+            .notSupported(operation: operation, conformer: conformer)
+        }
+
+        func version() async throws -> RuntimeVersion { throw Self.unsupported("version") }
+        func list(filters: RuntimeListFilters) async throws -> [RuntimeContainer] { throw Self.unsupported("list") }
+        func listNetworks() async throws -> [RuntimeNetwork] { throw Self.unsupported("listNetworks") }
+        func get(id: String) async throws -> RuntimeContainer { throw Self.unsupported("get") }
+        func create(id: String, configuration: RuntimeCreateConfiguration) async throws -> RuntimeContainer {
+            throw Self.unsupported("create")
+        }
+        func start(id: String) async throws { throw Self.unsupported("start") }
+        func stop(id: String, options: RuntimeStopOptions) async throws { throw Self.unsupported("stop") }
+        func kill(id: String, signal: Int32) async throws { throw Self.unsupported("kill") }
+        func wait(id: String, timeoutSeconds: Int) async throws -> RuntimeExitStatus {
+            throw Self.unsupported("wait")
+        }
+        func remove(id: String, force: Bool) async throws { throw Self.unsupported("remove") }
+        func logs(id: String, options: RuntimeLogOptions) async throws -> AsyncStream<RuntimeLogFrame> {
+            throw Self.unsupported("logs")
+        }
+        func events() async throws -> AsyncStream<RuntimeContainerEvent> { throw Self.unsupported("events") }
+        func statistics(for id: String) async throws -> RuntimeStatistics { throw Self.unsupported("statistics") }
+        func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
+            throw Self.unsupported("createNetwork")
+        }
+        func removeNetwork(id: String) async throws { throw Self.unsupported("removeNetwork") }
+        func listVolumes() async throws -> [RuntimeVolume] { throw Self.unsupported("listVolumes") }
+        func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
+            throw Self.unsupported("createVolume")
+        }
+        func removeVolume(name: String) async throws { throw Self.unsupported("removeVolume") }
+        func listSecrets() async throws -> [RuntimeSecret] { throw Self.unsupported("listSecrets") }
+        func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret {
+            throw Self.unsupported("createSecret")
+        }
+        func removeSecret(name: String) async throws { throw Self.unsupported("removeSecret") }
+    }
+
+    @Test("POST /containers/create returns 501 when runtime throws RuntimeError.notSupported")
+    func createContainerNotSupportedReturns501() async throws {
+        let router = Self.makeRouter()
+        let app = Application(router: router)
+        let runtime = NotSupportedRuntime()
+
+        try await RuntimeEnvironment.$current.withValue(runtime) {
+            try await app.test(.router) { client in
+                let body = ByteBuffer(string: Self.makeMinimalBody())
+                try await client.execute(
+                    uri: "/containers/create",
+                    method: .post,
+                    headers: Self.jsonContentType,
+                    body: body
+                ) { response in
+                    #expect(response.status == .notImplemented)
+                }
+            }
+        }
+    }
 }
