@@ -237,9 +237,29 @@ Plug routes into the Phase 2.0 skeleton: `/version`, `/info`, `/containers` (lis
 - `/containers/{id}/logs`: ships NDJSON streaming and `BridgeContainerClientRuntime.logs()` wiring through `ContainerClientProvider.logs(id:options:)` / CHAOS-1322, including route-level `follow`, `tail`, `since`, and `timestamps` query parsing.
 - `/containers/{id}/stats`: reserves the path with an explicit 501 + `X-ContainerCompose-Deferral: stats-backend`; backend remains deferred until Phase 3 wires `Runtime.statistics(for:)` to the real apple/containerization VM-stats vsock path.
 
-### Phase 2.x — launchd LaunchAgent (deferred follow-up)
+### Phase 2.x — launchd LaunchAgent — **SHIPPED (CHAOS-1355)**
 
-After the API surface stabilizes: ship `Resources/com.full-chaos.container-compose.plist` for `brew install`. Homebrew formula update doc. `RunAtLoad: true`, `KeepAlive: true`, `StandardOutPath`/`StandardErrorPath` to deterministic locations.
+`Resources/com.full-chaos.container-compose.plist` is now included in the repo
+and copied into the Homebrew formula's `Resources` prefix at install time.
+
+Key choices:
+- **`HOMEBREW_HOME_PLACEHOLDER`** substitution: launchd does not expand `~` in
+  plist values, so the formula's `def install` block replaces the placeholder
+  string with `ENV["HOME"]` before writing the final plist.
+- **`HOMEBREW_PREFIX_PLACEHOLDER`** in `ProgramArguments`: replaced with
+  `HOMEBREW_PREFIX` so the binary path resolves correctly regardless of where
+  Homebrew is installed (e.g., `/opt/homebrew` on Apple Silicon,
+  `/usr/local` on Intel).
+- **`--launchd` flag** added to `serve`'s `ProgramArguments`: enables
+  ISO-8601 timestamped, structured log lines in the log file — easier to
+  correlate with system logs. Flag is a no-op when not set (backward-compatible).
+- **`RunAtLoad: true`, `KeepAlive: true`**: daemon starts at login and is
+  restarted by launchd if it exits unexpectedly.
+- **Log paths**: `~/Library/Logs/container-compose/serve.log` and `serve.err`
+  (standard macOS per-user log location; created automatically by launchd).
+
+Homebrew formula update needed (see PR body for the exact `def install` block).
+The tap update is a separate PR against `full-chaos/homebrew-tap`.
 
 ### Phase 3 — runtime portability proof — **CHAOS-1348**
 
@@ -269,7 +289,7 @@ All Phase 0 + Phase 1 open questions are now resolved. Remaining items are defer
 1. ~~**API schema language.**~~ RESOLVED: Hand-written `Codable` types (Decision #6).
 2. ~~**Stats polling cadence.**~~ RESOLVED: Locked at 1s default per Decision #7's research; Phase 3 to revisit at scale.
 3. **TCP transport opt-in flag spec.** Decision #1 reserved this; the actual flag (`--listen tcp://...`?) and TLS story is **deferred to a future ticket** (probably v2).
-4. **launchd LaunchAgent shipping.** Deferred per Decision #5 above. Track in a new Phase 2.x ticket once Phase 2 lands.
+4. ~~**launchd LaunchAgent shipping.**~~ RESOLVED: Phase 2.x (CHAOS-1355) shipped `Resources/com.full-chaos.container-compose.plist` + `--launchd` flag. Homebrew tap update needed separately.
 
 ## What this is NOT
 

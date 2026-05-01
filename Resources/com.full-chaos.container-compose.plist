@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.full-chaos.container-compose.plist
+  ======================================
+  launchd LaunchAgent for container-compose serve.
+
+  This file is installed by the Homebrew formula into
+    ~/Library/LaunchAgents/com.full-chaos.container-compose.plist
+
+  IMPORTANT — tilde expansion:
+  launchd does NOT expand "~" in plist values. The string
+  "HOMEBREW_HOME_PLACEHOLDER" below is replaced by the Homebrew formula's
+  `def install` block with the user's actual home directory at install time
+  (e.g., /Users/alice). See the Homebrew formula update notes in the PR body
+  or in docs/plans/native-api-server.md for the exact substitution one-liner.
+
+  Management:
+    brew services start container-compose   # load agent + start
+    brew services stop container-compose    # stop + unload agent
+    brew services restart container-compose # restart
+    launchctl list | grep container-compose # check status
+-->
+<plist version="1.0">
+<dict>
+    <!-- Identity -->
+    <key>Label</key>
+    <string>com.full-chaos.container-compose</string>
+
+    <!-- Binary to run -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>HOMEBREW_PREFIX_PLACEHOLDER/bin/container-compose</string>
+        <string>serve</string>
+        <string>--launchd</string>
+    </array>
+
+    <!-- Auto-start at login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if the process exits unexpectedly -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Log paths — HOMEBREW_HOME_PLACEHOLDER is substituted at install time -->
+    <key>StandardOutPath</key>
+    <string>HOMEBREW_HOME_PLACEHOLDER/Library/Logs/container-compose/serve.log</string>
+    <key>StandardErrorPath</key>
+    <string>HOMEBREW_HOME_PLACEHOLDER/Library/Logs/container-compose/serve.err</string>
+</dict>
+</plist>

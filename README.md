@@ -71,7 +71,19 @@ You may need to provide a path to your `docker-compose.yml` and `.env` file as a
 
 ## Native API server (optional)
 
-The HTTP daemon exposes a Container REST API over a Unix domain socket at `~/.container-compose/api.sock`. It is optional — Container-Compose's CLI commands (`up`, `down`, `ps`, etc.) work without the daemon. The daemon is only needed for ecosystem tooling that wants to talk to Container-Compose over HTTP (e.g., reverse proxies, observability collectors, dashboards). The daemon runs in the foreground by default; users wanting background should use `&`, `nohup`, or `tmux` (a `brew services` LaunchAgent path is a planned follow-up).
+The HTTP daemon exposes a Container REST API over a Unix domain socket at `~/.container-compose/api.sock`. It is optional — Container-Compose's CLI commands (`up`, `down`, `ps`, etc.) work without the daemon. The daemon is only needed for ecosystem tooling that wants to talk to Container-Compose over HTTP (e.g., reverse proxies, observability collectors, dashboards). The daemon runs in the foreground by default; users wanting background can use `brew services` (recommended for Homebrew installs) or `&`, `nohup`, or `tmux`.
+
+### Auto-start with brew services (recommended)
+
+Homebrew installs include a `LaunchAgent` plist so macOS can manage the daemon automatically:
+
+```sh
+brew services start container-compose   # start daemon + enable at login
+brew services stop container-compose    # stop daemon + disable auto-start
+brew services restart container-compose # restart (e.g., after config change)
+```
+
+Logs are written to `~/Library/Logs/container-compose/serve.log` and `serve.err`.
 
 ### Starting the daemon
 
