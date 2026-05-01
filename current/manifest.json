@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "54899cef66c5b7a8535523793db9748f90311b31",
-  "short": "54899ce",
+  "commit": "4d477217c9d256feecc7bb0bd0c7d934daf25da5",
+  "short": "4d47721",
   "target": "current",
-  "message": "chore: remove deprecated APIStatsErrorResponse/APIErrorResponse route-level extensions (#75)",
-  "published_at": "2026-05-01T23:38:25.437579+00:00"
+  "message": "feat(args): warn-and-skip --device / --sysctl (#81)",
+  "published_at": "2026-05-01T23:38:38.347211+00:00"
 }
