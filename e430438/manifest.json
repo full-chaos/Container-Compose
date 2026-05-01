@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1356-auth-mtls",
+  "commit": "e430438d4dad38314bfae050b5b7c68064f21b2a",
+  "short": "e430438",
+  "target": "e430438",
+  "message": "feat(serve): mTLS via --client-ca + Phase 10 docs (CHAOS-1356)",
+  "published_at": "2026-05-01T16:02:06.080458+00:00"
+}
