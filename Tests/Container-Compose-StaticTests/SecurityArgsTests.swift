@@ -16,10 +16,11 @@
 
 import Testing
 import Foundation
+import Darwin
 import Yams
 @testable import ContainerComposeCore
 
-@Suite("SecurityArgs builder tests")
+@Suite("SecurityArgs builder tests", .serialized)
 struct SecurityArgsTests {
 
     // MARK: - Helpers
@@ -46,6 +47,41 @@ struct SecurityArgsTests {
             dockerCompose: dc,
             composeFilename: nil
         )
+    }
+
+    private func captureStandardOutput(_ body: () throws -> Void) throws -> String {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        guard original >= 0 else { throw CaptureError.dupFailed }
+
+        let pipe = Pipe()
+        guard dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0 else {
+            close(original)
+            throw CaptureError.dupFailed
+        }
+
+        do {
+            try body()
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return String(data: data, encoding: .utf8) ?? ""
+        } catch {
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            _ = pipe.fileHandleForReading.readDataToEndOfFile()
+            throw error
+        }
+    }
+
+    private func restoreStandardOutput(original: Int32, pipe: Pipe) {
+        _ = dup2(original, STDOUT_FILENO)
+        close(original)
+        pipe.fileHandleForWriting.closeFile()
+    }
+
+    private enum CaptureError: Error {
+        case dupFailed
     }
 
     // MARK: - Existing flags (regression)
@@ -115,15 +151,22 @@ struct SecurityArgsTests {
 
     // MARK: - Phase 2A: security_opt
 
-    @Test("security_opt emits --security-opt per item")
-    func securityOptEmitsFlagPerItem() throws {
+    @Test("security_opt warns once and emits no unsupported flags")
+    func securityOptWarnsOnceAndEmitsNoUnsupportedFlags() throws {
         let svc = Service(image: "nginx", security_opt: ["seccomp:unconfined", "no-new-privileges:true"])
-        let args = ComposeUp.SecurityArgs.build(try ctx(svc))
-        #expect(args.contains("--security-opt"))
-        #expect(args.contains("seccomp:unconfined"))
-        #expect(args.contains("no-new-privileges:true"))
-        let indices = args.indices.filter { args[$0] == "--security-opt" }
-        #expect(indices.count == 2)
+        var args: [String] = []
+        let output = try captureStandardOutput {
+            args = ComposeUp.SecurityArgs.build(try ctx(svc))
+        }
+        #expect(!args.contains("--security-opt"))
+        #expect(!args.contains("seccomp:unconfined"))
+        #expect(!args.contains("no-new-privileges:true"))
+        #expect(output.contains("Note: 'security_opt' is parsed but not supported by Apple container; ignored."))
+
+        let repeatedOutput = try captureStandardOutput {
+            _ = ComposeUp.SecurityArgs.build(try ctx(svc))
+        }
+        #expect(repeatedOutput.isEmpty)
     }
 
     @Test("security_opt nil emits no flag")
@@ -135,12 +178,21 @@ struct SecurityArgsTests {
 
     // MARK: - Phase 2A: userns_mode
 
-    @Test("userns_mode emits --userns MODE")
-    func usernsModePresentEmitsFlag() throws {
+    @Test("userns_mode warns once and emits no unsupported flags")
+    func usernsModeWarnsOnceAndEmitsNoUnsupportedFlags() throws {
         let svc = Service(image: "nginx", userns_mode: "host")
-        let args = ComposeUp.SecurityArgs.build(try ctx(svc))
-        #expect(args.contains("--userns"))
-        #expect(args.contains("host"))
+        var args: [String] = []
+        let output = try captureStandardOutput {
+            args = ComposeUp.SecurityArgs.build(try ctx(svc))
+        }
+        #expect(!args.contains("--userns"))
+        #expect(!args.contains("host"))
+        #expect(output.contains("Note: 'userns_mode' is parsed but not supported by Apple container; ignored."))
+
+        let repeatedOutput = try captureStandardOutput {
+            _ = ComposeUp.SecurityArgs.build(try ctx(svc))
+        }
+        #expect(repeatedOutput.isEmpty)
     }
 
     @Test("userns_mode nil emits no flag")
@@ -182,14 +234,12 @@ struct SecurityArgsTests {
         #expect(dropIndices.count == 1)
     }
 
-    @Test("all Phase 2A flags together produce correct argv")
-    func allPhase2AFlagsTogether() throws {
+    @Test("supported Phase 2A flags together produce correct argv")
+    func supportedPhase2AFlagsTogether() throws {
         let svc = Service(
             image: "nginx",
             cap_add: ["NET_ADMIN"],
             cap_drop: ["ALL"],
-            security_opt: ["no-new-privileges:true"],
-            userns_mode: "host",
             group_add: ["audio"]
         )
         let args = ComposeUp.SecurityArgs.build(try ctx(svc))
@@ -197,10 +247,8 @@ struct SecurityArgsTests {
         #expect(args.contains("NET_ADMIN"))
         #expect(args.contains("--cap-drop"))
         #expect(args.contains("ALL"))
-        #expect(args.contains("--security-opt"))
-        #expect(args.contains("no-new-privileges:true"))
-        #expect(args.contains("--userns"))
-        #expect(args.contains("host"))
+        #expect(!args.contains("--security-opt"))
+        #expect(!args.contains("--userns"))
         #expect(args.contains("--group-add"))
         #expect(args.contains("audio"))
     }
