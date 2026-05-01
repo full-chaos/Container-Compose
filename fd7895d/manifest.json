@@ -1,0 +1,8 @@
+{
+  "branch": "feat/mock-runtime-CHAOS-1348",
+  "commit": "fd7895d00d0d511614b160acf3219ab20a9f0d4c",
+  "short": "fd7895d",
+  "target": "fd7895d",
+  "message": "test(runtime): MockRuntime conformer + abstraction-proof (CHAOS-1348)",
+  "published_at": "2026-05-01T07:49:26.534240+00:00"
+}
