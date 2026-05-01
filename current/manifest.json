@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "4062981d1bd5477e93cae327134aafac59b75ae1",
-  "short": "4062981",
+  "commit": "52adee8a12b1a33a07de6542567522b231e38cb7",
+  "short": "52adee8",
   "target": "current",
-  "message": "feat(server): container lifecycle write endpoints (CHAOS-1354) (#62)",
-  "published_at": "2026-05-01T10:59:56.565657+00:00"
+  "message": "feat(server): POST /containers/create route (CHAOS-1352) (#63)",
+  "published_at": "2026-05-01T11:25:50.133546+00:00"
 }

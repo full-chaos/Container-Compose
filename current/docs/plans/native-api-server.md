@@ -121,11 +121,22 @@ These three decisions were originally Open Questions #2, #4, #5 in the previous 
 
 **Rationale:** Docker's multiplex format is bandwidth-efficient and parseable, but it's notoriously painful for `curl` users and browser-based observability tools. Our positioning is "ecosystem-friendly", not "Docker bandwidth-equivalent". Per the architecture stance, we are NOT a Docker shim — frame format is ours to choose. Cost: ~30 bytes per frame overhead vs Docker's 8. Acceptable for typical log volumes; if a high-throughput consumer needs the Docker shape, that's a v2 add.
 
-### Decision #9 — POST /containers/create deferred to v2
+### Decision #9 — POST /containers/create shipped in CHAOS-1352 (v2)
 
-**Choice:** `POST /containers/create` ships as a documented schema in `APISchemas.swift` but no route handler in v1.
+**Choice (v1):** `POST /containers/create` was reserved as a documented schema in `APISchemas.swift` but no route handler in v1.
 
-**Rationale:** Container creation is orchestrated through `compose up` (which translates the Compose model into runtime calls). Direct `POST /create` requires expanding `RuntimeCreateConfiguration` to cover labels, networks, healthchecks, volumes — substantial scope creep. Ecosystem tools that want to drive container creation can call `compose up` via shell-out today; a first-class `/create` route is a v2 concern when use cases concretize. Schema is reserved so v2 doesn't have to revisit the wire shape.
+**Choice (v2 — CHAOS-1352, shipped):** The route is now fully wired. `POST /containers/create` accepts `APICreateContainerRequest` (image, name, cpus, memoryBytes, hostname, env, cmd, workingDir, publishedPorts), calls `Runtime.create(id:configuration:)`, and returns 201 with `APICreateContainerResponse{id, warnings}`.
+
+Field scope decisions:
+- `labels`, `networks`, `volumes` intentionally omitted from the request body. Labels are not yet on `RuntimeContainer`; networks and volumes are managed separately via the CHAOS-1353 resource CRUD endpoints. Adding these fields without a corresponding runtime surface would be dead wire.
+- `publishedPorts` added to `APICreateContainerRequest` and bridged through `RuntimeCreateConfiguration`. Port mappings are part of the minimum viable create surface for real container workflows.
+
+Name resolution: body `name` wins over `?name=` query alias; UUID fallback when neither is present.
+
+Backend notes:
+- `AppleContainerizationRuntime.create()` — registry-backed (fully functional in Phase 1 skeleton; Phase 2 wires real VM launch).
+- `MockRuntime.create()` — stateful actor implementation; used for all static tests.
+- `BridgeContainerClientRuntime.create()` — throws `.notSupported`; documented as Leak #13. The XPC API requires a `Kernel` binary reference not available from `RuntimeCreateConfiguration`; clients using the Bridge should use `compose up` instead.
 
 ### Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 4 (CHAOS-1358)
 
