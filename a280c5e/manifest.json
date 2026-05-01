@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1352-test-not-supported-501",
+  "commit": "a280c5e71ff7e2cc2e94e8a868a6a6561fad5636",
+  "short": "a280c5e",
+  "target": "a280c5e",
+  "message": "test(server): cover RuntimeError.notSupported 501 path (CHAOS-1352)",
+  "published_at": "2026-05-01T11:56:00.592255+00:00"
+}
