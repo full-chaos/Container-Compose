@@ -19,7 +19,7 @@ import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
-@Suite("Gpus and BlkioConfig Tests")
+@Suite("Gpus and BlkioConfig Tests", .serialized)
 struct GpusBlkioTests {
 
     // MARK: - Helpers
@@ -48,6 +48,47 @@ struct GpusBlkioTests {
 
     private func args(_ service: Service) throws -> [String] {
         ComposeUp.ResourceArgs.build(try ctx(service))
+    }
+
+    private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        let pipe = Pipe()
+        guard original >= 0, dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0 else {
+            if original >= 0 { close(original) }
+            throw CaptureError.dupFailed
+        }
+
+        do {
+            let result = try args(service)
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return (String(data: data, encoding: .utf8) ?? "", result)
+        } catch {
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            _ = pipe.fileHandleForReading.readDataToEndOfFile()
+            throw error
+        }
+    }
+
+    private func restoreStandardOutput(original: Int32, pipe: Pipe) {
+        _ = dup2(original, STDOUT_FILENO)
+        close(original)
+        pipe.fileHandleForWriting.closeFile()
+    }
+
+    private enum CaptureError: Error {
+        case dupFailed
+    }
+
+    private func expectWarnSkipped(_ service: Service, flags: [String], field: String) throws {
+        let captured = try capturedArgs(service)
+        for flag in flags {
+            #expect(!captured.args.contains(flag))
+        }
+        #expect(captured.output.contains("Note: '\(field)' is parsed but not supported by Apple container; ignored."))
     }
 
     private func decodeService(_ serviceYaml: String) throws -> Service {
@@ -161,18 +202,15 @@ struct GpusBlkioTests {
         #expect(blkio.device_write_iops?[0].rate == 100)
     }
 
-    // MARK: - ResourceArgs: Gpus emission
+    // MARK: - ResourceArgs: Gpus warn-skip
 
-    @Test("gpus: .all emits --gpus all")
+    @Test("gpus: .all warn-skips --gpus all")
     func gpusAllEmitsFlag() throws {
         let svc = Service(image: "alpine", gpus: .all)
-        let result = try args(svc)
-        #expect(result.contains("--gpus"))
-        let idx = try #require(result.firstIndex(of: "--gpus"))
-        #expect(result[idx + 1] == "all")
+        try expectWarnSkipped(svc, flags: ["--gpus"], field: "gpus")
     }
 
-    @Test("gpus: requests with count, device_ids, capabilities emits compound --gpus spec")
+    @Test("gpus: requests with count, device_ids, capabilities emits no --gpus spec")
     func gpusRequestsEmitsSpec() throws {
         let req = GpuRequest(
             count: 2,
@@ -181,15 +219,10 @@ struct GpusBlkioTests {
         )
         let svc = Service(image: "alpine", gpus: .requests([req]))
         let result = try args(svc)
-        #expect(result.contains("--gpus"))
-        let idx = try #require(result.firstIndex(of: "--gpus"))
-        let spec = result[idx + 1]
-        #expect(spec.contains("count=2"))
-        #expect(spec.contains("device=0,1"))
-        #expect(spec.contains("capabilities=compute,utility"))
+        #expect(!result.contains("--gpus"))
     }
 
-    @Test("gpus: multiple requests emit multiple --gpus flags")
+    @Test("gpus: multiple requests emit no --gpus flags")
     func gpusMultipleRequestsEmitsMultipleFlags() throws {
         let reqs = [
             GpuRequest(count: 1, capabilities: ["compute"]),
@@ -198,7 +231,7 @@ struct GpusBlkioTests {
         let svc = Service(image: "alpine", gpus: .requests(reqs))
         let result = try args(svc)
         let gpusCount = result.filter { $0 == "--gpus" }.count
-        #expect(gpusCount == 2)
+        #expect(gpusCount == 0)
     }
 
     @Test("nil gpus emits no --gpus flag")
@@ -208,66 +241,53 @@ struct GpusBlkioTests {
         #expect(!result.contains("--gpus"))
     }
 
-    // MARK: - ResourceArgs: BlkioConfig emission
+    // MARK: - ResourceArgs: BlkioConfig warn-skip
 
-    @Test("blkio_config weight emits --blkio-weight")
+    @Test("blkio_config weight warn-skips --blkio-weight")
     func blkioWeightFlag() throws {
         let blkio = BlkioConfig(weight: 300)
         let svc = Service(image: "alpine", blkio_config: blkio)
-        let result = try args(svc)
-        #expect(result.contains("--blkio-weight"))
-        let idx = try #require(result.firstIndex(of: "--blkio-weight"))
-        #expect(result[idx + 1] == "300")
+        try expectWarnSkipped(svc, flags: ["--blkio-weight"], field: "blkio_config")
     }
 
-    @Test("blkio_config weight_device emits --blkio-weight-device path:weight")
+    @Test("blkio_config weight_device emits no --blkio-weight-device")
     func blkioWeightDeviceFlag() throws {
         let blkio = BlkioConfig(weight_device: [BlkioWeightDevice(path: "/dev/sda", weight: 400)])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
-        #expect(result.contains("--blkio-weight-device"))
-        let idx = try #require(result.firstIndex(of: "--blkio-weight-device"))
-        #expect(result[idx + 1] == "/dev/sda:400")
+        #expect(!result.contains("--blkio-weight-device"))
     }
 
-    @Test("blkio_config device_read_bps emits --device-read-bps path:rate")
+    @Test("blkio_config device_read_bps emits no --device-read-bps")
     func blkioReadBpsFlag() throws {
         let blkio = BlkioConfig(device_read_bps: [BlkioRateDevice(path: "/dev/sda", rate: "12mb")])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
-        #expect(result.contains("--device-read-bps"))
-        let idx = try #require(result.firstIndex(of: "--device-read-bps"))
-        #expect(result[idx + 1] == "/dev/sda:12mb")
+        #expect(!result.contains("--device-read-bps"))
     }
 
-    @Test("blkio_config device_write_bps emits --device-write-bps path:rate")
+    @Test("blkio_config device_write_bps emits no --device-write-bps")
     func blkioWriteBpsFlag() throws {
         let blkio = BlkioConfig(device_write_bps: [BlkioRateDevice(path: "/dev/sdb", rate: "8mb")])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
-        #expect(result.contains("--device-write-bps"))
-        let idx = try #require(result.firstIndex(of: "--device-write-bps"))
-        #expect(result[idx + 1] == "/dev/sdb:8mb")
+        #expect(!result.contains("--device-write-bps"))
     }
 
-    @Test("blkio_config device_read_iops emits --device-read-iops path:rate")
+    @Test("blkio_config device_read_iops emits no --device-read-iops")
     func blkioReadIopsFlag() throws {
         let blkio = BlkioConfig(device_read_iops: [BlkioIopsDevice(path: "/dev/sda", rate: 120)])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
-        #expect(result.contains("--device-read-iops"))
-        let idx = try #require(result.firstIndex(of: "--device-read-iops"))
-        #expect(result[idx + 1] == "/dev/sda:120")
+        #expect(!result.contains("--device-read-iops"))
     }
 
-    @Test("blkio_config device_write_iops emits --device-write-iops path:rate")
+    @Test("blkio_config device_write_iops emits no --device-write-iops")
     func blkioWriteIopsFlag() throws {
         let blkio = BlkioConfig(device_write_iops: [BlkioIopsDevice(path: "/dev/sda", rate: 100)])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
-        #expect(result.contains("--device-write-iops"))
-        let idx = try #require(result.firstIndex(of: "--device-write-iops"))
-        #expect(result[idx + 1] == "/dev/sda:100")
+        #expect(!result.contains("--device-write-iops"))
     }
 
     @Test("nil blkio_config emits no blkio flags")

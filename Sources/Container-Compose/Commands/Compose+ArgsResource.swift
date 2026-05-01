@@ -175,48 +175,20 @@ extension ComposeUp {
                 }
             }
 
-            // --gpus — emit as --gpus (warn-emit: Apple container may not support this flag)
-            if let gpus = svc.gpus {
-                switch gpus {
-                case .all:
-                    args.append(contentsOf: ["--gpus", "all"])
-                case .requests(let requests):
-                    for req in requests {
-                        var spec: [String] = []
-                        if let count = req.count { spec.append("count=\(count)") }
-                        if let ids = req.device_ids, !ids.isEmpty {
-                            spec.append("device=\(ids.joined(separator: ","))")
-                        }
-                        if let caps = req.capabilities, !caps.isEmpty {
-                            spec.append("capabilities=\(caps.joined(separator: ","))")
-                        }
-                        args.append(contentsOf: ["--gpus", spec.joined(separator: ",")])
-                    }
-                }
-                print("Note: 'gpus' is parsed and forwarded as --gpus; Apple container may reject this flag.")
+            // --gpus
+            if svc.gpus != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.gpus",
+                    "Note: 'gpus' is parsed but not supported by Apple container; ignored."
+                )
             }
 
-            // blkio_config — emit per-field (warn-emit: Apple container may not support these flags)
-            if let blkio = svc.blkio_config {
-                if let w = blkio.weight {
-                    args.append(contentsOf: ["--blkio-weight", "\(w)"])
-                }
-                for d in blkio.weight_device ?? [] {
-                    args.append(contentsOf: ["--blkio-weight-device", "\(d.path):\(d.weight)"])
-                }
-                for d in blkio.device_read_bps ?? [] {
-                    args.append(contentsOf: ["--device-read-bps", "\(d.path):\(d.rate)"])
-                }
-                for d in blkio.device_write_bps ?? [] {
-                    args.append(contentsOf: ["--device-write-bps", "\(d.path):\(d.rate)"])
-                }
-                for d in blkio.device_read_iops ?? [] {
-                    args.append(contentsOf: ["--device-read-iops", "\(d.path):\(d.rate)"])
-                }
-                for d in blkio.device_write_iops ?? [] {
-                    args.append(contentsOf: ["--device-write-iops", "\(d.path):\(d.rate)"])
-                }
-                print("Note: 'blkio_config' is parsed and forwarded; Apple container may not support these flags.")
+            // blkio_config
+            if svc.blkio_config != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.blkio_config",
+                    "Note: 'blkio_config' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             return args
