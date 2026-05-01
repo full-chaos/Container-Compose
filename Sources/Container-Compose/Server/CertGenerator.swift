@@ -29,7 +29,7 @@ import Darwin
 ///
 /// The certificate includes:
 /// - BasicConstraints (critical, not a CA)
-/// - KeyUsage (digitalSignature + keyEncipherment)
+/// - KeyUsage (digitalSignature + keyAgreement)
 /// - ExtendedKeyUsage (serverAuth)
 /// - SubjectAlternativeNames (configurable DNS names + IP literals)
 ///
@@ -93,7 +93,7 @@ enum CertGenerator {
                 BasicConstraints.notCertificateAuthority
             )
             Critical(
-                KeyUsage(digitalSignature: true, keyEncipherment: true)
+                KeyUsage(digitalSignature: true, keyAgreement: true)
             )
             try ExtendedKeyUsage([.serverAuth])
             san
