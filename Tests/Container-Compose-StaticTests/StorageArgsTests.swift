@@ -19,7 +19,7 @@ import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
-@Suite("StorageArgs Tests")
+@Suite("StorageArgs Tests", .serialized)
 struct StorageArgsTests {
 
     // MARK: - Helpers
@@ -45,6 +45,41 @@ struct StorageArgsTests {
             dockerCompose: dockerCompose,
             composeFilename: nil
         )
+    }
+
+    private func captureStandardOutput(_ body: () throws -> Void) throws -> String {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        guard original >= 0 else { throw CaptureError.dupFailed }
+
+        let pipe = Pipe()
+        guard dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0 else {
+            close(original)
+            throw CaptureError.dupFailed
+        }
+
+        do {
+            try body()
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            return String(data: data, encoding: .utf8) ?? ""
+        } catch {
+            fflush(stdout)
+            restoreStandardOutput(original: original, pipe: pipe)
+            _ = pipe.fileHandleForReading.readDataToEndOfFile()
+            throw error
+        }
+    }
+
+    private func restoreStandardOutput(original: Int32, pipe: Pipe) {
+        _ = dup2(original, STDOUT_FILENO)
+        close(original)
+        pipe.fileHandleForWriting.closeFile()
+    }
+
+    private enum CaptureError: Error {
+        case dupFailed
     }
 
     // MARK: - working_dir (regression)
@@ -90,38 +125,37 @@ struct StorageArgsTests {
         #expect(!args.contains("--tmpfs"))
     }
 
-    // MARK: - sysctls
+    // MARK: - warn-and-skip: devices and sysctls
 
-    @Test("sysctls map emits multiple --sysctl flags")
-    func sysctlsEmitsFlags() throws {
-        let service = Service(image: "alpine:latest", sysctls: [
-            "net.ipv4.ip_forward": "1",
-            "net.core.somaxconn": "1024"
-        ])
+    @Test("devices and sysctls emit no flags and warn")
+    func devicesAndSysctlsEmitNoFlagsAndWarn() throws {
+        let service = Service(
+            image: "alpine:latest",
+            sysctls: [
+                "net.ipv4.ip_forward": "1",
+                "net.core.somaxconn": "1024"
+            ],
+            devices: [
+                "/dev/ttyUSB0:/dev/ttyUSB0",
+                "/dev/snd:/dev/snd:rw"
+            ]
+        )
         let ctx = try makeContext(service: service)
-        let args = ComposeUp.StorageArgs.build(ctx)
-        let indices = args.indices.filter { args[$0] == "--sysctl" }
-        #expect(indices.count == 2)
-        let kvPairs = indices.map { args[$0 + 1] }
-        #expect(kvPairs.contains("net.ipv4.ip_forward=1"))
-        #expect(kvPairs.contains("net.core.somaxconn=1024"))
-    }
 
-    // MARK: - devices
+        let output = try captureStandardOutput {
+            let args = ComposeUp.StorageArgs.build(ctx)
+            #expect(!args.contains("--device"))
+            #expect(!args.contains("--sysctl"))
+            #expect(!args.contains("/dev/ttyUSB0:/dev/ttyUSB0"))
+            #expect(!args.contains("/dev/snd:/dev/snd:rw"))
+            #expect(!args.contains("net.ipv4.ip_forward=1"))
+            #expect(!args.contains("net.core.somaxconn=1024"))
+        }
 
-    @Test("devices list emits multiple --device flags")
-    func devicesEmitsFlags() throws {
-        let service = Service(image: "alpine:latest", devices: [
-            "/dev/ttyUSB0:/dev/ttyUSB0",
-            "/dev/snd:/dev/snd:rw"
-        ])
-        let ctx = try makeContext(service: service)
-        let args = ComposeUp.StorageArgs.build(ctx)
-        let indices = args.indices.filter { args[$0] == "--device" }
-        #expect(indices.count == 2)
-        let mappings = indices.map { args[$0 + 1] }
-        #expect(mappings.contains("/dev/ttyUSB0:/dev/ttyUSB0"))
-        #expect(mappings.contains("/dev/snd:/dev/snd:rw"))
+        #expect(output.components(separatedBy: "Note: 'devices'").count == 2)
+        #expect(output.components(separatedBy: "Note: 'sysctls'").count == 2)
+        #expect(output.contains("Note: 'devices' is parsed but not supported by Apple container; ignored."))
+        #expect(output.contains("Note: 'sysctls' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - warn-and-skip: volumes_from
