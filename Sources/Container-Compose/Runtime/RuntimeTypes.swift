@@ -292,13 +292,15 @@ public struct RuntimeLogOptions: Sendable, Equatable {
     public let follow: Bool
     public let tail: Int?
     public let since: Date?
+    public let timestamps: Bool
 
-    public static let `default` = RuntimeLogOptions(follow: false, tail: nil, since: nil)
+    public static let `default` = RuntimeLogOptions(follow: false, tail: nil, since: nil, timestamps: false)
 
-    public init(follow: Bool, tail: Int?, since: Date?) {
+    public init(follow: Bool, tail: Int?, since: Date?, timestamps: Bool = false) {
         self.follow = follow
         self.tail = tail
         self.since = since
+        self.timestamps = timestamps
     }
 }
 

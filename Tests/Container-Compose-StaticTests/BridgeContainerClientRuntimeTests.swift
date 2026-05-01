@@ -58,14 +58,53 @@ struct BridgeContainerClientRuntimeTests {
         }
     }
 
-    @Test("start/kill/wait/logs/events/statistics throw notSupported")
+    @Test("start/kill/wait/statistics throw notSupported")
     func writeAndStreamPathsAreUnsupported() async {
         let bridge = BridgeContainerClientRuntime()
         await #expect(throws: RuntimeError.self) { try await bridge.start(id: "x") }
         await #expect(throws: RuntimeError.self) { try await bridge.kill(id: "x", signal: 9) }
         await #expect(throws: RuntimeError.self) { _ = try await bridge.wait(id: "x", timeoutSeconds: 1) }
-        await #expect(throws: RuntimeError.self) { _ = try await bridge.logs(id: "x", options: .default) }
-        await #expect(throws: RuntimeError.self) { _ = try await bridge.events() }
         await #expect(throws: RuntimeError.self) { _ = try await bridge.statistics(for: "x") }
+    }
+
+    @Test("logs() routes through provider and emits RuntimeLogFrame lines")
+    func logsRouteThroughProvider() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "bridge-logs-\(UUID().uuidString).log")
+        try Data("one\ntwo\n".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let handle = try FileHandle(forReadingFrom: url)
+        let recorder = RecordingContainerClientProvider(logHandles: [handle])
+        let bridge = BridgeContainerClientRuntime()
+        let frames = try await ContainerClientEnvironment.$current.withValue(recorder) {
+            let stream = try await bridge.logs(id: "web", options: RuntimeLogOptions(follow: false, tail: 1, since: nil, timestamps: true))
+            var result: [RuntimeLogFrame] = []
+            for await frame in stream {
+                result.append(frame)
+            }
+            return result
+        }
+
+        #expect(frames.map { String(decoding: $0.data, as: UTF8.self) } == ["two"])
+        #expect(frames.map(\.source) == [.stdout])
+        #expect(await recorder.entriesSnapshot() == [.logs(id: "web")])
+    }
+
+    @Test("events() routes through provider and translates ContainerEvent actions")
+    func eventsRouteThroughProvider() async throws {
+        let timestamp = Date(timeIntervalSince1970: 1_770_000_000)
+        let recorder = RecordingContainerClientProvider(containerEvents: [
+            ContainerEvent(containerId: "web", action: .start, timestamp: timestamp)
+        ])
+        let bridge = BridgeContainerClientRuntime()
+        let first = try await ContainerClientEnvironment.$current.withValue(recorder) {
+            let stream = try await bridge.events()
+            var iterator = stream.makeAsyncIterator()
+            return await iterator.next()
+        }
+
+        #expect(first == .started(id: "web", at: timestamp))
+        #expect(await recorder.entriesSnapshot() == [.events])
     }
 }

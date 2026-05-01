@@ -137,20 +137,60 @@ public struct BridgeContainerClientRuntime: Runtime {
         try await provider.delete(id: id, force: force)
     }
 
-    // MARK: - Observability (intentionally not supported in Phase 1)
+    // MARK: - Observability
 
     public func logs(id: String, options: RuntimeLogOptions) async throws -> AsyncStream<RuntimeLogFrame> {
-        throw RuntimeError.notSupported(
-            operation: "logs",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        let provider = ContainerClientEnvironment.current
+        let handles: [FileHandle]
+        do {
+            handles = try await provider.logs(
+                id: id,
+                options: ContainerLogOptions(since: options.since, timestamps: options.timestamps)
+            )
+        } catch {
+            throw RuntimeError.notFound(id: id)
+        }
+
+        return BridgeContainerClientRuntime.streamLogs(from: handles, options: options)
     }
 
     public func events() async throws -> AsyncStream<RuntimeContainerEvent> {
-        throw RuntimeError.notSupported(
-            operation: "events",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        let provider = ContainerClientEnvironment.current
+        return AsyncStream { continuation in
+            let task = Task {
+                var lastTimestamp: Date?
+
+                // `ContainerClient.events()` returns the daemon's buffered
+                // lifecycle event snapshot rather than a push stream. Poll at
+                // the CLI's existing 1s cadence and yield only events newer
+                // than the last emitted timestamp.
+                while !Task.isCancelled {
+                    do {
+                        let events = try await provider.events()
+                            .filter { event in
+                                guard let lastTimestamp else { return true }
+                                return event.timestamp > lastTimestamp
+                            }
+                            .sorted { $0.timestamp < $1.timestamp }
+
+                        for event in events {
+                            continuation.yield(BridgeContainerClientRuntime.translate(event: event))
+                            if lastTimestamp == nil || event.timestamp > lastTimestamp! {
+                                lastTimestamp = event.timestamp
+                            }
+                        }
+
+                        try await Task.sleep(nanoseconds: 1_000_000_000)
+                    } catch is CancellationError {
+                        break
+                    } catch {
+                        continuation.finish()
+                        break
+                    }
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 
     public func statistics(for id: String) async throws -> RuntimeStatistics {
@@ -195,6 +235,93 @@ public struct BridgeContainerClientRuntime: Runtime {
             proto: port.proto == .udp ? .udp : .tcp,
             count: port.count
         )
+    }
+
+    static func translate(event: ContainerEvent) -> RuntimeContainerEvent {
+        switch event.action {
+        case .create:
+            return .created(id: event.containerId, at: event.timestamp)
+        case .start:
+            return .started(id: event.containerId, at: event.timestamp)
+        case .stop, .die:
+            return .stopped(id: event.containerId, exitCode: 0, at: event.timestamp)
+        case .destroy:
+            return .removed(id: event.containerId, at: event.timestamp)
+        }
+    }
+
+    private static func streamLogs(
+        from handles: [FileHandle],
+        options: RuntimeLogOptions
+    ) -> AsyncStream<RuntimeLogFrame> {
+        AsyncStream { continuation in
+            let task = Task {
+                let frames = await collectLogFrames(from: handles)
+                let selected = applyTail(options.tail, to: frames)
+                for frame in selected {
+                    continuation.yield(frame)
+                }
+                continuation.finish()
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+                for handle in handles {
+                    try? handle.close()
+                }
+            }
+        }
+    }
+
+    private static func collectLogFrames(from handles: [FileHandle]) async -> [RuntimeLogFrame] {
+        var frames: [RuntimeLogFrame] = []
+        for (index, handle) in handles.enumerated() {
+            let source: RuntimeLogFrame.Source = index == 0 ? .stdout : .stderr
+            frames.append(contentsOf: await collectLogFrames(from: handle, source: source))
+        }
+        return frames.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private static func collectLogFrames(
+        from handle: FileHandle,
+        source: RuntimeLogFrame.Source
+    ) async -> [RuntimeLogFrame] {
+        var frames: [RuntimeLogFrame] = []
+        var line = Data()
+
+        do {
+            for try await byte in handle.bytes {
+                if Task.isCancelled { break }
+                if byte == 10 {
+                    appendLogFrame(line: &line, source: source, to: &frames)
+                } else {
+                    line.append(byte)
+                }
+            }
+            appendLogFrame(line: &line, source: source, to: &frames)
+        } catch {
+            appendLogFrame(line: &line, source: source, to: &frames)
+        }
+
+        return frames
+    }
+
+    private static func appendLogFrame(
+        line: inout Data,
+        source: RuntimeLogFrame.Source,
+        to frames: inout [RuntimeLogFrame]
+    ) {
+        if line.last == 13 {
+            line.removeLast()
+        }
+        guard !line.isEmpty else { return }
+        frames.append(RuntimeLogFrame(timestamp: Date(), source: source, data: line))
+        line.removeAll(keepingCapacity: true)
+    }
+
+    private static func applyTail(_ tail: Int?, to frames: [RuntimeLogFrame]) -> [RuntimeLogFrame] {
+        guard let tail, tail >= 0, tail < frames.count else { return frames }
+        return Array(frames.suffix(tail))
     }
 
     private static var runtimeArch: String {
