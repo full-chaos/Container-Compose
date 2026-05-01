@@ -374,6 +374,57 @@ Network/volume/secret CRUD endpoints. Shipped 2026-05-01.
 - `Tests/.../VolumeRoutesTests.swift`
 - `Tests/.../SecretRoutesTests.swift`
 
+### Phase 7 — SHIPPED (CHAOS-1360)
+
+Compose-aware project lifecycle endpoints. Shipped 2026-05-01.
+
+**Routes added:**
+- `POST /projects/{name}/up` — start all containers in a project → 200 `{project, services: [{service, containerId, status}]}`
+- `POST /projects/{name}/down` — stop and remove all project containers → 200 `{project, stopped: [...], removed: [...]}`
+- `POST /projects/{name}/restart` — restart project containers (optional `services` filter) → 200 `{project, restarted: [...]}`
+- `POST /projects/{name}/build` — NDJSON build progress stream → 200 `application/x-ndjson` frames `{service, line, timestamp, type}`
+- `POST /projects/{name}/pull` — NDJSON pull progress stream → 200 `application/x-ndjson` frames `{service, image, timestamp, type, message?}`
+- `POST /projects/{name}/services/{service}/scale` — set replica count → 200 `{project, service, replicas, containers: [...]}`
+
+**Architecture decisions locked by CHAOS-1360:**
+
+#### Decision #11 — Sync vs Async for project lifecycle endpoints
+
+**Chosen:** Synchronous 200 OK for all six routes. `up`, `down`, `restart`, `scale` return once the runtime operations complete. `build` and `pull` use NDJSON streaming (the progress stream is the response body — no task ID needed).
+
+**Rationale:** The ticket requirement "if you choose async, you must implement task tracking (polling endpoint)" made the async path significantly more complex. Synchronous avoids the `GET /tasks/{id}` dance. The NDJSON streaming model (already established by Decision #7 for logs/stats) handles the long-running-output concern for `build` and `pull` without fire-and-forget. `up` in the daemon context operates on the registry (no real image pull/build), so it's fast by design.
+
+#### Decision #12 — Compose-file source for project lifecycle endpoints
+
+**Chosen:** Registry model (pre-loaded). The API operates on containers already registered in the daemon's runtime (identified by `<project>-<service>` naming convention). No Compose YAML is parsed or uploaded in the request body.
+
+**Rationale:** Compose YAML upload via API is explicitly out-of-scope per the CHAOS-1360 ticket boundary (separate ticket). The existing `GET /projects` model (synthesized from container-name prefix) provides a consistent, already-implemented foundation. Real project registries (which map project names to Compose file paths) are a natural Phase 9+ follow-up.
+
+#### Decision #13 — Orchestration layer for project lifecycle (Option B: ProjectOrchestrator)
+
+**Chosen:** Option B — a `ProjectOrchestrator` struct in `Sources/Container-Compose/Server/ProjectOrchestrator.swift`. Route handlers in `ProjectLifecycleRoutes` call `ProjectOrchestrator` static methods, which internally call `Runtime` protocol methods (`list`, `create`, `start`, `stop`, `remove`).
+
+**Rationale over Option A (extend Runtime protocol):** The `Runtime` protocol would have grown substantially with project-lifecycle methods (`up`, `down`, `restart`, `scale`, `build`, `pull`), and every conformer (`MockRuntime`, `RecordingRuntime`, `BridgeContainerClientRuntime`, `AppleContainerizationRuntime`) would need stub implementations. The orchestration logic is too complex for protocol stubs.
+
+**Rationale over Option C (call CLI commands directly):** Option C would bypass the `Runtime` abstraction layer — undoing CHAOS-1346's architecture. Routes calling `ComposeUp.run()` directly would create a tight coupling between the HTTP API and the CLI internals.
+
+**Implementation notes:**
+- `ProjectOrchestrator` is a pure `Sendable` struct (no mutable state; all state in actor-isolated `Runtime`).
+- `up`: creates missing containers, starts `.created` ones, reports `.stopped`/`.running` ones as-is.
+- `down`: stops running containers, removes all. Uses `force: true` on `remove` to handle edge cases.
+- `restart`: stop (tolerates invalidState) then start each matched container.
+- `scale`: creates new replica containers (`<service>-N` suffix) or removes excess ones.
+- `build`/`pull`: emit synthetic NDJSON frames explaining that real build/pull requires the CLI runner seam. A future ticket can extend `Runtime` with `build(service:options:)` / `pull(service:options:)` and wire it through.
+
+**Abstraction leak #14:** `ProjectOrchestrator.build/pull` emit "not supported via daemon API" frames rather than actual build/pull output, because `Runtime` has no `build(image:options:)` or `pull(image:options:)` protocol method. Real implementation requires either (a) adding those methods to the `Runtime` protocol with conformers delegating to the `RunCommandRunner` seam, or (b) a new orchestration surface for CLI-backed operations. Deferred to a future ticket.
+
+**New files:**
+- `Sources/Container-Compose/Server/ProjectOrchestrator.swift`
+- `Sources/Container-Compose/Server/Routes/ProjectLifecycleRoutes.swift`
+- `Tests/.../ProjectLifecycleRoutesTests.swift`
+
+**New types in APISchemas.swift:** `APIProjectUpRequest`, `APIProjectServiceState`, `APIProjectUpResponse`, `APIProjectDownRequest`, `APIProjectDownResponse`, `APIProjectRestartRequest`, `APIProjectRestartResponse`, `APIProjectBuildRequest`, `APIProjectBuildFrame`, `APIProjectPullRequest`, `APIProjectPullFrame`, `APIProjectScaleRequest`, `APIProjectScaleResponse`.
+
 ## References
 
 - CHAOS-1340 (epic): https://linear.app/fullchaos/issue/CHAOS-1340

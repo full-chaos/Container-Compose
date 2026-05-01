@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "52adee8a12b1a33a07de6542567522b231e38cb7",
-  "short": "52adee8",
+  "commit": "531b490a0aa36406a60fbd2d5337a40fe4db3f3e",
+  "short": "531b490",
   "target": "current",
-  "message": "feat(server): POST /containers/create route (CHAOS-1352) (#63)",
-  "published_at": "2026-05-01T11:25:50.133546+00:00"
+  "message": "feat(server): compose-aware project lifecycle endpoints (CHAOS-1360) (#64)",
+  "published_at": "2026-05-01T11:48:39.287412+00:00"
 }
