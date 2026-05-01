@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "d3414edd98d9ef45112da23573447c3e9e076cf3",
-  "short": "d3414ed",
+  "commit": "54899cef66c5b7a8535523793db9748f90311b31",
+  "short": "54899ce",
   "target": "current",
-  "message": "feat(runtime): map image-not-found errors to RuntimeError.imageNotFound (#76)",
-  "published_at": "2026-05-01T23:34:26.399069+00:00"
+  "message": "chore: remove deprecated APIStatsErrorResponse/APIErrorResponse route-level extensions (#75)",
+  "published_at": "2026-05-01T23:38:25.437579+00:00"
 }
