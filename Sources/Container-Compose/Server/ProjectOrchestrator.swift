@@ -201,15 +201,30 @@ public struct ProjectOrchestrator: Sendable {
 
     /// Restart project services.
     ///
-    /// Stops then recreates each container that matches the filter.
-    /// If `services` is nil or empty, restarts all project containers.
+    /// For each container matching the filter, transitions back to `.running`
+    /// using only `Runtime` protocol primitives. Because the protocol's
+    /// `start(id:)` is contractually limited to `.created` containers (see
+    /// `Runtime.swift`), a "restart" of an already-started container is
+    /// expressed as `stop → remove → create → start`, reusing the snapshot's
+    /// `imageReference` and `publishedPorts`. A `.created` container that
+    /// has never started is simply started in place.
+    ///
+    /// Tolerated races: `stop` and `remove` use `try?` so a container that
+    /// exited between snapshot and call (or was already removed) does not
+    /// abort the whole restart. Failures from `create` or `start` propagate
+    /// — only containers that completed the full cycle are reported as
+    /// restarted.
+    ///
+    /// Note: any container metadata not exposed on `RuntimeContainer` (env,
+    /// command, resources) is not preserved across the recreate. Only fields
+    /// observable on the snapshot survive.
     ///
     /// - Parameters:
     ///   - project: Project name prefix.
     ///   - services: Optional service name filter. Nil means all.
-    ///   - timeout: Grace period in seconds.
+    ///   - timeout: Grace period in seconds before SIGKILL during stop.
     ///   - runtime: The `Runtime` to use.
-    /// - Returns: Container IDs that were restarted.
+    /// - Returns: Container IDs that were successfully restarted.
     public static func restart(
         project: String,
         services: [String]?,
@@ -239,21 +254,27 @@ public struct ProjectOrchestrator: Sendable {
         }
 
         for container in filtered.sorted(by: { $0.id < $1.id }) {
-            // Stop if running (tolerate invalidState for already-stopped)
-            if container.status == .running {
+            if container.status == .created {
+                // Never-started container: a single start() satisfies the protocol.
+                try await runtime.start(id: container.id)
+                restarted.append(container.id)
+                continue
+            }
+
+            // Running / stopping / stopped / exited / unknown all need the full
+            // recreate cycle since `start()` only accepts `.created`.
+            if container.status == .running || container.status == .stopping {
                 try? await runtime.stop(id: container.id, options: stopOptions)
             }
-            // Start if in a startable state
-            if container.status == .created || container.status == .running ||
-               container.status == .stopped || container.status == .exited {
-                do {
-                    try await runtime.start(id: container.id)
-                    restarted.append(container.id)
-                } catch {
-                    // If start fails due to state mismatch, still note the container
-                    restarted.append(container.id)
-                }
-            }
+            try? await runtime.remove(id: container.id, force: true)
+
+            let config = RuntimeCreateConfiguration(
+                imageReference: container.imageReference,
+                publishedPorts: container.publishedPorts
+            )
+            _ = try await runtime.create(id: container.id, configuration: config)
+            try await runtime.start(id: container.id)
+            restarted.append(container.id)
         }
 
         return restarted.sorted()

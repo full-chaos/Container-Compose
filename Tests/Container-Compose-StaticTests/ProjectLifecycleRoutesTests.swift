@@ -222,6 +222,34 @@ struct ProjectLifecycleRoutesTests {
         #expect(entries.contains(.start(id: "myapp-db")))
     }
 
+    @Test("POST /projects/myapp/restart with MockRuntime leaves the container running (regression)")
+    func restartWithMockRuntimeLeavesContainerRunning() async throws {
+        // Regression test for the snapshot-staleness bug where restart() called
+        // start() on a container that runtime.stop() had already transitioned to
+        // .stopped. MockRuntime enforces the protocol contract (start requires
+        // .created), so this test exercises the real state-machine path that
+        // RecordingRuntime quietly bypasses.
+        let router = Self.makeRouter()
+        let app = Application(router: router)
+        let runtime = MockRuntime(containers: [
+            Self.makeRunningContainer(id: "myapp-web"),
+        ])
+
+        try await RuntimeEnvironment.$current.withValue(runtime) {
+            try await app.test(.router) { client in
+                try await client.execute(uri: "/projects/myapp/restart", method: .post) { response in
+                    #expect(response.status == .ok)
+                    let body = try Self.decode(APIProjectRestartResponse.self, from: response)
+                    #expect(body.restarted == ["myapp-web"])
+                }
+            }
+        }
+
+        let snapshot = await runtime.snapshot()
+        #expect(snapshot["myapp-web"]?.status == .running)
+        #expect(snapshot["myapp-web"]?.imageReference == "alpine:3")
+    }
+
     @Test("POST /projects/myapp/restart with services filter only restarts named services")
     func restartFilteredServicesOnly() async throws {
         let router = Self.makeRouter()
