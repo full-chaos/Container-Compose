@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1366-image-not-found",
+  "commit": "8fa936de56d1f28fe84e98c84565c34546729585",
+  "short": "8fa936d",
+  "target": "8fa936d",
+  "message": "feat(runtime): map image-not-found errors to RuntimeError.imageNotFound",
+  "published_at": "2026-05-01T22:38:36.002015+00:00"
+}
