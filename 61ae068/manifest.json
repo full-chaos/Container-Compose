@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1360-project-lifecycle",
+  "commit": "61ae0687536bc38ff47b249e40eab3a6cadbfe45",
+  "short": "61ae068",
+  "target": "61ae068",
+  "message": "feat(server): compose-aware project lifecycle endpoints (CHAOS-1360)",
+  "published_at": "2026-05-01T11:39:06.761149+00:00"
+}
