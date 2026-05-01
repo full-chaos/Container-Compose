@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1354-lifecycle-writes",
+  "commit": "7d729cc92b6bba30c4dbb9b2cea5708509fd134e",
+  "short": "7d729cc",
+  "target": "7d729cc",
+  "message": "feat(server): container lifecycle write endpoints (CHAOS-1354)",
+  "published_at": "2026-05-01T10:35:25.347038+00:00"
+}
