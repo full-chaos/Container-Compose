@@ -90,8 +90,24 @@ public struct BridgeContainerClientRuntime: Runtime {
         }
     }
 
-    // MARK: - Lifecycle (intentionally not supported in Phase 1)
+    // MARK: - Lifecycle
 
+    /// Create is intentionally not supported in the Bridge conformer.
+    ///
+    /// `ContainerClient.create(configuration:options:kernel:)` requires a
+    /// `Kernel` binary reference (fetched via `ClientKernel.getDefaultKernel`)
+    /// and a fully specified `ContainerConfiguration` (image descriptor,
+    /// `ProcessConfiguration`, mounts, etc.) — a much richer surface than
+    /// `RuntimeCreateConfiguration` exposes. Bridging these shapes requires
+    /// knowing the system kernel path at create-time, which is not available
+    /// in the REST API path without additional XPC calls and system state.
+    ///
+    /// The `AppleContainerizationRuntime` conformer fully implements `create()`
+    /// (registry-backed in Phase 1, real lifecycle in Phase 2). Clients using
+    /// the Bridge backend should use `compose up` (which calls `container run`
+    /// via `RunCommandRunner`) rather than the REST API's `POST /containers/create`.
+    ///
+    /// Documented in `docs/plans/runtime-abstraction-leaks.md` as Leak #13.
     public func create(
         id: String,
         configuration: RuntimeCreateConfiguration

@@ -229,6 +229,7 @@ public enum ServeDaemon {
 
         SystemRoutes.register(router: router)
         ContainerRoutes.register(router: router)
+        ContainerCreateRoute.register(router: router)
         LifecycleRoutes.register(router: router)
         NetworkRoutes.register(router: router)
         VolumeRoutes.register(router: router)
