@@ -452,13 +452,13 @@ API hardening: unified error envelope, Prometheus metrics, OpenAPI spec. Shipped
 
 **Architecture decisions locked by CHAOS-1357:**
 
-#### Decision #14 — Error shape: envelope vs per-route custom types
+#### Decision #17 — Error shape: envelope vs per-route custom types
 
 **Chosen:** Single `APIErrorEnvelope` with `error` (machine key), `message` (human text), `code` (E_NNN default or custom), `requestId` (per-request UUID for log correlation).
 
 **Rationale:** Callers need a stable key to branch on (`error == "not_found"`). `message` is free-text for humans. `code` enables future fine-grained error codes without changing the `error` key. `requestId` ties client errors back to server logs.
 
-#### Decision #15 — Prometheus bootstrap: singleton per process
+#### Decision #18 — Prometheus bootstrap: singleton per process
 
 **Chosen:** `MetricsSystem.bootstrap(PrometheusMetricsFactory())` called once in `ComposeServe.run()` before `Application` construction. In tests, a file-scope lazy flag (`nonisolated(unsafe) var _metricsBootstrapped`) ensures bootstrap fires at most once even when Swift Testing creates fresh struct instances per test.
 
