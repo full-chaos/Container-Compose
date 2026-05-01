@@ -225,6 +225,18 @@ public actor AppleContainerizationRuntime: Runtime {
         guard await registry.get(id: id) != nil else {
             throw RuntimeError.notFound(id: id)
         }
+        // CHAOS-1358 Phase 4 fallback: the real vsock statistics path requires
+        // a live LinuxContainer instance, which in turn requires the full Phase 2
+        // lifecycle wiring (ContainerManager, vmlinux kernel, virtualization
+        // entitlement, macOS 26). Until that wiring lands, we return an empty
+        // snapshot so the route produces structurally valid NDJSON frames rather
+        // than a 501 error. The absence of CPU/memory data is visible to clients
+        // as null fields in the NDJSON output.
+        //
+        // To wire the real path: hold a [String: LinuxContainer] map alongside
+        // stdoutBuffers/stderrBuffers; call container.statistics() here.
+        //
+        // Abstraction leak documented in docs/plans/runtime-abstraction-leaks.md.
         return RuntimeStatistics(id: id, sampledAt: Date())
     }
 

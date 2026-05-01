@@ -128,4 +128,12 @@ private actor TopTestContainerProvider: ContainerClientProvider {
     }
 
     func imageList() async throws -> [ClientImage] { [] }
+
+    func stats(id: String) async throws -> ContainerStats {
+        ContainerStats(
+            id: id, memoryUsageBytes: nil, memoryLimitBytes: nil, cpuUsageUsec: nil,
+            networkRxBytes: nil, networkTxBytes: nil, blockReadBytes: nil, blockWriteBytes: nil,
+            numProcesses: nil
+        )
+    }
 }

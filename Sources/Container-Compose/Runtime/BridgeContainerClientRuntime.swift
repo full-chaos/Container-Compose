@@ -194,9 +194,39 @@ public struct BridgeContainerClientRuntime: Runtime {
     }
 
     public func statistics(for id: String) async throws -> RuntimeStatistics {
-        throw RuntimeError.notSupported(
-            operation: "statistics",
-            conformer: "BridgeContainerClientRuntime"
+        let provider = ContainerClientEnvironment.current
+        let raw: ContainerStats
+        do {
+            raw = try await provider.stats(id: id)
+        } catch {
+            // Translate ContainerizationError(.notFound) and any other upstream
+            // error to the appropriate RuntimeError so route handlers can handle
+            // them without importing ContainerAPIClient.
+            throw RuntimeError.notFound(id: id)
+        }
+        return BridgeContainerClientRuntime.translate(stats: raw)
+    }
+
+    // MARK: - Stats translation
+
+    static func translate(stats: ContainerStats) -> RuntimeStatistics {
+        let network: [RuntimeStatistics.Network]
+        if let rx = stats.networkRxBytes, let tx = stats.networkTxBytes {
+            // The bridge rolls all interfaces into one aggregate "eth0" entry;
+            // per-interface breakdown is not available via ContainerStats today.
+            // Abstraction leak documented in docs/plans/runtime-abstraction-leaks.md.
+            network = [RuntimeStatistics.Network(interface: "eth0", receivedBytes: rx, transmittedBytes: tx)]
+        } else {
+            network = []
+        }
+        return RuntimeStatistics(
+            id: stats.id,
+            cpuUsageUsec: stats.cpuUsageUsec,
+            memoryUsageBytes: stats.memoryUsageBytes,
+            memoryLimitBytes: stats.memoryLimitBytes,
+            oomKillCount: nil, // Not available via ContainerStats; MemoryEventStatistics needed
+            networks: network,
+            sampledAt: Date()
         )
     }
 

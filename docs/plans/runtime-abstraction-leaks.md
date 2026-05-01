@@ -68,3 +68,50 @@ macOS 26 native runtime path.
   writer-facing adapter if log replay moves into more non-native conformers.
   Not required for CHAOS-1348 because the public `Runtime.logs` surface remains
   `RuntimeLogFrame`-only.
+
+## Leaks discovered during Phase 4 / CHAOS-1358 (stats backend)
+
+### 6. BridgeContainerClientRuntime aggregates network stats into a single eth0 entry
+
+- **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `translate(stats:)` method added in CHAOS-1358
+- **Nature:** `ContainerStats` (from `ContainerResource`) provides only aggregate
+  network receive and transmit byte totals (`networkRxBytes`, `networkTxBytes`),
+  not per-interface breakdown. The bridge translates these into a single synthetic
+  `RuntimeStatistics.Network` entry with `interface: "eth0"`. Real multi-interface
+  containers will see their network traffic rolled up into one entry with a
+  misleading interface name.
+- **Proposed fix:** Wire per-interface stats from the vsock path once
+  `AppleContainerizationRuntime` has full lifecycle support. `ContainerStats` may
+  gain a per-interface breakdown in a future `apple/container` release; update
+  `translate(stats:)` when that happens.
+
+### 7. AppleContainerizationRuntime.statistics returns empty snapshot (no vsock call)
+
+- **Location:** `Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift` — `statistics(for:)` method
+- **Nature:** The native conformer cannot call `LinuxContainer.statistics()` because
+  Phase 1's skeleton does not hold a `[String: LinuxContainer]` map — the registry
+  stores `RuntimeContainerRecord` values, not live `LinuxContainer` instances. The
+  `statistics(for:)` implementation confirms the container exists in the registry
+  and returns an empty snapshot (all CPU/memory fields `nil`). Clients streaming
+  `/containers/{id}/stats` against the Apple runtime see structurally valid NDJSON
+  frames with null metric fields.
+- **Proposed fix:** When Phase 2 lifecycle wiring adds real `LinuxContainer`
+  instances, extend `AppleContainerizationRuntime` with a `containers:
+  [String: LinuxContainer]` or similar map, then call `container.statistics()`
+  in this method. The `ContainerStatistics` → `RuntimeStatistics` translation
+  should map `cpu.usageUsec`, `memory.usageBytes`, `memory.limitBytes`,
+  `memoryEvents.oomKill`, and `networks[].receivedBytes/transmittedBytes` directly.
+
+### 8. BridgeContainerClientRuntime.statistics translates all errors as notFound
+
+- **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `statistics(for:)` error catch block
+- **Nature:** `ContainerClient.stats(id:)` can throw various upstream errors
+  (XPC timeout, auth failure, container not found). The catch block translates all
+  errors uniformly to `RuntimeError.notFound(id:)` to avoid leaking
+  `ContainerizationError` types across the abstraction boundary. This means an XPC
+  timeout is indistinguishable from a missing container at the route layer — the
+  client receives 404 rather than 503.
+- **Proposed fix:** Inspect the upstream error type (e.g. check for
+  `ContainerizationError(.notFound)`) and map non-found errors to
+  `RuntimeError.backendFailure(message:)` so the route can return 500 on transient
+  failures vs 404 on genuine missing-container cases.

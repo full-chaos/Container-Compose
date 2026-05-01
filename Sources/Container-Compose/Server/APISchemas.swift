@@ -389,7 +389,53 @@ public struct APIStatsErrorResponse: Codable, Sendable, Hashable {
     }
 }
 
-// MARK: - GET /containers/{id}/stats  (PR-B will wire the stream — schema defined now)
+// MARK: - GET /containers/{id}/stats  NDJSON streaming frame (CHAOS-1358)
+
+/// Per-line NDJSON frame emitted by `GET /containers/{id}/stats` polling stream.
+/// One frame per polling interval, encoded as ISO-8601 timestamps to match
+/// `APIEventFrame` and `APILogFrame` wire conventions (Decision #7).
+/// Replaces the 501 stub from Phase 2.B when the real backend wires in Phase 4.
+public struct APIStatsFrame: Codable, Sendable, Hashable {
+    public let id: String
+    public let sampledAt: Date
+    public let cpuUsageMicroseconds: UInt64?
+    public let memoryUsageBytes: UInt64?
+    public let memoryLimitBytes: UInt64?
+    public let oomKillCount: UInt64?
+    public let networks: [APIStatsNetworkFrame]
+
+    public init(
+        id: String,
+        sampledAt: Date,
+        cpuUsageMicroseconds: UInt64?,
+        memoryUsageBytes: UInt64?,
+        memoryLimitBytes: UInt64?,
+        oomKillCount: UInt64?,
+        networks: [APIStatsNetworkFrame]
+    ) {
+        self.id = id
+        self.sampledAt = sampledAt
+        self.cpuUsageMicroseconds = cpuUsageMicroseconds
+        self.memoryUsageBytes = memoryUsageBytes
+        self.memoryLimitBytes = memoryLimitBytes
+        self.oomKillCount = oomKillCount
+        self.networks = networks
+    }
+}
+
+public struct APIStatsNetworkFrame: Codable, Sendable, Hashable {
+    public let interface: String
+    public let receivedBytes: UInt64
+    public let transmittedBytes: UInt64
+
+    public init(interface: String, receivedBytes: UInt64, transmittedBytes: UInt64) {
+        self.interface = interface
+        self.receivedBytes = receivedBytes
+        self.transmittedBytes = transmittedBytes
+    }
+}
+
+// MARK: - GET /containers/{id}/stats  (legacy schema — retained for compatibility)
 
 public struct APIStatistics: Codable, Sendable, Hashable {
     public let id: String
