@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-71-6859d5f065d89c1be7d6c91a7f14a9945f6f9518",
+  "commit": "5f5b28c5a7151ae56fc5a6d7c043c89507d0440d",
+  "short": "5f5b28c",
+  "target": "5f5b28c",
+  "message": "docs: feature parity inventory + user-facing docs/ structure (CHAOS-1370, CHAOS-1378) (#71)",
+  "published_at": "2026-05-01T18:03:10.248006+00:00"
+}
