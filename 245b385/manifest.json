@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1377-build-audit",
+  "commit": "245b385cfc8fc090d7cc97d57a05b8bc8575dbe8",
+  "short": "245b385",
+  "target": "245b385",
+  "message": "feat(build): warn-and-skip unsupported build flags",
+  "published_at": "2026-05-01T23:39:10.226125+00:00"
+}
