@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9ff15bc9ef31c462e887430622c2fbe37dccdaea",
-  "short": "9ff15bc",
+  "commit": "c27d7ff5b87926ab573299c273dca5c48d76b6c7",
+  "short": "c27d7ff",
   "target": "current",
-  "message": "fix(server): ProjectOrchestrator.restart correctly recreates containers (#66)",
-  "published_at": "2026-05-01T12:19:03.703985+00:00"
+  "message": "feat(api): error envelope + Prometheus metrics + OpenAPI (CHAOS-1357) (#67)",
+  "published_at": "2026-05-01T15:10:01.942105+00:00"
 }
