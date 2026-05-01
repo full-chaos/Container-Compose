@@ -15,12 +15,24 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import os
 
-private enum UnsupportedRuntimeWarningState {
-    nonisolated(unsafe) static var emittedKeys = Set<String>()
-}
+/// Locked storage for `warnUnsupportedRuntimeFieldOnce`'s already-emitted
+/// key set. The previous `nonisolated(unsafe) static var emittedKeys` raced
+/// under Swift Testing's parallel runner: concurrent `Set.insert` calls
+/// corrupted the `_Variant` storage, manifesting as
+/// `-[NSIndirectTaggedPointerString member:]` crashes on x86_64/arm64
+/// CI (Foundation set bridging meets a tagged-pointer string from the torn
+/// hash buffer). `OSAllocatedUnfairLock<Set<String>>` keeps the de-dup
+/// semantics, stays Sendable, and adds zero contention on the hot path
+/// (insert is O(1); only the first occurrence per key acquires the lock
+/// before printing).
+private let unsupportedWarningsLock = OSAllocatedUnfairLock<Set<String>>(initialState: [])
 
 func warnUnsupportedRuntimeFieldOnce(_ key: String, _ message: @autoclosure () -> String) {
-    guard UnsupportedRuntimeWarningState.emittedKeys.insert(key).inserted else { return }
+    let inserted = unsupportedWarningsLock.withLock { keys -> Bool in
+        keys.insert(key).inserted
+    }
+    guard inserted else { return }
     print(message())
 }
