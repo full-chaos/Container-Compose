@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1358-real-stats-backend",
+  "commit": "b849d99ed673bba2d06c848619fef81ac613dfba",
+  "short": "b849d99",
+  "target": "b849d99",
+  "message": "feat(server): real /stats NDJSON streaming backend (CHAOS-1358)",
+  "published_at": "2026-05-01T09:27:44.544213+00:00"
+}
