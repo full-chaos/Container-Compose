@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1359-tcp-tls",
+  "commit": "15b22988833493a605577f1afd1711853f308634",
+  "short": "15b2298",
+  "target": "15b2298",
+  "message": "fix(serve): correct KeyUsage bit for P-256 + add Metrics MARK placeholder (CHAOS-1359)",
+  "published_at": "2026-05-01T15:08:53.074613+00:00"
+}
