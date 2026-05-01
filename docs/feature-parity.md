@@ -19,7 +19,9 @@
 | **Tier 4 — Won't do** | 21 fields | Deprecated, Swarm-only, or platform-specific (Windows/Linux cgroups). | Decoded → warn-skipped → `coverage.html` `miss` |
 | **Tier 5 — Frontier** | 3 fields | AI/LLM provisioning — spec still evolving. | Track only |
 
-**Critical finding:** Tier 0 is the biggest discovery of this audit. `--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all `--blkio-*`, `--shm-size`, `--pids-limit`, `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`, `--cpu-quota`, `--cpu-rt-period`, `--cpu-rt-runtime`, `--cpu-count`, `--cpu-percent`, `--oom-kill-disable`, `--oom-score-adj`, `--sysctl`, `--ip`, `--ip6`, `--gpus`, `--mac-address` are all emitted by Container-Compose but have **no entry** in `apple/container`'s `Flags.Management` / `Flags.Resource` (verified at `.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift` lines 21-405). The runtime will reject these flags. CHAOS-1329 (logging), CHAOS-1330 (extra_hosts), CHAOS-1331 (aliases) already followed this remediation pattern; the same remediation is needed for the 22 flags above.
+**Critical finding:** Tier 0 is the biggest discovery of this audit. `--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all `--blkio-*`, `--shm-size`, `--pids-limit`, `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`, `--cpu-quota`, `--cpu-rt-period`, `--cpu-rt-runtime`, `--cpu-count`, `--cpu-percent`, `--oom-kill-disable`, `--oom-score-adj`, `--sysctl`, `--ip`, `--ip6`, `--gpus`, `--mac-address` are all emitted by Container-Compose but have **no entry** in upstream `apple/container`'s `Flags.Management` / `Flags.Resource` (verified by cloning `apple/container@main` 2026-05-01 and grepping). The runtime will reject these flags. CHAOS-1329 (logging), CHAOS-1330 (extra_hosts), CHAOS-1331 (aliases) already followed this remediation pattern; the same remediation is needed for the 22 flags above.
+
+**Fork-dependency note:** Container-Compose currently builds against `full-chaos/container` (branch `tier2-fork-patches`), which carries 6 patches NOT in upstream apple/container. The most user-visible is `--restart` (CHAOS-1321). See §5.1 for the full fork-dependency table — these are working in production today but would regress to Tier 0 silent failures if we ever drop the fork. Named volumes are a separate nuanced gap with their own dedicated section — see [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive).
 
 ---
 
@@ -116,7 +118,7 @@ Runtime support exists; we just need to wire it.
 | 1 | `service.healthcheck.*` enforcement (test/interval/timeout/retries/start_period/start_interval/disable) | partial (decoded only) | Wire `Compose+Wait.waitForCondition(.serviceHealthy)` to actually drive the runtime healthcheck. Healthchecks are currently never executed; only `depends_on.condition: service_healthy` reads `ContainerSnapshot.health` (already shipped via CHAOS-1319). The healthcheck **subprocess loop** must run. | Likely needs apple/container support too (no `--health-cmd` flag in upstream) — see Tier 2/3 |
 | 2 | `service.deploy.resources.reservations.cpus` | partial (parsed; not applied) | Already emit `--memory-reservation` for `service.mem_reservation`; do same for `deploy.resources.reservations.memory` and `cpus`. **CAVEAT**: this hits Tier 0 — `--memory-reservation` is itself unsupported by apple/container today. Block on Tier 0 cleanup OR fork patch. | CHAOS-1336 (open) |
 | 3 | `service.deploy.resources.reservations.memory` | partial (parsed; not applied) | Same as #2 | CHAOS-1336 (open) |
-| 4 | `top.volumes` named volume runtime CRUD (replace hardlink-dir fallback) | partial | Replace `~/.containers/Volumes/<project>/<name>/` hardlink-dir fallback with `container volume create` API + `container run -v <name>:/path`. Verified `container volume create --label`/`--opt`/`--size` exists. | CHAOS-1368 (open), CHAOS-1335 (open) |
+| 4 | `top.volumes` named volume runtime CRUD (replace hardlink-dir fallback) | partial | Replace `~/.containers/Volumes/<project>/<name>/` hardlink-dir fallback with `container volume create` API. **Open question** (block on resolving): does `container run -v <name>:<path>` resolve `<name>` to a registered volume, or treat as literal host path? Need 30-min smoke test on runtime-equipped host. See [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive). | CHAOS-1368 (open), CHAOS-1335 (open) |
 | 5 | `service.provider` | partial (warn-skipped) | Provider lifecycle wiring is implementation, not runtime — could be done without apple/container changes if model-provisioning is intentionally Container-Compose-side. Frontier feature though — verify spec stability before commit. | CHAOS-1332 (open) |
 | 6 | Build/Up `pullImage` consolidation | refactor | `ComposeRun.swift:352` has a private `pullImage` while `Compose+Pull.swift:19` has the shared helper. Already noted as R1 in `docs/plans/no-upstream-refactor-and-linear.md`. | tracked in plan, not Linear-ticketed |
 
@@ -124,15 +126,30 @@ Runtime support exists; we just need to wire it.
 
 ## 5. Tier 2 — Fork-patch path (`full-chaos/container`)
 
-These are gaps we **could** close in our own fork, mirroring the pattern that closed CHAOS-1319 through CHAOS-1324 (4 commits ahead of upstream). Each is a real engineering effort but doesn't require apple/container engagement.
+### 5.1 Already shipped via fork (production today)
+The fork carries 4 commits ahead of upstream that Container-Compose **directly depends on**. If we ever drop the fork, these regress to Tier 0 silent failures and we'd need upstream PRs filed.
+
+| Fork addition | Compose surface that depends on it | Linear |
+| :--- | :--- | :--- |
+| `--restart` flag on `container run` | `service.restart: always\|on-failure\|unless-stopped\|no` — emitted at `Compose+ArgsLifecycle.swift:64-66` | CHAOS-1321 (Done, fork) |
+| `ContainerSnapshot.health: HealthStatus?` | `depends_on.condition: service_healthy` blocking via `Compose+Wait.swift` | CHAOS-1319 (Done, fork) |
+| `ContainerSnapshot.lastExitCode: Int32?` | `depends_on.condition: service_completed_successfully` exit-code verification | CHAOS-1320 (Done, fork) |
+| `ContainerLogOptions.{since, timestamps}` | `compose logs --since` / `--timestamps` flags | CHAOS-1322 (Done, fork) |
+| `ContainerEvent` + `events()` streaming API | `compose events` native streaming | CHAOS-1323 (Done, fork) |
+| `Flags.ProcessBase` | `compose run/exec` standard `-e/-u/-w/-d` short flags | CHAOS-1324 (Done, fork) |
+
+**Fork-drop risk:** if `full-chaos/container` is ever abandoned or merged-and-deleted, all six lines above need upstream PRs filed against `apple/container`. Tracked at `docs/upstream-fork-status.md` §1.
+
+### 5.2 Could-add-to-fork (not yet shipped)
+Gaps we **could** close in our fork using the same pattern.
 
 | # | Feature | Why fork | Existing Linear |
 | :-: | :--- | :--- | :--- |
-| 1 | `--ipc / --pid / --uts` namespace mode flags | Common Linux primitive; no virtualization complication | NEW (sub-issue of Tier 0 sweep, OR fork-patch alternative) |
-| 2 | `--security-opt` | Translates to virtio-fs / Apple Hypervisor seccomp profile | NEW |
-| 3 | `--device` (file passthrough) | Some virtualization wiring needed; not trivial but tractable | NEW |
-| 4 | `--userns` | Maps to a guest-userns config on the VM | NEW |
-| 5 | `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--pids-limit`, `--shm-size`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`/`-quota`/`-rt-*`/`-count`/`-percent`, `--oom-*` | All map to `Linux.Container` cgroup config — moderate fork effort | NEW |
+| 1 | `--ipc / --pid / --uts` namespace mode flags | Common Linux primitive; no virtualization complication | sub-issue of Tier 0 sweep (CHAOS-1372) |
+| 2 | `--security-opt` | Translates to virtio-fs / Apple Hypervisor seccomp profile | CHAOS-1371 |
+| 3 | `--device` (file passthrough) | Some virtualization wiring needed; not trivial but tractable | CHAOS-1373 |
+| 4 | `--userns` | Maps to a guest-userns config on the VM | CHAOS-1371 |
+| 5 | `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--pids-limit`, `--shm-size`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`/`-quota`/`-rt-*`/`-count`/`-percent`, `--oom-*` | All map to `Linux.Container` cgroup config — moderate fork effort | CHAOS-1375 |
 | 6 | Network IPAM extensions (`--driver-opts`, `--attachable`, `--ipv6` bare, `--ip-range`, `--gateway`, `--aux-addresses`, `--ipam-driver`/`--ipam-opt`) | `apple/container`'s `NetworkCreate` is intentionally minimal; fork can add | CHAOS-1334 (open) |
 | 7 | `--add-host`, `--alias`, `--log-driver`/`--log-opt` | Already removed via CHAOS-1329/1330/1331; fork-patch is the alternative if/when needed | tracked in upstream-fork-status.md §1 |
 
@@ -335,8 +352,17 @@ Captured 2026-05-01 from `.build/checkouts/container/Sources/Services/ContainerA
 - `--ssh`
 - `--tmpfs <path>`
 - `--virtualization`
-- `-v, --volume <spec>`
-- `--restart <no|always|on-failure[:N]|unless-stopped>`
+- `-v, --volume <spec>` (host-path bind mounts; named-volume resolution behavior unverified — see §13)
+
+### Fork-only additions in `full-chaos/container` (NOT in upstream apple/container)
+Verified by cloning `github.com/apple/container@main` 2026-05-01 and grepping for these flags — zero matches. They live ONLY in the `tier2-fork-patches` branch we depend on.
+
+- `--restart <no|always|on-failure[:N]|unless-stopped>` (CHAOS-1321 — added in fork commit `c63ed9a`). Container-Compose emits this from `service.restart` (NOT `service.deploy.restart_policy.condition`, which is Tier 4 won't-do per CHAOS-1338). If we ever drop the fork dependency, this regresses to a Tier 0 silent-failure flag — file an apple/container FR (proposed: append to CHAOS-1378 campaign).
+- `health: HealthStatus?` field on `ContainerSnapshot` (CHAOS-1319, fork commit `c63ed9a`) — read-only API the fork added. Upstream snapshot has no `health` field.
+- `lastExitCode: Int32?` on `ContainerSnapshot` (CHAOS-1320, fork commit `630b8c8`).
+- `ContainerLogOptions.{since, timestamps}` (CHAOS-1322).
+- `ContainerEvent` + `events()` streaming API (CHAOS-1323).
+- `Flags.ProcessBase` short-flag-free subset (CHAOS-1324).
 
 ### `container network create` (subcommand-local)
 - `--label KEY=VALUE`
@@ -350,7 +376,7 @@ Captured 2026-05-01 from `.build/checkouts/container/Sources/Services/ContainerA
 ### `container build` (subcommand-local)
 *Not exhaustively re-verified in this audit; see CHAOS-NEW-A.7.*
 
-### What is NOT in apple/container (Tier 0 + Tier 2/3 territory)
+### What is NOT in upstream apple/container (Tier 0 + Tier 2/3 territory)
 - `--ipc`, `--pid`, `--uts`
 - `--device`
 - `--userns`
@@ -375,6 +401,58 @@ Captured 2026-05-01 from `.build/checkouts/container/Sources/Services/ContainerA
 - `--isolation`
 - Network create: `--driver-opts`, `--attachable`, `--ipv6` (bare), `--ip-range`, `--gateway`, `--aux-address`, `--ipam-driver`, `--ipam-opt`
 - `container build`: `--allow` (entitlements)
+
+---
+
+---
+
+## 13. Appendix B — Named volumes (deep dive)
+
+This is a particularly nuanced gap that doesn't fit cleanly into Tier 0/1/2/3. Calling it out separately because the symptoms are subtle.
+
+### Current behavior
+
+Compose YAML like:
+
+```yaml
+services:
+  db:
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+volumes:
+  dbdata:
+```
+
+is detected at `Sources/Container-Compose/Commands/ComposeUp.swift:837` via heuristic: source contains `/` or starts with `.` / `..` → bind mount; else → named volume reference.
+
+For named-volume references, Container-Compose:
+1. Resolves to host directory `~/.containers/Volumes/<project>/<name>/` (line 866-867)
+2. Creates the directory if missing (line 872)
+3. Emits `-v <hostPath>:<containerPath>` to `container run` (line 875-878)
+4. Emits a warning at line 869-871 saying "The 'container' tool does not support named volume references in 'container run -v' command"
+
+The warning's claim is **partially outdated**. apple/container ships `container volume create` (verified upstream — `Sources/ContainerCommands/Volume/VolumeCreate.swift`) with `--label`, `--opt`, `--size`. So the volume CRUD API exists. The unresolved question is whether `container run -v <volumeName>:<containerPath>` (no slash in source) resolves the name to a registered volume or treats it as a literal host path.
+
+### What's broken / suboptimal
+
+- **`top.volumes.<name>.driver_opts`** — parsed (CHAOS-1335 open) but ignored at runtime. apple/container's `volume create --opt KEY=VALUE` exists, so this is wireable.
+- **`top.volumes.<name>.labels`** — parsed but not propagated. `volume create --label` exists.
+- **`top.volumes.<name>.driver`** — only `local` is honored; non-local drivers fall back to hardlink (line 320-324). This is correct behavior per apple/container scope, but the warning could be more informative.
+- **Cross-project volume sharing** — hardlink-dir scopes to `<project>/<name>`. Real `container volume create` would scope by name only, allowing two projects to share a named volume. This is a behavior divergence that may surprise migrating-from-Docker users.
+- **Volume cleanup on `compose down`** — current code does not remove the hardlink dir on `down`. CHAOS-1339 (done) fixed truncation; CHAOS-1368 (open) tracks the broader rework.
+
+### What needs to happen
+
+| Step | Effort | Linear |
+| :--- | :--- | :--- |
+| 1. Verify whether `container run -v <name>:<path>` (source without `/`) resolves to a registered volume in current upstream | Investigation: ~30 min on a runtime-equipped Mac | Add to CHAOS-1368 acceptance |
+| 2. If yes: replace hardlink-dir fallback with `container volume create` + `container run -v <name>:<path>`. Wire `driver_opts` / `labels` through. | ~1 day | CHAOS-1368, CHAOS-1335 |
+| 3. If no: file an apple/container FR for `container run -v` named-volume resolution. Keep hardlink-dir fallback until upstream lands. | ~30 min FR + wait | New sub-issue under CHAOS-1378 |
+| 4. Remove the misleading warning at `ComposeUp.swift:869-871` either way. | trivial | folded into step 2 or 3 |
+
+### Bind-mount vs. named-volume disambiguation
+
+The `/` heuristic (line 837) is fragile. A volume name that happens to contain `/` (e.g., a path-like name) would be misidentified as a bind mount. Compose-spec doesn't strictly forbid this — though it's unusual. Possible improvement (out of scope of this audit): consult `top.volumes.<name>` first, classify by declaration, fall back to heuristic only for undeclared sources.
 
 ---
 
