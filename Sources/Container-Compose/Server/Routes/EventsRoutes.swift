@@ -82,4 +82,3 @@ public enum EventsRoutes {
 }
 
 extension APIEventFrame: ResponseEncodable {}
-extension APIStatsErrorResponse: ResponseEncodable {}
