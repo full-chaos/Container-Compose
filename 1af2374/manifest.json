@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1352-post-containers-create",
+  "commit": "1af23740e0879c14ae9012dd44e3d8718da5e64d",
+  "short": "1af2374",
+  "target": "1af2374",
+  "message": "feat(server): POST /containers/create route (CHAOS-1352)",
+  "published_at": "2026-05-01T11:17:53.369022+00:00"
+}
