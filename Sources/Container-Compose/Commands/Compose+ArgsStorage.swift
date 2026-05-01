@@ -17,9 +17,9 @@
 import Foundation
 
 extension ComposeUp {
-    /// Filesystem and storage flags: working_dir, tmpfs, devices, sysctls.
-    /// volumes_from, device_cgroup_rules, and storage_opt are unsupported by
-    /// Apple container and emit a warning instead of flags.
+    /// Filesystem and storage flags: working_dir and tmpfs.
+    /// devices, sysctls, volumes_from, device_cgroup_rules, and storage_opt are
+    /// unsupported by Apple container and emit a warning instead of flags.
     ///
     /// `volumes` mounting stays inline in `configService` for now because
     /// `configVolume(_:)` is async and mutates the filesystem (creating
@@ -41,18 +41,14 @@ extension ComposeUp {
                 }
             }
 
-            // sysctls — one --sysctl KEY=VALUE flag per entry
-            if let sysctls = ctx.service.sysctls {
-                for (key, value) in sysctls.sorted(by: { $0.key < $1.key }) {
-                    args.append(contentsOf: ["--sysctl", "\(key)=\(value)"])
-                }
+            // sysctls — not supported by Apple container; warn once and skip
+            if let sysctls = ctx.service.sysctls, !sysctls.isEmpty {
+                warnUnsupportedRuntimeFieldOnce("service.sysctls", "Note: 'sysctls' is parsed but not supported by Apple container; ignored.")
             }
 
-            // devices — one --device flag per mapping
-            if let devices = ctx.service.devices {
-                for device in devices {
-                    args.append(contentsOf: ["--device", device])
-                }
+            // devices — not supported by Apple container; warn once and skip
+            if let devices = ctx.service.devices, !devices.isEmpty {
+                warnUnsupportedRuntimeFieldOnce("service.devices", "Note: 'devices' is parsed but not supported by Apple container; ignored.")
             }
 
             // volumes_from — not supported by Apple container; warn and skip
