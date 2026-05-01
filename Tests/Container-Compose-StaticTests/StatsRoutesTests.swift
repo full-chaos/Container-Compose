@@ -70,7 +70,7 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/missing/stats?stream=false", method: .get) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decodeJSON(APIErrorResponse.self, from: response)
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -131,7 +131,7 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/ghost/stats", method: .get) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decodeJSON(APIErrorResponse.self, from: response)
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: ghost")
                 }
             }

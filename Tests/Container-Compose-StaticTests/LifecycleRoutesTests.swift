@@ -89,7 +89,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing/start", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -107,7 +107,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/ctr-1/start", method: .post) { response in
                     #expect(response.status == .conflict)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message.contains("running"))
                 }
             }
@@ -174,7 +174,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing/stop", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -193,7 +193,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/ctr-1/stop", method: .post) { response in
                     #expect(response.status == .conflict)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message.contains("stopped"))
                 }
             }
@@ -260,7 +260,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing/restart", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -330,7 +330,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing/kill", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -408,7 +408,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing", method: .delete) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }
@@ -426,7 +426,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/ctr-1?force=false", method: .delete) { response in
                     #expect(response.status == .conflict)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message.contains("force=true"))
                 }
             }
@@ -473,7 +473,7 @@ struct LifecycleRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/containers/missing/wait", method: .post) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such container: missing")
                 }
             }

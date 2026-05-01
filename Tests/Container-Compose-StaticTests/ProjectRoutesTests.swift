@@ -131,7 +131,7 @@ struct ProjectRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/projects/missing/services", method: .get) { response in
                     #expect(response.status == .notFound)
-                    let body = try Self.decode(APIErrorResponse.self, from: response)
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(body.message == "No such project: missing")
                 }
             }

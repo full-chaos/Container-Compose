@@ -330,7 +330,7 @@ struct ContainerCreateRouteTests {
                     body: body
                 ) { response in
                     #expect(response.status == .conflict)
-                    let parsed = try Self.decode(APIErrorResponse.self, from: response)
+                    let parsed = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(parsed.message.contains("dup"))
                 }
             }

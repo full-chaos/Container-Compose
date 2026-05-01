@@ -87,12 +87,12 @@ public enum ProjectLifecycleRoutes {
             } catch ProjectOrchestrator.OrchestratorError.projectNotFound(let p) {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such project: \(p)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such project: \(p)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.notFound(let id) {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "Container not found: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "Container not found: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -124,7 +124,7 @@ public enum ProjectLifecycleRoutes {
             } catch ProjectOrchestrator.OrchestratorError.projectNotFound(let p) {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such project: \(p)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such project: \(p)", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -154,7 +154,7 @@ public enum ProjectLifecycleRoutes {
             } catch ProjectOrchestrator.OrchestratorError.projectNotFound(let p) {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such project: \(p)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such project: \(p)", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -223,7 +223,7 @@ public enum ProjectLifecycleRoutes {
             guard let body = LifecycleRoutes.decodeBody(APIProjectScaleRequest.self, from: bodyBuffer) else {
                 return try EditedResponse(
                     status: .badRequest,
-                    response: APIErrorResponse(message: "Request body required: {\"replicas\": <Int>}")
+                    response: APIErrorEnvelope.legacy(.badRequest, message: "Request body required: {\"replicas\": <Int>}", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
 
@@ -244,12 +244,12 @@ public enum ProjectLifecycleRoutes {
             } catch ProjectOrchestrator.OrchestratorError.invalidReplicaCount(let count) {
                 return try EditedResponse(
                     status: .badRequest,
-                    response: APIErrorResponse(message: "Invalid replica count: \(count). Must be >= 0.")
+                    response: APIErrorEnvelope.legacy(.badRequest, message: "Invalid replica count: \(count). Must be >= 0.", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch ProjectOrchestrator.OrchestratorError.serviceNotFound(let project, let svc) {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "Service '\(svc)' not found in project '\(project)'")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "Service '\(svc)' not found in project '\(project)'", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }

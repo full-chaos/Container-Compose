@@ -58,14 +58,12 @@ public enum LifecycleRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.invalidState(_, let expected, let actual) {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(
-                        message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to start"
-                    )
+                    response: APIErrorEnvelope.legacy(.conflict, message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to start", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -85,14 +83,12 @@ public enum LifecycleRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.invalidState(_, let expected, let actual) {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(
-                        message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to stop"
-                    )
+                    response: APIErrorEnvelope.legacy(.conflict, message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to stop", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -120,14 +116,12 @@ public enum LifecycleRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.invalidState(_, let expected, let actual) {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(
-                        message: "Container \(id) cannot be restarted: state '\(actual.rawValue)', expected '\(expected.rawValue)'"
-                    )
+                    response: APIErrorEnvelope.legacy(.conflict, message: "Container \(id) cannot be restarted: state '\(actual.rawValue)', expected '\(expected.rawValue)'", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -147,14 +141,12 @@ public enum LifecycleRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.invalidState(_, let expected, let actual) {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(
-                        message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to receive signal"
-                    )
+                    response: APIErrorEnvelope.legacy(.conflict, message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to receive signal", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -173,14 +165,12 @@ public enum LifecycleRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.invalidState(_, let expected, let actual) {
                 return try EditedResponse(
                     status: .conflict,
-                    response: APIErrorResponse(
-                        message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to delete; use ?force=true to force-remove a running container"
-                    )
+                    response: APIErrorEnvelope.legacy(.conflict, message: "Container \(id) is in state '\(actual.rawValue)', expected '\(expected.rawValue)' to delete; use ?force=true to force-remove a running container", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
@@ -200,17 +190,17 @@ public enum LifecycleRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.timeout(_, let seconds) {
                 return try EditedResponse(
                     status: .requestTimeout,
-                    response: APIErrorResponse(message: "Container \(id) did not exit within \(seconds)s")
+                    response: APIErrorEnvelope.legacy(.requestTimeout, message: "Container \(id) did not exit within \(seconds)s", requestId: context.id.description)
                 ).response(from: request, context: context)
             } catch RuntimeError.notSupported {
                 return try EditedResponse(
                     status: .notImplemented,
-                    response: APIErrorResponse(message: "wait is not supported by the active runtime backend")
+                    response: APIErrorEnvelope.legacy(.notImplemented, message: "wait is not supported by the active runtime backend", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }

@@ -141,7 +141,7 @@ struct NetworkWriteRoutesTests {
                     body: body
                 ) { response in
                     #expect(response.status == .conflict)
-                    let err = try Self.decode(APIErrorResponse.self, from: response)
+                    let err = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(err.message.contains("mynet"))
                 }
             }
@@ -210,7 +210,7 @@ struct NetworkWriteRoutesTests {
             try await app.test(.router) { client in
                 try await client.execute(uri: "/networks/ghost-id", method: .delete) { response in
                     #expect(response.status == .notFound)
-                    let err = try Self.decode(APIErrorResponse.self, from: response)
+                    let err = try Self.decode(APIErrorEnvelope.self, from: response)
                     #expect(err.message.contains("ghost-id"))
                 }
             }

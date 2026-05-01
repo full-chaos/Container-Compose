@@ -35,7 +35,7 @@ public enum LogsRoutes {
             } catch RuntimeError.notFound {
                 return try EditedResponse(
                     status: .notFound,
-                    response: APIErrorResponse(message: "No such container: \(id)")
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
                 ).response(from: request, context: context)
             }
         }
