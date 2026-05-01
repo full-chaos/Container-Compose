@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1371-security-opt",
+  "commit": "2b0193f2329b707a121bbc1d7f580ecfee0cad61",
+  "short": "2b0193f",
+  "target": "2b0193f",
+  "message": "feat(args): warn-and-skip --security-opt / --userns",
+  "published_at": "2026-05-01T23:11:45.614593+00:00"
+}
