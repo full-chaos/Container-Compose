@@ -118,8 +118,6 @@ public enum ProjectRoutes {
 extension APIProjectSummary: ResponseEncodable {}
 extension APIServiceSummary: ResponseEncodable {}
 // APIErrorEnvelope: ResponseEncodable is declared in APISchemas.swift.
-// APIErrorResponse: ResponseEncodable retained for backward compat (deprecated).
-extension APIErrorResponse: ResponseEncodable {}
 
 // Hummingbird 2.22 already provides `Array: ResponseEncodable where Element: Encodable`.
 // Re-declaring specialized array conformances for project/service summaries is
