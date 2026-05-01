@@ -50,20 +50,34 @@ public struct ComposeServe: AsyncParsableCommand {
     )
     var socketPath: String?
 
+    /// When `true` the daemon is running under launchd management (e.g. via
+    /// `brew services start container-compose`). In this mode log lines are
+    /// prefixed with an ISO-8601 timestamp and the process label so they are
+    /// easily grep-able in `~/Library/Logs/container-compose/serve.log`.
+    ///
+    /// The LaunchAgent plist (`Resources/com.full-chaos.container-compose.plist`)
+    /// passes `--launchd` automatically in `ProgramArguments`, so users never
+    /// need to set this manually.
+    @Flag(
+        name: .customLong("launchd"),
+        help: "Run in launchd-managed mode: emit timestamped, structured log lines suitable for ~/Library/Logs/container-compose/serve.log."
+    )
+    public var launchdManaged: Bool = false
+
     public init() {}
 
     public func run() async throws {
         let resolved = ServeDaemon.resolveSocketPath(override: socketPath)
 
         if ServeDaemon.isAlreadyServing(at: resolved) {
-            print("container-compose daemon already running on \(resolved)")
+            print("\(ServeDaemon.logPrefix(launchdManaged: launchdManaged))container-compose daemon already running on \(resolved)")
             return
         }
 
         try ServeDaemon.cleanupStaleSocketIfNeeded(at: resolved)
         try ServeDaemon.ensureParentDirectory(for: resolved)
 
-        try await ServeDaemon.run(socketPath: resolved)
+        try await ServeDaemon.run(socketPath: resolved, launchdManaged: launchdManaged)
     }
 }
 
@@ -126,12 +140,37 @@ public enum ServeDaemon {
         )
     }
 
+    // MARK: - Log formatting
+
+    /// Returns a structured log prefix suitable for launchd-managed output.
+    ///
+    /// - When `launchdManaged` is `false` (interactive foreground): returns `""`
+    ///   so existing output is unchanged — users see clean, terse messages.
+    /// - When `launchdManaged` is `true` (running under `brew services`):
+    ///   returns `"[<ISO8601-timestamp>] [container-compose] "` so log lines
+    ///   written to `~/Library/Logs/container-compose/serve.log` are
+    ///   self-describing and grep-friendly without a separate syslog facility.
+    public static func logPrefix(launchdManaged: Bool) -> String {
+        guard launchdManaged else { return "" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: Date())
+        return "[\(timestamp)] [container-compose] "
+    }
+
     // MARK: - Run
 
     /// Build the Hummingbird `Application` + `ServiceGroup` and run until
     /// SIGTERM/SIGINT. A sibling `SocketCleanupService` unlinks the socket
     /// file on graceful shutdown after Hummingbird drains its requests.
-    public static func run(socketPath: String) async throws {
+    ///
+    /// - Parameters:
+    ///   - socketPath: Path at which to bind the Unix domain socket.
+    ///   - launchdManaged: When `true` (set by `--launchd` flag), log lines
+    ///     include ISO-8601 timestamps and a structured label prefix, which
+    ///     makes output in `~/Library/Logs/container-compose/serve.log` easier
+    ///     to parse. Defaults to `false` for interactive foreground use.
+    public static func run(socketPath: String, launchdManaged: Bool = false) async throws {
         let logger = Logger(label: "container-compose.serve")
 
         let router = Router()
@@ -163,8 +202,11 @@ public enum ServeDaemon {
             )
         )
 
-        print("container-compose daemon listening on \(socketPath)")
-        print("(send SIGTERM or Ctrl-C for graceful shutdown)")
+        let prefix = logPrefix(launchdManaged: launchdManaged)
+        print("\(prefix)container-compose daemon listening on \(socketPath)")
+        if !launchdManaged {
+            print("(send SIGTERM or Ctrl-C for graceful shutdown)")
+        }
 
         try await group.run()
     }
