@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "531b490a0aa36406a60fbd2d5337a40fe4db3f3e",
-  "short": "531b490",
+  "commit": "3bbbfd56ce60434b1cc5a97ae57adf25c0488cc0",
+  "short": "3bbbfd5",
   "target": "current",
-  "message": "feat(server): compose-aware project lifecycle endpoints (CHAOS-1360) (#64)",
-  "published_at": "2026-05-01T11:48:39.287412+00:00"
+  "message": "test(server): cover RuntimeError.notSupported 501 path (CHAOS-1352) (#65)",
+  "published_at": "2026-05-01T11:59:10.317432+00:00"
 }
