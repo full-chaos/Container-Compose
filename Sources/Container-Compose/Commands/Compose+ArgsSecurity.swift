@@ -37,11 +37,11 @@ extension ComposeUp {
             for cap in ctx.service.cap_drop ?? [] {
                 args.append(contentsOf: ["--cap-drop", cap])
             }
-            for opt in ctx.service.security_opt ?? [] {
-                args.append(contentsOf: ["--security-opt", opt])
+            if let securityOpt = ctx.service.security_opt, !securityOpt.isEmpty {
+                warnUnsupportedRuntimeFieldOnce("service.security_opt", "Note: 'security_opt' is parsed but not supported by Apple container; ignored.")
             }
-            if let userns = ctx.service.userns_mode {
-                args.append(contentsOf: ["--userns", userns])
+            if ctx.service.userns_mode != nil {
+                warnUnsupportedRuntimeFieldOnce("service.userns_mode", "Note: 'userns_mode' is parsed but not supported by Apple container; ignored.")
             }
             for group in ctx.service.group_add ?? [] {
                 args.append(contentsOf: ["--group-add", group])
