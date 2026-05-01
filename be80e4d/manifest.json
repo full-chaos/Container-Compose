@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1353-resource-crud",
+  "commit": "be80e4d49aad76e0a6957c2753b152a916290623",
+  "short": "be80e4d",
+  "target": "be80e4d",
+  "message": "feat(server): network/volume/secret CRUD endpoints (CHAOS-1353)",
+  "published_at": "2026-05-01T10:32:05.911381+00:00"
+}
