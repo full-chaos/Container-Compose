@@ -102,14 +102,98 @@ public enum RuntimePortProtocol: String, Sendable, Hashable, Codable, CaseIterab
     case udp
 }
 
+// MARK: - RuntimeVersion
+
+/// Backend-neutral version payload returned by `Runtime.version()`. CHAOS-1347
+/// Phase 2 route handlers use this as the runtime-side source of truth for the
+/// Container REST API version endpoint while keeping HTTP response DTOs separate
+/// from runtime metadata.
+///
+/// `apiVersion` and `serverName` are container-compose API constants;
+/// `daemonVersion`, `backendDescription`, and `arch` are supplied by each
+/// conformer so clients can distinguish the bridge backend from the native
+/// apple/containerization backend without importing backend packages.
+public struct RuntimeVersion: Sendable, Hashable, Codable {
+    public let apiVersion: String
+    public let daemonVersion: String
+    public let serverName: String
+    public let backendDescription: String
+    public let arch: String
+
+    public init(
+        apiVersion: String,
+        daemonVersion: String,
+        serverName: String,
+        backendDescription: String,
+        arch: String
+    ) {
+        self.apiVersion = apiVersion
+        self.daemonVersion = daemonVersion
+        self.serverName = serverName
+        self.backendDescription = backendDescription
+        self.arch = arch
+    }
+}
+
+// MARK: - RuntimeNetwork
+
+/// Minimal runtime-side network representation returned by
+/// `Runtime.listNetworks()`. The HTTP API layer owns richer response mapping;
+/// this type only records the identity and attachment details that can be
+/// shared across the bridge and native backends during CHAOS-1347 Phase 2.
+public struct RuntimeNetwork: Sendable, Hashable, Codable {
+    public let id: String
+    public let name: String
+    public let driver: String
+    public let labels: [String: String]
+    public let attachedContainerIds: [String]
+
+    public init(
+        id: String,
+        name: String,
+        driver: String,
+        labels: [String: String] = [:],
+        attachedContainerIds: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.driver = driver
+        self.labels = labels
+        self.attachedContainerIds = attachedContainerIds
+    }
+}
+
 // MARK: - RuntimeListFilters
 
 /// Selection criteria for `Runtime.list(filters:)`. Phase 1 surface is just
-/// `.all`; Phase 2 extends with project / status / id-prefix filters as more
-/// commands migrate off `ContainerClientProvider`.
+/// `.all`; CHAOS-1347 Phase 2 adds status and name-prefix filters for route
+/// handlers migrating off `ContainerClientProvider`.
+///
+/// Empty `status` arrays and empty `namePrefix` strings are normalized as no
+/// filter by conformers, preserving `.all` semantics for callers that construct
+/// filters from optional query parameters.
 public struct RuntimeListFilters: Sendable, Equatable {
     public static let all = RuntimeListFilters()
-    public init() {}
+    public let status: [RuntimeContainerStatus]?
+    public let namePrefix: String?
+
+    public init(
+        status: [RuntimeContainerStatus]? = nil,
+        namePrefix: String? = nil
+    ) {
+        self.status = status
+        self.namePrefix = namePrefix
+    }
+
+    public func matches(_ container: RuntimeContainer) -> Bool {
+        if let status, !status.isEmpty, !status.contains(container.status) {
+            return false
+        }
+        if let namePrefix, !namePrefix.isEmpty, !container.id.hasPrefix(namePrefix) {
+            return false
+        }
+        return true
+    }
 }
 
 // MARK: - RuntimeStopOptions

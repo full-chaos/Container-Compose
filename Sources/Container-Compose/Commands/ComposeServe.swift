@@ -171,8 +171,10 @@ public enum ServeDaemon {
 
     // MARK: - Routes
 
-    /// Register the lifecycle-only routes that ship in Phase 2.0. Phase 2
-    /// (CHAOS-1347) extends this with the rest of the Container REST API.
+    /// Register all routes the daemon serves. Phase 2.0 (CHAOS-1349) shipped
+    /// `/_ping`; Phase 2.A (CHAOS-1347) extends with the read-only Container
+    /// REST API surface (system / container / network / project routes).
+    /// Phase 2.B (follow-up PR) will add streaming routes.
     public static func registerCoreRoutes(router: Router<BasicRequestContext>) {
         router.get("/_ping") { _, _ in
             PingResponse(
@@ -181,6 +183,11 @@ public enum ServeDaemon {
                 version: Main.version
             )
         }
+
+        SystemRoutes.register(router: router)
+        ContainerRoutes.register(router: router)
+        NetworkRoutes.register(router: router)
+        ProjectRoutes.register(router: router)
     }
 }
 

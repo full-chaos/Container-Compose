@@ -28,7 +28,9 @@ import Foundation
 public actor RecordingRuntime: Runtime {
 
     public enum Entry: Sendable, Equatable {
+        case version
         case list
+        case listNetworks
         case get(id: String)
         case create(id: String)
         case start(id: String)
@@ -43,16 +45,44 @@ public actor RecordingRuntime: Runtime {
 
     public private(set) var entries: [Entry] = []
     private let stubbedContainers: [RuntimeContainer]
+    private let stubbedNetworks: [RuntimeNetwork]
 
-    public init(stubbedContainers: [RuntimeContainer] = []) {
+    public init(
+        stubbedContainers: [RuntimeContainer] = [],
+        stubbedNetworks: [RuntimeNetwork] = []
+    ) {
         self.stubbedContainers = stubbedContainers
+        self.stubbedNetworks = stubbedNetworks
     }
 
     // MARK: - Runtime
 
+    public func version() async throws -> RuntimeVersion {
+        entries.append(.version)
+        #if arch(arm64)
+        let arch = "arm64"
+        #elseif arch(x86_64)
+        let arch = "x86_64"
+        #else
+        let arch = "arm64"
+        #endif
+        return RuntimeVersion(
+            apiVersion: "v1",
+            daemonVersion: Main.version,
+            serverName: "container-compose",
+            backendDescription: "recording-runtime",
+            arch: arch
+        )
+    }
+
     public func list(filters: RuntimeListFilters) async throws -> [RuntimeContainer] {
         entries.append(.list)
-        return stubbedContainers
+        return stubbedContainers.filter { filters.matches($0) }
+    }
+
+    public func listNetworks() async throws -> [RuntimeNetwork] {
+        entries.append(.listNetworks)
+        return stubbedNetworks
     }
 
     public func get(id: String) async throws -> RuntimeContainer {
