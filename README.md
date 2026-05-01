@@ -10,6 +10,16 @@ Container-Compose brings (limited) Docker Compose support to [Apple Container](h
 
 [Compose feature coverage report](https://full-chaos.github.io/container-compose/)
 
+## Documentation
+
+Full documentation lives in [`docs/`](./docs/):
+
+- [**Quickstart**](./docs/quickstart.md) — up and running in 2 minutes
+- [**CLI Reference**](./docs/cli-reference.md) — every subcommand and flag
+- [**Tutorials**](./docs/tutorials/) — paired walkthroughs for the working samples in [`Sample Compose Files/`](./Sample%20Compose%20Files/)
+- [**Feature Parity**](./docs/feature-parity.md) — tiered split of compose-spec coverage gaps
+- [**Upstream / Fork Status**](./docs/upstream-fork-status.md) — what we depend on from `full-chaos/container` and what's pending in `apple/container`
+
 ## Features
 
 - **Compose file support:** Parse and interpret `docker-compose.yml` files to configure Apple Containers.
