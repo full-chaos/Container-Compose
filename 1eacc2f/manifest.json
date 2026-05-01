@@ -1,0 +1,8 @@
+{
+  "branch": "claude/awesome-panini-99fb43",
+  "commit": "1eacc2f2709109b2d9ad30c9d3428fd05e42256a",
+  "short": "1eacc2f",
+  "target": "1eacc2f",
+  "message": "fix(server): ProjectOrchestrator.restart correctly recreates containers",
+  "published_at": "2026-05-01T12:12:03.626194+00:00"
+}
