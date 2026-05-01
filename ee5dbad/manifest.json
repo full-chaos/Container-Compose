@@ -1,0 +1,8 @@
+{
+  "branch": "feat/feature-parity-inventory-and-docs",
+  "commit": "ee5dbad4ae49b640fe0b62fd8a23dd8dcc8ee072",
+  "short": "ee5dbad",
+  "target": "ee5dbad",
+  "message": "docs: feature parity inventory + user-facing docs/ structure (CHAOS-1370, CHAOS-1378)",
+  "published_at": "2026-05-01T17:53:29.642822+00:00"
+}
