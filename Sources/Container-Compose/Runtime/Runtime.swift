@@ -171,6 +171,7 @@ public enum RuntimeError: Error, Sendable, Equatable {
     case alreadyExists(id: String)
     case invalidState(id: String, expected: RuntimeContainerStatus, actual: RuntimeContainerStatus)
     case timeout(id: String, seconds: Int)
+    case imageNotFound(reference: String)
     case notSupported(operation: String, conformer: String)
     case backendFailure(message: String)
     case persistenceFailure(message: String)
@@ -187,6 +188,8 @@ extension RuntimeError: LocalizedError {
             return "Runtime: container '\(id)' has invalid state (expected \(expected.rawValue), actual \(actual.rawValue))"
         case .timeout(let id, let seconds):
             return "Runtime: container '\(id)' timed out after \(seconds)s"
+        case .imageNotFound(let reference):
+            return "Runtime: image '\(reference)' not found"
         case .notSupported(let operation, let conformer):
             return "Runtime: operation '\(operation)' is not supported by '\(conformer)'"
         case .backendFailure(let message):
