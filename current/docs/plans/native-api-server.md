@@ -309,6 +309,39 @@ All Phase 0 + Phase 1 open questions are now resolved. Remaining items are defer
 - **Not a multi-tenant API.** Single-user, single-machine. No auth model needed at v1.
 - **Not auto-starting.** The daemon starts only when the user explicitly runs `container-compose serve`. See Decision #5.
 
+### Phase 8 — SHIPPED (CHAOS-1353)
+
+Network/volume/secret CRUD endpoints. Shipped 2026-05-01.
+
+**Routes added:**
+- `POST /networks` — create a network; body `{name, driver?, subnet?, gateway?, labels?}` → 201 `{id, name}`
+- `DELETE /networks/{id}` — remove by id → 204
+- `GET /volumes` — list volumes → 200 `{volumes: [...]}`
+- `POST /volumes` — create; body `{name, driver?, labels?}` → 201 `{name, driver, labels, createdAt}`
+- `DELETE /volumes/{name}` — remove by name → 204
+- `GET /secrets` — list secret metadata (no values) → 200 `[{name, labels, createdAt}]`
+- `POST /secrets` — create; body `{name, value, labels?}` → 201 `{name}` (value never echoed)
+- `DELETE /secrets/{name}` — remove by name → 204
+
+**Runtime protocol extensions added:** `createNetwork(spec:)`, `removeNetwork(id:)`, `listVolumes()`, `createVolume(spec:)`, `removeVolume(name:)`, `listSecrets()`, `createSecret(spec:)`, `removeSecret(name:)`.
+
+**Runtime conformer status:**
+- `MockRuntime` — full in-memory implementation for testing
+- `RecordingRuntime` — call recording + stubbed responses
+- `BridgeContainerClientRuntime` — all 8 methods throw `.notSupported` (no XPC surface for these operations; Leaks #9, #10, #11)
+- `AppleContainerizationRuntime` — all 8 methods throw `.notSupported` (no `apple/containerization` API for networks/volumes/secrets; Leaks #9, #10, #11)
+
+**Secret body shape decision:** `POST /secrets` accepts `{name, value}` where `value` is an inline UTF-8 string. Clients reading a `secret.file:` Compose entry must read the file themselves; the daemon does not accept `filePath`. This matches Docker's contract without importing Docker's wire format.
+
+**New types added to RuntimeTypes.swift:** `RuntimeVolume`, `RuntimeCreateVolumeSpec`, `RuntimeSecret`, `RuntimeCreateSecretSpec`, `RuntimeCreateNetworkSpec`.
+
+**New files:**
+- `Sources/Container-Compose/Server/Routes/VolumeRoutes.swift`
+- `Sources/Container-Compose/Server/Routes/SecretRoutes.swift`
+- `Tests/.../NetworkWriteRoutesTests.swift`
+- `Tests/.../VolumeRoutesTests.swift`
+- `Tests/.../SecretRoutesTests.swift`
+
 ## References
 
 - CHAOS-1340 (epic): https://linear.app/fullchaos/issue/CHAOS-1340
