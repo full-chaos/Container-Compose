@@ -1,0 +1,8 @@
+{
+  "branch": "feat/serve-routes-phase2-CHAOS-1347",
+  "commit": "f77a1bdccce2bd671c86140ec69496710ddd8af7",
+  "short": "f77a1bd",
+  "target": "f77a1bd",
+  "message": "feat(server): Phase 2.A read-only Container REST API routes (CHAOS-1347)",
+  "published_at": "2026-05-01T03:25:18.231932+00:00"
+}
