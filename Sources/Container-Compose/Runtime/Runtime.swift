@@ -39,10 +39,25 @@ import Foundation
 public protocol Runtime: Sendable {
     // MARK: - Discovery
 
+    /// Return runtime/server metadata for the Container REST API surface added
+    /// by CHAOS-1347 Phase 2. The shape intentionally stays backend-neutral:
+    /// callers learn the API version, container-compose daemon version,
+    /// selected backend description, and host architecture without importing
+    /// apple/container or apple/containerization types.
+    func version() async throws -> RuntimeVersion
+
     /// Return all containers visible to this runtime that match `filters`.
-    /// Phase 1 only exercises `.all`; conformers should treat unknown filters
-    /// as no-ops rather than throwing.
+    /// CHAOS-1347 Phase 2 extends filters with status and name-prefix fields;
+    /// conformers should keep treating unknown or empty filters as no-ops
+    /// rather than throwing.
     func list(filters: RuntimeListFilters) async throws -> [RuntimeContainer]
+
+    /// Return runtime-side network summaries needed by CHAOS-1347 Phase 2 route
+    /// handlers. This is deliberately smaller than the HTTP API's
+    /// `APINetworkSummary`: conformers expose only backend identity, driver,
+    /// labels, and attached container ids so the server layer can adapt the
+    /// response without leaking backend-specific network models.
+    func listNetworks() async throws -> [RuntimeNetwork]
 
     /// Look up a single container by id. Conformers throw
     /// `RuntimeError.notFound(id:)` when no container exists with that id, so

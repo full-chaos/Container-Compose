@@ -51,10 +51,33 @@ public struct BridgeContainerClientRuntime: Runtime {
 
     // MARK: - Discovery
 
+    public func version() async throws -> RuntimeVersion {
+        RuntimeVersion(
+            apiVersion: "v1",
+            daemonVersion: Main.version,
+            serverName: "container-compose",
+            backendDescription: "bridge (apple/container CLI)",
+            arch: BridgeContainerClientRuntime.runtimeArch
+        )
+    }
+
     public func list(filters: RuntimeListFilters) async throws -> [RuntimeContainer] {
         let provider = ContainerClientEnvironment.current
         let snapshots = try await provider.list(filters: .all)
-        return snapshots.map(BridgeContainerClientRuntime.translate(snapshot:))
+        return snapshots
+            .map(BridgeContainerClientRuntime.translate(snapshot:))
+            .filter { filters.matches($0) }
+    }
+
+    public func listNetworks() async throws -> [RuntimeNetwork] {
+        // ContainerClientProvider currently exposes networkGet(id:) for
+        // existence probing but no NetworkClient.list equivalent. Keep this
+        // explicit so CHAOS-1347 Phase 3 can wire network enumeration when the
+        // provider grows that API instead of silently returning partial data.
+        throw RuntimeError.notSupported(
+            operation: "listNetworks",
+            conformer: "BridgeContainerClientRuntime"
+        )
     }
 
     public func get(id: String) async throws -> RuntimeContainer {
@@ -172,5 +195,15 @@ public struct BridgeContainerClientRuntime: Runtime {
             proto: port.proto == .udp ? .udp : .tcp,
             count: port.count
         )
+    }
+
+    private static var runtimeArch: String {
+        #if arch(arm64)
+        "arm64"
+        #elseif arch(x86_64)
+        "x86_64"
+        #else
+        "unknown"
+        #endif
     }
 }

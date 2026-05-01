@@ -71,9 +71,31 @@ public actor AppleContainerizationRuntime: Runtime {
 
     // MARK: - Discovery
 
+    public func version() async throws -> RuntimeVersion {
+        RuntimeVersion(
+            apiVersion: "v1",
+            daemonVersion: Main.version,
+            serverName: "container-compose",
+            backendDescription: "apple-containerization 0.31.0",
+            arch: AppleContainerizationRuntime.runtimeArch
+        )
+    }
+
     public func list(filters: RuntimeListFilters) async throws -> [RuntimeContainer] {
         let records = await registry.list()
-        return records.map { $0.toRuntimeContainer() }
+        return records
+            .map { $0.toRuntimeContainer() }
+            .filter { filters.matches($0) }
+    }
+
+    /// CHAOS-1347 Phase 3 wiring note: the native runtime does not yet keep
+    /// durable network metadata alongside `ContainerRegistry` records, and
+    /// Phase 2 route handlers need a successful empty response while the
+    /// server/API surface lands. Network enumeration will be backed by the
+    /// native networking model when lifecycle wiring moves beyond the
+    /// registry-only skeleton.
+    public func listNetworks() async throws -> [RuntimeNetwork] {
+        []
     }
 
     public func get(id: String) async throws -> RuntimeContainer {
@@ -256,6 +278,16 @@ public actor AppleContainerizationRuntime: Runtime {
         if i < stdout.count { merged.append(contentsOf: stdout[i...]) }
         if j < stderr.count { merged.append(contentsOf: stderr[j...]) }
         return merged
+    }
+
+    private static var runtimeArch: String {
+        #if arch(arm64)
+        "arm64"
+        #elseif arch(x86_64)
+        "x86_64"
+        #else
+        "unknown"
+        #endif
     }
 
     // MARK: - Phase 2 anchor
