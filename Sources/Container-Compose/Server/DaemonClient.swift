@@ -16,6 +16,8 @@
 
 import AsyncHTTPClient
 import Foundation
+import NIOCore
+import NIOPosix
 import NIOSSL
 
 // MARK: - DaemonClient
@@ -78,13 +80,26 @@ enum DaemonClient {
         }
 
         let config = HTTPClient.Configuration(tlsConfiguration: tlsConfig)
-        let client = HTTPClient(configuration: config)
+        // Force NIO-on-BSD-Sockets (MultiThreadedEventLoopGroup) so that NIOSSL's
+        // additionalTrustRoots work correctly. macOS Network.framework (the default)
+        // does not support custom trust roots and will reject self-signed certs even
+        // when additionalTrustRoots is set.
+        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        let client = HTTPClient(
+            eventLoopGroupProvider: .shared(eventLoopGroup),
+            configuration: config
+        )
 
         let start = ContinuousClock().now
         do {
             defer {
                 // Use shutdown() in a fire-and-forget task to avoid blocking the async context.
-                Task { try? await client.shutdown() }
+                // The ELG shutdown is dispatched to a background thread to avoid the
+                // "unavailable from async context" restriction on syncShutdownGracefully.
+                Task {
+                    try? await client.shutdown()
+                    DispatchQueue.global().async { try? eventLoopGroup.syncShutdownGracefully() }
+                }
             }
             let request = HTTPClientRequest(url: urlString)
             let response = try await client.execute(request, timeout: .seconds(5))
@@ -117,9 +132,12 @@ enum DaemonClient {
 
         if let caPath = resolvedCACert,
            let caCerts = try? NIOSSLCertificate.fromPEMFile(caPath) {
+            // Add the CA as an additional trust root so the self-signed cert chains.
+            // Keep the default .fullVerification — the generated cert includes a SAN for
+            // "localhost" / "127.0.0.1" so hostname verification passes without relaxation.
+            // NOTE: .noHostnameVerification is NOT supported on macOS with Network.framework
+            // (AsyncHTTPClient precondition fails). additionalTrustRoots is sufficient.
             tlsConfig.additionalTrustRoots = [.certificates(caCerts)]
-            // Self-signed certs won't chain to system roots; use additional roots only
-            tlsConfig.certificateVerification = .noHostnameVerification
         }
         // else: system roots + full verification (default)
 
