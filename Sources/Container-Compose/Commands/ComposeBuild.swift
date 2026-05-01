@@ -201,13 +201,19 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // Add cache-from references
-        for ref in buildConfig.cache_from ?? [] {
-            commands.append(contentsOf: ["--cache-from", ref])
+        if let cacheFrom = buildConfig.cache_from, !cacheFrom.isEmpty {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.cache_from",
+                "Note: 'build.cache_from' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // Add cache-to references
-        for ref in buildConfig.cache_to ?? [] {
-            commands.append(contentsOf: ["--cache-to", ref])
+        if let cacheTo = buildConfig.cache_to, !cacheTo.isEmpty {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.cache_to",
+                "Note: 'build.cache_to' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // Add labels
@@ -216,8 +222,11 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // Add network mode
-        if let network = buildConfig.network {
-            commands.append(contentsOf: ["--network", network])
+        if buildConfig.network != nil {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.network",
+                "Note: 'build.network' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // Add secrets
@@ -226,8 +235,11 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // Add SSH agent/key mappings
-        for sshKey in buildConfig.ssh ?? [] {
-            commands.append(contentsOf: ["--ssh", sshKey])
+        if let ssh = buildConfig.ssh, !ssh.isEmpty {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.ssh",
+                "Note: 'build.ssh' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // Add platform — build.platforms overrides service.platform; only first is used.
@@ -248,8 +260,11 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // Add shm-size
-        if let shmSize = buildConfig.shm_size {
-            commands.append(contentsOf: ["--shm-size", shmSize])
+        if buildConfig.shm_size != nil {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.shm_size",
+                "Note: 'build.shm_size' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // build.entitlements: Detected, But Not Supported.
