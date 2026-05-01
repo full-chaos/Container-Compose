@@ -1,0 +1,8 @@
+{
+  "branch": "feat/no-upstream-phase-0-fork-bump",
+  "commit": "dccba7a10a14944835ffcd856c12babe9c17da24",
+  "short": "dccba7a",
+  "target": "dccba7a",
+  "message": "chore(deps): bump full-chaos/container fork (gain --shm-size from apple/container#1488)",
+  "published_at": "2026-05-01T22:41:25.944842+00:00"
+}
