@@ -17,8 +17,11 @@
 import ArgumentParser
 import Foundation
 import Hummingbird
+import HummingbirdCore
+import HummingbirdTLS
 import Logging
 import Metrics
+import NIOSSL
 import Prometheus
 import ServiceLifecycle
 
@@ -46,11 +49,37 @@ public struct ComposeServe: AsyncParsableCommand {
         abstract: "Start the container-compose HTTP API daemon over a Unix domain socket"
     )
 
+    // MARK: - Flags
+
     @Option(
         name: .customLong("socket"),
-        help: "Path to the Unix domain socket. Default: ~/.container-compose/api.sock"
+        help: "[Deprecated] Path to the Unix domain socket. Use --listen unix:///path instead. Default: ~/.container-compose/api.sock"
     )
     var socketPath: String?
+
+    @Option(
+        name: .customLong("listen"),
+        help: "Listen address. Schemes: unix:///path (default), tcp://host:port, tls://host:port"
+    )
+    var listenURL: String?
+
+    @Option(
+        name: .customLong("cert"),
+        help: "Path to TLS certificate PEM file (required for tls:// unless auto-detected from ~/.container-compose/cert.pem)"
+    )
+    var certPath: String?
+
+    @Option(
+        name: .customLong("key"),
+        help: "Path to TLS private key PEM file (required for tls:// unless auto-detected from ~/.container-compose/key.pem)"
+    )
+    var keyPath: String?
+
+    @Flag(
+        name: .customLong("insecure"),
+        help: "Allow plain TCP on non-localhost addresses (warning: unencrypted)"
+    )
+    var insecure: Bool = false
 
     /// When `true` the daemon is running under launchd management (e.g. via
     /// `brew services start container-compose`). In this mode log lines are
@@ -69,17 +98,81 @@ public struct ComposeServe: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
-        let resolved = ServeDaemon.resolveSocketPath(override: socketPath)
+        // 1. Mutual exclusion: --socket and --listen cannot both be set
+        if socketPath != nil && listenURL != nil {
+            throw ValidationError("--socket and --listen are mutually exclusive; use --listen unix:///path")
+        }
 
-        if ServeDaemon.isAlreadyServing(at: resolved) {
-            print("\(ServeDaemon.logPrefix(launchdManaged: launchdManaged))container-compose daemon already running on \(resolved)")
+        // 2. Resolve the listen address
+        let listen: ListenAddress
+        if let rawURL = listenURL {
+            listen = try ListenAddress.parse(rawURL)
+        } else if let sock = socketPath {
+            // Deprecated back-compat: --socket translates to unix://
+            let expanded = ServeDaemon.resolveSocketPath(override: sock)
+            listen = .unix(path: expanded)
+        } else {
+            // Default: unix socket at the standard path
+            listen = .unix(path: ServeDaemon.defaultSocketPath)
+        }
+
+        // 3. Validate TCP non-localhost requires --insecure
+        if case .tcp(let host, _) = listen, !listen.isLocalhost {
+            guard insecure else {
+                throw ValidationError(
+                    "tcp:// on non-localhost address '\(host)' requires --insecure (plain TCP is unencrypted). " +
+                    "Use tls:// for encrypted transport, or --insecure to allow plain TCP."
+                )
+            }
+        }
+
+        // 4. Validate TLS: resolve cert + key paths
+        var resolvedCertPath: String? = certPath
+        var resolvedKeyPath: String? = keyPath
+        if case .tls = listen {
+            // Auto-detect from ~/.container-compose/ if not specified
+            let defaultCert = ServeDaemon.defaultTLSCertPath
+            let defaultKey  = ServeDaemon.defaultTLSKeyPath
+            if resolvedCertPath == nil && FileManager.default.fileExists(atPath: defaultCert) {
+                resolvedCertPath = defaultCert
+            }
+            if resolvedKeyPath == nil && FileManager.default.fileExists(atPath: defaultKey) {
+                resolvedKeyPath = defaultKey
+            }
+            guard let cp = resolvedCertPath, let kp = resolvedKeyPath else {
+                throw ValidationError(
+                    "tls:// requires --cert and --key (or auto-detected ~/.container-compose/cert.pem + key.pem). " +
+                    "Run 'container-compose system generate-cert' to create them."
+                )
+            }
+            resolvedCertPath = cp
+            resolvedKeyPath  = kp
+        }
+
+        // 5. Idempotence detection
+        if ServeDaemon.isAlreadyServing(listenAddress: listen) {
+            print("\(ServeDaemon.logPrefix(launchdManaged: launchdManaged))daemon already listening at \(listen.description)")
             return
         }
 
-        try ServeDaemon.cleanupStaleSocketIfNeeded(at: resolved)
-        try ServeDaemon.ensureParentDirectory(for: resolved)
+        // 6. Unix-specific setup
+        if case .unix(let path) = listen {
+            try ServeDaemon.cleanupStaleSocketIfNeeded(at: path)
+            try ServeDaemon.ensureParentDirectory(for: path)
+        }
 
-        try await ServeDaemon.run(socketPath: resolved, launchdManaged: launchdManaged)
+        // 7. Warn for non-localhost plain TCP (allowed via --insecure)
+        if case .tcp(_, _) = listen, !listen.isLocalhost {
+            let logger = Logger(label: "container-compose.serve")
+            logger.warning("tcp:// on non-localhost address — traffic is UNENCRYPTED. Use tls:// for production.")
+        }
+
+        try await ServeDaemon.run(
+            listen: listen,
+            certPath: resolvedCertPath,
+            keyPath: resolvedKeyPath,
+            launchdManaged: launchdManaged
+        )
     }
 }
 
@@ -104,6 +197,22 @@ public enum ServeDaemon {
             .path
     }
 
+    /// Default TLS certificate path (auto-detected by `serve --listen tls://...`).
+    public static var defaultTLSCertPath: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".container-compose")
+            .appending(path: "cert.pem")
+            .path
+    }
+
+    /// Default TLS key path (auto-detected by `serve --listen tls://...`).
+    public static var defaultTLSKeyPath: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".container-compose")
+            .appending(path: "key.pem")
+            .path
+    }
+
     public static func resolveSocketPath(override: String?) -> String {
         guard let override, !override.isEmpty else {
             return defaultSocketPath
@@ -124,6 +233,22 @@ public enum ServeDaemon {
     public static func isAlreadyServing(at socketPath: String) -> Bool {
         guard FileManager.default.fileExists(atPath: socketPath) else { return false }
         return UnixSocketProbe.canConnect(to: socketPath)
+    }
+
+    /// Extended idempotence probe accepting a `ListenAddress`.
+    ///
+    /// - Unix branch: BSD socket connect(2) probe (same as legacy `isAlreadyServing(at:)`).
+    /// - TCP/TLS branch: TCP-level connect with 1s timeout. TLS handshake is NOT performed —
+    ///   a successful TCP connect means something is bound at host:port, which is sufficient
+    ///   for idempotence detection ("don't try to bind again"). The exact peer identity
+    ///   is irrelevant for startup guard purposes.
+    public static func isAlreadyServing(listenAddress: ListenAddress) -> Bool {
+        switch listenAddress {
+        case .unix(let path):
+            return isAlreadyServing(at: path)
+        case .tcp(let host, let port), .tls(let host, let port):
+            return TCPProbe.canConnect(to: host, port: port, timeoutSeconds: 1)
+        }
     }
 
     /// Remove a leftover socket file iff it exists and nothing is bound to it.
@@ -167,12 +292,36 @@ public enum ServeDaemon {
     /// file on graceful shutdown after Hummingbird drains its requests.
     ///
     /// - Parameters:
-    ///   - socketPath: Path at which to bind the Unix domain socket.
+    ///   - socketPath: Path at which to bind the Unix domain socket. (Legacy form)
     ///   - launchdManaged: When `true` (set by `--launchd` flag), log lines
     ///     include ISO-8601 timestamps and a structured label prefix, which
     ///     makes output in `~/Library/Logs/container-compose/serve.log` easier
     ///     to parse. Defaults to `false` for interactive foreground use.
     public static func run(socketPath: String, launchdManaged: Bool = false) async throws {
+        try await run(
+            listen: .unix(path: socketPath),
+            certPath: nil,
+            keyPath: nil,
+            launchdManaged: launchdManaged
+        )
+    }
+
+    /// Build the Hummingbird `Application` + `ServiceGroup` and run until
+    /// SIGTERM/SIGINT.
+    ///
+    /// Supports Unix, TCP, and TLS listen addresses.
+    ///
+    /// - Parameters:
+    ///   - listen: The listen address for the daemon.
+    ///   - certPath: Path to TLS certificate PEM (required when listen == .tls).
+    ///   - keyPath: Path to TLS private key PEM (required when listen == .tls).
+    ///   - launchdManaged: Enables timestamped log prefix for launchd output.
+    public static func run(
+        listen: ListenAddress,
+        certPath: String?,
+        keyPath: String?,
+        launchdManaged: Bool = false
+    ) async throws {
         let logger = Logger(label: "container-compose.serve")
         let bootTime = Date()
 
@@ -194,46 +343,79 @@ public enum ServeDaemon {
         // MARK: - Auth (CHAOS-1356)
         // (Empty placeholder — owned by PR-3, post-Wave-A merge)
 
-        // MARK: - Server build (CHAOS-1359)
-        // (Empty placeholder — owned by PR-1)
-
         MetricsRoutes.register(router: router, bootTime: bootTime)
         OpenAPIRoute.register(router: router)
         registerCoreRoutes(router: router)
 
+        // MARK: - Server build (CHAOS-1359)
+        let serverBuilder: HTTPServerBuilder
+        switch listen {
+        case .tls:
+            guard let cp = certPath, let kp = keyPath else {
+                throw ServeDaemonError.tlsRequiresCertAndKey
+            }
+            let tlsConfig = try TLSBootstrap.makeServerConfig(
+                certPath: cp,
+                keyPath: kp,
+                clientCAPath: nil  // PR-3 plumbs clientCAPath
+            )
+            serverBuilder = try .tls(.http1(), tlsConfiguration: tlsConfig)
+        case .unix, .tcp:
+            serverBuilder = .http1()
+        }
+
         let app = Application(
             router: router,
+            server: serverBuilder,
             configuration: .init(
-                address: .unixDomainSocket(path: socketPath),
+                address: listen.bindAddress,
                 serverName: "container-compose"
             ),
             logger: logger
         )
 
-        let cleanup = SocketCleanupService(socketPath: socketPath, logger: logger)
+        var services: [ServiceGroupConfiguration.ServiceConfiguration] = [
+            .init(
+                service: app,
+                successTerminationBehavior: .gracefullyShutdownGroup,
+                failureTerminationBehavior: .gracefullyShutdownGroup
+            )
+        ]
 
-        let appConfig = ServiceGroupConfiguration.ServiceConfiguration(
-            service: app,
-            successTerminationBehavior: .gracefullyShutdownGroup,
-            failureTerminationBehavior: .gracefullyShutdownGroup
-        )
-        let cleanupConfig = ServiceGroupConfiguration.ServiceConfiguration(service: cleanup)
+        // Unix socket cleanup on shutdown
+        if case .unix(let path) = listen {
+            let cleanup = SocketCleanupService(socketPath: path, logger: logger)
+            services.append(.init(service: cleanup))
+        }
 
         let group = ServiceGroup(
             configuration: ServiceGroupConfiguration(
-                services: [appConfig, cleanupConfig],
+                services: services,
                 gracefulShutdownSignals: [.sigterm, .sigint],
                 logger: logger
             )
         )
 
         let prefix = logPrefix(launchdManaged: launchdManaged)
-        print("\(prefix)container-compose daemon listening on \(socketPath)")
+        print("\(prefix)container-compose daemon listening at \(listen.description)")
         if !launchdManaged {
             print("(send SIGTERM or Ctrl-C for graceful shutdown)")
         }
 
         try await group.run()
+    }
+
+    // MARK: - Errors
+
+    enum ServeDaemonError: Error, CustomStringConvertible {
+        case tlsRequiresCertAndKey
+
+        var description: String {
+            switch self {
+            case .tlsRequiresCertAndKey:
+                return "tls:// listen address requires --cert and --key paths"
+            }
+        }
     }
 
     // MARK: - Routes
