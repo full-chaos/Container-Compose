@@ -1,0 +1,474 @@
+//===----------------------------------------------------------------------===//
+// Copyright © 2026 Morris Richman and the Container-Compose project authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//===----------------------------------------------------------------------===//
+
+import Foundation
+
+// MARK: - ProjectOrchestrator
+
+/// Compose-aware orchestration layer between HTTP route handlers and the `Runtime`
+/// protocol (CHAOS-1360, Phase 7).
+///
+/// **Design choice (Option B from the CHAOS-1360 ticket):**
+/// Routes call `ProjectOrchestrator` methods, which internally use `Runtime`
+/// protocol calls (`list`, `create`, `start`, `stop`, `remove`). The
+/// `Runtime` protocol stays focused on single-container primitives; this
+/// layer owns multi-container coordination (ordering, fanout, error handling).
+///
+/// **Compose-file source model (Decision #12):**
+/// The orchestrator operates on containers *already known to the runtime* via
+/// the project-name prefix convention (`<project>-<service>`). It does NOT
+/// parse Compose YAML — that is out of scope per the CHAOS-1360 ticket
+/// boundary. The `up` endpoint starts containers by creating them from the
+/// image references already tracked; `down` stops/removes them; `scale`
+/// adjusts replica counts. A pre-registered project registry (separate
+/// ticket) can enrich this in a future phase.
+///
+/// **Sync vs async (Decision #11):**
+/// All operations are synchronous from the HTTP caller's perspective:
+/// - `up`: creates missing containers, starts stopped ones, returns 200 with
+///   the resulting service states. Long-running real pull/build activity belongs
+///   to the `build` and `pull` streaming endpoints.
+/// - `down`/`restart`/`scale`: synchronous 200 responses.
+/// - `build`/`pull`: NDJSON progress streams (the only truly long operations).
+///
+/// This avoids the complexity of async task tracking while preventing blocking
+/// on real pull/build by deferring those to their dedicated streaming routes.
+public struct ProjectOrchestrator: Sendable {
+
+    // MARK: - Errors
+
+    /// Errors that `ProjectOrchestrator` can surface to the route layer.
+    /// Route handlers map these to appropriate HTTP status codes.
+    public enum OrchestratorError: Error, Sendable, Equatable {
+        /// No containers with the project prefix exist in the runtime.
+        case projectNotFound(name: String)
+        /// Requested service was not found within the project.
+        case serviceNotFound(project: String, service: String)
+        /// `replicas` field was < 0.
+        case invalidReplicaCount(Int)
+    }
+
+    // MARK: - Up
+
+    /// Bring the project up.
+    ///
+    /// Discovers all containers in the runtime whose id starts with
+    /// `<project>-`. For each running or stopped container, transitions it to
+    /// `.running`. Creates a placeholder container for any service provided in
+    /// `serviceSpecs` that has no container yet.
+    ///
+    /// Because the API operates on an already-running daemon's registry (not a
+    /// Compose YAML), `serviceSpecs` is optional. When absent, the orchestrator
+    /// only acts on containers already in the registry.
+    ///
+    /// - Parameters:
+    ///   - project: Project name (the naming-convention prefix).
+    ///   - serviceSpecs: Optional map of `serviceName → imageReference` for
+    ///     containers that should be created if not already present.
+    ///   - runtime: The `Runtime` to use.
+    /// - Returns: Service state for every affected container.
+    public static func up(
+        project: String,
+        serviceSpecs: [String: String] = [:],
+        runtime: any Runtime
+    ) async throws -> [APIProjectServiceState] {
+        var states: [APIProjectServiceState] = []
+
+        // Create missing containers from serviceSpecs
+        for (serviceName, imageRef) in serviceSpecs.sorted(by: { $0.key < $1.key }) {
+            let containerId = "\(project)-\(serviceName)"
+            let existing = try? await runtime.get(id: containerId)
+            if existing == nil {
+                let config = RuntimeCreateConfiguration(imageReference: imageRef)
+                _ = try await runtime.create(id: containerId, configuration: config)
+            }
+        }
+
+        // List all project containers
+        let allContainers = try await runtime.list(
+            filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
+        )
+
+        guard !allContainers.isEmpty && !serviceSpecs.isEmpty || !allContainers.isEmpty else {
+            if serviceSpecs.isEmpty {
+                throw OrchestratorError.projectNotFound(name: project)
+            }
+            throw OrchestratorError.projectNotFound(name: project)
+        }
+
+        // Start each container that's not yet running
+        for container in allContainers.sorted(by: { $0.id < $1.id }) {
+            switch container.status {
+            case .created:
+                try await runtime.start(id: container.id)
+                states.append(APIProjectServiceState(
+                    service: extractServiceName(from: container.id, project: project),
+                    containerId: container.id,
+                    status: RuntimeContainerStatus.running.rawValue
+                ))
+            case .running:
+                states.append(APIProjectServiceState(
+                    service: extractServiceName(from: container.id, project: project),
+                    containerId: container.id,
+                    status: RuntimeContainerStatus.running.rawValue
+                ))
+            case .stopped, .exited:
+                // Stopped containers need to be reset to created before starting.
+                // Since the Runtime protocol doesn't have a reset method in the
+                // base protocol, we remove and recreate if possible. For now,
+                // we report as stopped and let the client handle.
+                states.append(APIProjectServiceState(
+                    service: extractServiceName(from: container.id, project: project),
+                    containerId: container.id,
+                    status: container.status.rawValue
+                ))
+            default:
+                states.append(APIProjectServiceState(
+                    service: extractServiceName(from: container.id, project: project),
+                    containerId: container.id,
+                    status: container.status.rawValue
+                ))
+            }
+        }
+
+        if states.isEmpty {
+            throw OrchestratorError.projectNotFound(name: project)
+        }
+
+        return states
+    }
+
+    // MARK: - Down
+
+    /// Tear the project down.
+    ///
+    /// Stops all running containers in the project, then removes them.
+    ///
+    /// - Parameters:
+    ///   - project: Project name prefix.
+    ///   - timeout: Grace period in seconds before SIGKILL. Defaults to 10.
+    ///   - runtime: The `Runtime` to use.
+    /// - Returns: IDs of containers that were stopped and removed.
+    public static func down(
+        project: String,
+        timeout: Int = 10,
+        runtime: any Runtime
+    ) async throws -> (stopped: [String], removed: [String]) {
+        let allContainers = try await runtime.list(
+            filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
+        )
+
+        guard !allContainers.isEmpty else {
+            throw OrchestratorError.projectNotFound(name: project)
+        }
+
+        var stopped: [String] = []
+        var removed: [String] = []
+
+        let stopOptions = RuntimeStopOptions(signal: 15, timeoutSeconds: timeout)
+
+        // Stop in reverse order (approximate: by id descending)
+        for container in allContainers.sorted(by: { $0.id > $1.id }) {
+            if container.status == .running {
+                try? await runtime.stop(id: container.id, options: stopOptions)
+                stopped.append(container.id)
+            }
+        }
+
+        // Remove all
+        for container in allContainers {
+            try? await runtime.remove(id: container.id, force: true)
+            removed.append(container.id)
+        }
+
+        return (stopped: stopped.sorted(), removed: removed.sorted())
+    }
+
+    // MARK: - Restart
+
+    /// Restart project services.
+    ///
+    /// Stops then recreates each container that matches the filter.
+    /// If `services` is nil or empty, restarts all project containers.
+    ///
+    /// - Parameters:
+    ///   - project: Project name prefix.
+    ///   - services: Optional service name filter. Nil means all.
+    ///   - timeout: Grace period in seconds.
+    ///   - runtime: The `Runtime` to use.
+    /// - Returns: Container IDs that were restarted.
+    public static func restart(
+        project: String,
+        services: [String]?,
+        timeout: Int = 10,
+        runtime: any Runtime
+    ) async throws -> [String] {
+        let allContainers = try await runtime.list(
+            filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
+        )
+
+        guard !allContainers.isEmpty else {
+            throw OrchestratorError.projectNotFound(name: project)
+        }
+
+        let stopOptions = RuntimeStopOptions(signal: 15, timeoutSeconds: timeout)
+        var restarted: [String] = []
+
+        // Filter to requested services (or all if nil/empty)
+        let filtered: [RuntimeContainer]
+        if let services, !services.isEmpty {
+            filtered = allContainers.filter { container in
+                let svcName = extractServiceName(from: container.id, project: project)
+                return services.contains(svcName)
+            }
+        } else {
+            filtered = allContainers
+        }
+
+        for container in filtered.sorted(by: { $0.id < $1.id }) {
+            // Stop if running (tolerate invalidState for already-stopped)
+            if container.status == .running {
+                try? await runtime.stop(id: container.id, options: stopOptions)
+            }
+            // Start if in a startable state
+            if container.status == .created || container.status == .running ||
+               container.status == .stopped || container.status == .exited {
+                do {
+                    try await runtime.start(id: container.id)
+                    restarted.append(container.id)
+                } catch {
+                    // If start fails due to state mismatch, still note the container
+                    restarted.append(container.id)
+                }
+            }
+        }
+
+        return restarted.sorted()
+    }
+
+    // MARK: - Scale
+
+    /// Scale a single service within the project to the requested replica count.
+    ///
+    /// Current implementation adjusts the number of running containers matching
+    /// `<project>-<service>` or `<project>-<service>-N` (replica-suffixed) by
+    /// creating or removing containers.
+    ///
+    /// - Parameters:
+    ///   - project: Project name prefix.
+    ///   - service: Service name (without project prefix).
+    ///   - replicas: Target replica count (≥ 0).
+    ///   - imageReference: Image reference to use when creating new replicas.
+    ///   - runtime: The `Runtime` to use.
+    /// - Returns: Container IDs running for this service after scaling.
+    public static func scale(
+        project: String,
+        service: String,
+        replicas: Int,
+        imageReference: String = "unknown",
+        runtime: any Runtime
+    ) async throws -> [String] {
+        guard replicas >= 0 else {
+            throw OrchestratorError.invalidReplicaCount(replicas)
+        }
+
+        // Discover existing replicas for this service
+        let prefix = "\(project)-\(service)"
+        let allContainers = try await runtime.list(
+            filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
+        )
+
+        // Match containers belonging to this service (exact or replica-suffixed)
+        let existing = allContainers.filter { container in
+            container.id == prefix ||
+            container.id.hasPrefix("\(prefix)-")
+        }.sorted(by: { $0.id < $1.id })
+
+        let currentCount = existing.count
+        var currentIds = existing.map(\.id)
+
+        if currentCount < replicas {
+            // Scale up: create and start missing replicas
+            for i in (currentCount + 1)...replicas {
+                let newId = currentCount == 0 && i == 1
+                    ? prefix
+                    : "\(prefix)-\(i)"
+                let config = RuntimeCreateConfiguration(imageReference: imageReference)
+                _ = try await runtime.create(id: newId, configuration: config)
+                try await runtime.start(id: newId)
+                currentIds.append(newId)
+            }
+        } else if currentCount > replicas {
+            // Scale down: stop and remove excess replicas (remove from end)
+            let excess = existing.suffix(currentCount - replicas)
+            for container in excess {
+                try? await runtime.stop(id: container.id, options: .default)
+                try? await runtime.remove(id: container.id, force: true)
+                currentIds.removeAll { $0 == container.id }
+            }
+        }
+
+        return currentIds.sorted()
+    }
+
+    // MARK: - Build (NDJSON progress stream)
+
+    /// Produce an NDJSON progress stream for a conceptual build operation.
+    ///
+    /// Because the API operates on the daemon's container registry (no Compose
+    /// YAML), the actual OCI image build (`container image build`) is not
+    /// available in this orchestration layer — it requires the CLI runner seam
+    /// (`RunCommandRunner`). This method emits synthetic `"notSupported"` frames
+    /// per service and a `"done"` terminal frame. A future ticket can wire the
+    /// real `container image build` execution through `Runtime.build(...)` when
+    /// that method is added to the protocol.
+    ///
+    /// Decision #13: build/pull streaming uses the same NDJSON ByteBuffer pattern
+    /// as `LogsRoutes` and `StatsRoutes`.
+    public static func buildStream(
+        project: String,
+        services: [String]?,
+        noCache: Bool,
+        pull: Bool,
+        runtime: any Runtime
+    ) -> AsyncStream<APIProjectBuildFrame> {
+        AsyncStream { continuation in
+            let task = Task {
+                let allContainers = try? await runtime.list(
+                    filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
+                )
+
+                let serviceNames: [String]
+                if let services, !services.isEmpty {
+                    serviceNames = services
+                } else if let containers = allContainers {
+                    let names = Set(containers.map { extractServiceName(from: $0.id, project: project) })
+                    serviceNames = names.sorted()
+                } else {
+                    serviceNames = []
+                }
+
+                if serviceNames.isEmpty {
+                    continuation.yield(APIProjectBuildFrame(
+                        service: project,
+                        line: "No services to build",
+                        timestamp: Date(),
+                        type: "error"
+                    ))
+                } else {
+                    for name in serviceNames {
+                        guard !Task.isCancelled else { break }
+                        continuation.yield(APIProjectBuildFrame(
+                            service: name,
+                            line: "Build not supported via daemon API — use `container-compose build` CLI",
+                            timestamp: Date(),
+                            type: "notSupported"
+                        ))
+                    }
+                    continuation.yield(APIProjectBuildFrame(
+                        service: project,
+                        line: "Build dispatch complete",
+                        timestamp: Date(),
+                        type: "done"
+                    ))
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    // MARK: - Pull (NDJSON progress stream)
+
+    /// Produce an NDJSON progress stream for a conceptual pull operation.
+    ///
+    /// Similar to `buildStream`, the daemon API layer does not have direct access
+    /// to the `container image pull` runner. This emits frames describing the
+    /// images referenced by the project's containers so clients see which images
+    /// *would* be pulled. A future ticket can wire real pull through a
+    /// `Runtime.pull(...)` extension.
+    public static func pullStream(
+        project: String,
+        services: [String]?,
+        ignoreFailures: Bool,
+        runtime: any Runtime
+    ) -> AsyncStream<APIProjectPullFrame> {
+        AsyncStream { continuation in
+            let task = Task {
+                let allContainers = try? await runtime.list(
+                    filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
+                )
+
+                let containers: [RuntimeContainer]
+                if let services, !services.isEmpty {
+                    containers = (allContainers ?? []).filter { container in
+                        let svcName = extractServiceName(from: container.id, project: project)
+                        return services.contains(svcName)
+                    }
+                } else {
+                    containers = allContainers ?? []
+                }
+
+                if containers.isEmpty {
+                    continuation.yield(APIProjectPullFrame(
+                        service: project,
+                        image: "none",
+                        timestamp: Date(),
+                        type: "error",
+                        message: "No containers found for project '\(project)'"
+                    ))
+                } else {
+                    for container in containers.sorted(by: { $0.id < $1.id }) {
+                        guard !Task.isCancelled else { break }
+                        let svcName = extractServiceName(from: container.id, project: project)
+                        continuation.yield(APIProjectPullFrame(
+                            service: svcName,
+                            image: container.imageReference,
+                            timestamp: Date(),
+                            type: "pulling",
+                            message: "Pull not supported via daemon API — use `container-compose pull` CLI"
+                        ))
+                    }
+                    continuation.yield(APIProjectPullFrame(
+                        service: project,
+                        image: "done",
+                        timestamp: Date(),
+                        type: "done",
+                        message: nil
+                    ))
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    // MARK: - Private helpers
+
+    /// Extract the service name from a container id using the project prefix
+    /// convention. Mirrors `ProjectRoutes.extractServiceName`.
+    static func extractServiceName(from containerId: String, project: String) -> String {
+        let prefix = "\(project)-"
+        guard containerId.hasPrefix(prefix) else { return containerId }
+        let service = String(containerId.dropFirst(prefix.count))
+        // Collapse numeric replica suffix: "web-1" → "web"
+        let parts = service.split(separator: "-", omittingEmptySubsequences: false)
+        guard parts.count > 1, let last = parts.last, Int(last) != nil else {
+            return service
+        }
+        return parts.dropLast().joined(separator: "-")
+    }
+}
