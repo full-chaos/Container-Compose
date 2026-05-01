@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1359-tcp-tls",
+  "commit": "4990fba9872f62254b650d8039092df96346d891",
+  "short": "4990fba",
+  "target": "4990fba",
+  "message": "fix(serve): use MultiThreadedEventLoopGroup for TLS probe on macOS (CHAOS-1359)",
+  "published_at": "2026-05-01T14:24:42.522982+00:00"
+}
