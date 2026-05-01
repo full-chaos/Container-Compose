@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1346-phase-1-runtime-abstraction",
+  "commit": "11041f62e04f9bfd6092bf91101b440dc92cd008",
+  "short": "11041f6",
+  "target": "11041f6",
+  "message": "feat(runtime): introduce protocol Runtime + AppleContainerizationRuntime conformer (CHAOS-1346)",
+  "published_at": "2026-05-01T01:31:17.517846+00:00"
+}
