@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "40c3730876c68f1fe34755eaa67eb325e894eec4",
-  "short": "40c3730",
+  "commit": "eb4ee1c2b5ffdf12cd2c1c567173af06ae0ae866",
+  "short": "eb4ee1c",
   "target": "current",
-  "message": "feat(server): real /stats NDJSON streaming backend (CHAOS-1358) (#60)",
-  "published_at": "2026-05-01T10:14:57.422699+00:00"
+  "message": "feat(serve): launchd LaunchAgent + brew services autostart (CHAOS-1355) (#59)",
+  "published_at": "2026-05-01T10:15:12.973567+00:00"
 }
