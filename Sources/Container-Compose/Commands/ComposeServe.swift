@@ -81,6 +81,12 @@ public struct ComposeServe: AsyncParsableCommand {
     )
     var insecure: Bool = false
 
+    @Flag(
+        name: .customLong("auth-required"),
+        help: "Require Bearer-token auth on Unix socket listeners (always required on TCP/TLS)."
+    )
+    var authRequired: Bool = false
+
     /// When `true` the daemon is running under launchd management (e.g. via
     /// `brew services start container-compose`). In this mode log lines are
     /// prefixed with an ISO-8601 timestamp and the process label so they are
@@ -171,6 +177,7 @@ public struct ComposeServe: AsyncParsableCommand {
             listen: listen,
             certPath: resolvedCertPath,
             keyPath: resolvedKeyPath,
+            authRequired: authRequired,
             launchdManaged: launchdManaged
         )
     }
@@ -211,6 +218,13 @@ public enum ServeDaemon {
             .appending(path: ".container-compose")
             .appending(path: "key.pem")
             .path
+    }
+
+    /// Default auth store path for bearer-token records.
+    public static var defaultAuthFilePath: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".container-compose")
+            .appending(path: "auth.json")
     }
 
     public static func resolveSocketPath(override: String?) -> String {
@@ -302,6 +316,7 @@ public enum ServeDaemon {
             listen: .unix(path: socketPath),
             certPath: nil,
             keyPath: nil,
+            authRequired: false,
             launchdManaged: launchdManaged
         )
     }
@@ -315,11 +330,14 @@ public enum ServeDaemon {
     ///   - listen: The listen address for the daemon.
     ///   - certPath: Path to TLS certificate PEM (required when listen == .tls).
     ///   - keyPath: Path to TLS private key PEM (required when listen == .tls).
+    ///   - authRequired: Require bearer-token auth on Unix listeners. TCP/TLS
+    ///     listeners require auth regardless of this flag.
     ///   - launchdManaged: Enables timestamped log prefix for launchd output.
     public static func run(
         listen: ListenAddress,
         certPath: String?,
         keyPath: String?,
+        authRequired: Bool = false,
         launchdManaged: Bool = false
     ) async throws {
         let logger = Logger(label: "container-compose.serve")
@@ -341,7 +359,25 @@ public enum ServeDaemon {
         router.add(middleware: MetricsMiddleware())
 
         // MARK: - Auth (CHAOS-1356)
-        // (Empty placeholder — owned by PR-3, post-Wave-A merge)
+        let authIsRequired: Bool
+        switch listen {
+        case .tcp, .tls:
+            authIsRequired = true
+        case .unix:
+            authIsRequired = authRequired
+        }
+
+        if authIsRequired {
+            let authFile = ServeDaemon.defaultAuthFilePath
+            let store = try await FileAuthStore(path: authFile)
+            let mtlsBypass: (@Sendable () -> Bool)? = nil
+            router.add(middleware: AuthMiddleware<FileAuthStore, BasicRequestContext>(
+                store: store,
+                logger: logger,
+                mtlsTrustEstablished: mtlsBypass
+            ))
+            logger.info("auth_enabled", metadata: ["store_path": "\(authFile.path)"])
+        }
 
         MetricsRoutes.register(router: router, bootTime: bootTime)
         OpenAPIRoute.register(router: router)
