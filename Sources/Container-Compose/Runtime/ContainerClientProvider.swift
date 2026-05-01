@@ -85,6 +85,20 @@ public protocol ContainerClientProvider: Sendable {
     /// Throws `ContainerizationError(.notFound)` when no container with `id`
     /// exists — call sites translate this to `RuntimeError.notFound`.
     func stats(id: String) async throws -> ContainerStats
+
+    // MARK: - Lifecycle Provider Methods (CHAOS-1354)
+
+    /// Mirrors `ContainerClient.kill(id:signal:)`. Sends an arbitrary POSIX
+    /// signal to the container's init process. Call sites translate any
+    /// upstream `ContainerizationError` to the appropriate `RuntimeError`.
+    func kill(id: String, signal: Int32) async throws
+
+    /// Bootstrap the container's init process and start it in detached mode.
+    /// This is the combined "start" operation for an already-created container:
+    /// `ContainerClient.bootstrap(id:stdio:)` + `ClientProcess.start()`.
+    /// Throws `ContainerizationError` on any failure; call sites translate to
+    /// `RuntimeError.backendFailure`.
+    func start(id: String) async throws
 }
 
 // MARK: - ProductionContainerClientProvider
@@ -134,6 +148,26 @@ public struct ProductionContainerClientProvider: ContainerClientProvider {
 
     public func stats(id: String) async throws -> ContainerStats {
         try await ContainerClient().stats(id: id)
+    }
+
+    // MARK: - Lifecycle Provider Methods (CHAOS-1354)
+
+    public func kill(id: String, signal: Int32) async throws {
+        try await ContainerClient().kill(id: id, signal: signal)
+    }
+
+    public func start(id: String) async throws {
+        // Bootstrap the container's init process in detached mode (no stdio
+        // attached — the container-compose daemon does not hold a tty for an
+        // already-created container launched via the REST API). The bootstrap
+        // call is idempotent on an already-running container.
+        let client = ContainerClient()
+        let process = try await client.bootstrap(
+            id: id,
+            stdio: [nil, nil, nil],
+            dynamicEnv: [:]
+        )
+        try await process.start()
     }
 }
 

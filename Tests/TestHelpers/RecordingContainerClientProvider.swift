@@ -160,6 +160,18 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         )
     }
 
+    // MARK: - Lifecycle Provider Methods (CHAOS-1354)
+
+    public func kill(id: String, signal: Int32) async throws {
+        // No-op recording stub. Real kill goes through ContainerClient XPC;
+        // static tests just verify the call was dispatched correctly.
+    }
+
+    public func start(id: String) async throws {
+        // No-op recording stub. Real start uses bootstrap + process.start()
+        // via ContainerClient XPC; static tests verify dispatch only.
+    }
+
     // MARK: - Test affordances
 
     /// Snapshot of recorded entries in time order.

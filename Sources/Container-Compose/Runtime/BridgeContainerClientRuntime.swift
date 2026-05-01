@@ -102,11 +102,15 @@ public struct BridgeContainerClientRuntime: Runtime {
         )
     }
 
+    // MARK: - Lifecycle Writes (CHAOS-1354)
+
     public func start(id: String) async throws {
-        throw RuntimeError.notSupported(
-            operation: "start",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        let provider = ContainerClientEnvironment.current
+        do {
+            try await provider.start(id: id)
+        } catch {
+            throw RuntimeError.backendFailure(message: "start failed for '\(id)': \(error.localizedDescription)")
+        }
     }
 
     public func stop(id: String, options: RuntimeStopOptions) async throws {
@@ -119,10 +123,12 @@ public struct BridgeContainerClientRuntime: Runtime {
     }
 
     public func kill(id: String, signal: Int32) async throws {
-        throw RuntimeError.notSupported(
-            operation: "kill",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        let provider = ContainerClientEnvironment.current
+        do {
+            try await provider.kill(id: id, signal: signal)
+        } catch {
+            throw RuntimeError.backendFailure(message: "kill failed for '\(id)' (signal \(signal)): \(error.localizedDescription)")
+        }
     }
 
     public func wait(id: String, timeoutSeconds: Int) async throws -> RuntimeExitStatus {
