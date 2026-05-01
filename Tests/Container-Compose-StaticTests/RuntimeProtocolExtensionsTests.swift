@@ -43,22 +43,29 @@ struct RuntimeProtocolExtensionsTests {
 
     @Test("RuntimeListFilters apply status namePrefix AND semantics")
     func runtimeListFiltersApply() async throws {
-        let runtime = RecordingRuntime(stubbedContainers: Self.sampleContainers)
+        try await Self.expectFilterSemantics(RecordingRuntime(stubbedContainers: Self.sampleContainers))
+        try await Self.expectFilterSemantics(MockRuntime(containers: Self.sampleContainers))
+    }
+
+    private static func expectFilterSemantics(_ runtime: any Runtime) async throws {
+        func ids(_ containers: [RuntimeContainer]) -> [String] {
+            containers.map(\.id).sorted()
+        }
 
         let running = try await runtime.list(filters: RuntimeListFilters(status: [.running]))
-        #expect(running.map(\.id) == ["demo-web-1", "other-web-1"])
+        #expect(ids(running) == ["demo-web-1", "other-web-1"])
 
         let demo = try await runtime.list(filters: RuntimeListFilters(namePrefix: "demo-"))
-        #expect(demo.map(\.id) == ["demo-web-1", "demo-db-1"])
+        #expect(ids(demo) == ["demo-db-1", "demo-web-1"])
 
         let runningDemo = try await runtime.list(filters: RuntimeListFilters(status: [.running], namePrefix: "demo-"))
-        #expect(runningDemo.map(\.id) == ["demo-web-1"])
+        #expect(ids(runningDemo) == ["demo-web-1"])
 
         let emptyStatus = try await runtime.list(filters: RuntimeListFilters(status: [], namePrefix: "demo-"))
-        #expect(emptyStatus.map(\.id) == ["demo-web-1", "demo-db-1"])
+        #expect(ids(emptyStatus) == ["demo-db-1", "demo-web-1"])
 
         let emptyPrefix = try await runtime.list(filters: RuntimeListFilters(status: [.running], namePrefix: ""))
-        #expect(emptyPrefix.map(\.id) == ["demo-web-1", "other-web-1"])
+        #expect(ids(emptyPrefix) == ["demo-web-1", "other-web-1"])
     }
 
     @Test("BridgeContainerClientRuntime version returns API daemon backend and arch")
