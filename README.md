@@ -69,6 +69,58 @@ container-compose up
 
 You may need to provide a path to your `docker-compose.yml` and `.env` file as arguments.
 
+## Native API server (optional)
+
+The HTTP daemon exposes a Container REST API over a Unix domain socket at `~/.container-compose/api.sock`. It is optional — Container-Compose's CLI commands (`up`, `down`, `ps`, etc.) work without the daemon. The daemon is only needed for ecosystem tooling that wants to talk to Container-Compose over HTTP (e.g., reverse proxies, observability collectors, dashboards). The daemon runs in the foreground by default; users wanting background should use `&`, `nohup`, or `tmux` (a `brew services` LaunchAgent path is a planned follow-up).
+
+### Starting the daemon
+
+```sh
+container-compose serve
+```
+
+Press Ctrl-C or send SIGTERM (`kill -TERM <pid>`) to gracefully shut down.
+
+To bind to a non-default socket path:
+
+```sh
+container-compose serve --socket /tmp/container-compose.sock
+```
+
+### Checking daemon status
+
+Use `system status` to verify the daemon is reachable:
+
+```sh
+container-compose system status
+```
+
+Exit code 0 means the daemon is running and responsive; exit code 1 means it is not. This makes status suitable for shell scripts:
+
+```sh
+if container-compose system status >/dev/null; then
+    echo "daemon is up"
+fi
+```
+
+### Verifying the API
+
+The daemon's `/_ping` endpoint confirms the HTTP layer is responsive:
+
+```sh
+curl --unix-socket "$HOME/.container-compose/api.sock" http://localhost/_ping
+```
+
+```
+{"ok":true,"server":"container-compose","version":"0.11.0"}
+```
+
+### Idempotence
+
+Running `container-compose serve` a second time while the daemon is already up detects the existing socket, prints a friendly message, and exits cleanly with status 0 — safe to invoke from setup scripts.
+
+For architectural rationale, see [`docs/plans/native-api-server.md`](docs/plans/native-api-server.md).
+
 ## Contributing
 
 Contributions are welcome! Please open issues or submit pull requests to help improve this project.

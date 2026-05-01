@@ -16,6 +16,13 @@ let package = Package(
         .package(url: "https://github.com/apple/containerization.git", .upToNextMinor(from: "0.31.0")),
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.1"),
         .package(url: "https://github.com/onevcat/Rainbow", .upToNextMajor(from: "4.0.0")),
+        // CHAOS-1349 Phase 2.0: HTTP server for `container-compose serve`. Decision #2
+        // in `docs/plans/native-api-server.md` locks Hummingbird 2.x. Heavy transitive
+        // overlap with apple/containerization's swift-nio stack — small marginal dep cost.
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.0.0"),
+        // CHAOS-1349: signal-safe graceful shutdown. Hummingbird's `Application` natively
+        // conforms to `Service`; ServiceGroup wires SIGTERM/SIGINT into a clean drain.
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a target.
@@ -36,6 +43,14 @@ let package = Package(
                 .product(
                     name: "ArgumentParser",
                     package: "swift-argument-parser"
+                ),
+                .product(
+                    name: "Hummingbird",
+                    package: "hummingbird"
+                ),
+                .product(
+                    name: "ServiceLifecycle",
+                    package: "swift-service-lifecycle"
                 ),
                 "Yams",
                 "Rainbow",
@@ -64,7 +79,9 @@ let package = Package(
             name: "Container-Compose-StaticTests",
             dependencies: [
                 "ContainerComposeCore",
-                "TestHelpers"
+                "TestHelpers",
+                .product(name: "Hummingbird", package: "hummingbird"),
+                .product(name: "HummingbirdTesting", package: "hummingbird")
             ]
         ),
         
