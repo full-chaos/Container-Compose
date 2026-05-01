@@ -87,8 +87,8 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/web/stats?stream=false", method: .get) { response in
                     #expect(response.status == .notImplemented)
-                    let body = try Self.decodeJSON(APIStatsErrorResponse.self, from: response)
-                    #expect(body.error == "Not Implemented")
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "not_supported")
                 }
             }
         }
@@ -146,8 +146,8 @@ struct StatsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/containers/web/stats", method: .get) { response in
                     #expect(response.status == .notImplemented)
-                    let body = try Self.decodeJSON(APIStatsErrorResponse.self, from: response)
-                    #expect(body.error == "Not Implemented")
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "not_supported")
                 }
             }
         }

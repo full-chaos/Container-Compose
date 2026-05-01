@@ -57,10 +57,9 @@ struct EventsRoutesTests {
             try await Self.app().test(.router) { client in
                 try await client.execute(uri: "/events", method: .get) { response in
                     #expect(response.status == .notImplemented)
-                    let body = try Self.decode(APIStatsErrorResponse.self, from: response)
-                    #expect(body.error == "Not Implemented")
+                    let body = try Self.decode(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "not_supported")
                     #expect(body.message == "Events backend is not supported by the active runtime")
-                    #expect(body.deferralPhase == "Phase 2.B")
                 }
             }
         }
