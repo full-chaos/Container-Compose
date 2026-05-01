@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1357-hardening",
+  "commit": "6ade567bb8e05938b1d4880e2d20c94e6be7e6c2",
+  "short": "6ade567",
+  "target": "6ade567",
+  "message": "refactor(api): migrate remaining 501 sites to APIErrorEnvelope (CHAOS-1357)",
+  "published_at": "2026-05-01T15:06:32.233580+00:00"
+}
