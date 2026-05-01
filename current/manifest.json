@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "e15cf86f6e03df0f55797a1ab38e8ba5a22bacb7",
-  "short": "e15cf86",
+  "commit": "3e15f0e26c8feb09946abbbb293943de2f6b10a0",
+  "short": "3e15f0e",
   "target": "current",
-  "message": "docs(plans): add no-upstream action plan v2 (5 phases, ~3-4 dev-days) (#73)",
-  "published_at": "2026-05-01T21:59:07.048582+00:00"
+  "message": "chore(serve): add ThrottleInterval=10 to LaunchAgent plist for fast-crash protection (#74)",
+  "published_at": "2026-05-01T23:20:50.044166+00:00"
 }
