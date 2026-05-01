@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "a34f025bc3a99fc8fa31c9b119fd4269bcde94c2",
-  "short": "a34f025",
+  "commit": "d3414edd98d9ef45112da23573447c3e9e076cf3",
+  "short": "d3414ed",
   "target": "current",
-  "message": "docs: reflect apple/container-only reality (#80)",
-  "published_at": "2026-05-01T23:34:07.429666+00:00"
+  "message": "feat(runtime): map image-not-found errors to RuntimeError.imageNotFound (#76)",
+  "published_at": "2026-05-01T23:34:26.399069+00:00"
 }
