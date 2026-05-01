@@ -101,6 +101,38 @@ These three decisions were originally Open Questions #2, #4, #5 in the previous 
 - `/var/run/container-compose.sock` is the Docker-familiar location but undermines the "AWAY from Docker" positioning and forces sudo for socket cleanup. `/tmp` is too ephemeral.
 - Path is overrideable via `--socket` flag on `serve` + `system status` for advanced users.
 
+## Locked decisions (CHAOS-1347 — 2026-05-01)
+
+### Decision #6 — API schema language: Hand-written `Codable` per endpoint
+
+**Choice:** Hand-written Swift `Codable` structs in `Sources/Container-Compose/Server/APISchemas.swift`. No OpenAPI generation in v1.
+
+**Rationale:** 9 endpoints worth of schemas is small enough to keep in one source-of-truth file. OpenAPI generation (apple/swift-openapi-generator) adds a build-step + a YAML/JSON authoring surface for marginal benefit at this scale. The "stay AWAY from Docker" stance argues against borrowing Docker's swagger; hand-written Codable owned by us avoids accidentally inheriting Docker's contract via shared schemas. If the schema count grows past ~25 or external clients need an OpenAPI doc, revisit.
+
+### Decision #7 — Stream encoding: NDJSON over chunked HTTP
+
+**Choice:** All streaming endpoints (`/events`, `/containers/{id}/logs`, `/containers/{id}/stats`) emit newline-delimited JSON over HTTP chunked transfer encoding. Content-Type `application/x-ndjson`. NOT Server-Sent Events.
+
+**Rationale:** Hummingbird 2.x has first-class support for `ResponseBody(asyncSequence:)` which auto-sets `Transfer-Encoding: chunked` when no content-length. NDJSON is curl-friendly (`curl --no-buffer`) and matches Docker's /events + /stats wire format closely enough that ecosystem tooling is familiar. SSE adds `data:` prefix overhead and `\n\n` framing for no benefit on the daemon side. Backpressure is automatic via NIO's channel writability — slow clients pause the upstream AsyncStream naturally.
+
+### Decision #8 — Logs frame format: NDJSON `{stream, timestamp, line}`, not Docker's 8-byte multiplexed header
+
+**Choice:** Each log frame is one JSON object per line: `{"stream":"stdout","timestamp":"2026-05-01T18:30:00Z","line":"hello"}`. Not Docker's 8-byte header (1 byte stream + 3 bytes padding + 4 bytes length + payload).
+
+**Rationale:** Docker's multiplex format is bandwidth-efficient and parseable, but it's notoriously painful for `curl` users and browser-based observability tools. Our positioning is "ecosystem-friendly", not "Docker bandwidth-equivalent". Per the architecture stance, we are NOT a Docker shim — frame format is ours to choose. Cost: ~30 bytes per frame overhead vs Docker's 8. Acceptable for typical log volumes; if a high-throughput consumer needs the Docker shape, that's a v2 add.
+
+### Decision #9 — POST /containers/create deferred to v2
+
+**Choice:** `POST /containers/create` ships as a documented schema in `APISchemas.swift` but no route handler in v1.
+
+**Rationale:** Container creation is orchestrated through `compose up` (which translates the Compose model into runtime calls). Direct `POST /create` requires expanding `RuntimeCreateConfiguration` to cover labels, networks, healthchecks, volumes — substantial scope creep. Ecosystem tools that want to drive container creation can call `compose up` via shell-out today; a first-class `/create` route is a v2 concern when use cases concretize. Schema is reserved so v2 doesn't have to revisit the wire shape.
+
+### Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 3
+
+**Choice:** `GET /containers/{id}/stats` route ships as a documented endpoint that returns HTTP 501 Not Implemented in v1. The route's polling-loop handler skeleton is in place; only the upstream `Runtime.statistics(for:)` implementations are stubbed.
+
+**Rationale:** Both Runtime conformers stub `statistics()` today (`AppleContainerizationRuntime` returns empty, `BridgeContainerClientRuntime` throws notSupported). Wiring real stats requires either (a) the apple/containerization VM-stats path (Phase 3 territory — vsock per call), or (b) a fork-patch to apple/container's CLI to expose stats — neither is in CHAOS-1347's scope. 501 with a documented `Phase: stats backend` deferral header signals to ecosystem tools that the route exists but isn't ready, vs returning 404 (which suggests the route doesn't exist). Logs and events streams DO ship in PR-B with real Bridge wiring (Tier 2 fork patches CHAOS-1322 + CHAOS-1323 already shipped per AGENTS.md).
+
 ## Phase 2 lifecycle blueprint
 
 This section is the contract CHAOS-1347 implements against. Every line below is a load-bearing requirement — changing these without updating CHAOS-1349 is a contract break.
@@ -192,6 +224,19 @@ Ship the `serve` + `system status` subcommands with the `/_ping` route as a stub
 
 Plug routes into the Phase 2.0 skeleton: `/version`, `/info`, `/containers` (list/inspect/create), `/networks`, `/events` (subscribe), `/containers/{id}/logs` (follow), `/containers/{id}/stats` (poll/stream), `/projects`, `/projects/{name}/services`. API version string identifies as `container-compose v0.X.Y` — never mimics Docker.
 
+#### Phase 2.A — read-only routes + foundation (this PR)
+
+- Schemas: `Sources/Container-Compose/Server/APISchemas.swift` — all 9 endpoint families, hand-written Codable.
+- Runtime extensions: `Runtime.version()`, `Runtime.listNetworks()`, `RuntimeListFilters.status` + `.namePrefix` fields.
+- Routes: `/version`, `/info`, `/containers`, `/containers/{id}`, `/networks`, `/projects`, `/projects/{name}/services`. All read-only, all backed by Bridge or Apple runtime as configured.
+- 501 stubs for the stream routes (`/events`, `/logs`, `/stats`) — endpoint exists, returns documented 501 Not Implemented.
+
+#### Phase 2.B — streaming routes (follow-up PR, stacked on Phase 2.A)
+
+- `/events`: BridgeContainerClientRuntime.events() wires through CHAOS-1323's native event stream (already shipped).
+- `/containers/{id}/logs`: BridgeContainerClientRuntime.logs() wires through CHAOS-1322's logs --since/--timestamps (already shipped).
+- `/containers/{id}/stats`: ships the polling-loop route handler skeleton; backend remains 501 until Phase 3 wires AppleContainerizationRuntime.statistics() to the real apple/containerization VM-stats vsock path.
+
 ### Phase 2.x — launchd LaunchAgent (deferred follow-up)
 
 After the API surface stabilizes: ship `Resources/com.full-chaos.container-compose.plist` for `brew install`. Homebrew formula update doc. `RunAtLoad: true`, `KeepAlive: true`, `StandardOutPath`/`StandardErrorPath` to deterministic locations.
@@ -210,7 +255,7 @@ Implement a second `Runtime` conformer (`MockRuntime` for tests). Validate the b
 | CHAOS-1343 (upstream advocacy) | Closed (done) — issue filed, response received, no further action |
 | CHAOS-1345 (architecture PRD) | Updated with the "stay AWAY from Docker" stance |
 | CHAOS-1346 (Phase 1: runtime abstraction) | Done — PR #54 merged 2026-05-01 |
-| CHAOS-1347 (Phase 2: REST server skeleton) | Backlog — unblocked by CHAOS-1349 |
+| CHAOS-1347 (Phase 2: REST server skeleton) | In Progress — Phase 2.A (read-only routes + foundation) underway |
 | CHAOS-1348 (Phase 3: MockRuntime) | Backlog — depends on Phase 2 |
 | CHAOS-1349 (this lock-in) | This PR |
 
@@ -218,8 +263,8 @@ Implement a second `Runtime` conformer (`MockRuntime` for tests). Validate the b
 
 All Phase 0 + Phase 1 open questions are now resolved. Remaining items are deferred to the appropriate follow-up phase:
 
-1. **API schema language.** Hand-written `Codable` types (recommended) vs OpenAPI-generated. The "stay away from Docker" stance argues against borrowing Docker's swagger. **Defer to CHAOS-1347** when actual route shapes are designed.
-2. **Stats polling cadence.** Phase 0 spike flagged that each `statistics()` call opens a fresh vsock connection. **Defer to CHAOS-1347** — benchmark before committing to 1-second-per-container at scale.
+1. ~~**API schema language.**~~ RESOLVED: Hand-written `Codable` types (Decision #6).
+2. ~~**Stats polling cadence.**~~ RESOLVED: Locked at 1s default per Decision #7's research; Phase 3 to revisit at scale.
 3. **TCP transport opt-in flag spec.** Decision #1 reserved this; the actual flag (`--listen tcp://...`?) and TLS story is **deferred to a future ticket** (probably v2).
 4. **launchd LaunchAgent shipping.** Deferred per Decision #5 above. Track in a new Phase 2.x ticket once Phase 2 lands.
 

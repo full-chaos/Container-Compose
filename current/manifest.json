@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "4e0eb8d606247961f1285feaf82f127096bf952b",
-  "short": "4e0eb8d",
+  "commit": "850acec285415c5c904d920120548abc71759c57",
+  "short": "850acec",
   "target": "current",
-  "message": "feat(serve): daemon lifecycle skeleton + system status (CHAOS-1349) (#55)",
-  "published_at": "2026-05-01T02:52:36.131623+00:00"
+  "message": "feat(server): Phase 2.A read-only Container REST API routes (CHAOS-1347) (#56)",
+  "published_at": "2026-05-01T03:36:02.997893+00:00"
 }
