@@ -1,0 +1,8 @@
+{
+  "branch": "feat/serve-daemon-lifecycle-CHAOS-1349",
+  "commit": "a9a300109b76b5b31396df500c9b0c19a5dfc198",
+  "short": "a9a3001",
+  "target": "a9a3001",
+  "message": "feat(serve): daemon lifecycle skeleton + system status (CHAOS-1349)",
+  "published_at": "2026-05-01T02:40:19.321777+00:00"
+}
