@@ -1,0 +1,8 @@
+{
+  "branch": "feat/no-upstream-action-plan-v2",
+  "commit": "d1a32121dbc84d09776a29a91b5daf4d54c365f5",
+  "short": "d1a3212",
+  "target": "d1a3212",
+  "message": "docs(plans): add no-upstream action plan v2 (5 phases, ~3-4 dev-days)",
+  "published_at": "2026-05-01T21:40:13.899852+00:00"
+}
