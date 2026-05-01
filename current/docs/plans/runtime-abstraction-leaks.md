@@ -141,3 +141,11 @@ macOS 26 native runtime path.
   - `Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift` — same extension
 - **Nature:** Neither `apple/containerization` nor `apple/container`'s XPC surface has a concept of secrets. Phase 8 ships in-memory secret storage only via `MockRuntime`; a durable backend (macOS Keychain, encrypted file store, or a dedicated secrets daemon) is deferred. Cross-host secret distribution is explicitly out of scope for CHAOS-1353.
 - **Proposed fix:** Implement `AppleContainerizationRuntime.createSecret` / `listSecrets` / `removeSecret` backed by the macOS Keychain (`Security.framework`, `SecItemAdd`, `SecItemCopyMatching`, `SecItemDelete`) for single-host use. When container-compose gains multi-host support (Phase N), bridge to a dedicated secrets manager (e.g. HashiCorp Vault, AWS Secrets Manager) via a pluggable backend interface.
+
+## Leaks discovered during Phase 5 / CHAOS-1354 (lifecycle write endpoints)
+
+### 12. BridgeContainerClientRuntime.start does not distinguish container-not-found from other errors
+
+- **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `start(id:)` implementation added in CHAOS-1354
+- **Nature:** `ContainerClientProvider.start(id:)` calls `ContainerClient.bootstrap(id:stdio:)` + `process.start()`. If the container does not exist, the XPC call throws `ContainerizationError(.notFound)`, but the catch block wraps all errors as `RuntimeError.backendFailure(message:)` to avoid leaking `ContainerizationError` types across the abstraction boundary. The route layer therefore returns 500 instead of 404 for a missing container when using the Bridge backend.
+- **Proposed fix:** Inspect the upstream error code and map `ContainerizationError(.notFound)` to `RuntimeError.notFound(id:)` before wrapping everything else as `backendFailure`. This matches the established pattern in `BridgeContainerClientRuntime.get(id:)`.

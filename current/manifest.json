@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "3f57d3974daccb3a7a4fcdda960699d0097716e5",
-  "short": "3f57d39",
+  "commit": "4062981d1bd5477e93cae327134aafac59b75ae1",
+  "short": "4062981",
   "target": "current",
-  "message": "feat(server): network/volume/secret CRUD endpoints (CHAOS-1353) (#61)",
-  "published_at": "2026-05-01T10:53:15.683924+00:00"
+  "message": "feat(server): container lifecycle write endpoints (CHAOS-1354) (#62)",
+  "published_at": "2026-05-01T10:59:56.565657+00:00"
 }
