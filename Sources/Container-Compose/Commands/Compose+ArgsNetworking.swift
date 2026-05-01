@@ -130,22 +130,28 @@ extension ComposeUp {
                 args.append(contentsOf: ["--network", resolved])
             }
 
-            // --ipc MODE
-            if let ipc = ctx.service.ipc {
-                let resolved = resolveVariable(ipc, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--ipc", resolved])
+            // ipc: parsed, but Apple container does not expose --ipc on `container run`.
+            if ctx.service.ipc != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.ipc",
+                    "Note: 'ipc' is parsed but not supported by Apple container; ignored."
+                )
             }
 
-            // --pid MODE
-            if let pid = ctx.service.pid {
-                let resolved = resolveVariable(pid, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--pid", resolved])
+            // pid: parsed, but Apple container does not expose --pid on `container run`.
+            if ctx.service.pid != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.pid",
+                    "Note: 'pid' is parsed but not supported by Apple container; ignored."
+                )
             }
 
-            // --uts MODE
-            if let uts = ctx.service.uts {
-                let resolved = resolveVariable(uts, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--uts", resolved])
+            // uts: parsed, but Apple container does not expose --uts on `container run`.
+            if ctx.service.uts != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.uts",
+                    "Note: 'uts' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             return args
