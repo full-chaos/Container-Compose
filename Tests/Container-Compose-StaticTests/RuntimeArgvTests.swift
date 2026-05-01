@@ -784,4 +784,7 @@ private actor KillTestContainerProvider: ContainerClientProvider {
             numProcesses: nil
         )
     }
+
+    func kill(id: String, signal: Int32) async throws {}
+    func start(id: String) async throws {}
 }

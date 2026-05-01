@@ -414,3 +414,24 @@ extension MockRuntime {
     public func volumesSnapshot() async -> [RuntimeVolume] { Array(volumes.values) }
     public func secretsSnapshot() async -> [RuntimeSecret] { Array(secrets.values) }
 }
+
+// MARK: - Lifecycle Writes (CHAOS-1354)
+
+extension MockRuntime {
+    /// Reset a stopped/exited container back to `.created` state so it can be
+    /// re-started. This is a test-only affordance: in production the Runtime
+    /// protocol's `start(id:)` moves `.created` → `.running`, and calling
+    /// `start` on a running or stopped container yields `invalidState`.
+    public func resetToCreated(id: String) async throws {
+        let container = try requireContainer(id: id)
+        containers[id] = RuntimeContainer(
+            id: container.id,
+            imageReference: container.imageReference,
+            status: .created,
+            publishedPorts: container.publishedPorts,
+            createdAt: container.createdAt,
+            startedAt: nil,
+            lastExitCode: nil
+        )
+    }
+}

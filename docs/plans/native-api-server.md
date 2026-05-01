@@ -276,6 +276,27 @@ Shipped in-memory `MockRuntime` as a second `Runtime` conformer for static tests
 
 Deferred: the static test target still contains quarantined backend smoke tests for `AppleContainerizationRuntime` while the native skeleton is landing. The leak inventory and follow-up disposition live in `docs/plans/runtime-abstraction-leaks.md`.
 
+### Phase 5 — SHIPPED (CHAOS-1354)
+
+Container lifecycle write endpoints — five new routes plus the optional `wait` nice-to-have:
+
+- `POST /containers/{id}/start` — calls `Runtime.start(id:)`. Returns 204 on success, 404 not-found, 409 invalid-state.
+- `POST /containers/{id}/stop` — calls `Runtime.stop(id:options:)`. Optional JSON body `{signal,timeoutSeconds}` with defaults from `RuntimeStopOptions.default`.
+- `POST /containers/{id}/restart` — composite stop + start. Stop ignores `invalidState` so a stopped container restarts cleanly; returns 204 once running.
+- `POST /containers/{id}/kill` — calls `Runtime.kill(id:signal:)`. Optional JSON body `{signal}`, default 9 (SIGKILL).
+- `DELETE /containers/{id}` — calls `Runtime.remove(id:force:)`. Query param `?force=true|false` (default false).
+- `POST /containers/{id}/wait` — calls `Runtime.wait(id:timeoutSeconds:)`. Returns `{exitCode,exitedAt}` on success, 408 on timeout.
+
+**Bridge runtime expansion:** `BridgeContainerClientRuntime.start()` and `.kill()` are now real implementations (no longer `notSupported`). `start` delegates to `ContainerClientProvider.start(id:)` which calls `ContainerClient.bootstrap(id:stdio:[nil,nil,nil]) + process.start()`. `kill` delegates to `ContainerClientProvider.kill(id:signal:)` which calls `ContainerClient.kill(id:signal:)` directly.
+
+**ContainerClientProvider expansion:** `start(id:)` and `kill(id:signal:)` added to the protocol + `ProductionContainerClientProvider` + `RecordingContainerClientProvider` (no-op stubs).
+
+**409 detection:** routes catch `RuntimeError.invalidState(id:expected:actual:)` and map it to HTTP 409 Conflict with a descriptive message — no HTTP-layer state inspection needed.
+
+**Schemas added to `APISchemas.swift`:** `APIStopRequest`, `APIKillRequest`, `APIWaitResponse` (under `// MARK: - Lifecycle Schemas (CHAOS-1354)`).
+
+**Tests:** `LifecycleRoutesTests.swift` in `Container-Compose-StaticTests`, all using `MockRuntime` as the state machine — happy paths + 404 + 409 for every route.
+
 ## Implications for the existing CHAOS-1340 family
 
 | Ticket | Disposition |

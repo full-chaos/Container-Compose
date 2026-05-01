@@ -75,6 +75,8 @@ public protocol Runtime: Sendable {
         configuration: RuntimeCreateConfiguration
     ) async throws -> RuntimeContainer
 
+    // MARK: - Container Lifecycle Writes (CHAOS-1354)
+
     /// Transition a `.created` container to `.running`. Throws
     /// `RuntimeError.invalidState(id:expected:actual:)` if the container is
     /// not in `.created`.
