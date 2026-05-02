@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -164,6 +165,64 @@ struct ComposeBuildParsingTests {
     func composeBuildCommandAcceptsFileFlag() throws {
         let cmd = try ComposeBuild.parse(["-f", "my-compose.yaml"])
         #expect(cmd.composeFilename == "my-compose.yaml")
+    }
+
+    @Test("ComposeBuild warn-skips build flags rejected by Apple container BuildCommand")
+    func composeBuildWarnSkipsUnsupportedBuildFlags() async throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("compose-build-audit-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        let composePath = tempRoot.appendingPathComponent("compose.yaml")
+        try """
+        services:
+          app:
+            image: example/app:latest
+            build:
+              context: .
+              dockerfile: Dockerfile
+              target: release
+              args:
+                NODE_VERSION: "20"
+              cache_from:
+                - registry.example.com/app:cache
+              cache_to:
+                - type=inline
+              labels:
+                app: demo
+              network: host
+              secrets:
+                - api-token
+              ssh:
+                - default
+              platforms:
+                - linux/arm64
+              shm_size: 128m
+        """.write(to: composePath, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            var cmd = try ComposeBuild.parse(["-f", composePath.path])
+            try await cmd.run()
+        }
+
+        let buildArgv = try #require(await recorder.swiftAPIArgvs().first { $0.name == "BuildCommand" }?.argv)
+
+        #expect(buildArgv.contains("--build-arg"))
+        #expect(buildArgv.contains("--file"))
+        #expect(buildArgv.contains("--tag"))
+        #expect(buildArgv.contains("--target"))
+        #expect(buildArgv.contains("--label"))
+        #expect(buildArgv.contains("--secret"))
+        #expect(buildArgv.contains("--os"))
+        #expect(buildArgv.contains("--arch"))
+
+        #expect(!buildArgv.contains("--cache-from"))
+        #expect(!buildArgv.contains("--cache-to"))
+        #expect(!buildArgv.contains("--network"))
+        #expect(!buildArgv.contains("--ssh"))
+        #expect(!buildArgv.contains("--shm-size"))
     }
 
     // MARK: - Empty-output wording (PLAN.md §3.4)

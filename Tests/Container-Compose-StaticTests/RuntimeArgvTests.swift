@@ -575,14 +575,14 @@ struct RuntimeArgvTests {
         )
     }
 
-    // MARK: - Plan §8 #7 — build emits labels and cache_from (enabled by PR-6)
+    // MARK: - Plan §8 #7 — build emits labels and skips unsupported cache_from
 
     /// Plan §8 test 7: the `Application.BuildCommand.parse(...)` argv carries
-    /// `--label key=value` and `--cache-from refX` flags as built by
-    /// `ComposeBuild.buildService`. Was disabled in earlier PRs because the
-    /// build path did not flow through the seam; PR-6 enables it.
-    @Test("build: BuildCommand argv carries --label and --cache-from")
-    func build_emits_labels_and_cache_from() async throws {
+    /// `--label key=value` flags as built by `ComposeBuild.buildService`, while
+    /// `cache_from` is warn-skipped because Apple container's BuildCommand does
+    /// not accept `--cache-from`.
+    @Test("build: BuildCommand argv carries --label and skips --cache-from")
+    func build_emits_labels_and_skips_cache_from() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
@@ -647,15 +647,7 @@ struct RuntimeArgvTests {
             "expected --label org.opencontainers.image.version=1.0 (got labels: \(labels), full argv: \(argv))"
         )
 
-        let cacheFroms = valuesFor(flag: "--cache-from")
-        #expect(
-            cacheFroms.contains("registry.example.com/api:cache"),
-            "expected --cache-from registry.example.com/api:cache (got cache-froms: \(cacheFroms), full argv: \(argv))"
-        )
-        #expect(
-            cacheFroms.contains("registry.example.com/api:base"),
-            "expected --cache-from registry.example.com/api:base (got cache-froms: \(cacheFroms), full argv: \(argv))"
-        )
+        #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
     }
 
     // MARK: - Plan §8 #8 — kill emits --signal in argv (PR-5 regression)
