@@ -118,10 +118,18 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private var containerConsoleColors: [String: NamedColor] = [:]
     private var didWarnServiceModelsUnsupported = false
     private var didWarnServiceProviderUnsupported = false
+    private var preparedNamedVolumes: Set<String> = []
 
     private static let availableContainerConsoleColors: Set<NamedColor> = [
         .blue, .cyan, .magenta, .lightBlack, .lightBlue, .lightCyan, .lightYellow, .yellow, .lightGreen, .green,
     ]
+    private static let testNamedVolumeSourceOverrideEnv = "CONTAINER_COMPOSE_TEST_NAMED_VOLUME_SOURCE"
+
+    private struct PreparedVolumeSource {
+        let mountSource: String
+        let actualName: String
+        let usesLegacyFallback: Bool
+    }
 
     public mutating func run() async throws {
         // Decode + recursively merge includes (Phase 3E) and resolve extends
@@ -213,8 +221,8 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         if let volumes = dockerCompose.volumes {
             print("\n--- Processing Volumes ---")
             for (volumeName, volumeConfig) in volumes {
-                guard let volumeConfig else { continue }
-                await createVolumeHardLink(name: volumeName, config: volumeConfig)
+                guard volumeConfig != nil else { continue }
+                _ = try await prepareNamedVolumeSource(named: volumeName, from: dockerCompose)
             }
             print("--- Volumes Processed ---\n")
         }
@@ -313,25 +321,122 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
     }
 
-    private func createVolumeHardLink(name volumeName: String, config volumeConfig: Volume) async {
-        guard let projectName else { return }
-        let actualVolumeName = volumeConfig.name ?? volumeName  // Use explicit name or key as name
+    private func resolvedVolumeName(_ volumeName: String, config volumeConfig: Volume?) -> String {
+        if let externalName = volumeConfig?.external?.name, volumeConfig?.external?.isExternal == true {
+            return externalName
+        }
+        return volumeConfig?.name ?? volumeName
+    }
 
-        // If a non-local driver is specified, warn and fall back to the hardlink directory.
-        let driver = volumeConfig.driver
-        if let driver, driver != "local" {
-            print(
-                "Warning: Volume driver '\(driver)' for '\(actualVolumeName)' is not supported by Apple container; falling back to hardlink directory."
-            )
+    private func legacyVolumeFallbackPath(projectName: String, actualVolumeName: String) -> String {
+        URL.homeDirectory
+            .appending(path: ".containers/Volumes/\(projectName)/\(actualVolumeName)")
+            .path(percentEncoded: false)
+    }
+
+    private func migrationMarkerURL(projectName: String, actualVolumeName: String) -> URL {
+        URL.homeDirectory
+            .appending(path: ".container-compose/volume-migrations")
+            .appending(path: "\(projectName)--\(actualVolumeName).migrated")
+    }
+
+    private func writeWarningToStandardError(_ message: String) {
+        guard let data = (message + "\n").data(using: .utf8) else { return }
+        FileHandle.standardError.write(data)
+    }
+
+    private func mergeLegacyVolumeContents(from legacyPath: String, into destinationPath: String) throws {
+        let children = try fileManager.contentsOfDirectory(atPath: legacyPath)
+        for child in children {
+            let sourcePath = URL(fileURLWithPath: legacyPath).appending(path: child).path(percentEncoded: false)
+            let destination = URL(fileURLWithPath: destinationPath).appending(path: child).path(percentEncoded: false)
+            if fileManager.fileExists(atPath: destination) {
+                var isDirectory: ObjCBool = false
+                if fileManager.fileExists(atPath: sourcePath, isDirectory: &isDirectory), isDirectory.boolValue {
+                    try fileManager.createDirectory(atPath: destination, withIntermediateDirectories: true)
+                    try mergeLegacyVolumeContents(from: sourcePath, into: destination)
+                }
+                continue
+            }
+            try fileManager.copyItem(atPath: sourcePath, toPath: destination)
+        }
+    }
+
+    private func migrateLegacyNamedVolumeDataIfNeeded(
+        projectName: String,
+        actualVolumeName: String,
+    ) async throws {
+        let legacyPath = legacyVolumeFallbackPath(projectName: projectName, actualVolumeName: actualVolumeName)
+        guard fileManager.fileExists(atPath: legacyPath) else { return }
+
+        let markerURL = migrationMarkerURL(projectName: projectName, actualVolumeName: actualVolumeName)
+        if fileManager.fileExists(atPath: markerURL.path(percentEncoded: false)) {
+            return
         }
 
-        let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(actualVolumeName)")
-        let volumePath = volumeUrl.path(percentEncoded: false)
+        let runtimeVolumeSource = if let overrideRuntimeVolumeSource = ProcessInfo.processInfo.environment[Self.testNamedVolumeSourceOverrideEnv], !overrideRuntimeVolumeSource.isEmpty {
+            overrideRuntimeVolumeSource
+        } else {
+            try await RuntimeVolumeClient.inspect(name: actualVolumeName).source
+        }
+        try fileManager.createDirectory(atPath: runtimeVolumeSource, withIntermediateDirectories: true)
+        try mergeLegacyVolumeContents(from: legacyPath, into: runtimeVolumeSource)
 
-        print(
-            "Warning: Volume source '\(actualVolumeName)' appears to be a named volume reference. The 'container' tool does not support named volume references in 'container run -v' command. Linking to \(volumePath) instead."
+        let markerParent = markerURL.deletingLastPathComponent()
+        try fileManager.createDirectory(at: markerParent, withIntermediateDirectories: true)
+        let markerMessage = "migrated"
+        try markerMessage.write(to: markerURL, atomically: true, encoding: .utf8)
+
+        writeWarningToStandardError(
+            "Migration: copied legacy named-volume fallback data from '\(legacyPath)' into runtime volume '\(actualVolumeName)' at '\(runtimeVolumeSource)'. Original data was left in place."
         )
-        try? fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)
+    }
+
+    private mutating func prepareNamedVolumeSource(named volumeName: String, from dockerCompose: DockerCompose) async throws -> PreparedVolumeSource {
+        guard let projectName else { throw ComposeError.invalidProjectName }
+
+        let volumeConfig = dockerCompose.volumes?[volumeName] ?? nil
+        let actualVolumeName = resolvedVolumeName(volumeName, config: volumeConfig)
+        let driver = volumeConfig?.driver ?? "local"
+
+        if driver != "local" {
+            let volumePath = legacyVolumeFallbackPath(projectName: projectName, actualVolumeName: actualVolumeName)
+            let volumeKey = "legacy:\(actualVolumeName)"
+            if preparedNamedVolumes.insert(volumeKey).inserted {
+                writeWarningToStandardError(
+                    "Warning: named volume '\(actualVolumeName)' requests driver '\(driver)', which apple/container does not support for compose volume CRUD yet; using legacy hardlink fallback at '\(volumePath)'."
+                )
+                try fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)
+            }
+            return PreparedVolumeSource(mountSource: volumePath, actualName: actualVolumeName, usesLegacyFallback: true)
+        }
+
+        let volumeKey = "runtime:\(actualVolumeName)"
+        if preparedNamedVolumes.insert(volumeKey).inserted {
+            if volumeConfig?.external?.isExternal == true {
+                do {
+                    _ = try await RuntimeVolumeClient.inspect(name: actualVolumeName)
+                } catch RuntimeError.notFound {
+                    throw ComposeError.externalVolumeNotFound(actualVolumeName)
+                }
+            } else {
+                do {
+                    _ = try await RuntimeEnvironment.current.createVolume(
+                        spec: RuntimeCreateVolumeSpec(
+                            name: actualVolumeName,
+                            driver: driver,
+                            labels: volumeConfig?.labels ?? [:],
+                            driverOptions: volumeConfig?.driver_opts ?? [:]
+                        )
+                    )
+                } catch RuntimeError.alreadyExists {
+                    // Existing named volume is fine; continue with the runtime-managed path.
+                }
+            }
+            try await migrateLegacyNamedVolumeDataIfNeeded(projectName: projectName, actualVolumeName: actualVolumeName)
+        }
+
+        return PreparedVolumeSource(mountSource: actualVolumeName, actualName: actualVolumeName, usesLegacyFallback: false)
     }
 
     /// Maps a compose `networks.<name>.driver` value to the argv fragment for
@@ -574,7 +679,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         // make the helper pure and move this into StorageArgs.
         if let volumes = service.volumes {
             for volume in volumes {
-                let args = try await configVolume(volume)
+                let args = try await configVolume(volume, from: dockerCompose)
                 runCommandArgs.append(contentsOf: args)
             }
         }
@@ -816,7 +921,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         return imageToRun
     }
 
-    private func configVolume(_ volume: String) async throws -> [String] {
+    private mutating func configVolume(_ volume: String, from dockerCompose: DockerCompose) async throws -> [String] {
         let resolvedVolume = resolveVariable(volume, with: environmentVariables)
 
         var runCommandArgs: [String] = []
@@ -862,20 +967,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                 }
             }
         } else {
-            guard let projectName else { return [] }
-            let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(source)")
-            let volumePath = volumeUrl.path(percentEncoded: false)
-
-            print(
-                "Warning: Volume source '\(source)' appears to be a named volume reference. The 'container' tool does not support named volume references in 'container run -v' command. Linking to \(volumePath) instead."
-            )
-            try fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)
-
-            // Host path exists and is a directory, add the volume
+            let preparedSource = try await prepareNamedVolumeSource(named: source, from: dockerCompose)
             runCommandArgs.append("-v")
-            // Preserve the Compose target exactly; only replace the named
-            // volume source with the host directory used to emulate it.
-            runCommandArgs.append("\(volumePath):\(destination)")
+            runCommandArgs.append("\(preparedSource.mountSource):\(destination)")
         }
 
         return runCommandArgs
