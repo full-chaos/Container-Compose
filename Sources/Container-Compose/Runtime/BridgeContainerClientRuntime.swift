@@ -16,6 +16,7 @@
 
 import ContainerAPIClient
 import ContainerResource
+import ContainerizationError
 import Foundation
 
 // MARK: - BridgeContainerClientRuntime
@@ -217,16 +218,17 @@ public struct BridgeContainerClientRuntime: Runtime {
 
     public func statistics(for id: String) async throws -> RuntimeStatistics {
         let provider = ContainerClientEnvironment.current
-        let raw: ContainerStats
         do {
-            raw = try await provider.stats(id: id)
+            let raw = try await provider.stats(id: id)
+            return BridgeContainerClientRuntime.translate(stats: raw)
+        } catch let error as ContainerizationError {
+            if BridgeContainerClientRuntime.isNotFound(error) {
+                throw RuntimeError.notFound(id: id)
+            }
+            throw RuntimeError.backendFailure(message: "stats failed for '\(id)': \(error.localizedDescription)")
         } catch {
-            // Translate ContainerizationError(.notFound) and any other upstream
-            // error to the appropriate RuntimeError so route handlers can handle
-            // them without importing ContainerAPIClient.
-            throw RuntimeError.notFound(id: id)
+            throw RuntimeError.backendFailure(message: "stats failed for '\(id)': \(error.localizedDescription)")
         }
-        return BridgeContainerClientRuntime.translate(stats: raw)
     }
 
     // MARK: - Stats translation
@@ -300,6 +302,16 @@ public struct BridgeContainerClientRuntime: Runtime {
         case .destroy:
             return .removed(id: event.containerId, at: event.timestamp)
         }
+    }
+
+    private static func isNotFound(_ error: ContainerizationError) -> Bool {
+        if error.isCode(.notFound) {
+            return true
+        }
+        if let cause = error.cause as? ContainerizationError {
+            return isNotFound(cause)
+        }
+        return false
     }
 
     private static func streamLogs(

@@ -18,6 +18,7 @@ import Foundation
 import Testing
 import ContainerAPIClient
 import ContainerResource
+import ContainerizationError
 @testable import ContainerComposeCore
 import TestHelpers
 
@@ -64,7 +65,33 @@ struct BridgeContainerClientRuntimeTests {
         await #expect(throws: RuntimeError.self) { try await bridge.start(id: "x") }
         await #expect(throws: RuntimeError.self) { try await bridge.kill(id: "x", signal: 9) }
         await #expect(throws: RuntimeError.self) { _ = try await bridge.wait(id: "x", timeoutSeconds: 1) }
-        await #expect(throws: RuntimeError.self) { _ = try await bridge.statistics(for: "x") }
+    }
+
+    @Test("statistics() maps upstream notFound semantics to RuntimeError.notFound")
+    func statisticsMapsNotFound() async throws {
+        let upstream = ContainerizationError(.internalError, message: "failed to get statistics", cause: ContainerizationError(.notFound, message: "container ghost not found"))
+        let provider = BridgeStatisticsProvider(statsError: upstream)
+        let bridge = BridgeContainerClientRuntime()
+
+        await ContainerClientEnvironment.$current.withValue(provider) {
+            await #expect(throws: RuntimeError.notFound(id: "ghost")) {
+                _ = try await bridge.statistics(for: "ghost")
+            }
+        }
+    }
+
+    @Test("statistics() maps non-notFound upstream failures to RuntimeError.backendFailure")
+    func statisticsMapsBackendFailure() async throws {
+        let provider = BridgeStatisticsProvider(
+            statsError: ContainerizationError(.timeout, message: "daemon request timed out")
+        )
+        let bridge = BridgeContainerClientRuntime()
+
+        await ContainerClientEnvironment.$current.withValue(provider) {
+            await #expect(throws: RuntimeError.backendFailure(message: "stats failed for 'web': daemon request timed out")) {
+                _ = try await bridge.statistics(for: "web")
+            }
+        }
     }
 
     @Test("logs() routes through provider and emits RuntimeLogFrame lines")
@@ -107,4 +134,31 @@ struct BridgeContainerClientRuntimeTests {
         #expect(first == .started(id: "web", at: timestamp))
         #expect(await recorder.entriesSnapshot() == [.events])
     }
+}
+
+private actor BridgeStatisticsProvider: ContainerClientProvider {
+    let statsError: ContainerizationError
+
+    init(statsError: ContainerizationError) {
+        self.statsError = statsError
+    }
+
+    func list(filters: ContainerListFilters) async throws -> [ContainerSnapshot] { [] }
+    func get(id: String) async throws -> ContainerSnapshot {
+        throw ContainerizationError(.notFound, message: "container \(id) not found")
+    }
+    func stop(id: String, opts: ContainerStopOptions) async throws {}
+    func delete(id: String, force: Bool) async throws {}
+    func logs(id: String) async throws -> [FileHandle] { [] }
+    func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle] { [] }
+    func networkGet(id: String) async throws -> NetworkState {
+        throw ContainerizationError(.notFound, message: "network \(id) not found")
+    }
+    func events() async throws -> [ContainerEvent] { [] }
+    func imageList() async throws -> [ClientImage] { [] }
+    func stats(id: String) async throws -> ContainerStats {
+        throw statsError
+    }
+    func kill(id: String, signal: Int32) async throws {}
+    func start(id: String) async throws {}
 }
