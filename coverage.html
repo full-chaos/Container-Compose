@@ -339,9 +339,9 @@
         ],
         [
           "volumes",
-          "partial",
+          "ok",
           "yes",
-          "Parsed; named volumes use ~/.containers/Volumes/<project>/<name>/ hardlink-dir emulation instead of `container volume create` API (CHAOS-1368). driver_opts and labels are ignored. Cross-project sharing impossible. Replacement with native volume CRUD tracked in CHAOS-1335 / CHAOS-1368."
+          "Implemented via runtime volume CRUD (CHAOS-1368, PR #85). Local-driver volumes use `container volume create` registry; `container run -v <name>:<path>` resolves named volumes via apple/container's `Parser.volume(...)`. driver_opts and labels propagate to runtime. Legacy hardlink-dir data migrated on first use without deletion. Non-`local` drivers warn-and-skip with a clearer fallback notice."
         ],
         [
           "secrets",
@@ -928,9 +928,9 @@
         ],
         [
           "volumes (named-volume short form)",
-          "partial",
+          "ok",
           "yes",
-          "Compose `service.volumes: [name:/path]` (no slash in source) is detected by heuristic at ComposeUp.swift:837 and emulated via ~/.containers/Volumes/<project>/<name>/ hardlink-dir. apple/container `container volume create` exists but is not yet wired; whether `container run -v <name>:<path>` resolves named volumes upstream is unverified. Tracked in CHAOS-1368."
+          "Compose `service.volumes: [name:/path]` (no slash in source) routed through `RuntimeVolumeClient` (CHAOS-1368, PR #85). apple/container's `Parser.volume(...)` resolves bare-name sources via the volume registry — Phase 0 source audit GREEN. Legacy `~/.containers/Volumes/<project>/<name>/` data migrated on first use without deletion."
         ],
         [
           "networks.<n>.ipv4_address",
@@ -1254,19 +1254,19 @@
           "driver",
           "partial",
           "yes",
-          "Decoded; only 'local' driver honored \u2014 falls back to ~/.containers/Volumes/<project>/<name>/ hardlink-dir emulation. Apple `container volume create` API exists upstream but is not yet wired (CHAOS-1368). Non-local drivers warn-and-skip."
+          "Decoded; 'local' driver wired through runtime volume CRUD via `RuntimeVolumeClient` (CHAOS-1368, PR #85). Non-`local` drivers warn-and-skip with a clearer fallback to the legacy hardlink-dir path \u2014 apple/container has no plugin system upstream (Tier 3, CHAOS-1378)."
         ],
         [
           "driver_opts",
-          "partial",
+          "ok",
           "no",
-          "Parsed; ignored \u2014 hardlink-dir emulation does not honor driver_opts. apple/container `container volume create --opt` exists; wireup tracked in CHAOS-1335."
+          "Parsed and propagated to `container volume create --opt KEY=VALUE` for `local`-driver volumes via `RuntimeVolumeClient.create(...)` (CHAOS-1368 / CHAOS-1335, PR #85). Non-`local` drivers warn-and-skip."
         ],
         [
           "labels",
-          "partial",
+          "ok",
           "yes",
-          "Parsed; ignored for top-level volumes because runtime `container volume create --label` is not yet wired (CHAOS-1335). For service.labels, LabelsArgs does emit --label."
+          "Parsed and propagated to `container volume create --label KEY=VALUE` for top-level `local`-driver volumes via runtime CRUD (CHAOS-1368 / CHAOS-1335, PR #85). For service.labels, LabelsArgs emits --label."
         ]
       ]
     },

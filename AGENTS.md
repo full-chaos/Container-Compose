@@ -197,25 +197,38 @@ to `coverage.json` by `scripts/regen-coverage.sh` for downstream tooling.
 `coverage.json` is gitignored — regenerate it locally if your tooling
 needs it.
 
-Current totals (post no-upstream-sweep):
+Current totals (post Tier 0 honesty sweep + post-CHAOS-1368 volume CRUD):
 
 | Status      | Count   | %     |
 | ----------- | ------- | ----- |
-| Implemented | **142** | 73.2% |
-| Partial     | 34      | 17.5% |
-| Missing     | 18      | 9.3%  |
-| **Total**   | **194** | 100%  |
+| Implemented | **119** | 60.4% |
+| Partial     | 60      | 30.5% |
+| Missing     | 18      | 9.1%  |
+| **Total**   | **197** | 100%  |
 
-Recent shifts: Phase 3 added inline-content + env-var sources for
-top-level `configs` (file / content / environment) and env-var sources
-for `secrets` (file / environment), promoting those rows from `partial`
-to `ok`. Phase 4 reclassified 14 decode-only service fields with no
-apple/container equivalent (`annotations`, `attach`, `cgroup`,
-`cgroup_parent`, `credential_spec`, `device_cgroup_rules`, `isolation`,
-`label_file`, `post_start`, `pre_stop`, `pull_refresh_after`,
-`storage_opt`, `use_api_socket`, `volumes_from`) from `partial` to
-`miss` for honesty — they're decoded with a runtime warn-and-skip but
-will not be wired further without an upstream change.
+Recent shifts:
+- **Tier 0 honesty sweep (PRs #71–83)** demoted ~22 rows from `ok` to `partial` —
+  Container-Compose was emitting flags `apple/container` does not accept
+  (`--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all
+  `--blkio-*`, `--shm-size`, `--pids-limit`, `--memory-reservation`/`-swap`/
+  `-swappiness`, `--cpu-shares`/`-period`/`-quota`/`-rt-*`/`-count`/`-percent`,
+  `--oom-*`, `--sysctl`, `--ip`/`-6`, `--mac-address`, `--gpus`). All have
+  been converted to warn-and-skip; the percentage drop reflects honest
+  reality, not a regression. See `docs/feature-parity.md` Tier 0 section.
+- **CHAOS-1368 / PR #85** flipped 4 volume rows from `partial` back to `ok`:
+  top-level `volumes`, top-level `volumes.driver_opts`, top-level
+  `volumes.labels`, and service-level `volumes (named-volume short form)`.
+  apple/container's `container volume create` registry is now wired through
+  `RuntimeVolumeClient`; `container run -v <name>:<path>` resolves named
+  volumes via upstream `Parser.volume(...)` (Phase 0 audit GREEN).
+- **Phase 3** added inline-content + env-var sources for top-level `configs`
+  and env-var sources for `secrets`, promoting those rows from `partial` to
+  `ok`. **Phase 4** reclassified 14 decode-only service fields with no
+  apple/container equivalent (`annotations`, `attach`, `cgroup`,
+  `cgroup_parent`, `credential_spec`, `device_cgroup_rules`, `isolation`,
+  `label_file`, `post_start`, `pre_stop`, `pull_refresh_after`,
+  `storage_opt`, `use_api_socket`, `volumes_from`) from `partial` to `miss`
+  for honesty.
 
 The remaining "partial" rows fall into two buckets:
 1. **Swarm-only / orchestrator features** — `deploy.replicas`,
