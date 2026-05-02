@@ -102,7 +102,7 @@ macOS 26 native runtime path.
   should map `cpu.usageUsec`, `memory.usageBytes`, `memory.limitBytes`,
   `memoryEvents.oomKill`, and `networks[].receivedBytes/transmittedBytes` directly.
 
-### 8. BridgeContainerClientRuntime.statistics translates all errors as notFound
+### 8. ✅ RESOLVED — BridgeContainerClientRuntime.statistics no longer translates all errors as notFound
 
 - **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `statistics(for:)` error catch block
 - **Nature:** `ContainerClient.stats(id:)` can throw various upstream errors
@@ -111,10 +111,11 @@ macOS 26 native runtime path.
   `ContainerizationError` types across the abstraction boundary. This means an XPC
   timeout is indistinguishable from a missing container at the route layer — the
   client receives 404 rather than 503.
-- **Proposed fix:** Inspect the upstream error type (e.g. check for
-  `ContainerizationError(.notFound)`) and map non-found errors to
-  `RuntimeError.backendFailure(message:)` so the route can return 500 on transient
-  failures vs 404 on genuine missing-container cases.
+- **Resolution:** Fixed in [`b18a9ce`](https://github.com/full-chaos/container-compose/commit/b18a9ce9df7a3d36ab27847e1c93cefb8370fe29). `BridgeContainerClientRuntime.statistics(for:)`
+  now inspects typed `ContainerizationError` values, preserves not-found semantics,
+  and maps all other upstream failures to `RuntimeError.backendFailure(message:)`.
+  `StatsRoutes` now returns 502 for backend failures while keeping genuine
+  missing-container cases on 404.
 
 ## Leaks discovered during Phase 8 / CHAOS-1353 (resource CRUD)
 
