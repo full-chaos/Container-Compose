@@ -43,23 +43,40 @@ extension ComposeUp {
             }
 
             // --memory-reservation
-            if let memReservation = svc.mem_reservation {
-                args.append(contentsOf: ["--memory-reservation", memReservation])
+            if svc.mem_reservation != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.mem_reservation",
+                    "Note: 'mem_reservation' is parsed but not supported by Apple container; ignored."
+                )
+            } else if svc.deploy?.resources?.reservations?.memory != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.deploy.resources.reservations.memory",
+                    "Note: 'deploy.resources.reservations.memory' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --memory-swappiness
-            if let swappiness = svc.mem_swappiness {
-                args.append(contentsOf: ["--memory-swappiness", String(swappiness)])
+            if svc.mem_swappiness != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.mem_swappiness",
+                    "Note: 'mem_swappiness' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --memory-swap
-            if let memswap = svc.memswap_limit {
-                args.append(contentsOf: ["--memory-swap", memswap])
+            if svc.memswap_limit != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.memswap_limit",
+                    "Note: 'memswap_limit' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --pids-limit
-            if let pids = svc.pids_limit {
-                args.append(contentsOf: ["--pids-limit", String(pids)])
+            if svc.pids_limit != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.pids_limit",
+                    "Note: 'pids_limit' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --shm-size
@@ -69,52 +86,82 @@ extension ComposeUp {
 
             // --oom-kill-disable (flag only, emitted when true)
             if svc.oom_kill_disable == true {
-                args.append("--oom-kill-disable")
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.oom_kill_disable",
+                    "Note: 'oom_kill_disable' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --oom-score-adj
-            if let oomScore = svc.oom_score_adj {
-                args.append(contentsOf: ["--oom-score-adj", String(oomScore)])
+            if svc.oom_score_adj != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.oom_score_adj",
+                    "Note: 'oom_score_adj' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-shares
-            if let shares = svc.cpu_shares {
-                args.append(contentsOf: ["--cpu-shares", String(shares)])
+            if svc.cpu_shares != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_shares",
+                    "Note: 'cpu_shares' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpuset-cpus
-            if let cpuset = svc.cpuset {
-                args.append(contentsOf: ["--cpuset-cpus", cpuset])
+            if svc.cpuset != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpuset",
+                    "Note: 'cpuset' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-period
-            if let period = svc.cpu_period {
-                args.append(contentsOf: ["--cpu-period", String(period)])
+            if svc.cpu_period != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_period",
+                    "Note: 'cpu_period' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-quota
-            if let quota = svc.cpu_quota {
-                args.append(contentsOf: ["--cpu-quota", String(quota)])
+            if svc.cpu_quota != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_quota",
+                    "Note: 'cpu_quota' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-rt-period
-            if let rtPeriod = svc.cpu_rt_period {
-                args.append(contentsOf: ["--cpu-rt-period", String(rtPeriod)])
+            if svc.cpu_rt_period != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_rt_period",
+                    "Note: 'cpu_rt_period' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-rt-runtime
-            if let rtRuntime = svc.cpu_rt_runtime {
-                args.append(contentsOf: ["--cpu-rt-runtime", String(rtRuntime)])
+            if svc.cpu_rt_runtime != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_rt_runtime",
+                    "Note: 'cpu_rt_runtime' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-count
-            if let count = svc.cpu_count {
-                args.append(contentsOf: ["--cpu-count", String(count)])
+            if svc.cpu_count != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_count",
+                    "Note: 'cpu_count' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --cpu-percent
-            if let percent = svc.cpu_percent {
-                args.append(contentsOf: ["--cpu-percent", String(percent)])
+            if svc.cpu_percent != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu_percent",
+                    "Note: 'cpu_percent' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --ulimit NAME=SOFT:HARD (or NAME=VALUE when soft == hard)
@@ -128,48 +175,20 @@ extension ComposeUp {
                 }
             }
 
-            // --gpus — emit as --gpus (warn-emit: Apple container may not support this flag)
-            if let gpus = svc.gpus {
-                switch gpus {
-                case .all:
-                    args.append(contentsOf: ["--gpus", "all"])
-                case .requests(let requests):
-                    for req in requests {
-                        var spec: [String] = []
-                        if let count = req.count { spec.append("count=\(count)") }
-                        if let ids = req.device_ids, !ids.isEmpty {
-                            spec.append("device=\(ids.joined(separator: ","))")
-                        }
-                        if let caps = req.capabilities, !caps.isEmpty {
-                            spec.append("capabilities=\(caps.joined(separator: ","))")
-                        }
-                        args.append(contentsOf: ["--gpus", spec.joined(separator: ",")])
-                    }
-                }
-                print("Note: 'gpus' is parsed and forwarded as --gpus; Apple container may reject this flag.")
+            // --gpus
+            if svc.gpus != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.gpus",
+                    "Note: 'gpus' is parsed but not supported by Apple container; ignored."
+                )
             }
 
-            // blkio_config — emit per-field (warn-emit: Apple container may not support these flags)
-            if let blkio = svc.blkio_config {
-                if let w = blkio.weight {
-                    args.append(contentsOf: ["--blkio-weight", "\(w)"])
-                }
-                for d in blkio.weight_device ?? [] {
-                    args.append(contentsOf: ["--blkio-weight-device", "\(d.path):\(d.weight)"])
-                }
-                for d in blkio.device_read_bps ?? [] {
-                    args.append(contentsOf: ["--device-read-bps", "\(d.path):\(d.rate)"])
-                }
-                for d in blkio.device_write_bps ?? [] {
-                    args.append(contentsOf: ["--device-write-bps", "\(d.path):\(d.rate)"])
-                }
-                for d in blkio.device_read_iops ?? [] {
-                    args.append(contentsOf: ["--device-read-iops", "\(d.path):\(d.rate)"])
-                }
-                for d in blkio.device_write_iops ?? [] {
-                    args.append(contentsOf: ["--device-write-iops", "\(d.path):\(d.rate)"])
-                }
-                print("Note: 'blkio_config' is parsed and forwarded; Apple container may not support these flags.")
+            // blkio_config
+            if svc.blkio_config != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.blkio_config",
+                    "Note: 'blkio_config' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             return args
