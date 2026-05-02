@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1396-container-name",
+  "commit": "e86501fb6a7061fc8274548f2ae05076c95f51b0",
+  "short": "e86501f",
+  "target": "e86501f",
+  "message": "fix(up): honor container_name in stop/get-IP/wait paths (CHAOS-1396)",
+  "published_at": "2026-05-02T21:55:42.222290+00:00"
+}
