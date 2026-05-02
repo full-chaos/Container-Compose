@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1368-volume-crud",
+  "commit": "adb52ff4010f6f6aa6d5547961d4790f3dcca5fe",
+  "short": "adb52ff",
+  "target": "adb52ff",
+  "message": "docs(plans): update volume CRUD leak after runtime wiring (CHAOS-1368)",
+  "published_at": "2026-05-02T01:34:53.975632+00:00"
+}
