@@ -1,0 +1,8 @@
+{
+  "branch": "chore/coverage-refresh-post-1368",
+  "commit": "4abcba12d15911af64421719d4887938cba3d871",
+  "short": "4abcba1",
+  "target": "4abcba1",
+  "message": "docs(coverage): refresh matrix + AGENTS.md totals after CHAOS-1368 (PR #85)",
+  "published_at": "2026-05-02T02:36:45.288150+00:00"
+}
