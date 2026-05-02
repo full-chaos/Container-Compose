@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "29bc0d0f38b977a79ed313b46181d142c5771b92",
-  "short": "29bc0d0",
+  "commit": "45d8aebb59e2016a58ebab50c11e2c321ba7c39e",
+  "short": "45d8aeb",
   "target": "current",
-  "message": "feat(build): warn-and-skip unsupported build flags (#82)",
-  "published_at": "2026-05-02T00:05:54.529602+00:00"
+  "message": "feat(args): warn-skip resource + GPU/blkio flags (CHAOS-1375 + CHAOS-1376) (#83)",
+  "published_at": "2026-05-02T00:06:06.051655+00:00"
 }
