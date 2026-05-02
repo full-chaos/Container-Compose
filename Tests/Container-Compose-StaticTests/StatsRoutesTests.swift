@@ -94,6 +94,25 @@ struct StatsRoutesTests {
         }
     }
 
+    @Test("GET /containers/{id}/stats?stream=false returns 502 for backend failures")
+    func oneShot_backendFailureReturns502() async throws {
+        let runtime = RecordingRuntime(statisticsError: .backendFailure(message: "daemon request timed out"))
+
+        try await RuntimeEnvironment.$current.withValue(runtime) {
+            try await Self.app().test(.router) { client in
+                try await client.execute(uri: "/containers/web/stats?stream=false", method: .get) { response in
+                    #expect(response.status == .badGateway)
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "bad_gateway")
+                    #expect(body.code == "E_502")
+                    #expect(body.message == "Failed to retrieve statistics for container: web")
+                }
+            }
+        }
+
+        #expect(await runtime.entriesSnapshot() == [.statistics(id: "web")])
+    }
+
     // MARK: - Streaming mode (default)
 
     /// Streaming with a single-snapshot sequence: the route emits the first frame immediately
@@ -151,6 +170,25 @@ struct StatsRoutesTests {
                 }
             }
         }
+    }
+
+    @Test("GET /containers/{id}/stats returns 502 for backend failures during streaming probe")
+    func streaming_backendFailureReturns502() async throws {
+        let runtime = RecordingRuntime(statisticsError: .backendFailure(message: "daemon request timed out"))
+
+        try await RuntimeEnvironment.$current.withValue(runtime) {
+            try await Self.app().test(.router) { client in
+                try await client.execute(uri: "/containers/web/stats", method: .get) { response in
+                    #expect(response.status == .badGateway)
+                    let body = try Self.decodeJSON(APIErrorEnvelope.self, from: response)
+                    #expect(body.error == "bad_gateway")
+                    #expect(body.code == "E_502")
+                    #expect(body.message == "Failed to retrieve statistics for container: web")
+                }
+            }
+        }
+
+        #expect(await runtime.entriesSnapshot() == [.statistics(id: "web")])
     }
 
     // MARK: - Interval query parameter parsing (unit tests via parseIntervalValue)

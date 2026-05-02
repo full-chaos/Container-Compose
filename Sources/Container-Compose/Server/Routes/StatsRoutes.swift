@@ -87,6 +87,16 @@ public enum StatsRoutes {
                 status: .notFound,
                 response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
             ).response(from: request, context: context)
+        } catch RuntimeError.backendFailure {
+            return try EditedResponse(
+                status: .badGateway,
+                response: APIErrorEnvelope(
+                    error: "bad_gateway",
+                    message: "Failed to retrieve statistics for container: \(id)",
+                    code: "E_502",
+                    requestId: context.id.description
+                )
+            ).response(from: request, context: context)
         } catch RuntimeError.notSupported {
             return try EditedResponse(
                 status: .notImplemented,
@@ -120,6 +130,16 @@ public enum StatsRoutes {
             return try EditedResponse(
                 status: .notFound,
                 response: APIErrorEnvelope.legacy(.notFound, message: "No such container: \(id)", requestId: context.id.description)
+            ).response(from: request, context: context)
+        } catch RuntimeError.backendFailure {
+            return try EditedResponse(
+                status: .badGateway,
+                response: APIErrorEnvelope(
+                    error: "bad_gateway",
+                    message: "Failed to retrieve statistics for container: \(id)",
+                    code: "E_502",
+                    requestId: context.id.description
+                )
             ).response(from: request, context: context)
         } catch RuntimeError.notSupported {
             return try EditedResponse(
