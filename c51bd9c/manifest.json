@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1361-xpc-error-differentiation",
+  "commit": "c51bd9c6d68b34d2d4866e4cae08decb619c7f9e",
+  "short": "c51bd9c",
+  "target": "c51bd9c",
+  "message": "docs(plans): mark Leak #8 resolved after statistics fix (CHAOS-1361)",
+  "published_at": "2026-05-02T01:31:47.015682+00:00"
+}
