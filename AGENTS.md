@@ -6,11 +6,14 @@ This file is the canonical orientation for agents (and humans) joining the proje
 Read it before exploring. It mirrors the structure of `CLAUDE.md` / `AGENTS.md`
 conventions used in agent-driven workflows.
 
+linear project: 'Container Compose'
+github: full-chaos/container-compose
+
 ---
 
 ## 1. Project Summary
 
-**Container-Compose** is a Swift 6.1 CLI that brings *limited* Docker Compose
+**Container-Compose** is a Swift 6.1 CLI that brings _limited_ Docker Compose
 support to [Apple Container](https://github.com/apple/container). It parses
 `docker-compose.yml` and orchestrates services via Apple's `container` runtime
 on macOS.
@@ -59,12 +62,12 @@ Makefile                      ← build, install, clean targets
 
 ### Dependencies (`Package.swift`)
 
-| Package                | Source                                        | Purpose                          |
-| ---------------------- | --------------------------------------------- | -------------------------------- |
-| `swift-argument-parser`| github.com/apple/swift-argument-parser ≥1.5.1 | CLI parsing                      |
-| `container`            | github.com/mcrich23/container (transitional fork pin) | Apple Container client APIs; transitional compatibility only |
-| `Yams`                 | github.com/jpsim/Yams ≥5.0.6                  | YAML decoder                     |
-| `Rainbow`              | github.com/onevcat/Rainbow ≥4.0.0             | ANSI-colored per-service output  |
+| Package                 | Source                                                | Purpose                                                      |
+| ----------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| `swift-argument-parser` | github.com/apple/swift-argument-parser ≥1.5.1         | CLI parsing                                                  |
+| `container`             | github.com/mcrich23/container (transitional fork pin) | Apple Container client APIs; transitional compatibility only |
+| `Yams`                  | github.com/jpsim/Yams ≥5.0.6                          | YAML decoder                                                 |
+| `Rainbow`               | github.com/onevcat/Rainbow ≥4.0.0                     | ANSI-colored per-service output                              |
 
 Note the `container` dependency currently points at `mcrich23/container` on
 branch `add-command-option-group-function-macro`. That fork stays pinned only
@@ -82,27 +85,27 @@ or file further fork patches when evaluating feature gaps.
 Every top-level Compose entity has a dedicated `Codable` struct. The decoder
 goes through `Yams.YAMLDecoder().decode(DockerCompose.self, …)`.
 
-| File                       | Type                  | Compose entity       |
-| -------------------------- | --------------------- | -------------------- |
-| `DockerCompose.swift`      | `DockerCompose`       | root document        |
-| `Service.swift`            | `Service`             | `services.<name>`    |
-| `Build.swift`              | `Build`               | `service.build`      |
-| `Healthcheck.swift`        | `Healthcheck`         | `service.healthcheck`|
-| `Deploy.swift`             | `Deploy`              | `service.deploy`     |
-| `DeployRestartPolicy.swift`| `DeployRestartPolicy` | `deploy.restart_policy` |
-| `DeployResources.swift`    | `DeployResources`     | `deploy.resources`   |
-| `ResourceLimits.swift`     | `ResourceLimits`      | `…resources.limits`  |
-| `ResourceReservations.swift`| `ResourceReservations`| `…resources.reservations` |
-| `DeviceReservation.swift`  | `DeviceReservation`   | `…reservations.devices[]` |
-| `Network.swift` / `ExternalNetwork.swift` | `Network`, `ExternalNetwork` | `networks.<name>` |
-| `Volume.swift`  / `ExternalVolume.swift`  | `Volume`,  `ExternalVolume`  | `volumes.<name>`  |
-| `Secret.swift`  / `ExternalSecret.swift`  | `Secret`,  `ExternalSecret`  | `secrets.<name>`  |
-| `Config.swift`  / `ExternalConfig.swift`  | `Config`,  `ExternalConfig`  | `configs.<name>`  |
-| `ServiceSecret.swift` / `ServiceConfig.swift` | `ServiceSecret`, `ServiceConfig` | service-level refs |
+| File                                          | Type                             | Compose entity            |
+| --------------------------------------------- | -------------------------------- | ------------------------- |
+| `DockerCompose.swift`                         | `DockerCompose`                  | root document             |
+| `Service.swift`                               | `Service`                        | `services.<name>`         |
+| `Build.swift`                                 | `Build`                          | `service.build`           |
+| `Healthcheck.swift`                           | `Healthcheck`                    | `service.healthcheck`     |
+| `Deploy.swift`                                | `Deploy`                         | `service.deploy`          |
+| `DeployRestartPolicy.swift`                   | `DeployRestartPolicy`            | `deploy.restart_policy`   |
+| `DeployResources.swift`                       | `DeployResources`                | `deploy.resources`        |
+| `ResourceLimits.swift`                        | `ResourceLimits`                 | `…resources.limits`       |
+| `ResourceReservations.swift`                  | `ResourceReservations`           | `…resources.reservations` |
+| `DeviceReservation.swift`                     | `DeviceReservation`              | `…reservations.devices[]` |
+| `Network.swift` / `ExternalNetwork.swift`     | `Network`, `ExternalNetwork`     | `networks.<name>`         |
+| `Volume.swift` / `ExternalVolume.swift`       | `Volume`, `ExternalVolume`       | `volumes.<name>`          |
+| `Secret.swift` / `ExternalSecret.swift`       | `Secret`, `ExternalSecret`       | `secrets.<name>`          |
+| `Config.swift` / `ExternalConfig.swift`       | `Config`, `ExternalConfig`       | `configs.<name>`          |
+| `ServiceSecret.swift` / `ServiceConfig.swift` | `ServiceSecret`, `ServiceConfig` | service-level refs        |
 
 Most structs implement custom `init(from:)` to accept multiple YAML shapes
 (string vs. array, scalar vs. object). `Service.init(from:)` enforces the
-runtime invariant *"a service must have either `image` or `build`"*.
+runtime invariant _"a service must have either `image` or `build`"_.
 
 `Service.topoSortConfiguredServices(_:)` does a DFS topological sort over
 `depends_on` and detects cycles. It also populates `dependedBy` on each
@@ -113,32 +116,33 @@ service for reverse-graph queries.
 All subcommands conform to `AsyncParsableCommand`. There are **19 subcommands**
 registered in `Application.swift`:
 
-| Subcommand     | Purpose                                                |
-| -------------- | ------------------------------------------------------ |
-| `up`           | Start project containers (topo-sorted, profile-filtered, includes/extends/scale resolved) |
-| `down`         | Stop and remove project containers                     |
-| `start`        | Start existing stopped project containers              |
-| `stop`         | Stop running project containers (reverse topo order)   |
-| `restart`      | Stop + start                                           |
-| `build`        | Build project images without running                   |
-| `ps`           | List project containers (NAME / IMAGE / STATUS / PORTS) |
-| `ls`           | List active compose projects on the host               |
-| `logs`         | Stream logs from project containers (`-f`, `--tail`)   |
-| `pull`         | Pull (or skip-pull / always-pull) project images       |
-| `config`       | Print fully-resolved/normalized compose YAML           |
-| `run`          | Spawn a one-off container with overrides              |
-| `exec`         | Run a command inside an existing project container     |
-| `kill`         | Send a signal to project containers (default `SIGKILL`) |
-| `rm`           | Remove stopped project containers                      |
-| `create`       | Provision containers without starting (capability-probed) |
-| `watch`        | Polling-based file monitor honoring `develop.watch[]`  |
-| `top`          | Shell out to `container exec <id> ps -ef` per running project container |
-| `port`         | Resolve `<service> <private-port>` against `service.ports` |
-| `events`       | 1s-polling synthetic event stream (create/start/stop/die/destroy) |
-| `push`         | Shell out to `container image push <image>` per service |
-| `version`      | Print tool version                                      |
+| Subcommand | Purpose                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| `up`       | Start project containers (topo-sorted, profile-filtered, includes/extends/scale resolved) |
+| `down`     | Stop and remove project containers                                                        |
+| `start`    | Start existing stopped project containers                                                 |
+| `stop`     | Stop running project containers (reverse topo order)                                      |
+| `restart`  | Stop + start                                                                              |
+| `build`    | Build project images without running                                                      |
+| `ps`       | List project containers (NAME / IMAGE / STATUS / PORTS)                                   |
+| `ls`       | List active compose projects on the host                                                  |
+| `logs`     | Stream logs from project containers (`-f`, `--tail`)                                      |
+| `pull`     | Pull (or skip-pull / always-pull) project images                                          |
+| `config`   | Print fully-resolved/normalized compose YAML                                              |
+| `run`      | Spawn a one-off container with overrides                                                  |
+| `exec`     | Run a command inside an existing project container                                        |
+| `kill`     | Send a signal to project containers (default `SIGKILL`)                                   |
+| `rm`       | Remove stopped project containers                                                         |
+| `create`   | Provision containers without starting (capability-probed)                                 |
+| `watch`    | Polling-based file monitor honoring `develop.watch[]`                                     |
+| `top`      | Shell out to `container exec <id> ps -ef` per running project container                   |
+| `port`     | Resolve `<service> <private-port>` against `service.ports`                                |
+| `events`   | 1s-polling synthetic event stream (create/start/stop/die/destroy)                         |
+| `push`     | Shell out to `container image push <image>` per service                                   |
+| `version`  | Print tool version                                                                        |
 
 `up` performs:
+
 1. Locate compose file (`-f`, then `compose.yml` / `compose.yaml` / `docker-compose.yml` / `docker-compose.yaml`).
 2. `DockerCompose.loadAndMerge(...).resolvingExtends()` — recursively merge `include:` files (cycle-detected) and resolve `extends:`.
 3. Load `.env` file (`process.envFile` first, else `./.env`).
@@ -163,17 +167,17 @@ shm_size).
 `ComposeUp.configService` no longer inlines argv emission. Each concern is in
 its own extension file under `Sources/Container-Compose/Commands/`:
 
-| File | Owns |
-| ---- | ---- |
-| `Compose+ArgsBase.swift` | `ArgsContext` struct |
-| `Compose+ArgsLifecycle.swift` | platform, name, detach, stdin/tty, init, stop_signal/grace_period, runtime, restart-warn, logging |
-| `Compose+ArgsSecurity.swift` | user, privileged, read_only, cap_add/drop, security_opt, userns_mode, group_add |
-| `Compose+ArgsResource.swift` | cpus, memory, mem_*, pids/shm/oom/cpu_*, ulimits, gpus, blkio_config |
-| `Compose+ArgsNetworking.swift` | ports, networks (list+map+aliases), hostname, dns, extra_hosts, domainname, expose, mac_address, network_mode, ipc, pid, uts |
-| `Compose+ArgsStorage.swift` | working_dir, tmpfs, devices, sysctls, warn-skip volumes_from/storage_opt/device_cgroup_rules |
-| `Compose+ArgsLabels.swift` | service.labels |
-| `Compose+ConfigsAndSecrets.swift` | service-level configs/secrets bind-mounts |
-| `Compose+Wait.swift` | `waitForCondition(_:condition:)` for depends_on object form |
+| File                              | Owns                                                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Compose+ArgsBase.swift`          | `ArgsContext` struct                                                                                                         |
+| `Compose+ArgsLifecycle.swift`     | platform, name, detach, stdin/tty, init, stop_signal/grace_period, runtime, restart-warn, logging                            |
+| `Compose+ArgsSecurity.swift`      | user, privileged, read_only, cap_add/drop, security_opt, userns_mode, group_add                                              |
+| `Compose+ArgsResource.swift`      | cpus, memory, mem*\*, pids/shm/oom/cpu*\*, ulimits, gpus, blkio_config                                                       |
+| `Compose+ArgsNetworking.swift`    | ports, networks (list+map+aliases), hostname, dns, extra_hosts, domainname, expose, mac_address, network_mode, ipc, pid, uts |
+| `Compose+ArgsStorage.swift`       | working_dir, tmpfs, devices, sysctls, warn-skip volumes_from/storage_opt/device_cgroup_rules                                 |
+| `Compose+ArgsLabels.swift`        | service.labels                                                                                                               |
+| `Compose+ConfigsAndSecrets.swift` | service-level configs/secrets bind-mounts                                                                                    |
+| `Compose+Wait.swift`              | `waitForCondition(_:condition:)` for depends_on object form                                                                  |
 
 Each builder takes `ArgsContext` and returns `[String]`. Side-effects (volume
 dir creation, env merging) stay inline in `configService`.
@@ -181,6 +185,7 @@ dir creation, env merging) stay inline in `configService`.
 ### 3.3 Helpers (`Helper Functions.swift`)
 
 Re-used across commands:
+
 - `loadEnvFile(path:)` — robust `.env` parser (skips comments, blanks).
 - `resolveVariable(_:with:)` — `${VAR}`, `${VAR:-default}`, `${VAR:?error}`.
 - `resolvedPath(for:relativeTo:)` — handles `~`, relative, absolute.
@@ -207,6 +212,7 @@ Current totals (post Tier 0 honesty sweep + post-CHAOS-1368 volume CRUD):
 | **Total**   | **197** | 100%  |
 
 Recent shifts:
+
 - **Tier 0 honesty sweep (PRs #71–83)** demoted ~22 rows from `ok` to `partial` —
   Container-Compose was emitting flags `apple/container` does not accept
   (`--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all
@@ -231,6 +237,7 @@ Recent shifts:
   for honesty.
 
 The remaining "partial" rows fall into two buckets:
+
 1. **Swarm-only / orchestrator features** — `deploy.replicas`,
    `deploy.update_config`, `deploy.rollback_config`,
    `deploy.placement`, `endpoint_mode`, `mode`. Decoded as stubs;
@@ -268,6 +275,7 @@ End-to-end status:
 Two test targets, both using **Swift Testing** (`@Test` macro, not XCTest).
 
 ### Static (parsing / unit / argv-shape)
+
 `Tests/Container-Compose-StaticTests/` — **53 files, 724 `@Test` cases**.
 Covers schema decoding, command flag parsing, per-concern argv emission,
 and runtime seams (`RecordingRunner`, `RecordingContainerClientProvider`).
@@ -281,13 +289,14 @@ Categorical breakdown:
   `ResourceArgsTests`, `NetworkArgsTests`, `StorageArgsTests`,
   `LabelsArgsTests`, `LoggingArgsTests`, `GpusBlkioTests`.
 - **Subcommand parsing + argv shape**: `Compose<Name>ParsingTests`
-  + `RuntimeArgvTests` + per-command `Compose<Name>RuntimeArgvTests`.
+  - `RuntimeArgvTests` + per-command `Compose<Name>RuntimeArgvTests`.
 - **Helpers**: `HelperFunctionsTests`, `EnvironmentVariableTests`,
   `EnvFileLoadingTests`, `WaitForConditionTests`,
   `PreSubcommandFlagPromotionTests`, `LineBufferTests`,
   `ProfilesTests`, `ScaleTests`, `IncludeTests`, `ExtendsTests`.
 
 `TestHelpers/` provides:
+
 - `DockerComposeYamlFiles.swift` — shared fixture YAML
 - `RecordingRunner.swift` — captures `container <…>` argv for assertion
 - `RecordingContainerClientProvider.swift` — synthetic `ContainerClient`
@@ -295,7 +304,9 @@ Categorical breakdown:
   `container` is not installed (CI-safe)
 
 ### Dynamic (integration against `container` runtime)
+
 `Tests/Container-Compose-DynamicTests/` — 11 `@Test` cases:
+
 - `ComposeUpTests`, `ComposeDownTests`, `ComposeBuildTests`
 
 Dynamic tests self-skip on hosts without the Apple `container` runtime
@@ -304,12 +315,14 @@ run in CI. Verify locally with the runtime installed before committing
 schema changes that ripple into `up`/`down`/`build`.
 
 ### Resolved CI flake
+
 CHAOS-1326 isolated the `swiftpm-testing-helper` signal-10/SIGBUS flake
 to `LineBufferTests` under parallel Swift Testing. That suite now carries
 `@Suite(.serialized)`, allowing CI to run plain `swift test` again without
 the broad `--no-parallel` workaround from CHAOS-1314.
 
 ### Sample compose files
+
 - `Sample Compose Files/Healthchecked Redis/docker-compose.yaml` — single-service,
   healthcheck (string form), restart policy, volume, port.
 
@@ -324,7 +337,7 @@ the broad `--no-parallel` workaround from CHAOS-1314.
   conflicts. Schema changes (Service, DockerCompose) ripple everywhere; serialize.
 - **Tests before edits.** Add a Swift Testing `@Test` for any new schema field
   or behavior in the matching `Tests/Container-Compose-StaticTests/<Topic>Tests.swift`.
-- **Build invariants.** A `Service` must have `image` *or* `build` — the
+- **Build invariants.** A `Service` must have `image` _or_ `build` — the
   decoder asserts this. Don't bypass the assertion; add a fixture if you're
   testing edge cases.
 - **Decoder shape-tolerance.** Many fields accept both string-and-array (e.g.
@@ -400,10 +413,10 @@ CI lives under `.github/workflows/`. Treat any failure there as blocking.
 ## 8. References
 
 - Compose spec (canonical):
-  https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json
+  <https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json>
 - `depends_on` schema anchor (lines 277-310): defines list vs. object form
   with `condition`, `required`, `restart`.
-- Apple Container: https://github.com/apple/container
+- Apple Container: <https://github.com/apple/container>
 - This repo's coverage report: `./coverage.html`
 
 ## Linear
@@ -446,6 +459,7 @@ Then `Read` that path to view the image.
 ### Claude Code Skills
 
 Available workflow skills (install with `linear skills install --all`):
+
 - `/prd` - Create agent-friendly tickets with PRDs and sub-issues
 - `/triage` - Analyze and prioritize backlog
 - `/cycle-plan` - Plan cycles using velocity analytics
