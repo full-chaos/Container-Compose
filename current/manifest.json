@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "45d8aebb59e2016a58ebab50c11e2c321ba7c39e",
-  "short": "45d8aeb",
+  "commit": "1a8a037083c4a0178b0ccaf7356dc852e683481c",
+  "short": "1a8a037",
   "target": "current",
-  "message": "feat(args): warn-skip resource + GPU/blkio flags (CHAOS-1375 + CHAOS-1376) (#83)",
-  "published_at": "2026-05-02T00:06:06.051655+00:00"
+  "message": "feat(runtime): differentiate XPC errors from notFound in statistics (CHAOS-1361) (#84)",
+  "published_at": "2026-05-02T02:25:41.825127+00:00"
 }
