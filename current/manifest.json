@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "145fac8da30c6d61dfb91f70f30327b106cc3f98",
-  "short": "145fac8",
+  "commit": "f184a5273700383234ba8bf32abe23e0fa810b4c",
+  "short": "f184a52",
   "target": "current",
-  "message": "feat(volumes): replace path-fallback with runtime volume CRUD (CHAOS-1368) (#85)",
-  "published_at": "2026-05-02T02:25:58.314195+00:00"
+  "message": "docs(coverage): refresh matrix + AGENTS.md totals after CHAOS-1368 (PR #85) (#86)",
+  "published_at": "2026-05-02T02:38:36.540220+00:00"
 }
