@@ -343,32 +343,16 @@ extension AppleContainerizationRuntime {
 
     // MARK: Volumes
 
-    /// The native `apple/containerization` Swift package has no volume management
-    /// surface. Container filesystems are immutable root images; bind-mounts are
-    /// the current workaround. Volume CRUD is deferred until the containerization
-    /// library exposes a public API for mutable volume stores. Documented as
-    /// abstraction leak in `docs/plans/runtime-abstraction-leaks.md` (Leak #10).
     public func listVolumes() async throws -> [RuntimeVolume] {
-        throw RuntimeError.notSupported(
-            operation: "listVolumes",
-            conformer: "AppleContainerizationRuntime"
-        )
+        try await RuntimeVolumeClient.list()
     }
 
-    /// See `listVolumes` for rationale. Documented as Leak #10.
     public func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
-        throw RuntimeError.notSupported(
-            operation: "createVolume",
-            conformer: "AppleContainerizationRuntime"
-        )
+        try await RuntimeVolumeClient.create(spec: spec)
     }
 
-    /// See `listVolumes` for rationale. Documented as Leak #10.
     public func removeVolume(name: String) async throws {
-        throw RuntimeError.notSupported(
-            operation: "removeVolume",
-            conformer: "AppleContainerizationRuntime"
-        )
+        try await RuntimeVolumeClient.remove(name: name)
     }
 
     // MARK: Secrets

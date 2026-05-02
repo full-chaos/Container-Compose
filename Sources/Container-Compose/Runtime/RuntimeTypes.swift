@@ -352,15 +352,18 @@ public struct RuntimeCreateVolumeSpec: Sendable, Equatable {
     public let name: String
     public let driver: String
     public let labels: [String: String]
+    public let driverOptions: [String: String]
 
     public init(
         name: String,
         driver: String = "local",
-        labels: [String: String] = [:]
+        labels: [String: String] = [:],
+        driverOptions: [String: String] = [:]
     ) {
         self.name = name
         self.driver = driver
         self.labels = labels
+        self.driverOptions = driverOptions
     }
 }
 
