@@ -151,13 +151,11 @@ public struct ComposeDown: AsyncParsableCommand {
         guard let projectName else { return }
 
         for (serviceName, service) in services {
-            // Respect explicit container_name, otherwise use default pattern
-            let containerName: String
-            if let explicitContainerName = service.container_name {
-                containerName = explicitContainerName
-            } else {
-                containerName = "\(projectName)-\(serviceName)"
-            }
+            let containerName = effectiveContainerName(
+                projectName: projectName,
+                serviceName: serviceName,
+                explicit: service.container_name
+            )
 
             print("Stopping container: \(containerName)")
 
