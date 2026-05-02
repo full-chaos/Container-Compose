@@ -98,4 +98,36 @@ struct HelperFunctionsTests {
         #expect(result == "0.0.0.0:3000:3000")
     }
 
+    // MARK: - effectiveContainerName
+
+    @Test("effectiveContainerName uses explicit container_name when provided")
+    func testEffectiveContainerNameUsesExplicit() throws {
+        let resolved = effectiveContainerName(
+            projectName: "myproj",
+            serviceName: "web",
+            explicit: "my-web"
+        )
+        #expect(resolved == "my-web")
+    }
+
+    @Test("effectiveContainerName falls back to project-service when explicit is nil")
+    func testEffectiveContainerNameFallsBackWhenNil() throws {
+        let resolved = effectiveContainerName(
+            projectName: "myproj",
+            serviceName: "web",
+            explicit: nil
+        )
+        #expect(resolved == "myproj-web")
+    }
+
+    @Test("effectiveContainerName falls back when explicit is empty string")
+    func testEffectiveContainerNameFallsBackWhenEmpty() throws {
+        let resolved = effectiveContainerName(
+            projectName: "myproj",
+            serviceName: "web",
+            explicit: ""
+        )
+        #expect(resolved == "myproj-web")
+    }
+
 }

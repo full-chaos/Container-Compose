@@ -138,6 +138,25 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
     return resolvedValue
 }
 
+/// Resolves the effective container name for a service, honoring an explicit
+/// `container_name:` override and falling back to `<project>-<service>` when
+/// no override is set. An empty explicit string is treated as if no override
+/// were present, mirroring `resolveProjectName`'s handling of `--project-name ""`.
+///
+/// This helper exists so that every command (up, down, ip lookup, wait) agrees
+/// on what to call a container — without it, ComposeUp historically ignored
+/// `container_name` while ComposeDown honored it (CHAOS-1396).
+public func effectiveContainerName(
+    projectName: String,
+    serviceName: String,
+    explicit: String?
+) -> String {
+    if let explicit, !explicit.isEmpty {
+        return explicit
+    }
+    return "\(projectName)-\(serviceName)"
+}
+
 /// Derives a project name from the current working directory. It replaces any '.' characters with
 /// '_' to ensure compatibility with container naming conventions.
 ///
