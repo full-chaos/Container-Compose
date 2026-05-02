@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b0675cb0b9cc6d0272176f47697f7756aa3cabb3",
-  "short": "b0675cb",
+  "commit": "4fc9959091bad6bb40553a4e935bed032aa5a334",
+  "short": "4fc9959",
   "target": "current",
-  "message": "docs(plans): phased roadmap for CHAOS-1395 verified refactors (#88)",
-  "published_at": "2026-05-02T22:05:22.928662+00:00"
+  "message": "Update documentation (#89)",
+  "published_at": "2026-05-02T22:14:30.326385+00:00"
 }
