@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "4fc9959091bad6bb40553a4e935bed032aa5a334",
-  "short": "4fc9959",
+  "commit": "1f0451f82729a18a5edb9d757346c972bbd3c720",
+  "short": "1f0451f",
   "target": "current",
-  "message": "Update documentation (#89)",
-  "published_at": "2026-05-02T22:14:30.326385+00:00"
+  "message": "fix(up): honor container_name in stop/get-IP/wait paths (CHAOS-1396) (#87)",
+  "published_at": "2026-05-02T22:17:41.763262+00:00"
 }
