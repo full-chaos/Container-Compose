@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "1a8a037083c4a0178b0ccaf7356dc852e683481c",
-  "short": "1a8a037",
+  "commit": "145fac8da30c6d61dfb91f70f30327b106cc3f98",
+  "short": "145fac8",
   "target": "current",
-  "message": "feat(runtime): differentiate XPC errors from notFound in statistics (CHAOS-1361) (#84)",
-  "published_at": "2026-05-02T02:25:41.825127+00:00"
+  "message": "feat(volumes): replace path-fallback with runtime volume CRUD (CHAOS-1368) (#85)",
+  "published_at": "2026-05-02T02:25:58.314195+00:00"
 }

@@ -118,7 +118,7 @@ Runtime support exists; we just need to wire it.
 | 1 | `service.healthcheck.*` enforcement (test/interval/timeout/retries/start_period/start_interval/disable) | partial (decoded only) | Wire `Compose+Wait.waitForCondition(.serviceHealthy)` to actually drive the runtime healthcheck. Healthchecks are currently never executed; only `depends_on.condition: service_healthy` reads `ContainerSnapshot.health` (already shipped via CHAOS-1319). The healthcheck **subprocess loop** must run. | Likely needs apple/container support too (no `--health-cmd` flag in upstream) — see Tier 2/3 |
 | 2 | `service.deploy.resources.reservations.cpus` | partial (parsed; not applied) | Already emit `--memory-reservation` for `service.mem_reservation`; do same for `deploy.resources.reservations.memory` and `cpus`. **CAVEAT**: this hits Tier 0 — `--memory-reservation` is itself unsupported by apple/container today. Block on Tier 0 cleanup and upstream surface expansion. | CHAOS-1336 (open) |
 | 3 | `service.deploy.resources.reservations.memory` | partial (parsed; not applied) | Same as #2 | CHAOS-1336 (open) |
-| 4 | `top.volumes` named volume runtime CRUD (replace hardlink-dir fallback) | partial | Replace `~/.containers/Volumes/<project>/<name>/` hardlink-dir fallback with `container volume create` API. **Open question** (block on resolving): does `container run -v <name>:<path>` resolve `<name>` to a registered volume, or treat as literal host path? Need 30-min smoke test on runtime-equipped host. See [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive). | CHAOS-1368 (open), CHAOS-1335 (open) |
+| 4 | `top.volumes` named volume runtime CRUD (replace hardlink-dir fallback) | partial | Phase 0 source audit is GREEN: `container run -v <name>:<path>` is parsed as a named volume when `<name>` has no `/`, then resolved through `ClientVolume.create/inspect` before the container starts. Container-Compose can therefore create real local volumes and pass the volume name directly at runtime. Non-`local` drivers still fall back to the legacy hardlink path. See [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive). | CHAOS-1368 (open), CHAOS-1335 (open) |
 | 5 | `service.provider` | partial (warn-skipped) | Provider lifecycle wiring is implementation, not runtime — could be done without apple/container changes if model-provisioning is intentionally Container-Compose-side. Frontier feature though — verify spec stability before commit. | CHAOS-1332 (open) |
 | 6 | Build/Up `pullImage` consolidation | refactor | `ComposeRun.swift:352` has a private `pullImage` while `Compose+Pull.swift:19` has the shared helper. Already noted as R1 in `docs/plans/no-upstream-refactor-and-linear.md`. | tracked in plan, not Linear-ticketed |
 
@@ -431,7 +431,21 @@ For named-volume references, Container-Compose:
 3. Emits `-v <hostPath>:<containerPath>` to `container run` (line 875-878)
 4. Emits a warning at line 869-871 saying "The 'container' tool does not support named volume references in 'container run -v' command"
 
-The warning's claim is **partially outdated**. apple/container ships `container volume create` (verified upstream — `Sources/ContainerCommands/Volume/VolumeCreate.swift`) with `--label`, `--opt`, `--size`. So the volume CRUD API exists. The unresolved question is whether `container run -v <volumeName>:<containerPath>` (no slash in source) resolves the name to a registered volume or treats it as a literal host path.
+The warning's claim was outdated. apple/container ships `container volume create` (verified upstream — `.build/checkouts/container/Sources/ContainerCommands/Volume/VolumeCreate.swift:28-59`) with `--label`, `--opt`, and `--size`, and the runtime path for `container run -v` resolves bare names as named volumes rather than host paths.
+
+### Phase 0 smoke-test result: GREEN
+
+`container run -v <name>:<path>` **does resolve named volumes** when the source token has no `/` and is not `.` / `..`.
+
+Evidence:
+
+1. `ContainerRun.run()` does not parse `-v` itself; it delegates to `Utility.containerConfigFromFlags(...)` with `managementFlags` (`.build/checkouts/container/Sources/ContainerCommands/Container/ContainerRun.swift:92-103`). `ContainerCreate.run()` follows the same path (`.build/checkouts/container/Sources/ContainerCommands/Container/ContainerCreate.swift:72-87`).
+2. `containerConfigFromFlags(...)` parses `management.volumes` via `Parser.volumes(...)`, then converts each `.volume` case into `Filesystem.volume(...)` after `getOrCreateVolume(...)` resolves it through the volume registry (`.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Utility.swift:167-190`).
+3. `Parser.volume(...)` explicitly classifies `src` values **without `/` and not equal to `.` / `..`** as named volumes, validates the volume name, and returns `.volume(ParsedVolume(name: src, ...))` instead of a filesystem bind mount (`.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Parser.swift:518-533`).
+4. `getOrCreateVolume(...)` creates or inspects the named volume through `ClientVolume.create(...)` / `ClientVolume.inspect(...)`, not through a host-path fallback (`.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Utility.swift:359-392`).
+5. `container volume create` / `list` are backed by the same registry API (`ClientVolume.create/list`) and persist real `Volume` records with `name`, `source`, `labels`, and `options` (`.build/checkouts/container/Sources/ContainerCommands/Volume/VolumeCreate.swift:45-60`, `.build/checkouts/container/Sources/ContainerCommands/Volume/VolumeList.swift:42-53`, `.build/checkouts/container/Sources/Services/ContainerAPIService/Client/ClientVolume.swift:25-68`, `.build/checkouts/container/Sources/ContainerResource/Volume/Volume.swift:19-38`).
+
+Conclusion: the old `container-compose` warning was incorrect for local named volumes. The right fix is to create/inspect real volumes and pass the resolved volume **name** to `container run -v <name>:<path>`.
 
 ### What's broken / suboptimal
 
@@ -445,10 +459,10 @@ The warning's claim is **partially outdated**. apple/container ships `container 
 
 | Step | Effort | Linear |
 | :--- | :--- | :--- |
-| 1. Verify whether `container run -v <name>:<path>` (source without `/`) resolves to a registered volume in current upstream | Investigation: ~30 min on a runtime-equipped Mac | Add to CHAOS-1368 acceptance |
-| 2. If yes: replace hardlink-dir fallback with `container volume create` + `container run -v <name>:<path>`. Wire `driver_opts` / `labels` through. | ~1 day | CHAOS-1368, CHAOS-1335 |
-| 3. If no: file an apple/container FR for `container run -v` named-volume resolution. Keep hardlink-dir fallback until upstream lands. | ~30 min FR + wait | New sub-issue under CHAOS-1378 |
-| 4. Remove the misleading warning at `ComposeUp.swift:869-871` either way. | trivial | folded into step 2 or 3 |
+| 1. Verify whether `container run -v <name>:<path>` (source without `/`) resolves to a registered volume in current upstream | **Done — GREEN via source audit** | CHAOS-1368 |
+| 2. Replace hardlink-dir fallback with `container volume create` + `container run -v <name>:<path>`. Wire `driver_opts` / `labels` through. | Implemented in CHAOS-1368 branch; `driver_opts` wiring also advances CHAOS-1335 | CHAOS-1368, CHAOS-1335 |
+| 3. Preserve existing data by migrating legacy `~/.containers/Volumes/<project>/<name>/` contents into the runtime volume store on first use. | Implemented with one-time stderr notice and no destructive delete | CHAOS-1368 |
+| 4. Keep non-`local` drivers on the legacy hardlink fallback with a clearer warning until apple/container grows broader driver support. | Follow-up / long tail | CHAOS-1335 |
 
 ### Bind-mount vs. named-volume disambiguation
 
