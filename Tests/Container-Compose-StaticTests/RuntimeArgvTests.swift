@@ -85,10 +85,12 @@ struct RuntimeArgvTests {
     /// masking real failures.
     private func recordedRunArgv<C: AsyncParsableCommand>(
         timeout: TimeInterval = 60,
+        runtime: (any Runtime)? = nil,
         parse: @escaping @Sendable () throws -> C
     ) async throws -> [String] {
         try await recordedFirstArgv(
             timeout: timeout,
+            runtime: runtime,
             matching: { $0.starts(with: ["container", "run"]) },
             description: "container run",
             parse: parse
@@ -105,6 +107,7 @@ struct RuntimeArgvTests {
     /// via the `recordedRunArgv` wrapper above.
     private func recordedFirstArgv<C: AsyncParsableCommand>(
         timeout: TimeInterval = 60,
+        runtime: (any Runtime)? = nil,
         matching predicate: @escaping @Sendable ([String]) -> Bool,
         description: String,
         parse: @escaping @Sendable () throws -> C
@@ -114,8 +117,18 @@ struct RuntimeArgvTests {
         let runTask = Task {
             try? await RunnerEnvironment.$current.withValue(recorder) {
                 try await ContainerClientEnvironment.$current.withValue(containerProvider) {
-                    var cmd = try parse()
-                    try await cmd.run()
+                    let runCommand = {
+                        var cmd = try parse()
+                        try await cmd.run()
+                    }
+
+                    if let runtime {
+                        try await RuntimeEnvironment.$current.withValue(runtime) {
+                            try await runCommand()
+                        }
+                    } else {
+                        try await runCommand()
+                    }
                 }
             }
         }
@@ -302,8 +315,8 @@ struct RuntimeArgvTests {
 
     // MARK: - Named volume target preservation (dev-health regression)
 
-    @Test("up: named volume emulation preserves full container target")
-    func up_named_volume_preserves_full_container_target() async throws {
+    @Test("up: named volumes use runtime CRUD and preserve full container target")
+    func up_named_volume_uses_runtime_crud_and_preserves_full_container_target() async throws {
         let yaml = """
         services:
           postgres:
@@ -313,27 +326,68 @@ struct RuntimeArgvTests {
         volumes:
           postgres_data:
             driver: local
+            name: shared-postgres-data
         """
         let (dir, compose) = try writeTempCompose(yaml)
         defer { try? FileManager.default.removeItem(at: dir) }
-        let projectName = "dev-health-\(UUID().uuidString.lowercased())"
-        let projectVolumeRoot = URL.homeDirectory
-            .appending(path: ".containers/Volumes/\(projectName)")
-        defer { try? FileManager.default.removeItem(at: projectVolumeRoot) }
+        let runtime = RecordingRuntime()
 
-        let argv = try await recordedRunArgv {
-            try ComposeUp.parse(["--detach", "--project-name", projectName, "-f", compose.path])
+        let argv = try await recordedRunArgv(runtime: runtime) {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
         }
 
-        let volumePath = projectVolumeRoot
-            .appending(path: "postgres_data")
-            .path(percentEncoded: false)
-        let expected = "\(volumePath):/var/lib/postgresql/data/devhealth"
+        let expected = "shared-postgres-data:/var/lib/postgresql/data/devhealth"
         let volumeArgs = volumeValues(in: argv)
         #expect(
             volumeArgs.contains(expected),
             "named volume target must preserve the full compose destination (got: \(volumeArgs), argv: \(argv))"
         )
+        #expect(await runtime.entriesSnapshot().contains(.createVolume(name: "shared-postgres-data")))
+    }
+
+    @Test("up: legacy hardlink named-volume data migrates into runtime volume source")
+    func up_named_volume_migrates_legacy_hardlink_data() async throws {
+        let yaml = """
+        name: migration-check
+        services:
+          postgres:
+            image: postgres:alpine
+            volumes:
+              - postgres_data:/var/lib/postgresql/data
+        volumes:
+          postgres_data:
+            driver: local
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let legacyRoot = URL.homeDirectory.appending(path: ".containers/Volumes/migration-check/postgres_data")
+        let migrationMarker = URL.homeDirectory.appending(path: ".container-compose/volume-migrations/migration-check--postgres_data.migrated")
+        let runtimeRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: legacyRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: runtimeRoot, withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: migrationMarker)
+        defer {
+            try? FileManager.default.removeItem(at: legacyRoot)
+            try? FileManager.default.removeItem(at: runtimeRoot)
+            try? FileManager.default.removeItem(at: migrationMarker)
+        }
+
+        let legacyFile = legacyRoot.appending(path: "seed.txt")
+        try "legacy-data".write(to: legacyFile, atomically: true, encoding: .utf8)
+
+        let runtime = RecordingRuntime()
+        setenv("CONTAINER_COMPOSE_TEST_NAMED_VOLUME_SOURCE", runtimeRoot.path(percentEncoded: false), 1)
+        defer { unsetenv("CONTAINER_COMPOSE_TEST_NAMED_VOLUME_SOURCE") }
+
+        let _ = try await recordedRunArgv(runtime: runtime) {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
+
+        let migratedFile = runtimeRoot.appending(path: "seed.txt")
+        #expect(FileManager.default.fileExists(atPath: migratedFile.path(percentEncoded: false)))
+        let migratedContents = try String(contentsOf: migratedFile, encoding: .utf8)
+        #expect(migratedContents == "legacy-data")
     }
 
     @Test("create: named volume emulation preserves full container target")

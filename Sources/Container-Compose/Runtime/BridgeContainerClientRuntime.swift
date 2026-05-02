@@ -427,30 +427,16 @@ extension BridgeContainerClientRuntime {
 
     // MARK: Volumes
 
-    /// The `apple/container` XPC client has no volume management API surface.
-    /// Documented as abstraction leak in `docs/plans/runtime-abstraction-leaks.md`
-    /// (Leak #10).
     public func listVolumes() async throws -> [RuntimeVolume] {
-        throw RuntimeError.notSupported(
-            operation: "listVolumes",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        try await RuntimeVolumeClient.list()
     }
 
-    /// See `listVolumes` for rationale. Documented as Leak #10.
     public func createVolume(spec: RuntimeCreateVolumeSpec) async throws -> RuntimeVolume {
-        throw RuntimeError.notSupported(
-            operation: "createVolume",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        try await RuntimeVolumeClient.create(spec: spec)
     }
 
-    /// See `listVolumes` for rationale. Documented as Leak #10.
     public func removeVolume(name: String) async throws {
-        throw RuntimeError.notSupported(
-            operation: "removeVolume",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        try await RuntimeVolumeClient.remove(name: name)
     }
 
     // MARK: Secrets

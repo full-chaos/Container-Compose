@@ -52,7 +52,8 @@ public enum VolumeRoutes {
                     spec: RuntimeCreateVolumeSpec(
                         name: body.name,
                         driver: body.driver ?? "local",
-                        labels: body.labels ?? [:]
+                        labels: body.labels ?? [:],
+                        driverOptions: [:]
                     )
                 )
                 let resp = toSummary(volume)

@@ -127,13 +127,14 @@ macOS 26 native runtime path.
 - **Nature:** Neither the `apple/container` XPC client (`ContainerAPIClient`) nor the `apple/containerization` Swift package exposes a public Swift API for programmatic network creation or deletion. The `container` CLI handles network management via shell invocations to platform networking tools; `container-compose` currently replicates this in Compose command paths (e.g. `compose up` calls `container network create` via `RunCommandRunner`). Because the `Runtime` protocol is the boundary for API-server operations and neither backend supports these operations, both conformers return `.notSupported`.
 - **Proposed fix:** When `apple/containerization` adds network management APIs (tracked upstream), wire `AppleContainerizationRuntime` first. The bridge conformer can follow when the XPC surface grows. The `POST /networks` and `DELETE /networks/{id}` routes already translate `.notSupported` to HTTP 501.
 
-### 10. BridgeContainerClientRuntime and AppleContainerizationRuntime both throw .notSupported for all volume CRUD operations
+### 10. AppleContainerizationRuntime local volume CRUD still delegates through apple/container's volume registry
 
 - **Location:**
+  - `Sources/Container-Compose/Runtime/RuntimeVolumeClient.swift`
   - `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — volume CRUD extension
   - `Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift` — same extension
-- **Nature:** The `apple/containerization` package does not have a public volume management API. Container filesystems are immutable root images and bind-mounts are the current workaround for persistent data. No volume lifecycle (`create` / `list` / `remove`) is exposed through `ContainerAPIClient` (the XPC bridge) or through any `Containerization` framework type accessible without virtualization entitlements. The `MockRuntime` ships a full in-memory implementation for route testing.
-- **Proposed fix:** When `apple/containerization` adds a named-volume abstraction (expected as part of the full Phase 2 lifecycle, or separately), extend `AppleContainerizationRuntime` to manage volumes in a per-user store (e.g. `~/.container-compose/volumes/`). The XPC bridge can follow if/when `ContainerAPIClient` exposes volume endpoints.
+- **Nature:** CHAOS-1368 closed the functional gap for local named volumes by routing `listVolumes` / `createVolume` / `removeVolume` through `ClientVolume` (apple/container's XPC-backed volume registry). That makes the `Runtime` surface usable for Compose named volumes and REST volume routes. The remaining abstraction leak is architectural: `AppleContainerizationRuntime` still cannot manage volumes through `apple/containerization` alone, so its volume CRUD path depends on the apple/container service instead of the native containerization package.
+- **Proposed fix:** When `apple/containerization` grows a public named-volume API, replace `RuntimeVolumeClient` with a truly native backend for `AppleContainerizationRuntime`. Keep the bridge backend on `ClientVolume` unless and until the bridge itself is retired.
 
 ### 11. BridgeContainerClientRuntime and AppleContainerizationRuntime both throw .notSupported for all secret CRUD operations
 
