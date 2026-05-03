@@ -1,0 +1,8 @@
+{
+  "branch": "review-tests-remainder",
+  "commit": "5d07a6da02efa3e057d8e19a80c0b20929d09630",
+  "short": "5d07a6d",
+  "target": "5d07a6d",
+  "message": "chore(reviews): replace CHAOS-??? placeholders with real issue numbers",
+  "published_at": "2026-05-03T21:38:34.687988+00:00"
+}
