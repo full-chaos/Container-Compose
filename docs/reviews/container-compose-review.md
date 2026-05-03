@@ -177,3 +177,47 @@ struct EnvironmentVariableEvaluator {
 Container-Compose demonstrates excellent architectural design with clear separation of concerns and thoughtful abstractions. The main areas for improvement are in consistency of error handling, completeness of test coverage, and closing known abstraction leaks. Addressing these issues will significantly improve the reliability and maintainability of the codebase.
 
 The project's roadmap for phased improvements (documented in docs/plans/) is well-structured and provides a clear path forward for addressing the identified issues.
+
+---
+
+## Re-validation Status - 2026-05-03
+
+This review was re-examined on 2026-05-03 through direct code inspection to validate findings against actual implementation details. Results:
+
+### Validation Summary
+| Finding Category | Count | Status | Notes |
+|------------------|-------|--------|-------|
+| **CONFIRMED** | 19 | ✅ Validated | Findings accurately reflect codebase state |
+| **NEEDS_ADJUSTMENT** | 3 | ⚠️ Adjusted | Require scope clarification based on existing implementations |
+| **NEW CRITICAL ISSUES** | 2 | 🚨 Discovered | Previously unidentified gaps requiring attention |
+
+### Key Corrections from Re-validation
+
+1. **Environment Variable Processing**: The `resolveVariable()` function already implements sophisticated support for `${VAR}`, `${VAR:-default}`, and `${VAR:?error}` syntax using regex-based parsing. Task scope adjusted to focus on Go template rendering for configs/secrets instead of basic variable substitution.
+
+2. **Network Test Coverage**: Network configuration *parsing* is tested in `NetworkConfigurationTests.swift` (9 test cases). New focus should be on runtime CRUD operations via API routes, not config parsing which already has coverage.
+
+3. **Error Handling Types**: `RuntimeError` enum provides standardized types across conformers. Adjusted focus to upstream error mapping consistency rather than basic type standardization.
+
+### New Critical Issues Discovered
+
+1. **No Compose File Validation at Runtime** - Complete gap with no validation method on DockerCompose struct, leading to silent failures when services lack image/build or have invalid port formats. Elevated from Medium to HIGH priority in implementation plan.
+
+2. **Incomplete Error Documentation** - While RuntimeError types are well-defined, no systematic documentation exists for users, increasing support burden and user frustration. Added as high-priority task.
+
+### Implementation Plan Adjustments
+
+The original implementation plan has been revised to reflect these findings:
+- Task 2.2 (Compose validation) elevated from Medium Phase 2 to HIGH PRIORITY Phase 1
+- Task 2.3 scope adjusted to focus on Go template rendering, not basic variable substitution
+- New tasks added for upstream error mapping and comprehensive documentation
+
+See `docs/plans/2026-05-03-review-implementation-plan.md` (revised version) for updated priorities.
+
+### Further Reading
+
+- **Re-validation Report**: See `docs/reviews/container-compose-revalidation-report.md` for detailed findings
+- **Updated Implementation Plan**: `docs/plans/2026-05-03-review-implementation-plan.md` reflects revised priorities  
+- **Original Findings**: This document remains valid as the initial assessment that guided our analysis
+
+**Confidence Level**: HIGH - Direct code examination confirms most findings with minimal uncertainty.
