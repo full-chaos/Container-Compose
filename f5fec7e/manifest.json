@@ -1,0 +1,8 @@
+{
+  "branch": "feat/tier-0-r2-silent-failures",
+  "commit": "f5fec7ee4f93fd43e836e6f2def464b641d430a0",
+  "short": "f5fec7e",
+  "target": "f5fec7e",
+  "message": "feat(args): Tier 0 R2 \u2014 stop emitting unsupported flags + sync build emission across Up/Create/Build (CHAOS-1397)",
+  "published_at": "2026-05-03T13:04:09.234632+00:00"
+}
