@@ -26,6 +26,71 @@ import Yams
 import Rainbow
 import ContainerCommands
 
+enum ComposeMemoryParseError: Error, Equatable {
+    case empty
+    case invalid(String)
+    case negative(String)
+    case overflow(String)
+}
+
+/// Parses a Docker Compose memory quantity into bytes for numeric comparison.
+///
+/// Compose accepts bare byte counts plus byte (`b`/`B`), binary shortcut
+/// (`k`, `kb`, `K`, `m`, `mb`, `M`, etc.), IEC (`Ki`, `Mi`, `Gi`, `Ti`), and
+/// SI uppercase (`KB`, `MB`, `GB`, `TB`) suffixes. Container-Compose passes the
+/// original string through to Apple container; this helper is only for local
+/// validation such as comparing reservations against limits.
+func parseComposeMemoryBytes(_ rawValue: String) throws -> UInt64 {
+    let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !value.isEmpty else { throw ComposeMemoryParseError.empty }
+
+    let suffixes: [(suffix: String, multiplier: Double)] = [
+        ("KB", 1_000),
+        ("MB", 1_000_000),
+        ("GB", 1_000_000_000),
+        ("TB", 1_000_000_000_000),
+        ("Ki", 1_024),
+        ("Mi", 1_048_576),
+        ("Gi", 1_073_741_824),
+        ("Ti", 1_099_511_627_776),
+        ("kb", 1_024),
+        ("mb", 1_048_576),
+        ("gb", 1_073_741_824),
+        ("tb", 1_099_511_627_776),
+        ("k", 1_024),
+        ("K", 1_024),
+        ("m", 1_048_576),
+        ("M", 1_048_576),
+        ("g", 1_073_741_824),
+        ("G", 1_073_741_824),
+        ("t", 1_099_511_627_776),
+        ("T", 1_099_511_627_776),
+        ("b", 1),
+        ("B", 1)
+    ]
+
+    let match = suffixes.first { value.hasSuffix($0.suffix) }
+    let numberPart: String
+    let multiplier: Double
+    if let match {
+        numberPart = String(value.dropLast(match.suffix.count))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        multiplier = match.multiplier
+    } else {
+        numberPart = value
+        multiplier = 1
+    }
+
+    guard let number = Double(numberPart), number.isFinite else {
+        throw ComposeMemoryParseError.invalid(rawValue)
+    }
+    guard number >= 0 else { throw ComposeMemoryParseError.negative(rawValue) }
+
+    let bytes = number * multiplier
+    guard bytes <= Double(UInt64.max) else { throw ComposeMemoryParseError.overflow(rawValue) }
+    return UInt64(bytes.rounded(.towardZero))
+}
+
 public func resolvedPath(for path: String, relativeTo baseURL: URL) -> String {
     let expandedPath = NSString(string: path).expandingTildeInPath
     return URL(fileURLWithPath: expandedPath, relativeTo: baseURL).standardizedFileURL.path

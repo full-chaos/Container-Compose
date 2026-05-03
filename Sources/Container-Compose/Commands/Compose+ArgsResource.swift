@@ -47,10 +47,7 @@ extension ComposeUp {
             if let cpus = cpuLimit {
                 args.append(contentsOf: ["--cpus", cpus])
                 if cpuReservation != nil {
-                    warnUnsupportedRuntimeFieldOnce(
-                        "service.cpu.reservation-with-limit",
-                        "Note: CPU reservation is ignored because a CPU limit is set; Apple container does not implement soft reservation semantics (limit applied as fixed VM allocation)."
-                    )
+                    warnCpuReservationIgnored(limit: cpus, reservation: cpuReservation)
                 }
             } else if let cpus = cpuReservation {
                 warnUnsupportedRuntimeFieldOnce(
@@ -75,10 +72,7 @@ extension ComposeUp {
             if let mem = memLimit {
                 args.append(contentsOf: ["--memory", mem])
                 if memReservation != nil {
-                    warnUnsupportedRuntimeFieldOnce(
-                        "service.memory.reservation-with-limit",
-                        "Note: memory reservation is ignored because a memory limit is set; Apple container does not implement soft reservation semantics (limit applied as fixed VM allocation)."
-                    )
+                    warnMemoryReservationIgnored(limit: mem, reservation: memReservation)
                 }
             } else if let mem = memReservation {
                 let key = topLevelMemReservation != nil
@@ -228,6 +222,42 @@ extension ComposeUp {
             }
 
             return args
+        }
+
+        private static func warnCpuReservationIgnored(limit: String, reservation: String?) {
+            guard let reservation else { return }
+
+            if let limitValue = Double(limit),
+               let reservationValue = Double(reservation),
+               reservationValue > limitValue {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu.reservation-exceeds-limit",
+                    "Note: reservation (\(reservation)) exceeds limit (\(limit)); reservation will be ignored. This is invalid compose input — please fix the YAML."
+                )
+            } else {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.cpu.reservation-with-limit",
+                    "Note: CPU reservation is ignored because a CPU limit is set; Apple container does not implement soft reservation semantics (limit applied as fixed VM allocation)."
+                )
+            }
+        }
+
+        private static func warnMemoryReservationIgnored(limit: String, reservation: String?) {
+            guard let reservation else { return }
+
+            if let limitBytes = try? parseComposeMemoryBytes(limit),
+               let reservationBytes = try? parseComposeMemoryBytes(reservation),
+               reservationBytes > limitBytes {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.memory.reservation-exceeds-limit",
+                    "Note: reservation (\(reservation)) exceeds limit (\(limit)); reservation will be ignored. This is invalid compose input — please fix the YAML."
+                )
+            } else {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.memory.reservation-with-limit",
+                    "Note: memory reservation is ignored because a memory limit is set; Apple container does not implement soft reservation semantics (limit applied as fixed VM allocation)."
+                )
+            }
         }
     }
 }
