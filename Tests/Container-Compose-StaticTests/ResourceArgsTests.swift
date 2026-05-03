@@ -124,6 +124,27 @@ struct ResourceArgsTests {
         #expect(result[idx + 1] == "512m")
     }
 
+    @Test("Compose memory parser accepts supported suffixes", arguments: [
+        ("0", UInt64(0)),
+        ("1024", UInt64(1024)),
+        ("256m", UInt64(268_435_456)),
+        ("1g", UInt64(1_073_741_824)),
+        ("1Gi", UInt64(1_073_741_824)),
+        ("2Ki", UInt64(2_048)),
+        ("1KB", UInt64(1_000)),
+        ("1MB", UInt64(1_000_000))
+    ])
+    func composeMemoryParserAcceptsSupportedSuffixes(input: String, expected: UInt64) throws {
+        #expect(try parseComposeMemoryBytes(input) == expected)
+    }
+
+    @Test("Compose memory parser rejects invalid input", arguments: ["", "abc", "1xb", "-1m"])
+    func composeMemoryParserRejectsInvalidInput(input: String) {
+        #expect(throws: (any Error).self) {
+            try parseComposeMemoryBytes(input)
+        }
+    }
+
     // MARK: - Reservation-as-degraded-fallback (CHAOS-1336)
     //
     // Apple container does not implement Docker-style soft reservation semantics
@@ -185,8 +206,80 @@ struct ResourceArgsTests {
     // MARK: - Limit-with-reservation (CHAOS-1336): limit wins, ignored-reservation warning
     //
     // The warning-asserting tests run FIRST for each shared key
-    // (service.memory.reservation-with-limit, service.cpu.reservation-with-limit).
+    // (service.memory.reservation-exceeds-limit, service.cpu.reservation-exceeds-limit,
+    // service.memory.reservation-with-limit, service.cpu.reservation-with-limit).
     // The argv-only follow-up tests verify precedence without re-asserting on warning state.
+
+    @Test("mem_limit + mem_reservation: reservation greater than limit warns as invalid input")
+    func memLimitWithReservationExceedsLimitWarnsInvalid() throws {
+        let svc = Service(image: "alpine", mem_limit: "256m", mem_reservation: "512m")
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--memory"))
+        let idx = try #require(captured.args.firstIndex(of: "--memory"))
+        #expect(captured.args[idx + 1] == "256m")
+        #expect(!captured.args.contains("512m"))
+        #expect(captured.output.contains("reservation (512m) exceeds limit (256m); reservation will be ignored"))
+        #expect(captured.output.contains("invalid compose input"))
+        #expect(!captured.output.contains("memory reservation is ignored because a memory limit is set"))
+    }
+
+    @Test("cpus_top + deploy.reservations.cpus: reservation greater than limit warns as invalid input")
+    func cpusTopWithReservationExceedsLimitWarnsInvalid() throws {
+        let svc = try decodeService("""
+          image: alpine
+          cpus: 1.0
+          deploy:
+            resources:
+              reservations:
+                cpus: "2.0"
+        """)
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--cpus"))
+        let idx = try #require(captured.args.firstIndex(of: "--cpus"))
+        #expect(captured.args[idx + 1] == "1.0")
+        #expect(!captured.args.contains("2.0"))
+        #expect(captured.output.contains("reservation (2.0) exceeds limit (1.0); reservation will be ignored"))
+        #expect(captured.output.contains("invalid compose input"))
+        #expect(!captured.output.contains("CPU reservation is ignored because a CPU limit is set"))
+    }
+
+    @Test("deploy.limits.memory + deploy.reservations.memory: reservation greater than limit still uses limit")
+    func deployLimitMemoryWithReservationExceedsLimitUsesLimit() throws {
+        let svc = try decodeService("""
+          image: alpine
+          deploy:
+            resources:
+              limits:
+                memory: "256m"
+              reservations:
+                memory: "512m"
+        """)
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--memory"))
+        let idx = try #require(captured.args.firstIndex(of: "--memory"))
+        #expect(captured.args[idx + 1] == "256m")
+        #expect(!captured.args.contains("512m"))
+        #expect(!captured.output.contains("memory reservation is ignored because a memory limit is set"))
+    }
+
+    @Test("deploy.limits.cpus + deploy.reservations.cpus: reservation greater than limit still uses limit")
+    func deployLimitCpusWithReservationExceedsLimitUsesLimit() throws {
+        let svc = try decodeService("""
+          image: alpine
+          deploy:
+            resources:
+              limits:
+                cpus: "1.0"
+              reservations:
+                cpus: "2.0"
+        """)
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--cpus"))
+        let idx = try #require(captured.args.firstIndex(of: "--cpus"))
+        #expect(captured.args[idx + 1] == "1.0")
+        #expect(!captured.args.contains("2.0"))
+        #expect(!captured.output.contains("CPU reservation is ignored because a CPU limit is set"))
+    }
 
     @Test("mem_limit + mem_reservation: --memory limit wins, ignored-reservation warning fires")
     func memLimitWithReservationWarnsIgnored() throws {
