@@ -40,6 +40,7 @@ public enum ComposeError: Error, LocalizedError {
     case imageNotFound(String)
     case invalidProjectName
     case externalVolumeNotFound(String)
+    case invalidShellTokenization(input: String, reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -49,6 +50,8 @@ public enum ComposeError: Error, LocalizedError {
             return "Could not find project name."
         case .externalVolumeNotFound(let name):
             return "External volume '\(name)' was not found. Create it with 'container volume create \(name)' before running compose."
+        case .invalidShellTokenization(let input, let reason):
+            return "Could not tokenize string-form command/entrypoint '\(input)': \(reason)"
         }
     }
 }

@@ -91,6 +91,97 @@ func parseComposeMemoryBytes(_ rawValue: String) throws -> UInt64 {
     return UInt64(bytes.rounded(.towardZero))
 }
 
+/// Tokenize a shell command line as a POSIX shell would, used to convert
+/// the string form of compose `command:` / `entrypoint:` into argv.
+///
+/// Behavior:
+/// - Whitespace (space, tab) splits tokens. Multiple whitespace chars collapse.
+/// - Single-quoted strings ('...') preserve contents literally; quotes are stripped.
+/// - Double-quoted strings ("...") preserve contents literally; quotes are stripped.
+///   (Env-var expansion happens upstream in `resolveVariable(_:with:)` — this
+///    helper does not perform `$VAR` substitution.)
+/// - Backslash escapes the next character outside of single quotes (`\ `, `\"`, `\'`).
+/// - Empty input returns []. Whitespace-only input returns [].
+/// - Unterminated quotes or trailing backslash throw `ComposeError.invalidShellTokenization(input:reason:)`.
+internal func posixShellTokenize(_ input: String) throws -> [String] {
+    indirect enum State: Equatable {
+        case normal
+        case singleQuote
+        case doubleQuote
+        case escape(State)
+    }
+
+    var tokens: [String] = []
+    var current = ""
+    var state = State.normal
+    var hasTokenContent = false
+
+    func finishToken() {
+        if hasTokenContent {
+            tokens.append(current)
+            current = ""
+            hasTokenContent = false
+        }
+    }
+
+    for character in input {
+        switch state {
+        case .normal:
+            switch character {
+            case " ", "\t":
+                finishToken()
+            case "'":
+                hasTokenContent = true
+                state = .singleQuote
+            case "\"":
+                hasTokenContent = true
+                state = .doubleQuote
+            case "\\":
+                hasTokenContent = true
+                state = .escape(.normal)
+            default:
+                current.append(character)
+                hasTokenContent = true
+            }
+
+        case .singleQuote:
+            if character == "'" {
+                state = .normal
+            } else {
+                current.append(character)
+                hasTokenContent = true
+            }
+
+        case .doubleQuote:
+            if character == "\"" {
+                state = .normal
+            } else if character == "\\" {
+                state = .escape(.doubleQuote)
+            } else {
+                current.append(character)
+                hasTokenContent = true
+            }
+
+        case .escape(let previousState):
+            current.append(character)
+            hasTokenContent = true
+            state = previousState
+        }
+    }
+
+    switch state {
+    case .normal:
+        finishToken()
+        return tokens
+    case .singleQuote:
+        throw ComposeError.invalidShellTokenization(input: input, reason: "unterminated single quote")
+    case .doubleQuote:
+        throw ComposeError.invalidShellTokenization(input: input, reason: "unterminated double quote")
+    case .escape:
+        throw ComposeError.invalidShellTokenization(input: input, reason: "trailing backslash")
+    }
+}
+
 public func resolvedPath(for path: String, relativeTo baseURL: URL) -> String {
     let expandedPath = NSString(string: path).expandingTildeInPath
     return URL(fileURLWithPath: expandedPath, relativeTo: baseURL).standardizedFileURL.path

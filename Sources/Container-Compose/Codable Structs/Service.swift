@@ -603,7 +603,11 @@ public struct Service: Codable, Hashable {
         if let cmdArray = try? container.decodeIfPresent([String].self, forKey: .command) {
             command = cmdArray
         } else if let cmdString = try? container.decodeIfPresent(String.self, forKey: .command) {
-            command = [cmdString]
+            do {
+                command = try posixShellTokenize(cmdString)
+            } catch {
+                throw DecodingError.dataCorruptedError(forKey: .command, in: container, debugDescription: error.localizedDescription)
+            }
         } else {
             command = nil
         }
@@ -619,7 +623,11 @@ public struct Service: Codable, Hashable {
         if let entrypointArray = try? container.decodeIfPresent([String].self, forKey: .entrypoint) {
             entrypoint = entrypointArray
         } else if let entrypointString = try? container.decodeIfPresent(String.self, forKey: .entrypoint) {
-            entrypoint = [entrypointString]
+            do {
+                entrypoint = try posixShellTokenize(entrypointString)
+            } catch {
+                throw DecodingError.dataCorruptedError(forKey: .entrypoint, in: container, debugDescription: error.localizedDescription)
+            }
         } else {
             entrypoint = nil
         }

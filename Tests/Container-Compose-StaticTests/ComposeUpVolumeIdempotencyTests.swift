@@ -33,11 +33,10 @@ import Glibc
 /// `RuntimeError.alreadyExists` and propagates out as an unhandled error, so
 /// `up` fails on the second run with a confusing filesystem-level message.
 ///
-/// Fix: pass a pre-loaded set of registry volume names into the create path
-/// and skip the create call entirely when the volume already exists. The
-/// existing `RuntimeError.alreadyExists` catch stays as a race-condition
-/// backstop.
-@Suite("ComposeUp volume idempotency (CHAOS-1398)")
+/// Fix: pass a pre-loaded registry volume into the create path and skip the
+/// create call entirely when the volume already exists. The existing
+/// `RuntimeError.alreadyExists` catch stays as a race-condition backstop.
+@Suite("ComposeUp volume idempotency (CHAOS-1398)", .serialized)
 struct ComposeUpVolumeIdempotencyTests {
 
     @Test("ensureNamedVolumeRegistered skips create when volume already exists")
@@ -47,7 +46,7 @@ struct ComposeUpVolumeIdempotencyTests {
         let didCreate = try await RuntimeEnvironment.$current.withValue(runtime) {
             try await ComposeUp.ensureNamedVolumeRegistered(
                 spec: RuntimeCreateVolumeSpec(name: "postgres_data"),
-                existingVolumeNames: ["postgres_data", "logs"]
+                existing: RuntimeVolume(name: "postgres_data")
             )
         }
 
@@ -67,7 +66,7 @@ struct ComposeUpVolumeIdempotencyTests {
         let didCreate = try await RuntimeEnvironment.$current.withValue(runtime) {
             try await ComposeUp.ensureNamedVolumeRegistered(
                 spec: RuntimeCreateVolumeSpec(name: "fresh_data"),
-                existingVolumeNames: []
+                existing: nil
             )
         }
 
@@ -79,15 +78,15 @@ struct ComposeUpVolumeIdempotencyTests {
     @Test("ensureNamedVolumeRegistered tolerates alreadyExists race")
     func toleratesAlreadyExistsRace() async throws {
         // MockRuntime throws .alreadyExists when a volume with that name is already in
-        // its in-memory registry. existingVolumeNames is empty (simulating "we listed
-        // the registry before someone else snuck a create in"), so we go through the
-        // create branch and rely on the catch to swallow the race.
+        // its in-memory registry. existing is nil (simulating "we listed the registry
+        // before someone else snuck a create in"), so we go through the create branch
+        // and rely on the catch to swallow the race.
         let runtime = MockRuntime(volumes: [RuntimeVolume(name: "racy")])
 
         let didCreate = try await RuntimeEnvironment.$current.withValue(runtime) {
             try await ComposeUp.ensureNamedVolumeRegistered(
                 spec: RuntimeCreateVolumeSpec(name: "racy"),
-                existingVolumeNames: []
+                existing: nil
             )
         }
 
@@ -102,7 +101,7 @@ struct ComposeUpVolumeIdempotencyTests {
             _ = try await RuntimeEnvironment.$current.withValue(runtime) {
                 try await ComposeUp.ensureNamedVolumeRegistered(
                     spec: RuntimeCreateVolumeSpec(name: "postgres_data"),
-                    existingVolumeNames: ["postgres_data"]
+                    existing: RuntimeVolume(name: "postgres_data")
                 )
             }
         }
@@ -121,13 +120,71 @@ struct ComposeUpVolumeIdempotencyTests {
             _ = try await RuntimeEnvironment.$current.withValue(runtime) {
                 try await ComposeUp.ensureNamedVolumeRegistered(
                     spec: RuntimeCreateVolumeSpec(name: "fresh_data"),
-                    existingVolumeNames: []
+                    existing: nil
                 )
             }
         }
 
         #expect(!captured.contains("already exists"),
                 "fresh create must not emit stale-volume warning; got: \(captured)")
+    }
+
+    @Test("ensureNamedVolumeRegistered warns on driver drift")
+    func warnsOnDriverDrift() async throws {
+        let runtime = RecordingRuntime()
+
+        let captured = try await Self.capturingStdout {
+            _ = try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await ComposeUp.ensureNamedVolumeRegistered(
+                    spec: RuntimeCreateVolumeSpec(name: "x", driver: "local"),
+                    existing: RuntimeVolume(name: "x", driver: "nfs")
+                )
+            }
+        }
+
+        #expect(captured.contains("different config"), "expected drift warning; got: \(captured)")
+        #expect(captured.contains("driver"), "expected driver field in warning; got: \(captured)")
+        #expect(captured.contains("registry='nfs'"), "expected registry driver; got: \(captured)")
+        #expect(captured.contains("compose='local'"), "expected compose driver; got: \(captured)")
+        #expect(!captured.contains("was not torn down"), "drift warning must replace stale-reuse warning; got: \(captured)")
+    }
+
+    @Test("ensureNamedVolumeRegistered warns on labels drift")
+    func warnsOnLabelsDrift() async throws {
+        let runtime = RecordingRuntime()
+
+        let captured = try await Self.capturingStdout {
+            _ = try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await ComposeUp.ensureNamedVolumeRegistered(
+                    spec: RuntimeCreateVolumeSpec(name: "x", driver: "local", labels: ["env": "production"]),
+                    existing: RuntimeVolume(name: "x", driver: "local", labels: ["env": "staging"])
+                )
+            }
+        }
+
+        #expect(captured.contains("different config"), "expected drift warning; got: \(captured)")
+        #expect(captured.contains("labels"), "expected labels field in warning; got: \(captured)")
+        #expect(captured.contains("staging"), "expected registry label value; got: \(captured)")
+        #expect(captured.contains("production"), "expected compose label value; got: \(captured)")
+        #expect(!captured.contains("was not torn down"), "drift warning must replace stale-reuse warning; got: \(captured)")
+    }
+
+    @Test("ensureNamedVolumeRegistered emits stale warning when config matches")
+    func noDriftWhenConfigMatches() async throws {
+        let runtime = RecordingRuntime()
+
+        let captured = try await Self.capturingStdout {
+            _ = try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await ComposeUp.ensureNamedVolumeRegistered(
+                    spec: RuntimeCreateVolumeSpec(name: "x", driver: "local", labels: [:]),
+                    existing: RuntimeVolume(name: "x", driver: "local", labels: [:])
+                )
+            }
+        }
+
+        #expect(captured.contains("already exists from a previous run"), "expected stale-reuse warning; got: \(captured)")
+        #expect(captured.contains("compose down -v"), "expected recovery command; got: \(captured)")
+        #expect(!captured.contains("different config"), "matching config must not emit drift warning; got: \(captured)")
     }
 
     /// Captures stdout for the duration of `block` by `dup2`-ing a pipe over
@@ -142,14 +199,18 @@ struct ComposeUpVolumeIdempotencyTests {
             if original >= 0 { close(original) }
             throw CaptureError.dupFailed
         }
+        let reader = Task {
+            pipe.fileHandleForReading.readDataToEndOfFile()
+        }
         defer {
             _ = dup2(original, STDOUT_FILENO)
             close(original)
         }
         try await block()
         fflush(stdout)
+        _ = dup2(original, STDOUT_FILENO)
         pipe.fileHandleForWriting.closeFile()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let data = await reader.value
         return String(data: data, encoding: .utf8) ?? ""
     }
 
