@@ -119,11 +119,12 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private var didWarnServiceModelsUnsupported = false
     private var didWarnServiceProviderUnsupported = false
     private var preparedNamedVolumes: Set<String> = []
-    /// CHAOS-1398: snapshot of volume names already in the runtime registry,
-    /// loaded once per `up` and consulted before each `createVolume` call so
-    /// the create path doesn't re-trigger apple/container's "volume.img
-    /// already exists" filesystem error on re-runs.
-    private var existingNamedVolumeRegistryCache: Set<String> = []
+    /// CHAOS-1398/CHAOS-1405: snapshot of volumes already in the runtime
+    /// registry, loaded once per `up` and consulted before each `createVolume`
+    /// call so the create path doesn't re-trigger apple/container's
+    /// "volume.img already exists" filesystem error on re-runs, while still
+    /// retaining metadata for config-drift warnings.
+    private var existingNamedVolumeRegistryCache: [String: RuntimeVolume] = [:]
     private var existingNamedVolumeRegistryCacheLoaded: Bool = false
 
     private static let availableContainerConsoleColors: Set<NamedColor> = [
@@ -441,16 +442,17 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                 }
             } else {
                 await ensureExistingVolumeRegistryCacheLoaded()
-                _ = try await Self.ensureNamedVolumeRegistered(
-                    spec: RuntimeCreateVolumeSpec(
+                let spec = RuntimeCreateVolumeSpec(
                         name: actualVolumeName,
                         driver: driver,
                         labels: volumeConfig?.labels ?? [:],
                         driverOptions: volumeConfig?.driver_opts ?? [:]
-                    ),
-                    existingVolumeNames: existingNamedVolumeRegistryCache
+                    )
+                _ = try await Self.ensureNamedVolumeRegistered(
+                    spec: spec,
+                    existing: existingNamedVolumeRegistryCache[actualVolumeName]
                 )
-                existingNamedVolumeRegistryCache.insert(actualVolumeName)
+                existingNamedVolumeRegistryCache[actualVolumeName] = RuntimeVolume(name: actualVolumeName, driver: spec.driver, labels: spec.labels)
             }
             try await migrateLegacyNamedVolumeDataIfNeeded(projectName: projectName, actualVolumeName: actualVolumeName)
         }
@@ -468,7 +470,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         existingNamedVolumeRegistryCacheLoaded = true
         do {
             let listed = try await RuntimeEnvironment.current.listVolumes()
-            existingNamedVolumeRegistryCache = Set(listed.map(\.name))
+            existingNamedVolumeRegistryCache = Dictionary(uniqueKeysWithValues: listed.map { ($0.name, $0) })
         } catch {
             writeWarningToStandardError(
                 "Warning: could not list existing volumes from runtime; falling back to create-and-catch-alreadyExists. Error: \(error)"
@@ -477,9 +479,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     }
 
     /// Registers a named volume with the runtime if and only if it's not
-    /// already in `existingVolumeNames`. Returns `true` if a `createVolume`
-    /// call was actually issued, `false` if the volume was already present
-    /// (or a race surfaced `RuntimeError.alreadyExists` from the create path).
+    /// already present. Returns `true` if a `createVolume` call was actually
+    /// issued, `false` if the volume was already present (or a race surfaced
+    /// `RuntimeError.alreadyExists` from the create path).
     ///
     /// CHAOS-1398: apple/container's `ClientVolume.create` can fail with a
     /// Foundation NSCocoaErrorDomain error ("file with the same name already
@@ -490,9 +492,26 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     @discardableResult
     internal static func ensureNamedVolumeRegistered(
         spec: RuntimeCreateVolumeSpec,
-        existingVolumeNames: Set<String>
+        existing: RuntimeVolume?
     ) async throws -> Bool {
-        if existingVolumeNames.contains(spec.name) {
+        if let existing {
+            // TODO: extend RuntimeVolume to expose driverOptions for richer drift detection (separate follow-up)
+            let driverDiffers = existing.driver != spec.driver
+            let labelsDiffers = existing.labels != spec.labels
+
+            if driverDiffers || labelsDiffers {
+                print("Warning: named volume '\(spec.name)' already exists with different config than declared in compose:")
+                if driverDiffers {
+                    print("  - driver:  registry='\(existing.driver)', compose='\(spec.driver)'")
+                }
+                if labelsDiffers {
+                    print("  - labels:  registry='\(formatLabels(existing.labels))', compose='\(formatLabels(spec.labels))'")
+                }
+                print("Reusing the existing volume; its data is from a previous run with different settings.")
+                print("Run 'compose down -v' first to recreate with the current config.")
+                return false
+            }
+
             print("Warning: named volume '\(spec.name)' already exists from a previous run and was not torn down; reusing it. Run 'compose down -v' to start fresh.")
             return false
         }
@@ -504,6 +523,13 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             // listVolumes() and createVolume() calls.
             return false
         }
+    }
+
+    private static func formatLabels(_ labels: [String: String]) -> String {
+        labels
+            .sorted(by: { $0.key < $1.key })
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: ",")
     }
 
     /// Maps a compose `networks.<name>.driver` value to the argv fragment for
