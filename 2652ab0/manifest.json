@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1398-down-removes-volumes-and-up-idempotent-create",
+  "commit": "2652ab0c2e4f447429b2b318fca84c12b1453de0",
+  "short": "2652ab0",
+  "target": "2652ab0",
+  "message": "fix(volumes): idempotent up create + add down -v cleanup (CHAOS-1398)",
+  "published_at": "2026-05-03T15:07:16.605573+00:00"
+}
