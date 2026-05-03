@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "3161f9d84912f83154385438aeb14a4a1594a52e",
-  "short": "3161f9d",
+  "commit": "9deddda15b96b4d9d521243c51845ae3bb9896b0",
+  "short": "9deddda",
   "target": "current",
-  "message": "fix(compose): POSIX command tokenization + volume config drift warning (CHAOS-1405, CHAOS-1406) (#96)",
-  "published_at": "2026-05-03T20:04:22.445850+00:00"
+  "message": "review: Container-Compose audit, re-validation, and Phase 1 implementation (#95)",
+  "published_at": "2026-05-03T21:00:45.623870+00:00"
 }
