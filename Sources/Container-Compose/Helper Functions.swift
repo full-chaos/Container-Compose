@@ -380,6 +380,14 @@ public func resolveProjectDirectory(
     return URL(fileURLWithPath: composeFilePath).deletingLastPathComponent().path
 }
 
+/// Returns `true` when `source` (the left side of a `service.volumes` entry
+/// like `"src:/dst"`) refers to a registry-managed named volume rather than a
+/// host-path bind mount. Sources that contain `/` or begin with `.` or `..`
+/// are treated as bind mounts; everything else is a named volume.
+public func isNamedVolumeSource(_ source: String) -> Bool {
+    return !source.contains("/") && !source.starts(with: ".")
+}
+
 /// Converts Docker Compose port specification into a container run -p format.
 /// Handles various formats: "PORT", "HOST:PORT", "IP:HOST:PORT", and optional protocol.
 /// - Parameter portSpec: The port specification string from docker-compose.yml.

@@ -819,7 +819,7 @@ public struct Service: Codable, Hashable {
             let components = entry.split(separator: ":", maxSplits: 2).map(String.init)
             guard components.count >= 2 else { continue }
             let source = components[0]
-            if source.contains("/") || source.starts(with: ".") || source.starts(with: "..") {
+            if !isNamedVolumeSource(source) {
                 continue
             }
             result.insert(source)

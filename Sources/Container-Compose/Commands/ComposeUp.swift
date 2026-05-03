@@ -1012,9 +1012,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         let source = components[0]
         let destination = components[1]
 
-        // Check if the source looks like a host path (contains '/' or starts with '.')
+        // Check if the source looks like a host path (contains '/' or starts with '.').
         // This heuristic helps distinguish bind mounts from named volume references.
-        if source.contains("/") || source.starts(with: ".") || source.starts(with: "..") {
+        if !isNamedVolumeSource(source) {
             // This is likely a bind mount (local path to container path)
             var isDirectory: ObjCBool = false
             // Ensure the path is absolute or relative to the current directory for FileManager
