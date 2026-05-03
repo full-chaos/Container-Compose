@@ -37,7 +37,7 @@ public struct Secret: Codable {
     /// Driver-specific key/value options passed to the secrets driver.
     public let driverOpts: [String: String]?
     /// Name of the templating driver used to render the secret value.
-    /// Parsed only — tooling will warn at runtime if non-nil.
+    /// `golang` is rendered host-side before bind-mounting.
     public let templateDriver: String?
 
     /// Public memberwise initializer for testing and direct construction.

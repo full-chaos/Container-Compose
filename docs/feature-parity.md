@@ -29,7 +29,7 @@
 
 ### 2.1 Sources cross-referenced
 
-1. **[`coverage.html`](../coverage.html)** — canonical compose-spec coverage matrix (33 partials, 18 misses out of 194 fields). Inline JSON `<script id="coverage-data">` block.
+1. **[`coverage.html`](../coverage.html)** — canonical compose-spec coverage matrix (62 partials, 16 misses out of 197 fields after CHAOS-1384). Inline JSON `<script id="coverage-data">` block.
 2. **In-code gap markers** — every `#warning(...)`, `print("Note: ... is not supported by Apple container; ignored.")`, `"Detected, But Not Supported"`, and `// Phase N TODO` in `Sources/Container-Compose/`.
 3. **Argv emission** — every `args.append("--flag", ...)` in `Sources/Container-Compose/Commands/Compose+Args*.swift` and `Compose<Name>.swift`. Mapped to the apple/container subcommand (`run`, `build`, `network create`, `volume create`, `exec`, etc.) it targets.
 4. **apple/container CLI surface** — read directly from `.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift` (canonical `Flags.Management`/`Flags.Process`/`Flags.Resource`/`Flags.DNS` definitions) and `.build/checkouts/container/Sources/ContainerCommands/Container/{ContainerRun,ContainerCreate,ContainerExec}.swift` and `.build/checkouts/container/Sources/ContainerCommands/Network/NetworkCreate.swift`.
@@ -122,6 +122,8 @@ Runtime support exists; we just need to wire it.
 | 5 | `service.provider` | partial (warn-skipped) | Provider lifecycle wiring is implementation, not runtime — could be done without apple/container changes if model-provisioning is intentionally Container-Compose-side. Frontier feature though — verify spec stability before commit. | CHAOS-1332 (open) |
 | 6 | Build/Up `pullImage` consolidation | refactor | `ComposeRun.swift:352` has a private `pullImage` while `Compose+Pull.swift:19` has the shared helper. Already noted as R1 in `docs/plans/no-upstream-refactor-and-linear.md`. | tracked in plan, not Linear-ticketed |
 
+**CHAOS-1384 update:** `configs.template_driver` and `secrets.template_driver` are now compose-side `partial`, not upstream-blocked: `template_driver: golang` is rendered host-side before the config/secret is materialized as a bind-mounted temp file; `template_driver: file` remains the raw/no-op default; unknown drivers warn once and fall back to raw content. Full Go `text/template` control flow/custom functions remain out of scope.
+
 ---
 
 ## 5. Tier 2 — Fork-patch path (deprecated)
@@ -170,11 +172,10 @@ These need real apple/container engineering and likely virtualization-stack chan
 | 5 | `--blkio-*` / cgroup BFQ tuning | Linux cgroup-v2 surface; not exposed | NEW (FR) |
 | 6 | Lifecycle hooks (`post_start` / `pre_stop`) | Need `ContainerClient` lifecycle hook API | upstream-fork-status.md §2.C |
 | 7 | `build.entitlements` / `--allow` | `container build` has no entitlement / `--allow` flag | CHAOS-1337 (open) |
-| 8 | Template engine for `configs.template_driver` / `secrets.template_driver` | Compose-spec extension, no `apple/container` analog | NEW (FR) |
-| 9 | `--log-driver` / `--log-opt` | Apple container log layout is fixed | upstream-fork-status.md §2.C |
-| 10 | `--health-cmd`, `--health-interval`, etc. (CLI form) | Currently health is read via `ContainerSnapshot.health` (CHAOS-1319) but `container run` has no health-cmd flag | NEW (FR) |
-| 11 | Per-container log file layout (signoz / alloy compatibility) | `/var/lib/docker/containers/*-json.log` equivalent | upstream-fork-status.md §2.F (no ticket yet) |
-| 12 | `container create` (true create-without-start) | Container-Compose probes for support; today shells out to `run --no-start`-equivalent | upstream-fork-status.md §2.C |
+| 8 | `--log-driver` / `--log-opt` | Apple container log layout is fixed | upstream-fork-status.md §2.C |
+| 9 | `--health-cmd`, `--health-interval`, etc. (CLI form) | Currently health is read via `ContainerSnapshot.health` (CHAOS-1319) but `container run` has no health-cmd flag | NEW (FR) |
+| 10 | Per-container log file layout (signoz / alloy compatibility) | `/var/lib/docker/containers/*-json.log` equivalent | upstream-fork-status.md §2.F (no ticket yet) |
+| 11 | `container create` (true create-without-start) | Container-Compose probes for support; today shells out to `run --no-start`-equivalent | upstream-fork-status.md §2.C |
 
 **Filing strategy:** one apple/container GitHub issue per feature (or batched logically). Reference compose-spec sections, cite Container-Compose source line where the gap manifests.
 
@@ -233,6 +234,7 @@ Compose-spec features still evolving. Do not invest significant implementation w
 | CHAOS-1333 | Configs + secrets runtime bind-mount | Tier 1 → done |
 | CHAOS-1338 | Decode-only "no equivalent" coverage flips | Tier 4 → done |
 | CHAOS-1339 | Named-volume target truncation fix | Tier 1 → done |
+| CHAOS-1384 | Host-side `template_driver: golang` rendering for configs / secrets | Reclassified from upstream FR → compose-side partial support |
 
 ### 9.2 Open backlog (already filed, valid)
 
@@ -267,7 +269,6 @@ Filed automatically as part of this audit. Two umbrellas, 13 sub-issues.
 | [CHAOS-1381](https://linear.app/fullchaos/issue/CHAOS-1381) | FR upstream: `--health-cmd` / `--health-*` CLI flags | Tier 3 |
 | [CHAOS-1382](https://linear.app/fullchaos/issue/CHAOS-1382) | FR upstream: file-level bind mounts on `container run -v` | Tier 3 |
 | [CHAOS-1383](https://linear.app/fullchaos/issue/CHAOS-1383) | FR upstream: lifecycle hooks API (`post_start` / `pre_stop`) | Tier 3 |
-| [CHAOS-1384](https://linear.app/fullchaos/issue/CHAOS-1384) | FR upstream: template-driver engine for configs / secrets | Tier 3 |
 
 ---
 

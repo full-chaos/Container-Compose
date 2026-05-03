@@ -39,7 +39,7 @@ public struct Config: Codable {
     /// Alternative source — bind-mount support is a follow-up issue.
     public let environment: String?
     /// Name of the templating driver used to render the config value.
-    /// Parsed only — tooling will warn at runtime if non-nil.
+    /// `golang` is rendered host-side before bind-mounting.
     public let templateDriver: String?
 
     /// Public memberwise initializer for testing and direct construction.

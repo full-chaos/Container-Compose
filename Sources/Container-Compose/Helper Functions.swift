@@ -138,6 +138,96 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
     return resolvedValue
 }
 
+/// Renders a minimal subset of Go text/template syntax against the supplied environment.
+///
+/// Supported syntax:
+/// - `{{ .VAR }}` — substituted with `env["VAR"]`, or empty string if missing
+/// - `{{ .Service.Name }}` — substituted from the supplied synthetic context
+/// - `{{ env "VAR" }}` / `{{ env "VAR" | default "x" }}` — equivalent function form
+/// - `{{ .VAR | default "fallback" }}` — pipeline default
+///
+/// Unsupported syntax (control flow, complex pipelines, custom functions) is left
+/// untouched; the template is returned with those expressions as-is. Callers should
+/// document this limitation. See [CHAOS-1384](https://linear.app/fullchaos/issue/CHAOS-1384).
+public func renderGoTemplate(_ template: String, env: [String: String], context: [String: String] = [:]) -> String {
+    let blockRegex = try! NSRegularExpression(
+        pattern: #"\{\{\s*(.*?)\s*\}\}"#,
+        options: []
+    )
+    let matches = blockRegex.matches(
+        in: template,
+        range: NSRange(template.startIndex..<template.endIndex, in: template)
+    )
+    var rendered = template
+
+    for match in matches.reversed() {
+        guard
+            let originalBlockRange = Range(match.range(at: 0), in: template),
+            let renderedBlockRange = Range(match.range(at: 0), in: rendered),
+            let innerRange = Range(match.range(at: 1), in: template)
+        else { continue }
+
+        let innerExpression = String(template[innerRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let replacement = renderGoTemplateExpression(innerExpression, env: env, context: context) else {
+            rendered.replaceSubrange(renderedBlockRange, with: String(template[originalBlockRange]))
+            continue
+        }
+
+        rendered.replaceSubrange(renderedBlockRange, with: replacement)
+    }
+
+    return rendered
+}
+
+private func renderGoTemplateExpression(_ expression: String, env: [String: String], context: [String: String]) -> String? {
+    let pipelineParts = expression.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
+    let lookupExpression = pipelineParts[0].trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let lookup = parseGoTemplateLookup(lookupExpression, env: env, context: context) else {
+        return nil
+    }
+
+    guard pipelineParts.count == 2 else {
+        return lookup.value ?? ""
+    }
+
+    let defaultExpression = pipelineParts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let fallback = parseGoTemplateDefault(defaultExpression) else {
+        return nil
+    }
+
+    return lookup.value ?? fallback
+}
+
+private func parseGoTemplateLookup(_ expression: String, env: [String: String], context: [String: String]) -> (key: String, value: String?)? {
+    if let key = firstRegexCapture(in: expression, pattern: #"^\.([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)$"#) {
+        return (key, context[key] ?? env[key])
+    }
+
+    if let key = firstRegexCapture(in: expression, pattern: #"^env\s+\"([A-Za-z_][A-Za-z0-9_]*)\"$"#) {
+        return (key, env[key])
+    }
+
+    return nil
+}
+
+private func parseGoTemplateDefault(_ expression: String) -> String? {
+    firstRegexCapture(in: expression, pattern: #"^default\s+\"([^\"]*)\"$"#)
+}
+
+private func firstRegexCapture(in value: String, pattern: String) -> String? {
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+        return nil
+    }
+    let range = NSRange(value.startIndex..<value.endIndex, in: value)
+    guard
+        let match = regex.firstMatch(in: value, range: range),
+        let captureRange = Range(match.range(at: 1), in: value)
+    else {
+        return nil
+    }
+    return String(value[captureRange])
+}
+
 /// Resolves the effective container name for a service, honoring an explicit
 /// `container_name:` override and falling back to `<project>-<service>` when
 /// no override is set. An empty explicit string is treated as if no override
