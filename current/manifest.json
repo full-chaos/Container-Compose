@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "2b36e4c20719ed92d1b9619f75f827326f857f51",
-  "short": "2b36e4c",
+  "commit": "3161f9d84912f83154385438aeb14a4a1594a52e",
+  "short": "3161f9d",
   "target": "current",
-  "message": "fix(volumes): idempotent up create + add down -v cleanup (CHAOS-1398) (#94)",
-  "published_at": "2026-05-03T19:33:14.786947+00:00"
+  "message": "fix(compose): POSIX command tokenization + volume config drift warning (CHAOS-1405, CHAOS-1406) (#96)",
+  "published_at": "2026-05-03T20:04:22.445850+00:00"
 }
