@@ -51,12 +51,8 @@ extension ComposeUp {
                         continue
                     }
 
-                    if topLevel.templateDriver != nil {
-                        print("Note: 'template_driver' for config '\(sc.source)' Detected, But Not Supported by the current runtime; the raw file will be mounted as-is.")
-                    }
-
                     let target = sc.target ?? "/\(sc.source)"
-                    guard let resolvedSource = try? resolveConfigSource(topLevel, sourceName: sc.source, projectName: ctx.projectName) else {
+                    guard let resolvedSource = resolveConfigSource(topLevel, sourceName: sc.source, ctx: ctx) else {
                         continue
                     }
                     args.append(contentsOf: ["-v", "\(resolvedSource):\(target)"])
@@ -82,12 +78,8 @@ extension ComposeUp {
                         continue
                     }
 
-                    if topLevel.templateDriver != nil {
-                        print("Note: 'template_driver' for secret '\(ss.source)' Detected, But Not Supported by the current runtime; the raw file will be mounted as-is.")
-                    }
-
                     let target = ss.target ?? "/run/secrets/\(ss.source)"
-                    guard let resolvedSource = try? resolveSecretSource(topLevel, sourceName: ss.source, projectName: ctx.projectName) else {
+                    guard let resolvedSource = resolveSecretSource(topLevel, sourceName: ss.source, ctx: ctx) else {
                         continue
                     }
                     args.append(contentsOf: ["-v", "\(resolvedSource):\(target)"])
@@ -101,18 +93,32 @@ extension ComposeUp {
             return args
         }
 
-        private static func resolveConfigSource(_ topLevel: Config, sourceName: String, projectName: String) throws -> String? {
+        private enum TemplateDriverMode {
+            case raw
+            case golang
+        }
+
+        private static func resolveConfigSource(_ topLevel: Config, sourceName: String, ctx: ArgsContext) -> String? {
             if let sourceFile = topLevel.file {
-                return (sourceFile as NSString).expandingTildeInPath
+                let expandedPath = (sourceFile as NSString).expandingTildeInPath
+                return materializeTemplateIfNeeded(
+                    templateDriver: topLevel.templateDriver,
+                    rawSourcePath: expandedPath,
+                    kind: "config",
+                    sourceName: sourceName,
+                    ctx: ctx
+                )
             }
 
             if let content = topLevel.content {
-                return try writeTempFile(
-                    content: Data(content.utf8),
+                let (resolvedContent, tempKind) = renderTemplateIfNeeded(
+                    content,
+                    templateDriver: topLevel.templateDriver,
                     kind: "config",
                     sourceName: sourceName,
-                    projectName: projectName
+                    ctx: ctx
                 )
+                return writeTempFileOrWarn(content: Data(resolvedContent.utf8), kind: tempKind, sourceName: sourceName, projectName: ctx.projectName)
             }
 
             if let environment = topLevel.environment {
@@ -121,21 +127,30 @@ extension ComposeUp {
                     return nil
                 }
 
-                return try writeTempFile(
-                    content: Data(value.utf8),
+                let (resolvedValue, tempKind) = renderTemplateIfNeeded(
+                    value,
+                    templateDriver: topLevel.templateDriver,
                     kind: "config",
                     sourceName: sourceName,
-                    projectName: projectName
+                    ctx: ctx
                 )
+                return writeTempFileOrWarn(content: Data(resolvedValue.utf8), kind: tempKind, sourceName: sourceName, projectName: ctx.projectName)
             }
 
             print("Warning: Config '\(sourceName)' has no 'file:' source; skipping.")
             return nil
         }
 
-        private static func resolveSecretSource(_ topLevel: Secret, sourceName: String, projectName: String) throws -> String? {
+        private static func resolveSecretSource(_ topLevel: Secret, sourceName: String, ctx: ArgsContext) -> String? {
             if let sourceFile = topLevel.file {
-                return (sourceFile as NSString).expandingTildeInPath
+                let expandedPath = (sourceFile as NSString).expandingTildeInPath
+                return materializeTemplateIfNeeded(
+                    templateDriver: topLevel.templateDriver,
+                    rawSourcePath: expandedPath,
+                    kind: "secret",
+                    sourceName: sourceName,
+                    ctx: ctx
+                )
             }
 
             if let environment = topLevel.environment {
@@ -144,16 +159,104 @@ extension ComposeUp {
                     return nil
                 }
 
-                return try writeTempFile(
-                    content: Data(value.utf8),
+                let (resolvedValue, tempKind) = renderTemplateIfNeeded(
+                    value,
+                    templateDriver: topLevel.templateDriver,
                     kind: "secret",
                     sourceName: sourceName,
-                    projectName: projectName
+                    ctx: ctx
                 )
+                return writeTempFileOrWarn(content: Data(resolvedValue.utf8), kind: tempKind, sourceName: sourceName, projectName: ctx.projectName)
             }
 
             print("Warning: Secret '\(sourceName)' has no 'file:' source; skipping.")
             return nil
+        }
+
+        private static func materializeTemplateIfNeeded(
+            templateDriver: String?,
+            rawSourcePath: String,
+            kind: String,
+            sourceName: String,
+            ctx: ArgsContext
+        ) -> String? {
+            guard templateDriverMode(templateDriver, kind: kind) == .golang else {
+                return rawSourcePath
+            }
+
+            do {
+                let content = try String(contentsOfFile: rawSourcePath, encoding: .utf8)
+                let rendered = renderGoTemplate(content, env: templateEnvironment(ctx), context: templateContext(ctx))
+                return writeTempFileOrWarn(
+                    content: Data(rendered.utf8),
+                    kind: "\(kind)-rendered",
+                    sourceName: sourceName,
+                    projectName: ctx.projectName
+                )
+            } catch {
+                print("Warning: Could not read \(kind) '\(sourceName)' template source at '\(rawSourcePath)': \(error.localizedDescription); skipping mount.")
+                return nil
+            }
+        }
+
+        private static func renderTemplateIfNeeded(
+            _ content: String,
+            templateDriver: String?,
+            kind: String,
+            sourceName: String,
+            ctx: ArgsContext
+        ) -> (content: String, tempKind: String) {
+            guard templateDriverMode(templateDriver, kind: kind) == .golang else {
+                return (content, kind)
+            }
+
+            return (renderGoTemplate(content, env: templateEnvironment(ctx), context: templateContext(ctx)), "\(kind)-rendered")
+        }
+
+        private static func templateEnvironment(_ ctx: ArgsContext) -> [String: String] {
+            ProcessInfo.processInfo.environment.merging(ctx.environmentVariables) { current, _ in current }
+        }
+
+        private static func templateContext(_ ctx: ArgsContext) -> [String: String] {
+            [
+                "Project.Name": ctx.projectName,
+                "Service.Name": ctx.serviceName,
+                "Task.Name": ctx.containerName,
+                "Node.Hostname": ProcessInfo.processInfo.environment["HOSTNAME"] ?? ""
+            ]
+        }
+
+        private static func templateDriverMode(_ templateDriver: String?, kind: String) -> TemplateDriverMode {
+            guard let templateDriver else {
+                return .raw
+            }
+
+            let normalized = templateDriver.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalized.isEmpty else {
+                return .raw
+            }
+
+            switch normalized.lowercased() {
+            case "file":
+                return .raw
+            case "golang":
+                return .golang
+            default:
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.\(kind).templateDriver.\(normalized)",
+                    "Note: template_driver '\(normalized)' is not supported (only 'file' and 'golang' are recognized); the raw file will be mounted as-is."
+                )
+                return .raw
+            }
+        }
+
+        private static func writeTempFileOrWarn(content: Data, kind: String, sourceName: String, projectName: String) -> String? {
+            do {
+                return try writeTempFile(content: content, kind: kind, sourceName: sourceName, projectName: projectName)
+            } catch {
+                print("Warning: Could not materialize \(kind) '\(sourceName)' as a host file: \(error.localizedDescription); skipping mount.")
+                return nil
+            }
         }
 
         private static func writeTempFile(content: Data, kind: String, sourceName: String, projectName: String) throws -> String {
