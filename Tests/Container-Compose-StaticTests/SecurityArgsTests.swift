@@ -94,11 +94,15 @@ struct SecurityArgsTests {
         #expect(args.contains("1000:1000"))
     }
 
-    @Test("privileged flag is emitted")
-    func privilegedFlagEmitted() throws {
+    @Test("privileged warns and emits no unsupported --privileged flag")
+    func privilegedWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "nginx", privileged: true)
-        let args = ComposeUp.SecurityArgs.build(try ctx(svc))
-        #expect(args.contains("--privileged"))
+        var args: [String] = []
+        let output = try captureStandardOutput {
+            args = ComposeUp.SecurityArgs.build(try ctx(svc))
+        }
+        #expect(!args.contains("--privileged"))
+        #expect(output.contains("Note: 'privileged' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("read_only flag is emitted")
@@ -204,15 +208,17 @@ struct SecurityArgsTests {
 
     // MARK: - Phase 2A: group_add
 
-    @Test("group_add emits --group-add per item")
-    func groupAddEmitsFlagPerItem() throws {
+    @Test("group_add warns and emits no unsupported --group-add flag")
+    func groupAddWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "nginx", group_add: ["audio", "video"])
-        let args = ComposeUp.SecurityArgs.build(try ctx(svc))
-        #expect(args.contains("--group-add"))
-        #expect(args.contains("audio"))
-        #expect(args.contains("video"))
-        let indices = args.indices.filter { args[$0] == "--group-add" }
-        #expect(indices.count == 2)
+        var args: [String] = []
+        let output = try captureStandardOutput {
+            args = ComposeUp.SecurityArgs.build(try ctx(svc))
+        }
+        #expect(!args.contains("--group-add"))
+        #expect(!args.contains("audio"))
+        #expect(!args.contains("video"))
+        #expect(output.contains("Note: 'group_add' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("group_add nil emits no flag")
@@ -249,7 +255,7 @@ struct SecurityArgsTests {
         #expect(args.contains("ALL"))
         #expect(!args.contains("--security-opt"))
         #expect(!args.contains("--userns"))
-        #expect(args.contains("--group-add"))
-        #expect(args.contains("audio"))
+        #expect(!args.contains("--group-add"))
+        #expect(!args.contains("audio"))
     }
 }

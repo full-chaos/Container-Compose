@@ -151,29 +151,25 @@ struct NetworkArgsTests {
 
     // MARK: - domainname
 
-    @Test("domainname emits --domainname NAME")
-    func domainnameEmitsFlag() {
+    @Test("domainname warns and emits no unsupported --domainname flag")
+    func domainnameWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", domainname: "example.com")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--domainname")
-        #expect(idx != nil)
-        if let idx = idx {
-            #expect(result[idx + 1] == "example.com")
-        }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--domainname"))
+        #expect(!result.contains("example.com"))
+        #expect(output.contains("Note: 'domainname' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - expose
 
-    @Test("expose list emits --expose per item")
-    func exposeListEmitsPerItem() {
+    @Test("expose list warns and emits no unsupported --expose flag")
+    func exposeListWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", expose: ["8080/tcp", "9090/udp"])
-        let result = args(for: svc)
-        let pairs = stride(from: 0, to: result.count - 1, by: 1)
-            .filter { result[$0] == "--expose" }
-            .map { result[$0 + 1] }
-        #expect(pairs.contains("8080/tcp"))
-        #expect(pairs.contains("9090/udp"))
-        #expect(pairs.count == 2)
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--expose"))
+        #expect(!result.contains("8080/tcp"))
+        #expect(!result.contains("9090/udp"))
+        #expect(output.contains("Note: 'expose' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - mac_address
@@ -271,13 +267,12 @@ struct NetworkArgsTests {
         #expect(pairs == ["1.1.1.1"])
     }
 
-    @Test("${VAR} substitution works in domainname")
-    func varSubstitutionInDomainname() {
+    @Test("${VAR} substitution is skipped for unsupported domainname")
+    func varSubstitutionSkippedInDomainname() {
         let svc = Service(image: "alpine", domainname: "${DOMAIN}")
         let result = args(for: svc, env: ["DOMAIN": "my.corp"])
-        let idx = result.firstIndex(of: "--domainname")
-        #expect(idx != nil)
-        if let idx = idx { #expect(result[idx + 1] == "my.corp") }
+        #expect(!result.contains("--domainname"))
+        #expect(!result.contains("my.corp"))
     }
 
     // MARK: - Combination test
@@ -314,13 +309,13 @@ struct NetworkArgsTests {
         #expect(!portPairs.isEmpty)
     }
 
-    @Test("Regression: hostname still emits --hostname")
-    func regressionHostnameStillEmits() {
+    @Test("hostname warns and emits no unsupported --hostname flag")
+    func hostnameWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", hostname: "myhostname")
-        let result = args(for: svc)
-        let idx = result.firstIndex(of: "--hostname")
-        #expect(idx != nil)
-        if let idx = idx { #expect(result[idx + 1] == "myhostname") }
+        let (result, output) = try captureStandardOutput { args(for: svc) }
+        #expect(!result.contains("--hostname"))
+        #expect(!result.contains("myhostname"))
+        #expect(output.contains("Note: 'hostname' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("Regression: nil fields produce no args")

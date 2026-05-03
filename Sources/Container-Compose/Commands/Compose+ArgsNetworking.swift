@@ -61,10 +61,12 @@ extension ComposeUp {
                 }
             }
 
-            // --hostname
-            if let hostname = ctx.service.hostname {
-                let resolved = resolveVariable(hostname, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--hostname", resolved])
+            // apple/container does not accept --hostname (verified Tier 0 R2 audit).
+            if ctx.service.hostname != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.hostname",
+                    "Note: 'hostname' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --dns ADDR (per item)
@@ -102,18 +104,20 @@ extension ComposeUp {
                 }
             }
 
-            // --domainname NAME
-            if let domainname = ctx.service.domainname {
-                let resolved = resolveVariable(domainname, with: ctx.environmentVariables)
-                args.append(contentsOf: ["--domainname", resolved])
+            // apple/container does not accept --domainname (verified Tier 0 R2 audit).
+            if ctx.service.domainname != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.domainname",
+                    "Note: 'domainname' is parsed but not supported by Apple container; ignored."
+                )
             }
 
-            // --expose PORT/PROTO (per item)
-            if let expose = ctx.service.expose {
-                for port in expose {
-                    let resolved = resolveVariable(port, with: ctx.environmentVariables)
-                    args.append(contentsOf: ["--expose", resolved])
-                }
+            // apple/container does not accept --expose (verified Tier 0 R2 audit).
+            if let expose = ctx.service.expose, !expose.isEmpty {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.expose",
+                    "Note: 'expose' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // mac_address: parsed, but Apple container does not expose standalone

@@ -859,14 +859,20 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--target", target])
         }
 
-        // Add cache-from references
-        for ref in buildConfig.cache_from ?? [] {
-            commands.append(contentsOf: ["--cache-from", ref])
+        // apple/container build does not accept --cache-from (verified Tier 0 R2 audit).
+        if let cacheFrom = buildConfig.cache_from, !cacheFrom.isEmpty {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.cache_from",
+                "Note: 'build.cache_from' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
-        // Add cache-to references
-        for ref in buildConfig.cache_to ?? [] {
-            commands.append(contentsOf: ["--cache-to", ref])
+        // apple/container build does not accept --cache-to (verified Tier 0 R2 audit).
+        if let cacheTo = buildConfig.cache_to, !cacheTo.isEmpty {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.cache_to",
+                "Note: 'build.cache_to' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // Add labels
@@ -884,9 +890,12 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--secret", "id=\(secretId)"])
         }
 
-        // Add SSH agent/key mappings
-        for sshKey in buildConfig.ssh ?? [] {
-            commands.append(contentsOf: ["--ssh", sshKey])
+        // apple/container build does not accept --ssh (verified Tier 0 R2 audit).
+        if let ssh = buildConfig.ssh, !ssh.isEmpty {
+            warnUnsupportedRuntimeFieldOnce(
+                "build.ssh",
+                "Note: 'build.ssh' is parsed but not supported by Apple container's build; ignored."
+            )
         }
 
         // Add platform — build.platforms overrides service.platform; only first is used.

@@ -27,7 +27,13 @@ extension ComposeUp {
             if let user = ctx.service.user {
                 args.append(contentsOf: ["--user", user])
             }
-            if ctx.service.privileged == true { args.append("--privileged") }
+            // apple/container does not accept --privileged (verified Tier 0 R2 audit).
+            if ctx.service.privileged == true {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.privileged",
+                    "Note: 'privileged' is parsed but not supported by Apple container; ignored."
+                )
+            }
             if ctx.service.read_only == true { args.append("--read-only") }
 
             // Phase 2A — capabilities & security flags
@@ -43,8 +49,12 @@ extension ComposeUp {
             if ctx.service.userns_mode != nil {
                 warnUnsupportedRuntimeFieldOnce("service.userns_mode", "Note: 'userns_mode' is parsed but not supported by Apple container; ignored.")
             }
-            for group in ctx.service.group_add ?? [] {
-                args.append(contentsOf: ["--group-add", group])
+            // apple/container does not accept --group-add (verified Tier 0 R2 audit).
+            if let groupAdd = ctx.service.group_add, !groupAdd.isEmpty {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.group_add",
+                    "Note: 'group_add' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             return args

@@ -42,18 +42,20 @@ extension ComposeUp {
                 args.append("--init")
             }
 
-            // --stop-signal: pass the raw signal name
-            if let stopSignal = ctx.service.stop_signal {
-                args.append(contentsOf: ["--stop-signal", stopSignal])
+            // apple/container does not accept --stop-signal (verified Tier 0 R2 audit).
+            if ctx.service.stop_signal != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.stop_signal",
+                    "Note: 'service.stop_signal' is parsed but not supported by Apple container; ignored."
+                )
             }
 
-            // --stop-timeout: parse Go duration format → integer seconds
-            if let gracePeriod = ctx.service.stop_grace_period {
-                if let seconds = parseGoDuration(gracePeriod) {
-                    args.append(contentsOf: ["--stop-timeout", "\(seconds)"])
-                } else {
-                    print("Warning: Could not parse 'stop_grace_period' value '\(gracePeriod)'; skipping --stop-timeout.")
-                }
+            // apple/container does not accept --stop-timeout (verified Tier 0 R2 audit).
+            if ctx.service.stop_grace_period != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.stop_grace_period",
+                    "Note: 'service.stop_grace_period' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --runtime: pass the runtime name

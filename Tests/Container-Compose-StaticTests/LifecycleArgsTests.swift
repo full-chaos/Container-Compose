@@ -19,8 +19,14 @@ import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+
 /// Tests for Phase 2E: LifecycleArgs.build and the parseGoDuration helper.
-@Suite("LifecycleArgs Tests")
+@Suite("LifecycleArgs Tests", .serialized)
 struct LifecycleArgsTests {
 
     // MARK: - Helpers
@@ -48,6 +54,32 @@ struct LifecycleArgsTests {
         )
     }
 
+    private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        let pipe = Pipe()
+        guard original >= 0, dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0 else {
+            if original >= 0 { close(original) }
+            throw CaptureError.dupFailed
+        }
+
+        let result = ComposeUp.LifecycleArgs.build(makeContext(service: service))
+        fflush(stdout)
+        restoreStandardOutput(original: original, pipe: pipe)
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return (String(data: data, encoding: .utf8) ?? "", result)
+    }
+
+    private func restoreStandardOutput(original: Int32, pipe: Pipe) {
+        _ = dup2(original, STDOUT_FILENO)
+        close(original)
+        pipe.fileHandleForWriting.closeFile()
+    }
+
+    private enum CaptureError: Error {
+        case dupFailed
+    }
+
     // MARK: - init_ flag
 
     @Test("init_ true emits --init flag")
@@ -73,16 +105,13 @@ struct LifecycleArgsTests {
 
     // MARK: - stop_signal
 
-    @Test("stop_signal emits --stop-signal with value")
-    func stopSignalEmits() {
+    @Test("stop_signal warns and emits no unsupported --stop-signal flag")
+    func stopSignalWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", stop_signal: "SIGUSR1")
-        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
-        #expect(args.contains("--stop-signal"))
-        let idx = args.firstIndex(of: "--stop-signal")
-        #expect(idx != nil)
-        if let i = idx {
-            #expect(args[args.index(after: i)] == "SIGUSR1")
-        }
+        let captured = try capturedArgs(svc)
+        #expect(!captured.args.contains("--stop-signal"))
+        #expect(!captured.args.contains("SIGUSR1"))
+        #expect(captured.output.contains("Note: 'service.stop_signal' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("stop_signal nil means --stop-signal absent")
@@ -129,27 +158,21 @@ struct LifecycleArgsTests {
         #expect(ComposeUp.LifecycleArgs.parseGoDuration("1h2m3s") == 3723)
     }
 
-    @Test("stop_grace_period 30s emits --stop-timeout 30")
-    func stopGracePeriodEmits() {
+    @Test("stop_grace_period warns and emits no unsupported --stop-timeout flag")
+    func stopGracePeriodWarnsAndEmitsNoUnsupportedFlag() throws {
         let svc = Service(image: "alpine", stop_grace_period: "30s")
-        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
-        #expect(args.contains("--stop-timeout"))
-        let idx = args.firstIndex(of: "--stop-timeout")
-        #expect(idx != nil)
-        if let i = idx {
-            #expect(args[args.index(after: i)] == "30")
-        }
+        let captured = try capturedArgs(svc)
+        #expect(!captured.args.contains("--stop-timeout"))
+        #expect(!captured.args.contains("30"))
+        #expect(captured.output.contains("Note: 'service.stop_grace_period' is parsed but not supported by Apple container; ignored."))
     }
 
-    @Test("stop_grace_period 1m30s emits --stop-timeout 90")
-    func stopGracePeriod1m30s() {
+    @Test("stop_grace_period 1m30s emits no unsupported --stop-timeout flag")
+    func stopGracePeriod1m30sAbsent() {
         let svc = Service(image: "alpine", stop_grace_period: "1m30s")
         let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
-        let idx = args.firstIndex(of: "--stop-timeout")
-        #expect(idx != nil)
-        if let i = idx {
-            #expect(args[args.index(after: i)] == "90")
-        }
+        #expect(!args.contains("--stop-timeout"))
+        #expect(!args.contains("90"))
     }
 
     @Test("stop_grace_period unparseable means --stop-timeout absent")
@@ -159,15 +182,12 @@ struct LifecycleArgsTests {
         #expect(!args.contains("--stop-timeout"))
     }
 
-    @Test("stop_grace_period raw integer 5 emits --stop-timeout 5")
-    func stopGracePeriodRawInt() {
+    @Test("stop_grace_period raw integer emits no unsupported --stop-timeout flag")
+    func stopGracePeriodRawIntAbsent() {
         let svc = Service(image: "alpine", stop_grace_period: "5")
         let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
-        let idx = args.firstIndex(of: "--stop-timeout")
-        #expect(idx != nil)
-        if let i = idx {
-            #expect(args[args.index(after: i)] == "5")
-        }
+        #expect(!args.contains("--stop-timeout"))
+        #expect(!args.contains("5"))
     }
 
     // MARK: - runtime

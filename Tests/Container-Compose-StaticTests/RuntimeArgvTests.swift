@@ -156,6 +156,43 @@ struct RuntimeArgvTests {
         )
     }
 
+    private func recordedBuildCommandArgv<C: AsyncParsableCommand>(
+        timeout: TimeInterval = 60,
+        parse: @escaping @Sendable () throws -> C
+    ) async throws -> [String] {
+        let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
+        let runTask = Task {
+            try? await RunnerEnvironment.$current.withValue(recorder) {
+                try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                    var cmd = try parse()
+                    try await cmd.run()
+                }
+            }
+        }
+        defer { runTask.cancel() }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let first = (await recorder.swiftAPIArgvs(named: "BuildCommand")).first {
+                runTask.cancel()
+                return first
+            }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        runTask.cancel()
+        let all = await recorder.swiftAPIArgvs()
+        Issue.record(
+            "No swiftAPI(BuildCommand) argv recorded within \(timeout)s. All recorded swiftAPI calls: \(all)"
+        )
+        throw NSError(
+            domain: "RuntimeArgvTests",
+            code: 2,
+            userInfo: [NSLocalizedDescriptionKey: "no BuildCommand argv recorded"]
+        )
+    }
+
     // MARK: - Plan §8 #1 — entrypoint placement (head-only)
 
     @Test("up: --entrypoint precedes image (single-element entrypoint)")
@@ -702,6 +739,94 @@ struct RuntimeArgvTests {
         )
 
         #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
+    }
+
+    @Test("up: inline BuildCommand argv skips unsupported cache and ssh flags")
+    func up_build_skips_unsupported_cache_and_ssh_flags() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let dockerfile = dir.appendingPathComponent("Dockerfile")
+        try "FROM alpine:latest\n".write(to: dockerfile, atomically: true, encoding: .utf8)
+
+        let yaml = """
+        services:
+          api:
+            image: example/api:latest
+            build:
+              context: .
+              dockerfile: Dockerfile
+              cache_from:
+                - registry.example.com/api:cache
+              cache_to:
+                - type=inline
+              labels:
+                app: api
+              secrets:
+                - api-token
+              ssh:
+                - default
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let argv = try await recordedBuildCommandArgv {
+            try ComposeUp.parse(["--detach", "-f", compose.path])
+        }
+
+        #expect(argv.contains("--label"), "supported --label should remain in BuildCommand argv: \(argv)")
+        #expect(argv.contains("--secret"), "supported --secret should remain in BuildCommand argv: \(argv)")
+        #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
+        #expect(!argv.contains("--cache-to"), "Apple container BuildCommand rejects --cache-to; full argv: \(argv)")
+        #expect(!argv.contains("--ssh"), "Apple container BuildCommand rejects --ssh; full argv: \(argv)")
+    }
+
+    @Test("create: inline BuildCommand argv skips unsupported cache and ssh flags")
+    func create_build_skips_unsupported_cache_and_ssh_flags() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let dockerfile = dir.appendingPathComponent("Dockerfile")
+        try "FROM alpine:latest\n".write(to: dockerfile, atomically: true, encoding: .utf8)
+
+        let yaml = """
+        services:
+          api:
+            image: example/api:latest
+            build:
+              context: .
+              dockerfile: Dockerfile
+              cache_from:
+                - registry.example.com/api:cache
+              cache_to:
+                - type=inline
+              labels:
+                app: api
+              secrets:
+                - api-token
+              ssh:
+                - default
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let argv = try await recordedBuildCommandArgv {
+            try ComposeCreate.parse(["--build", "-f", compose.path])
+        }
+
+        #expect(argv.contains("--label"), "supported --label should remain in BuildCommand argv: \(argv)")
+        #expect(argv.contains("--secret"), "supported --secret should remain in BuildCommand argv: \(argv)")
+        #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
+        #expect(!argv.contains("--cache-to"), "Apple container BuildCommand rejects --cache-to; full argv: \(argv)")
+        #expect(!argv.contains("--ssh"), "Apple container BuildCommand rejects --ssh; full argv: \(argv)")
     }
 
     // MARK: - Plan §8 #8 — kill emits --signal in argv (PR-5 regression)
