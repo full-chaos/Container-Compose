@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "f626a1306e0a89e1f1714cefa33047b6bc372078",
-  "short": "f626a13",
+  "commit": "19d1562f2398698f5f98d9573b56328bbe9b6e9e",
+  "short": "19d1562",
   "target": "current",
-  "message": "feat(args): warn when reservation > limit (CHAOS-1336 follow-up) (#91)",
-  "published_at": "2026-05-03T12:39:06.582835+00:00"
+  "message": "feat(configs): host-side template_driver rendering for configs and secrets (CHAOS-1384) (#92)",
+  "published_at": "2026-05-03T12:51:50.130109+00:00"
 }
