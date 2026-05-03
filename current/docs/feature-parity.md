@@ -12,14 +12,14 @@
 
 | Tier | Count | Description | Action |
 | :--- | :---: | :--- | :--- |
-| **Tier 0 — Silent failure** | **~22 flags** | Container-Compose unconditionally emits flags `apple/container` does NOT accept. Setting these compose fields produces `unknown option` runtime errors. | **Fix in Container-Compose** (Tier 0 cleanup, file new tickets) |
+| **Tier 0 — Silent failure** | **~32 flags** | Container-Compose unconditionally emits flags `apple/container` does NOT accept. Setting these compose fields produces `unknown option` runtime errors. | **Fix in Container-Compose** (Tier 0 cleanup, file new tickets) |
 | **Tier 1 — Wireable now** | 6 fields | Runtime support exists; we just haven't wired or enforced. | **Fix in Container-Compose** (existing or new tickets) |
 | **Tier 2 — Fork-patch path (deprecated)** | 0 active / 7 historical | Historical bucket only. The fork is frozen, so no new work should target it. | **Do not patch the fork** |
 | **Tier 3 — Upstream PR / FR** | 19 features | Need apple/container engineering, including the items previously parked in Tier 2. | **File FR upstream** |
 | **Tier 4 — Won't do** | 21 fields | Deprecated, Swarm-only, or platform-specific (Windows/Linux cgroups). | Decoded → warn-skipped → `coverage.html` `miss` |
 | **Tier 5 — Frontier** | 3 fields | AI/LLM provisioning — spec still evolving. | Track only |
 
-**Critical finding:** Tier 0 is the biggest discovery of this audit. `--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all `--blkio-*`, `--shm-size`, `--pids-limit`, `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`, `--cpu-quota`, `--cpu-rt-period`, `--cpu-rt-runtime`, `--cpu-count`, `--cpu-percent`, `--oom-kill-disable`, `--oom-score-adj`, `--sysctl`, `--ip`, `--ip6`, `--gpus`, `--mac-address` are all emitted by Container-Compose but have **no entry** in upstream `apple/container`'s `Flags.Management` / `Flags.Resource` (verified by cloning `apple/container@main` 2026-05-01 and grepping). The runtime will reject these flags. CHAOS-1329 (logging), CHAOS-1330 (extra_hosts), CHAOS-1331 (aliases) already followed this remediation pattern; the same remediation is needed for the 22 flags above.
+**Critical finding:** Tier 0 is the biggest discovery of this audit. `--ipc`, `--pid`, `--uts`, `--device`, `--userns`, `--security-opt`, all `--blkio-*`, `--shm-size`, `--pids-limit`, `--memory-reservation`, `--memory-swap`, `--memory-swappiness`, `--cpu-shares`, `--cpuset-cpus`, `--cpu-period`, `--cpu-quota`, `--cpu-rt-period`, `--cpu-rt-runtime`, `--cpu-count`, `--cpu-percent`, `--oom-kill-disable`, `--oom-score-adj`, `--sysctl`, `--ip`, `--ip6`, `--gpus`, `--mac-address` are all emitted by Container-Compose but have **no entry** in upstream `apple/container`'s `Flags.Management` / `Flags.Resource` (verified by cloning `apple/container@main` 2026-05-01 and grepping). The runtime will reject these flags. CHAOS-1329 (logging), CHAOS-1330 (extra_hosts), CHAOS-1331 (aliases) already followed this remediation pattern; CHAOS-1370 handled the first broad sweep, and CHAOS-1397 tracks the Round 2 follow-up for seven more runtime flags plus three Up/Create build emissions.
 
 **Fork-dependency note:** container-compose currently builds against `full-chaos/container` (branch `tier2-fork-patches`), which still carries 6 compose-relevant patches not in upstream `apple/container`. Those features work today for fork-pinned users, but the fork is frozen and is no longer a valid implementation path for new work. From a planning perspective, those gaps are now blocked on upstream `apple/container`. Named volumes are a separate nuanced gap with their own dedicated section — see [Appendix B (§13)](#13-appendix-b--named-volumes-deep-dive).
 
@@ -84,6 +84,20 @@ These are flags Container-Compose **emits unconditionally** when the correspondi
 | `service.gpus` | `--gpus all` / `--gpus count=N,...` | ❌ (code already prints `Note: ... may reject this flag.` — convert to skip-emit) | `Compose+ArgsResource.swift:131-150` | CHAOS-1376 |
 | `service.blkio_config` | `--blkio-weight`, `--blkio-weight-device`, `--device-read-bps`, `--device-write-bps`, `--device-read-iops`, `--device-write-iops` | ❌ (code already warns; convert to skip-emit) | `Compose+ArgsResource.swift:152-173` | CHAOS-1376 |
 
+### 3.1.1 Tier 0 Round 2 (CHAOS-1397)
+
+Follow-up audit after CHAOS-1370 found seven additional `container run` flags emitted by Container-Compose but absent from the pinned fork's `Flags.Management`. CHAOS-1397 converted each to the same warn-skip pattern, leaving the coverage rows `partial` (decoded but not wired):
+
+| Compose field | Was emitted as | apple/container support? | Remediation |
+| :--- | :--- | :--- | :--- |
+| `service.stop_signal` | `--stop-signal` | ❌ | warn-skip once |
+| `service.stop_grace_period` | `--stop-timeout` | ❌ | warn-skip once; no duration parsing for unsupported emission |
+| `service.hostname` | `--hostname` | ❌ | warn-skip once; no `${VAR}` resolution for unsupported emission |
+| `service.domainname` | `--domainname` | ❌ | warn-skip once; no `${VAR}` resolution for unsupported emission |
+| `service.expose` | `--expose` | ❌ | warn-skip once |
+| `service.privileged` | `--privileged` | ❌ | warn-skip once |
+| `service.group_add` | `--group-add` | ❌ | warn-skip once |
+
 **Remediation effort:** Same shape as CHAOS-1329/1330/1331 — wrap each emission in a guard, replace with a `print(...)` warning, update tests. Each field = small isolated PR. Estimated 4-8 hours total for all 22+ remediations if batched into one Tier-0 sweep.
 
 ### 3.2 Network create flags (target: `container network create`)
@@ -102,10 +116,15 @@ No Tier 0 work here — already correctly warn-skipped.
 
 ### 3.3 Build flags (target: `container build`)
 
-Not yet audited line-by-line as part of this scout. The argv-builder scout extracted what we emit:
-- `--build-arg`, `--file`, `--tag`, `--no-cache`, `--target`, `--cache-from`, `--cache-to`, `--label`, `--network`, `--secret`, `--ssh`, `--os`, `--arch`, `--shm-size`, `--cpus`, `--memory`
+CHAOS-1377 remediated `ComposeBuild` after cross-checking `.build/checkouts/container/Sources/ContainerCommands/BuildCommand.swift`: unsupported `build.cache_from`, `build.cache_to`, `build.network`, `build.ssh`, and `build.shm_size` now warn-skip in `container-compose build`. Tier 0 Round 2 (CHAOS-1397) found and fixed the remaining inline-build inconsistency in `ComposeUp.buildService` and `ComposeCreate.buildService` for the three fields those paths still emitted:
 
-Cross-check against `.build/checkouts/container/Sources/ContainerCommands/BuildCommand.swift` is recommended as a follow-up before the Tier 0 sweep ships. **Filed as part of NEW Tier 0 ticket.**
+| Compose field | Was emitted as in Up/Create | apple/container build support? | Remediation |
+| :--- | :--- | :--- | :--- |
+| `build.cache_from` | `--cache-from` | ❌ | warn-skip once using the same `build.cache_from` dedupe key as ComposeBuild |
+| `build.cache_to` | `--cache-to` | ❌ | warn-skip once using the same `build.cache_to` dedupe key as ComposeBuild |
+| `build.ssh` | `--ssh` | ❌ | warn-skip once using the same `build.ssh` dedupe key as ComposeBuild |
+
+`--secret` remains supported by Apple container's `BuildCommand` and is still emitted.
 
 ---
 
@@ -263,6 +282,7 @@ Filed automatically as part of this audit. Two umbrellas, 13 sub-issues.
 | [CHAOS-1375](https://linear.app/fullchaos/issue/CHAOS-1375) | Tier 0: Stop emitting advanced resource flags (`--memory-*`, `--pids-limit`, `--shm-size`, `--cpu-*`, `--oom-*`) | Tier 0 |
 | [CHAOS-1376](https://linear.app/fullchaos/issue/CHAOS-1376) | Tier 0: Convert `--gpus` / `--blkio-*` from warn-emit to skip-emit | Tier 0 |
 | [CHAOS-1377](https://linear.app/fullchaos/issue/CHAOS-1377) | Tier 0: Audit `container build` flag emissions vs upstream `BuildCommand` | Tier 0 |
+| **[CHAOS-1397](https://linear.app/fullchaos/issue/CHAOS-1397)** | Tier 0 Round 2: Stop emitting newly-discovered unsupported run flags and sync Up/Create build emission with ComposeBuild | Tier 0 |
 | **[CHAOS-1378](https://linear.app/fullchaos/issue/CHAOS-1378)** | Tier 3: File apple/container FRs for missing runtime surface — umbrella | Tier 3 |
 | [CHAOS-1379](https://linear.app/fullchaos/issue/CHAOS-1379) | FR upstream: `--gpus` GPU passthrough | Tier 3 |
 | [CHAOS-1380](https://linear.app/fullchaos/issue/CHAOS-1380) | FR upstream: `--blkio-*` / cgroup BFQ tuning | Tier 3 |

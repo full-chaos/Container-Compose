@@ -436,9 +436,9 @@
         ],
         [
           "hostname",
-          "ok",
+          "partial",
           "yes",
-          "--hostname applied; ${VAR} resolved."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --hostname."
         ],
         [
           "platform",
@@ -454,9 +454,9 @@
         ],
         [
           "privileged",
-          "ok",
+          "partial",
           "yes",
-          "Adds --privileged."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --privileged."
         ],
         [
           "read_only",
@@ -658,15 +658,15 @@
         ],
         [
           "domainname",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --domainname."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --domainname."
         ],
         [
           "expose",
-          "ok",
+          "partial",
           "yes",
-          "NetworkingArgs emits --expose per item."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --expose."
         ],
         [
           "extends",
@@ -694,9 +694,9 @@
         ],
         [
           "group_add",
-          "ok",
+          "partial",
           "yes",
-          "SecurityArgs.build emits --group-add per item."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --group-add."
         ],
         [
           "init",
@@ -868,15 +868,15 @@
         ],
         [
           "stop_grace_period",
-          "ok",
+          "partial",
           "yes",
-          "LifecycleArgs parses Go-duration format \u2192 --stop-timeout."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --stop-timeout."
         ],
         [
           "stop_signal",
-          "ok",
+          "partial",
           "yes",
-          "LifecycleArgs emits --stop-signal."
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --stop-signal."
         ],
         [
           "storage_opt",
@@ -982,15 +982,15 @@
         ],
         [
           "cache_from",
-          "ok",
+          "partial",
           "yes",
-          "buildService emits --cache-from per item; runtime may reject."
+          "Decoded; ComposeBuild/ComposeUp/ComposeCreate emit warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container build does not accept --cache-from."
         ],
         [
           "cache_to",
-          "ok",
+          "partial",
           "yes",
-          "buildService emits --cache-to per item; runtime may reject."
+          "Decoded; ComposeBuild/ComposeUp/ComposeCreate emit warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container build does not accept --cache-to."
         ],
         [
           "labels",
@@ -1012,9 +1012,9 @@
         ],
         [
           "ssh",
-          "ok",
+          "partial",
           "yes",
-          "buildService emits --ssh per item; runtime may reject."
+          "Decoded; ComposeBuild/ComposeUp/ComposeCreate emit warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container build does not accept --ssh."
         ],
         [
           "target",
