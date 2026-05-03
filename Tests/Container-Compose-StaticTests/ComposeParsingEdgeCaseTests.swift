@@ -357,8 +357,8 @@ struct ComposeParsingEdgeCaseTests {
     // MARK: - Variable interpolation: disabled test for proper $$ → $ handling
 
     @Test(
-        .disabled("CHAOS-???: $$ literal dollar escape is not yet implemented in resolveVariable"),
-        "Double-dollar $$ should produce literal $ per compose-spec"
+        "Double-dollar $$ should produce literal $ per compose-spec",
+        .disabled("CHAOS-???: $$ literal dollar escape is not yet implemented in resolveVariable")
     )
     func doubleDollarShouldProduceLiteralDollar() {
         // compose-spec §12 states that $$ escapes to a literal $.
