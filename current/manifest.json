@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "1f0451f82729a18a5edb9d757346c972bbd3c720",
-  "short": "1f0451f",
+  "commit": "a4dead25ee2184754a2b505c5a178751bb6e0879",
+  "short": "a4dead2",
   "target": "current",
-  "message": "fix(up): honor container_name in stop/get-IP/wait paths (CHAOS-1396) (#87)",
-  "published_at": "2026-05-02T22:17:41.763262+00:00"
+  "message": "feat(args): map reservations to --cpus/--memory as degraded fallback (CHAOS-1336) (#90)",
+  "published_at": "2026-05-03T02:02:23.808622+00:00"
 }
