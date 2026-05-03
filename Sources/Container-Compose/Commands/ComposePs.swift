@@ -119,7 +119,7 @@ public struct ComposePs: AsyncParsableCommand {
 
         // Determine the set of container names we care about.
         let targetNames: Set<String> = Set(serviceList.map { serviceName, service in
-            service.container_name ?? "\(projectName)-\(serviceName)"
+            effectiveContainerName(projectName: projectName, serviceName: serviceName, explicit: service.container_name)
         })
 
         // CHAOS-1346 Phase 1: read through the new `Runtime` abstraction

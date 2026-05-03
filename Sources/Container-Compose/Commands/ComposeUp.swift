@@ -1028,21 +1028,35 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         var runCommandArgs: [String] = []
 
-        // Parse the volume string: destination[:mode]
-        let components = resolvedVolume.split(separator: ":", maxSplits: 2).map(String.init)
-
-        guard components.count >= 2 else {
+        // Delegate pure string parsing to VolumeMountParser.
+        let spec: VolumeMountSpec
+        switch VolumeMountParser.parse(resolvedVolume) {
+        case .success(let parsed):
+            spec = parsed
+        case .failure:
             print("Warning: Volume entry '\(resolvedVolume)' has an invalid format (expected 'source:destination'). Skipping.")
             return []
         }
 
-        let source = components[0]
-        let destination = components[1]
+        let source = spec.originalSource
+        let destination = spec.destination
 
-        // Check if the source looks like a host path (contains '/' or starts with '.').
-        // This heuristic helps distinguish bind mounts from named volume references.
-        if !isNamedVolumeSource(source) {
-            // This is likely a bind mount (local path to container path)
+        // Warn-and-skip unsupported mount mode (e.g. :ro, :rw, :Z, :z).
+        // apple/container does not accept a mode suffix on -v arguments.
+        // We emit a one-time per-key warning so the user knows the flag
+        // is being silently ignored, then continue mounting without it.
+        // This aligns with the warn-and-skip convention established for
+        // other unsupported compose fields (Compose+ArgsStorage.swift etc.).
+        if let mode = spec.mode {
+            warnUnsupportedRuntimeFieldOnce(
+                "volume.mode:\(resolvedVolume)",
+                "Warning: Volume mount mode ':\(mode)' on '\(resolvedVolume)' is not supported by apple/container and will be ignored. Mount will use container default permissions."
+            )
+        }
+
+        switch spec.kind {
+        case .bindMount:
+            // Bind mount: verify the host path is a directory (or create it).
             var isDirectory: ObjCBool = false
             // Ensure the path is absolute or relative to the current directory for FileManager
             let fullHostPath = (source.starts(with: "/") || source.starts(with: "~")) ? source : (cwd + "/" + source)
@@ -1051,8 +1065,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                 if isDirectory.boolValue {
                     // Host path exists and is a directory, add the volume
                     runCommandArgs.append("-v")
-                    // Reconstruct the volume string without mode, ensuring it's source:destination
-                    runCommandArgs.append("\(source):\(destination)")  // Use original source for command argument
+                    runCommandArgs.append("\(source):\(destination)")
                 } else {
                     // Host path exists but is a file
                     print("Warning: Volume mount source '\(source)' is a file. The 'container' tool does not support direct file mounts. Skipping this volume.")
@@ -1063,15 +1076,24 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                     try fileManager.createDirectory(atPath: fullHostPath, withIntermediateDirectories: true, attributes: nil)
                     print("Info: Created missing host directory for volume: \(fullHostPath)")
                     runCommandArgs.append("-v")
-                    runCommandArgs.append("\(source):\(destination)")  // Use original source for command argument
+                    runCommandArgs.append("\(source):\(destination)")
                 } catch {
                     print("Error: Could not create host directory '\(fullHostPath)' for volume '\(resolvedVolume)': \(error.localizedDescription). Skipping this volume.")
                 }
             }
-        } else {
+
+        case .namedVolume:
             let preparedSource = try await prepareNamedVolumeSource(named: source, from: dockerCompose)
             runCommandArgs.append("-v")
             runCommandArgs.append("\(preparedSource.mountSource):\(destination)")
+
+        case .tmpfs:
+            // A volume entry with an empty source is treated as tmpfs; not currently
+            // supported as a short-form volume in apple/container. Warn and skip.
+            warnUnsupportedRuntimeFieldOnce(
+                "volume.tmpfs:\(resolvedVolume)",
+                "Warning: tmpfs short-form volume entry '\(resolvedVolume)' is not supported by apple/container; ignored."
+            )
         }
 
         return runCommandArgs

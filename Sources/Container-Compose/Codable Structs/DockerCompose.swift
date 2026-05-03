@@ -538,3 +538,160 @@ extension DockerCompose {
         )
     }
 }
+
+// MARK: - Validation
+
+extension DockerCompose {
+    /// Validates the compose document for semantic correctness.
+    ///
+    /// Checks performed:
+    /// 1. At least one service is defined.
+    /// 2. Each service has either `image` or `build`.
+    /// 3. Every port specification is parseable and port numbers are in 0–65535.
+    /// 4. The `depends_on` graph is acyclic.
+    ///
+    /// - Throws: The first `ComposeValidationError` encountered.
+    public func validate() throws {
+        // 1. Non-empty services
+        let concrete = services.compactMapValues { $0 }
+        guard !concrete.isEmpty else {
+            throw ComposeValidationError.noServicesDefined
+        }
+
+        // 2. Each service needs image or build, and valid ports
+        for (name, service) in concrete {
+            if service.image == nil && service.build == nil {
+                throw ComposeValidationError.serviceNeedsImageOrBuild(serviceName: name)
+            }
+
+            if let ports = service.ports {
+                try validatePorts(ports, forService: name)
+            }
+        }
+
+        // 3. Circular dependency detection via DFS
+        try detectCircularDependencies(in: concrete)
+    }
+
+    /// Validates a list of Compose port specifications for a given service.
+    ///
+    /// Accepted forms (with optional `/tcp` or `/udp` suffix):
+    /// - `"80"` — bare container port
+    /// - `"8080:80"` — host:container
+    /// - `"127.0.0.1:8080:80"` — ip:host:container
+    ///
+    /// Port numbers must be in the range 0–65535.
+    ///
+    /// - Parameters:
+    ///   - ports: The port strings from `service.ports`.
+    ///   - serviceName: The service name, used in error messages.
+    /// - Throws: `ComposeValidationError.invalidPortFormat` for any malformed
+    ///   or out-of-range entry.
+    public func validatePorts(_ ports: [String], forService serviceName: String) throws {
+        for portSpec in ports {
+            try Self.validatePortSpec(portSpec, serviceName: serviceName)
+        }
+    }
+
+    // MARK: Private helpers
+
+    /// Validates a single port specification string.
+    private static func validatePortSpec(_ portSpec: String, serviceName: String) throws {
+        // Strip optional /tcp or /udp protocol suffix
+        var portBody = portSpec
+        if let slashRange = portSpec.range(of: "/", options: [.backwards]) {
+            let protocolPart = String(portSpec[slashRange.lowerBound...])
+            if protocolPart == "/tcp" || protocolPart == "/udp" {
+                portBody = String(portSpec[..<slashRange.lowerBound])
+            }
+            // Any other slash-prefixed suffix is invalid
+            else {
+                throw ComposeValidationError.invalidPortFormat(portSpec: portSpec, serviceName: serviceName)
+            }
+        }
+
+        let components = portBody.split(separator: ":", maxSplits: 3).map(String.init)
+        switch components.count {
+        case 1:
+            // "PORT"
+            let containerPort = components[0]
+            try validatePort(containerPort, portSpec: portSpec, serviceName: serviceName)
+        case 2:
+            // "HOST:CONTAINER" or "IP:CONTAINER" (IP contains dots)
+            let hostPart = components[0]
+            let containerPart = components[1]
+            let hasIPv4 = hostPart.contains(".")
+            let hasIPv6 = hostPart.contains(":") && hostPart.hasPrefix("[") && hostPart.hasSuffix("]")
+            if hasIPv4 || hasIPv6 {
+                // IP:CONTAINER — only containerPart is a port number
+                try validatePort(containerPart, portSpec: portSpec, serviceName: serviceName)
+            } else {
+                // HOST:CONTAINER — both are port numbers
+                try validatePort(hostPart, portSpec: portSpec, serviceName: serviceName)
+                try validatePort(containerPart, portSpec: portSpec, serviceName: serviceName)
+            }
+        case 3:
+            // "IP:HOST:CONTAINER"
+            let hostPart = components[1]
+            let containerPart = components[2]
+            try validatePort(hostPart, portSpec: portSpec, serviceName: serviceName)
+            try validatePort(containerPart, portSpec: portSpec, serviceName: serviceName)
+        default:
+            throw ComposeValidationError.invalidPortFormat(portSpec: portSpec, serviceName: serviceName)
+        }
+    }
+
+    /// Validates that `portString` is a valid port number (0–65535).
+    /// Port ranges like "8080-8090" are also accepted as valid Compose syntax.
+    private static func validatePort(_ portString: String, portSpec: String, serviceName: String) throws {
+        // Support port ranges (e.g. "8080-8090")
+        if portString.contains("-") {
+            let rangeParts = portString.split(separator: "-", maxSplits: 1).map(String.init)
+            guard rangeParts.count == 2,
+                  let low = Int(rangeParts[0]),
+                  let high = Int(rangeParts[1]),
+                  low >= 0, low <= 65535,
+                  high >= 0, high <= 65535,
+                  low <= high
+            else {
+                throw ComposeValidationError.invalidPortFormat(portSpec: portSpec, serviceName: serviceName)
+            }
+            return
+        }
+        guard let portNum = Int(portString), portNum >= 0, portNum <= 65535 else {
+            throw ComposeValidationError.invalidPortFormat(portSpec: portSpec, serviceName: serviceName)
+        }
+    }
+
+    /// Performs a DFS cycle detection over the `depends_on` graph.
+    private func detectCircularDependencies(in services: [String: Service]) throws {
+        var visited: Set<String> = []
+        var currentPath: [String] = []
+
+        func dfs(service: String) throws {
+            if let idx = currentPath.firstIndex(of: service) {
+                // Cycle detected — build the chain from the cycle entry point to current
+                let cycle = Array(currentPath[idx...]) + [service]
+                throw ComposeValidationError.circularDependency(serviceChain: cycle)
+            }
+
+            guard !visited.contains(service) else { return }
+
+            currentPath.append(service)
+            if let deps = services[service]?.dependsOn {
+                for depName in deps.serviceNames {
+                    // Only recurse into services defined in this compose file
+                    if services[depName] != nil {
+                        try dfs(service: depName)
+                    }
+                }
+            }
+            currentPath.removeLast()
+            visited.insert(service)
+        }
+
+        for serviceName in services.keys {
+            try dfs(service: serviceName)
+        }
+    }
+}
