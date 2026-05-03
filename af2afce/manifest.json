@@ -1,0 +1,8 @@
+{
+  "branch": "review-notes",
+  "commit": "af2afcee3be699a2228c6781deb03d306ad6a0ad",
+  "short": "af2afce",
+  "target": "af2afce",
+  "message": "fix(commands): use effectiveContainerName() across non-Up/Down commands",
+  "published_at": "2026-05-03T20:50:44.294144+00:00"
+}
