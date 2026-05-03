@@ -135,13 +135,12 @@ public struct ComposeExec: AsyncParsableCommand, @unchecked Sendable {
 
         let service = allServices.first(where: { $0.serviceName == serviceName })?.service
 
-        // 4. Determine container name: use container_name override if set, else <project>-<service>
-        let containerName: String
-        if let explicit = service?.container_name {
-            containerName = explicit
-        } else {
-            containerName = "\(projectName)-\(serviceName)"
-        }
+        // 4. Determine container name honoring container_name override (CHAOS-1396).
+        let containerName = effectiveContainerName(
+            projectName: projectName,
+            serviceName: serviceName,
+            explicit: service?.container_name
+        )
 
         // 5. Build exec argv
         var execArgs: [String] = []
