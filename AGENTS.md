@@ -350,6 +350,14 @@ the broad `--no-parallel` workaround from CHAOS-1314.
   the hot path of `up`. Cycle detection there must keep throwing.
 - **Commits.** Small, focused commits. Rebuild with `make build` and run
   `swift test` before pushing.
+- **Background agents for long-running tasks.** Always dispatch test runs
+  (`swift test`, especially with `--no-parallel`), full builds, large
+  multi-file searches, and anything with a timeout/loop to a background
+  agent (`task(... run_in_background=true ...)`). The agent absorbs the
+  verbose output; only a structured pass/fail summary comes back to the
+  orchestrator. Reserve direct `swift test` calls in the main context for
+  single-suite, sub-30-second runs. Don't poll `background_output` — wait
+  for the `<system-reminder>`.
 
 ### High-leverage open work
 
