@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1398-down-removes-volumes-and-up-idempotent-create",
+  "commit": "11c8373661774cca6583b1d9d6f9647ab0d6a781",
+  "short": "11c8373",
+  "target": "11c8373",
+  "message": "test: fix stop_signal warn-once race + stale --stop-signal assertions",
+  "published_at": "2026-05-03T16:45:00.456394+00:00"
+}
