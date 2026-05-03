@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1336-reservations",
+  "commit": "3747281981245cde0672cab090a46621dc87e20c",
+  "short": "3747281",
+  "target": "3747281",
+  "message": "docs(agents): require background agents for long-running tasks",
+  "published_at": "2026-05-03T01:59:45.995798+00:00"
+}
