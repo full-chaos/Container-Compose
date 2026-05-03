@@ -19,6 +19,12 @@ import Testing
 @testable import ContainerComposeCore
 import TestHelpers
 
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+
 /// Regression coverage for CHAOS-1398: re-running `compose up` on a project with
 /// existing named volumes must NOT re-attempt creation. apple/container's
 /// `ClientVolume.create` writes a `volume.img` file and surfaces a Foundation
@@ -87,4 +93,65 @@ struct ComposeUpVolumeIdempotencyTests {
 
         #expect(didCreate == false)
     }
+
+    @Test("ensureNamedVolumeRegistered prints stale-volume warning when volume already exists")
+    func warnsWhenVolumeExists() async throws {
+        let runtime = RecordingRuntime()
+
+        let captured = try await Self.capturingStdout {
+            _ = try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await ComposeUp.ensureNamedVolumeRegistered(
+                    spec: RuntimeCreateVolumeSpec(name: "postgres_data"),
+                    existingVolumeNames: ["postgres_data"]
+                )
+            }
+        }
+
+        #expect(captured.contains("named volume 'postgres_data' already exists"),
+                "expected stale-volume warning to mention the volume name; got: \(captured)")
+        #expect(captured.contains("compose down -v"),
+                "expected warning to point users at the recovery command; got: \(captured)")
+    }
+
+    @Test("ensureNamedVolumeRegistered does NOT print stale-volume warning on fresh create")
+    func silentOnFreshCreate() async throws {
+        let runtime = RecordingRuntime()
+
+        let captured = try await Self.capturingStdout {
+            _ = try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await ComposeUp.ensureNamedVolumeRegistered(
+                    spec: RuntimeCreateVolumeSpec(name: "fresh_data"),
+                    existingVolumeNames: []
+                )
+            }
+        }
+
+        #expect(!captured.contains("already exists"),
+                "fresh create must not emit stale-volume warning; got: \(captured)")
+    }
+
+    /// Captures stdout for the duration of `block` by `dup2`-ing a pipe over
+    /// `STDOUT_FILENO`. Mirrors the established pattern in `LifecycleArgsTests`.
+    private static func capturingStdout(_ block: () async throws -> Void) async throws -> String {
+        fflush(stdout)
+        let original = dup(STDOUT_FILENO)
+        let pipe = Pipe()
+        guard original >= 0,
+              dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO) >= 0
+        else {
+            if original >= 0 { close(original) }
+            throw CaptureError.dupFailed
+        }
+        defer {
+            _ = dup2(original, STDOUT_FILENO)
+            close(original)
+        }
+        try await block()
+        fflush(stdout)
+        pipe.fileHandleForWriting.closeFile()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    private enum CaptureError: Error { case dupFailed }
 }

@@ -138,7 +138,11 @@ public struct ComposeDown: AsyncParsableCommand {
             })
         }
 
-        try await stopOldStuff(services, remove: false)
+        // When `-v` is passed, also remove containers — apple/container blocks
+        // volume removal while a container (even stopped) still references the
+        // volume, so we must delete the container before the volume cleanup.
+        // Without `-v`, preserve the historical "stop only" behavior.
+        try await stopOldStuff(services, remove: removeVolumes)
 
         if removeVolumes {
             await removeNamedVolumes(

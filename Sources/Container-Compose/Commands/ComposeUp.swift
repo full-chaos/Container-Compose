@@ -493,6 +493,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         existingVolumeNames: Set<String>
     ) async throws -> Bool {
         if existingVolumeNames.contains(spec.name) {
+            print("Warning: named volume '\(spec.name)' already exists from a previous run and was not torn down; reusing it. Run 'compose down -v' to start fresh.")
             return false
         }
         do {
