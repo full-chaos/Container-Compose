@@ -390,6 +390,38 @@ struct ConfigsSecretsRuntimeTests {
         #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "value=from-host-env")
     }
 
+    @Test("Config template_driver golang renders env function from project env")
+    func configTemplateDriverGolangRendersEnvFunctionFromProjectEnv() throws {
+        let projectName = tempProjectName("cfg-template-project-env")
+        let dir = configsSecretsDir(projectName: projectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let envName = "CHAOS_TEMPLATE_PROJECT_ENV_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+        unsetenv(envName)
+
+        let sc = ServiceConfig(source: "project_env_cfg", target: "/etc/project-env")
+        let topConfig = Config(content: "value={{ env \"\(envName)\" }}", templateDriver: "golang")
+        let service = Service(image: "alpine:latest", configs: [sc])
+        let dc = makeDockerCompose(configs: ["project_env_cfg": topConfig])
+        let ctx = ComposeUp.ArgsContext(
+            service: service,
+            serviceName: "svc",
+            projectName: projectName,
+            containerName: "\(projectName)-svc",
+            detach: false,
+            environmentVariables: [envName: "from-dot-env"],
+            dockerCompose: dc,
+            composeFilename: nil
+        )
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mount = try #require(volumeMounts(from: args).first)
+        let tempPath = hostPath(from: mount)
+        #expect(tempPath.hasPrefix(dir.path + "/"))
+        #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "value=from-dot-env")
+    }
+
     @Test("Config unknown template_driver keeps raw source")
     func configUnknownTemplateDriverKeepsRawSource() throws {
         let file = FileManager.default.temporaryDirectory.appending(path: "cfg-unknown-driver-\(UUID().uuidString)")

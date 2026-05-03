@@ -142,13 +142,14 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
 ///
 /// Supported syntax:
 /// - `{{ .VAR }}` — substituted with `env["VAR"]`, or empty string if missing
+/// - `{{ .Service.Name }}` — substituted from the supplied synthetic context
 /// - `{{ env "VAR" }}` / `{{ env "VAR" | default "x" }}` — equivalent function form
 /// - `{{ .VAR | default "fallback" }}` — pipeline default
 ///
 /// Unsupported syntax (control flow, complex pipelines, custom functions) is left
 /// untouched; the template is returned with those expressions as-is. Callers should
 /// document this limitation. See [CHAOS-1384](https://linear.app/fullchaos/issue/CHAOS-1384).
-public func renderGoTemplate(_ template: String, env: [String: String]) -> String {
+public func renderGoTemplate(_ template: String, env: [String: String], context: [String: String] = [:]) -> String {
     let blockRegex = try! NSRegularExpression(
         pattern: #"\{\{\s*(.*?)\s*\}\}"#,
         options: []
@@ -167,7 +168,7 @@ public func renderGoTemplate(_ template: String, env: [String: String]) -> Strin
         else { continue }
 
         let innerExpression = String(template[innerRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let replacement = renderGoTemplateExpression(innerExpression, env: env) else {
+        guard let replacement = renderGoTemplateExpression(innerExpression, env: env, context: context) else {
             rendered.replaceSubrange(renderedBlockRange, with: String(template[originalBlockRange]))
             continue
         }
@@ -178,10 +179,10 @@ public func renderGoTemplate(_ template: String, env: [String: String]) -> Strin
     return rendered
 }
 
-private func renderGoTemplateExpression(_ expression: String, env: [String: String]) -> String? {
+private func renderGoTemplateExpression(_ expression: String, env: [String: String], context: [String: String]) -> String? {
     let pipelineParts = expression.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
     let lookupExpression = pipelineParts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let lookup = parseGoTemplateLookup(lookupExpression, env: env) else {
+    guard let lookup = parseGoTemplateLookup(lookupExpression, env: env, context: context) else {
         return nil
     }
 
@@ -197,9 +198,9 @@ private func renderGoTemplateExpression(_ expression: String, env: [String: Stri
     return lookup.value ?? fallback
 }
 
-private func parseGoTemplateLookup(_ expression: String, env: [String: String]) -> (key: String, value: String?)? {
-    if let key = firstRegexCapture(in: expression, pattern: #"^\.([A-Za-z_][A-Za-z0-9_]*)$"#) {
-        return (key, env[key])
+private func parseGoTemplateLookup(_ expression: String, env: [String: String], context: [String: String]) -> (key: String, value: String?)? {
+    if let key = firstRegexCapture(in: expression, pattern: #"^\.([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)$"#) {
+        return (key, context[key] ?? env[key])
     }
 
     if let key = firstRegexCapture(in: expression, pattern: #"^env\s+\"([A-Za-z_][A-Za-z0-9_]*)\"$"#) {

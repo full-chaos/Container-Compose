@@ -186,7 +186,7 @@ extension ComposeUp {
 
             do {
                 let content = try String(contentsOfFile: rawSourcePath, encoding: .utf8)
-                let rendered = renderGoTemplate(content, env: ProcessInfo.processInfo.environment)
+                let rendered = renderGoTemplate(content, env: templateEnvironment(ctx), context: templateContext(ctx))
                 return writeTempFileOrWarn(
                     content: Data(rendered.utf8),
                     kind: "\(kind)-rendered",
@@ -210,7 +210,20 @@ extension ComposeUp {
                 return (content, kind)
             }
 
-            return (renderGoTemplate(content, env: ProcessInfo.processInfo.environment), "\(kind)-rendered")
+            return (renderGoTemplate(content, env: templateEnvironment(ctx), context: templateContext(ctx)), "\(kind)-rendered")
+        }
+
+        private static func templateEnvironment(_ ctx: ArgsContext) -> [String: String] {
+            ProcessInfo.processInfo.environment.merging(ctx.environmentVariables) { current, _ in current }
+        }
+
+        private static func templateContext(_ ctx: ArgsContext) -> [String: String] {
+            [
+                "Project.Name": ctx.projectName,
+                "Service.Name": ctx.serviceName,
+                "Task.Name": ctx.containerName,
+                "Node.Hostname": ProcessInfo.processInfo.environment["HOSTNAME"] ?? ""
+            ]
         }
 
         private static func templateDriverMode(_ templateDriver: String?, kind: String) -> TemplateDriverMode {
