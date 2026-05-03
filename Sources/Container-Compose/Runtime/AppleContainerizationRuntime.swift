@@ -302,6 +302,36 @@ public actor AppleContainerizationRuntime: Runtime {
         #endif
     }
 
+    // MARK: - Error mapping
+
+    /// Map an upstream error from `apple/containerization` (or any other
+    /// source) into the backend-neutral `RuntimeError` vocabulary.
+    ///
+    /// In Phase 1, the only upstream errors that reach this conformer come from
+    /// `ContainerRegistry` disk persistence (already mapped to
+    /// `RuntimeError.persistenceFailure`) or from `apple/containerization`
+    /// lifecycle APIs that Phase 2 will wire. This helper ensures that when
+    /// Phase 2 fills in the lifecycle bodies, unknown errors fall back to
+    /// `.backendFailure` instead of leaking `Containerization`-specific types
+    /// across the abstraction boundary.
+    ///
+    /// Well-known upstream-error mapping:
+    /// - Errors that are already a `RuntimeError` are passed through unchanged.
+    /// - `ContainerizationError` with a `.notFound` code → `.notFound(id:)`.
+    /// - All other errors → `.backendFailure(message:)`.
+    nonisolated private func mapUpstreamError(
+        _ error: Error,
+        id: String? = nil
+    ) -> RuntimeError {
+        if let re = error as? RuntimeError {
+            return re
+        }
+        // Phase 2 will add pattern matching on `Containerization.*Error` types
+        // (e.g. ContainerizationError(.notFound) → .notFound, image-pull errors
+        // → .imageNotFound). Add cases here as lifecycle bodies are filled in.
+        return .backendFailure(message: error.localizedDescription)
+    }
+
     // MARK: - Phase 2 anchor
 
     /// Compile-time anchor that documents the `apple/containerization` types

@@ -166,6 +166,28 @@ public protocol Runtime: Sendable {
 /// Errors a `Runtime` conformer can throw. Distinct from
 /// `ContainerizationError` (the upstream Swift package's error type) so call
 /// sites stay independent of any specific backend.
+///
+/// ## Upstream-error mapping convention
+///
+/// Each conformer is responsible for mapping its own backend-specific error
+/// types into the `RuntimeError` vocabulary at the point where it calls the
+/// upstream API. The mapping must be exhaustive: well-known upstream cases map
+/// to the specific `RuntimeError` that best describes the situation (e.g.
+/// `ContainerizationError(.notFound)` → `.notFound(id:)`), and every other
+/// upstream error falls back to `.backendFailure(message:)` so the abstraction
+/// boundary is never breached. Each conformer encapsulates this logic in a
+/// private `mapUpstreamError(_ error: Error, id: String? = nil) -> RuntimeError`
+/// helper so throw sites stay readable and the mapping is tested in one place.
+/// Example for the Bridge conformer:
+///
+/// ```swift
+/// private func mapUpstreamError(_ error: Error, id: String? = nil) -> RuntimeError {
+///     if let ce = error as? ContainerizationError, BridgeContainerClientRuntime.isNotFound(ce) {
+///         return .notFound(id: id ?? "unknown")
+///     }
+///     return .backendFailure(message: error.localizedDescription)
+/// }
+/// ```
 public enum RuntimeError: Error, Sendable, Equatable {
     case notFound(id: String)
     case alreadyExists(id: String)
