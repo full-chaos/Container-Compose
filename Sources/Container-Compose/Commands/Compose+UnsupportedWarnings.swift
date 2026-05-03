@@ -36,3 +36,15 @@ func warnUnsupportedRuntimeFieldOnce(_ key: String, _ message: @autoclosure () -
     guard inserted else { return }
     print(message())
 }
+
+/// Test-only entry point that clears the dedup set so each test method can
+/// re-trigger a given warning. Production code must never call this — the
+/// warn-once semantics are by design (avoid spamming users on every service
+/// in a compose file). Multiple test suites exercise overlapping warning
+/// keys, so per-suite (or per-test) reset is the only way to keep
+/// content-sensitive assertions stable across test orderings.
+internal func resetUnsupportedRuntimeFieldWarningsForTesting() {
+    unsupportedWarningsLock.withLock { keys in
+        keys.removeAll()
+    }
+}

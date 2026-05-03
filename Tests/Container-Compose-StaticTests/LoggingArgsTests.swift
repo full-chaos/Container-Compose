@@ -128,13 +128,14 @@ struct LoggingArgsTests {
         let logging = Logging(driver: "local", options: nil)
         let svc = Service(image: "alpine", stop_signal: "SIGTERM", logging: logging)
         let result = try args(svc)
-        #expect(result.contains("--stop-signal"))
+        // CHAOS-1397 Tier 0 R2: --stop-signal is warn-skipped (apple/container
+        // does not accept it). --log-driver/--log-opt remain unsupported on
+        // `container run` and stay absent. The test's spirit — "these fields
+        // parse together without producing forbidden flags" — is unchanged.
+        #expect(!result.contains("--stop-signal"))
+        #expect(!result.contains("SIGTERM"))
         #expect(!result.contains("--log-driver"))
         #expect(!result.contains("--log-opt"))
-        let stopIdx = result.firstIndex(of: "--stop-signal")
-        if let i = stopIdx {
-            #expect(result[result.index(after: i)] == "SIGTERM")
-        }
     }
 
     @Test("runtime and logging parse together without unsupported log flags")
