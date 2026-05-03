@@ -153,7 +153,7 @@ struct NetworkRuntimeOperationsTests {
     /// only assert that the route returns 201 (creation was attempted without
     /// error). A richer assertion requires RuntimeNetwork to carry subnet/gateway,
     /// which is deferred to a future phase.
-    // TODO(CHAOS-???): Once RuntimeNetwork carries subnet/gateway fields, add assertions
+    // TODO(CHAOS-1409): Once RuntimeNetwork carries subnet/gateway fields, add assertions
     //   that verify the spec fields are preserved post-creation.
     @Test("POST /networks with IPAM subnet/gateway succeeds (spec passthrough)")
     func postNetworkWithIPAMSucceeds() async throws {

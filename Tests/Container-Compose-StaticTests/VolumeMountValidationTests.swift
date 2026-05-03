@@ -238,7 +238,7 @@ struct VolumeMountValidationTests {
     // MARK: - Disabled: direct configVolume filesystem-side-effect tests
 
     @Test(
-        .disabled("CHAOS-???: configVolume is private; filesystem side-effects are tested via integration in VolumeMountIntegrationTests"),
+        .disabled("CHAOS-1410: configVolume is private; filesystem side-effects are tested via integration in VolumeMountIntegrationTests"),
         "Bind mount source non-existence should warn and skip the volume"
     )
     func bindMountNonExistentSourceWarnSkip() async throws {
@@ -249,7 +249,7 @@ struct VolumeMountValidationTests {
     }
 
     @Test(
-        .disabled("CHAOS-???: configVolume is private; bind-mount directory auto-creation is tested via integration"),
+        .disabled("CHAOS-1410: configVolume is private; bind-mount directory auto-creation is tested via integration"),
         "Bind mount source that is a file (not directory) should warn and skip"
     )
     func bindMountSourceIsFileNotDirectory() async throws {

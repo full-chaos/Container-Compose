@@ -30,7 +30,7 @@ by Container-Compose; the literal `$$PORT` string will be passed into the contai
 instead.  For most users this is invisible because they do not use `$$` escapes, but it is a
 spec-compliance gap.
 
-**Tracking:** A disabled test (`@Test(.disabled("CHAOS-???: ..."))`) in `ComposeParsingEdgeCaseTests.swift`
+**Tracking:** A disabled test (`@Test(.disabled("CHAOS-1411: ..."))`) in `ComposeParsingEdgeCaseTests.swift`
 documents the expected behavior.  A Linear issue should be filed under CHAOS if this is a priority.
 
 ---

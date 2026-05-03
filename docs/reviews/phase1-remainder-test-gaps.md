@@ -49,10 +49,10 @@ into `RuntimeCreateConfiguration`.
 
 ### Recommended follow-up
 
-- `TODO(CHAOS-???)`: Add `capabilities: (add: [String], drop: [String])?` to
+- `TODO(CHAOS-1407)`: Add `capabilities: (add: [String], drop: [String])?` to
   `RuntimeCreateConfiguration` and wire from `SecurityArgs` logic.
-- `TODO(CHAOS-???)`: Add `readOnly: Bool?` to `RuntimeCreateConfiguration`.
-- `TODO(CHAOS-???)`: Add `user: String?` to `RuntimeCreateConfiguration`.
+- `TODO(CHAOS-1407)`: Add `readOnly: Bool?` to `RuntimeCreateConfiguration`.
+- `TODO(CHAOS-1407)`: Add `user: String?` to `RuntimeCreateConfiguration`.
 - The three warn-and-skip fields (`security_opt`, `group_add`, `privileged`) do
   NOT need a counterpart in `RuntimeCreateConfiguration` today, because
   apple/container has no equivalent flags.  When apple/container gains support,
@@ -114,7 +114,7 @@ the spec inside the conformer.  The test for IPAM in
 `NetworkRuntimeOperationsTests` therefore only verifies that the route returns
 201 without error, not that the subnet is preserved.
 
-`TODO(CHAOS-???)`: Add `subnet` and `gateway` to `RuntimeNetwork` and assert
+`TODO(CHAOS-1409)`: Add `subnet` and `gateway` to `RuntimeNetwork` and assert
 they are preserved by `MockRuntime.createNetwork`.
 
 ### 3.2 `userns_mode` missing from security integration tests

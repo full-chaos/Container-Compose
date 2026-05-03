@@ -512,7 +512,7 @@ struct SecurityFeatureIntegrationTests {
     ///                            apple/container doesn't support it anyway)
     /// - `privileged`           → no field in `RuntimeCreateConfiguration` (and
     ///                            apple/container doesn't support it anyway)
-    // TODO(CHAOS-???): When security fields are wired into RuntimeCreateConfiguration,
+    // TODO(CHAOS-1407): When security fields are wired into RuntimeCreateConfiguration,
     //   add property-access assertions here for each new field and remove the
     //   corresponding gap entry from phase1-remainder-test-gaps.md.
     @Test("RuntimeCreateConfiguration does not yet expose security fields (gap baseline)")

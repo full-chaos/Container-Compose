@@ -358,7 +358,7 @@ struct ComposeParsingEdgeCaseTests {
 
     @Test(
         "Double-dollar $$ should produce literal $ per compose-spec",
-        .disabled("CHAOS-???: $$ literal dollar escape is not yet implemented in resolveVariable")
+        .disabled("CHAOS-1411: $$ literal dollar escape is not yet implemented in resolveVariable")
     )
     func doubleDollarShouldProduceLiteralDollar() {
         // compose-spec §12 states that $$ escapes to a literal $.
