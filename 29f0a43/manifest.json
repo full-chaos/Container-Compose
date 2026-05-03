@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1398-down-removes-volumes-and-up-idempotent-create",
+  "commit": "29f0a430bc66b87c11ca50fed0696797df40cf25",
+  "short": "29f0a43",
+  "target": "29f0a43",
+  "message": "fix(volumes): warn on stale reuse + remove containers under down -v (CHAOS-1398)",
+  "published_at": "2026-05-03T19:12:19.690890+00:00"
+}
