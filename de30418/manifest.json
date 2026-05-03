@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1405-volume-config-drift-warning",
+  "commit": "de304180b29522e007db8e99f55fc4f4e47bdd72",
+  "short": "de30418",
+  "target": "de30418",
+  "message": "feat(volumes): warn on config drift when reusing existing named volume (CHAOS-1405)",
+  "published_at": "2026-05-03T19:46:40.547804+00:00"
+}
