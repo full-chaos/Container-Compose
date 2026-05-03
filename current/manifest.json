@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "a4ecbf82b4a11d63e5334e5b1b83cc5d65a7dccf",
-  "short": "a4ecbf8",
+  "commit": "2b36e4c20719ed92d1b9619f75f827326f857f51",
+  "short": "2b36e4c",
   "target": "current",
-  "message": "feat(args): Tier 0 R2 \u2014 stop emitting unsupported flags + sync build emission across Up/Create/Build (CHAOS-1397) (#93)",
-  "published_at": "2026-05-03T13:47:55.545583+00:00"
+  "message": "fix(volumes): idempotent up create + add down -v cleanup (CHAOS-1398) (#94)",
+  "published_at": "2026-05-03T19:33:14.786947+00:00"
 }
