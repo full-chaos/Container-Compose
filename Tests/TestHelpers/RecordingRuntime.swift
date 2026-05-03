@@ -62,6 +62,10 @@ public actor RecordingRuntime: Runtime {
     private let eventsError: RuntimeError?
     private let logsError: RuntimeError?
     private let statisticsError: RuntimeError?
+    /// If set, `createNetwork(spec:)` throws this error instead of succeeding.
+    private let createNetworkError: RuntimeError?
+    /// If set, `removeNetwork(id:)` throws this error instead of the default not-found check.
+    private let removeNetworkError: RuntimeError?
     /// Single-snapshot shorthand. If set, `statistics(for:)` always returns this value.
     private let stubbedStatistics: RuntimeStatistics?
     /// Sequence of snapshots for streaming tests. The polling loop drains the
@@ -79,6 +83,8 @@ public actor RecordingRuntime: Runtime {
         eventsError: RuntimeError? = nil,
         logsError: RuntimeError? = nil,
         statisticsError: RuntimeError? = nil,
+        createNetworkError: RuntimeError? = nil,
+        removeNetworkError: RuntimeError? = nil,
         stubbedStatistics: RuntimeStatistics? = nil,
         stubbedStatisticsSequence: [RuntimeStatistics] = []
     ) {
@@ -91,6 +97,8 @@ public actor RecordingRuntime: Runtime {
         self.eventsError = eventsError
         self.logsError = logsError
         self.statisticsError = statisticsError
+        self.createNetworkError = createNetworkError
+        self.removeNetworkError = removeNetworkError
         self.stubbedStatistics = stubbedStatistics
         self.stubbedStatisticsSequence = stubbedStatisticsSequence
     }
@@ -222,6 +230,9 @@ public actor RecordingRuntime: Runtime {
 
     public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
         entries.append(.createNetwork(name: spec.name))
+        if let createNetworkError {
+            throw createNetworkError
+        }
         return RuntimeNetwork(
             id: UUID().uuidString,
             name: spec.name,
@@ -233,6 +244,9 @@ public actor RecordingRuntime: Runtime {
 
     public func removeNetwork(id: String) async throws {
         entries.append(.removeNetwork(id: id))
+        if let removeNetworkError {
+            throw removeNetworkError
+        }
         guard stubbedNetworks.contains(where: { $0.id == id }) else {
             throw RuntimeError.notFound(id: id)
         }
