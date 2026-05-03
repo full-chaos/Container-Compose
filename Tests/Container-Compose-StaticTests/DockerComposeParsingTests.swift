@@ -216,7 +216,7 @@ struct DockerComposeParsingTests {
         #expect(compose.services["app"]??.command?.first == "sh")
     }
     
-    @Test("Parse compose with command as string")
+    @Test("Parse compose with command as tokenized string")
     func parseComposeWithCommandString() throws {
         let yaml = """
         version: '3.8'
@@ -229,8 +229,7 @@ struct DockerComposeParsingTests {
         let decoder = YAMLDecoder()
         let compose = try decoder.decode(DockerCompose.self, from: yaml)
         
-        #expect(compose.services["app"]??.command?.count == 1)
-        #expect(compose.services["app"]??.command?.first == "echo hello")
+        #expect(compose.services["app"]??.command == ["echo", "hello"])
     }
     
     @Test("Parse compose with restart policy")
