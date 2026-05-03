@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1384-template-driver",
+  "commit": "33130c844d44569f2d62c645536d6e54af1447ee",
+  "short": "33130c8",
+  "target": "33130c8",
+  "message": "fix(configs): merge project env into template context (CHAOS-1384)",
+  "published_at": "2026-05-03T12:49:42.325908+00:00"
+}
