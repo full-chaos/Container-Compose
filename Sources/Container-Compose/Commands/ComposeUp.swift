@@ -119,6 +119,12 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private var didWarnServiceModelsUnsupported = false
     private var didWarnServiceProviderUnsupported = false
     private var preparedNamedVolumes: Set<String> = []
+    /// CHAOS-1398: snapshot of volume names already in the runtime registry,
+    /// loaded once per `up` and consulted before each `createVolume` call so
+    /// the create path doesn't re-trigger apple/container's "volume.img
+    /// already exists" filesystem error on re-runs.
+    private var existingNamedVolumeRegistryCache: Set<String> = []
+    private var existingNamedVolumeRegistryCacheLoaded: Bool = false
 
     private static let availableContainerConsoleColors: Set<NamedColor> = [
         .blue, .cyan, .magenta, .lightBlack, .lightBlue, .lightCyan, .lightYellow, .yellow, .lightGreen, .green,
@@ -434,23 +440,70 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
                     throw ComposeError.externalVolumeNotFound(actualVolumeName)
                 }
             } else {
-                do {
-                    _ = try await RuntimeEnvironment.current.createVolume(
-                        spec: RuntimeCreateVolumeSpec(
-                            name: actualVolumeName,
-                            driver: driver,
-                            labels: volumeConfig?.labels ?? [:],
-                            driverOptions: volumeConfig?.driver_opts ?? [:]
-                        )
-                    )
-                } catch RuntimeError.alreadyExists {
-                    // Existing named volume is fine; continue with the runtime-managed path.
-                }
+                await ensureExistingVolumeRegistryCacheLoaded()
+                _ = try await Self.ensureNamedVolumeRegistered(
+                    spec: RuntimeCreateVolumeSpec(
+                        name: actualVolumeName,
+                        driver: driver,
+                        labels: volumeConfig?.labels ?? [:],
+                        driverOptions: volumeConfig?.driver_opts ?? [:]
+                    ),
+                    existingVolumeNames: existingNamedVolumeRegistryCache
+                )
+                existingNamedVolumeRegistryCache.insert(actualVolumeName)
             }
             try await migrateLegacyNamedVolumeDataIfNeeded(projectName: projectName, actualVolumeName: actualVolumeName)
         }
 
         return PreparedVolumeSource(mountSource: actualVolumeName, actualName: actualVolumeName, usesLegacyFallback: false)
+    }
+
+    /// Lazily populates `existingNamedVolumeRegistryCache` from
+    /// `RuntimeEnvironment.current.listVolumes()` on first use. Idempotent:
+    /// subsequent calls within the same `up` are no-ops. If listing fails
+    /// (e.g. backend unreachable), the cache is left empty and the create
+    /// path will still attempt a create+catch-alreadyExists.
+    private mutating func ensureExistingVolumeRegistryCacheLoaded() async {
+        guard !existingNamedVolumeRegistryCacheLoaded else { return }
+        existingNamedVolumeRegistryCacheLoaded = true
+        do {
+            let listed = try await RuntimeEnvironment.current.listVolumes()
+            existingNamedVolumeRegistryCache = Set(listed.map(\.name))
+        } catch {
+            writeWarningToStandardError(
+                "Warning: could not list existing volumes from runtime; falling back to create-and-catch-alreadyExists. Error: \(error)"
+            )
+        }
+    }
+
+    /// Registers a named volume with the runtime if and only if it's not
+    /// already in `existingVolumeNames`. Returns `true` if a `createVolume`
+    /// call was actually issued, `false` if the volume was already present
+    /// (or a race surfaced `RuntimeError.alreadyExists` from the create path).
+    ///
+    /// CHAOS-1398: apple/container's `ClientVolume.create` can fail with a
+    /// Foundation NSCocoaErrorDomain error ("file with the same name already
+    /// exists") when re-creating an existing volume because the on-disk
+    /// `volume.img` is already there. That error doesn't map to
+    /// `RuntimeError.alreadyExists` cleanly, so checking the registry list
+    /// first is more robust than relying on error string matching.
+    @discardableResult
+    internal static func ensureNamedVolumeRegistered(
+        spec: RuntimeCreateVolumeSpec,
+        existingVolumeNames: Set<String>
+    ) async throws -> Bool {
+        if existingVolumeNames.contains(spec.name) {
+            print("Warning: named volume '\(spec.name)' already exists from a previous run and was not torn down; reusing it. Run 'compose down -v' to start fresh.")
+            return false
+        }
+        do {
+            _ = try await RuntimeEnvironment.current.createVolume(spec: spec)
+            return true
+        } catch RuntimeError.alreadyExists {
+            // Race-condition backstop: someone else created it between our
+            // listVolumes() and createVolume() calls.
+            return false
+        }
     }
 
     /// Maps a compose `networks.<name>.driver` value to the argv fragment for
@@ -960,9 +1013,9 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         let source = components[0]
         let destination = components[1]
 
-        // Check if the source looks like a host path (contains '/' or starts with '.')
+        // Check if the source looks like a host path (contains '/' or starts with '.').
         // This heuristic helps distinguish bind mounts from named volume references.
-        if source.contains("/") || source.starts(with: ".") || source.starts(with: "..") {
+        if !isNamedVolumeSource(source) {
             // This is likely a bind mount (local path to container path)
             var isDirectory: ObjCBool = false
             // Ensure the path is absolute or relative to the current directory for FileManager

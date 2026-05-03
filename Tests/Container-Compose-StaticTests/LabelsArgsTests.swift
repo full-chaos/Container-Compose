@@ -118,12 +118,12 @@ struct LabelsArgsTests {
         #expect(labelPairs[0].0 == "--label")
         #expect(labelPairs[0].1 == "env=test")
 
-        // Lifecycle side: --stop-signal present
-        #expect(lifecycleArgs.contains("--stop-signal"))
-        let idx = lifecycleArgs.firstIndex(of: "--stop-signal")
-        if let i = idx {
-            #expect(lifecycleArgs[lifecycleArgs.index(after: i)] == "SIGUSR1")
-        }
+        // Lifecycle side: --stop-signal warn-skipped after CHAOS-1397 Tier 0 R2
+        // (apple/container does not accept --stop-signal). The original
+        // intent of this test — "labels and lifecycle don't cross-contaminate
+        // each other's args" — is preserved by asserting both sides are clean.
+        #expect(!lifecycleArgs.contains("--stop-signal"))
+        #expect(!lifecycleArgs.contains("SIGUSR1"))
 
         // No cross-contamination: labels args must not contain --stop-signal
         #expect(!labelsArgs.contains("--stop-signal"))

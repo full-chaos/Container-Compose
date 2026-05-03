@@ -803,4 +803,27 @@ public struct Service: Codable, Hashable {
 
         return sorted
     }
+
+    /// Returns the set of named-volume sources referenced in this service's
+    /// `volumes:` list. Bind mounts (sources containing `/` or beginning with
+    /// `.` / `..`) are excluded — they're host paths, not registry-owned
+    /// volumes. Used by `compose down -v` to scope volume removal: a top-level
+    /// named volume is "exclusive" to a partial-down target only if every
+    /// service that references it is in the target set.
+    ///
+    /// Mirrors the named-vs-bind heuristic in `ComposeUp.configVolume`.
+    public func referencedNamedVolumes() -> Set<String> {
+        guard let volumes else { return [] }
+        var result: Set<String> = []
+        for entry in volumes {
+            let components = entry.split(separator: ":", maxSplits: 2).map(String.init)
+            guard components.count >= 2 else { continue }
+            let source = components[0]
+            if !isNamedVolumeSource(source) {
+                continue
+            }
+            result.insert(source)
+        }
+        return result
+    }
 }

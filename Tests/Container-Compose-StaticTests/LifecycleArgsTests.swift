@@ -29,6 +29,16 @@ import Glibc
 @Suite("LifecycleArgs Tests", .serialized)
 struct LifecycleArgsTests {
 
+    /// Reset the process-wide warn-once dedup set before each test so the
+    /// warn-content assertions (`captured.output.contains("Note: ...")`)
+    /// don't flake based on which other suite ran first. Sibling suites
+    /// like `LabelsArgsTests` and `LoggingArgsTests` also invoke
+    /// `LifecycleArgs.build` with `stop_signal`/`stop_grace_period`,
+    /// which would otherwise consume the one-shot warning.
+    init() {
+        resetUnsupportedRuntimeFieldWarningsForTesting()
+    }
+
     // MARK: - Helpers
 
     private func makeDockerCompose() -> DockerCompose {

@@ -485,7 +485,7 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
         let source = components[0]
         let destination = components[1]
 
-        if source.contains("/") || source.starts(with: ".") || source.starts(with: "..") {
+        if !isNamedVolumeSource(source) {
             var isDirectory: ObjCBool = false
             let fullHostPath = (source.starts(with: "/") || source.starts(with: "~")) ? source : (cwd + "/" + source)
 
