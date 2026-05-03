@@ -37,6 +37,12 @@ public struct ComposeDown: AsyncParsableCommand {
     @Argument(help: "Specify the services to stop")
     var services: [String] = []
 
+    @Flag(
+        name: [.customShort("v"), .customLong("volumes")],
+        help: "Remove named volumes declared in the compose file. On partial down, only volumes exclusive to the targeted services are removed; volumes shared with sibling services outside the target are kept."
+    )
+    var removeVolumes: Bool = false
+
     @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
     var profile: [String] = []
 
@@ -134,7 +140,83 @@ public struct ComposeDown: AsyncParsableCommand {
 
         try await stopOldStuff(services, remove: false)
 
+        if removeVolumes {
+            await removeNamedVolumes(
+                from: dockerCompose,
+                targetedServiceNames: Set(services.map(\.serviceName)),
+                isFullProjectDown: self.services.isEmpty
+            )
+        }
+
         cleanupConfigsSecretsTempDirIfFullProjectDown()
+    }
+
+    /// CHAOS-1398: Removes top-level named volumes declared in the compose
+    /// file via `RuntimeEnvironment.current.removeVolume(name:)`. Externals
+    /// are always skipped (user-managed). On a partial-project down, a
+    /// volume is removed only when it's exclusive to the targeted services —
+    /// volumes referenced by sibling services outside the target are kept,
+    /// and volumes not referenced by any targeted service are kept too.
+    /// Removal errors other than `.notFound` are logged but do not abort
+    /// the down (consistent with how container removal handles errors).
+    private func removeNamedVolumes(
+        from dockerCompose: DockerCompose,
+        targetedServiceNames: Set<String>,
+        isFullProjectDown: Bool
+    ) async {
+        guard let volumes = dockerCompose.volumes, !volumes.isEmpty else { return }
+
+        let outsideTargetVolumes: Set<String> = isFullProjectDown
+            ? []
+            : Self.namedVolumesReferenced(by: dockerCompose, matching: { !targetedServiceNames.contains($0) })
+        let insideTargetVolumes: Set<String> = isFullProjectDown
+            ? []
+            : Self.namedVolumesReferenced(by: dockerCompose, matching: { targetedServiceNames.contains($0) })
+
+        print("\n--- Removing Volumes ---")
+        for (volumeName, volumeConfig) in volumes {
+            if volumeConfig?.external?.isExternal == true {
+                print("Skipping external volume: \(volumeName)")
+                continue
+            }
+
+            let actualVolumeName = volumeConfig?.name ?? volumeName
+
+            if !isFullProjectDown {
+                if outsideTargetVolumes.contains(volumeName) {
+                    print("Skipping shared volume '\(actualVolumeName)' (referenced by services outside the partial-down target)")
+                    continue
+                }
+                if !insideTargetVolumes.contains(volumeName) {
+                    print("Skipping volume '\(actualVolumeName)' (not referenced by any targeted service)")
+                    continue
+                }
+            }
+
+            do {
+                try await RuntimeEnvironment.current.removeVolume(name: actualVolumeName)
+                print("Removed volume: \(actualVolumeName)")
+            } catch RuntimeError.notFound {
+                // Already gone — idempotent.
+            } catch {
+                print("Error removing volume '\(actualVolumeName)': \(error)")
+            }
+        }
+        print("--- Volumes Removed ---\n")
+    }
+
+    /// Helper for `removeNamedVolumes`: collects all named-volume sources
+    /// referenced across services whose name matches `predicate`.
+    private static func namedVolumesReferenced(
+        by dockerCompose: DockerCompose,
+        matching predicate: (String) -> Bool
+    ) -> Set<String> {
+        var result: Set<String> = []
+        for (name, serviceOpt) in dockerCompose.services {
+            guard let service = serviceOpt, predicate(name) else { continue }
+            result.formUnion(service.referencedNamedVolumes())
+        }
+        return result
     }
 
     /// Removes content-addressed configs/secrets temp files only for a full-project
