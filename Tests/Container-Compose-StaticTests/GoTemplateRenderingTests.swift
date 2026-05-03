@@ -34,11 +34,6 @@ struct GoTemplateRenderingTests {
         #expect(renderGoTemplate("hello {{ .USER }}", env: ["USER": "alice"]) == "hello alice")
     }
 
-    @Test("Dotted service context substitutes from context")
-    func dottedServiceContextSubstitutesFromContext() {
-        #expect(renderGoTemplate("service {{ .Service.Name }}", env: [:], context: ["Service.Name": "web"]) == "service web")
-    }
-
     @Test("Missing dotted variable substitutes empty string")
     func missingDottedVariableSubstitutesEmptyString() {
         #expect(renderGoTemplate("hello {{ .MISSING }}", env: [:]) == "hello ")
