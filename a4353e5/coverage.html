@@ -1,0 +1,1981 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Container-Compose · compose-spec coverage</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232c;
+    --border: #2a313c;
+    --text: #e6edf3;
+    --muted: #9ba9b6;
+    --accent: #58a6ff;
+    --good: #2ea043;
+    --good-bg: rgba(46,160,67,.12);
+    --warn: #d29922;
+    --warn-bg: rgba(210,153,34,.14);
+    --bad: #f85149;
+    --bad-bg: rgba(248,81,73,.14);
+    --neutral: #6e7681;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f8fa;
+      --panel: #ffffff;
+      --panel-2: #f0f3f6;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --muted: #57606a;
+      --accent: #0969da;
+      --good: #1a7f37;
+      --good-bg: rgba(26,127,55,.12);
+      --warn: #9a6700;
+      --warn-bg: rgba(154,103,0,.14);
+      --bad: #cf222e;
+      --bad-bg: rgba(207,34,46,.10);
+      --neutral: #6e7681;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header {
+    padding: 28px 32px 12px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+  }
+  header h1 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header nav { margin-top: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+  header nav a { font-size: 13px; }
+  main { padding: 24px 32px 60px; max-width: 1280px; margin: 0 auto; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+    gap: 12px; margin-bottom: 24px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); }
+  .stat .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .stat .pct  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .controls {
+    display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 14px;
+  }
+  .controls .group { display: flex; gap: 6px; align-items: center; }
+  .controls .group span.lbl { font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .08em; margin-right: 2px; }
+  .chip {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; cursor: pointer; user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip[aria-pressed="true"] { background: var(--accent); color: white;
+    border-color: var(--accent); }
+  .controls input[type="search"] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; font: inherit; min-width: 220px; flex: 1;
+  }
+  .group-section { margin-top: 28px; }
+  .group-section h2 {
+    font-size: 16px; margin: 0 0 8px; display: flex; align-items: baseline; gap: 10px;
+  }
+  .group-section h2 .meta {
+    font-size: 12px; color: var(--muted); font-weight: 400;
+  }
+  .group-section .note {
+    color: var(--muted); font-size: 12px; margin-bottom: 8px;
+  }
+  table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left; padding: 9px 12px; font-size: 13px;
+    border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  th {
+    background: var(--panel-2); color: var(--muted);
+    font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+    cursor: pointer; user-select: none;
+  }
+  th[data-sort]::after { content: " ↕"; color: var(--neutral); font-size: 10px; }
+  th.sorted-asc::after  { content: " ↑"; color: var(--accent); }
+  th.sorted-desc::after { content: " ↓"; color: var(--accent); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr.coverage-row:hover { background: var(--panel-2); }
+  tbody tr.coverage-row.drillable { cursor: pointer; }
+  tbody tr.coverage-row.drillable:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: -2px;
+  }
+  tbody tr.coverage-row.open { background: var(--panel-2); }
+  tbody tr.coverage-row.open td { border-bottom-color: transparent; }
+  td.feature { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; }
+  .feature-wrap { display: flex; align-items: center; gap: 8px; }
+  .drill-cue {
+    width: 18px; height: 18px; border: 1px solid var(--border); border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--muted); font: 11px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    transition: border-color .16s ease, color .16s ease, transform .16s ease;
+    flex: 0 0 auto;
+  }
+  tr.drillable:hover .drill-cue,
+  tr.drillable.open .drill-cue { border-color: var(--accent); color: var(--accent); }
+  tr.drillable.open .drill-cue { transform: rotate(90deg); }
+  td.notes { color: var(--muted); font-size: 12px; max-width: 480px; }
+  .detail-row { display: none; background: linear-gradient(180deg, var(--panel-2), var(--panel)); }
+  .detail-row.open { display: table-row; }
+  .detail-cell { padding: 0 12px 14px 42px; border-bottom: 1px solid var(--border); }
+  .detail-panel {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: var(--panel); box-shadow: 0 14px 32px rgba(0,0,0,.18);
+  }
+  .detail-head {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 12px 14px; background: var(--panel-2); border-bottom: 1px solid var(--border);
+  }
+  .detail-title { font-weight: 700; letter-spacing: -.01em; }
+  .detail-kicker { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .detail-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0; border-top: 0;
+  }
+  .detail-card { padding: 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .detail-card:nth-child(4n) { border-right: none; }
+  .detail-card h3 {
+    margin: 0 0 7px; color: var(--muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .08em;
+  }
+  .detail-card p { margin: 0; color: var(--text); font-size: 13px; }
+  .detail-card ul { margin: 0; padding-left: 18px; color: var(--text); }
+  .detail-card li { margin: 3px 0; }
+  .detail-card code,
+  .anchor-chip {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px;
+    padding: 1px 5px; font: 12px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .anchor-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .drilldown-hint {
+    color: var(--muted); font-size: 12px; margin: -4px 0 16px;
+  }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  }
+  .pill.ok      { color: var(--good); background: var(--good-bg); }
+  .pill.partial { color: var(--warn); background: var(--warn-bg); }
+  .pill.miss    { color: var(--bad);  background: var(--bad-bg);  }
+  .bar {
+    display: inline-block; width: 96px; height: 8px; background: var(--panel-2);
+    border-radius: 4px; overflow: hidden; vertical-align: middle; margin-right: 8px;
+  }
+  .bar > span { display: block; height: 100%; float: left; }
+  .bar .ok      { background: var(--good); }
+  .bar .partial { background: var(--warn); }
+  footer {
+    color: var(--muted); font-size: 12px; padding: 24px 32px;
+    border-top: 1px solid var(--border); text-align: center;
+  }
+  .empty { padding: 32px; text-align: center; color: var(--muted); display: none; }
+  .empty.shown { display: block; }
+  .anchor-callout {
+    background: var(--panel); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 6px;
+    padding: 12px 16px; margin: 0 0 18px; font-size: 13px;
+  }
+  .anchor-callout strong { color: var(--accent); }
+  .anchor-callout code {
+    background: var(--panel-2); padding: 1px 5px; border-radius: 4px;
+    font-size: 12px;
+  }
+  #download-json { font-size: 12px; color: var(--accent); margin-left: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Container-Compose · compose-spec coverage</h1>
+  <div class="sub">
+    Feature-by-feature compliance audit of <code>Container-Compose</code> against
+    <a href="https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json">compose-spec.json</a>.
+    Anchored on <a href="https://github.com/compose-spec/compose-go/blob/main/schema/compose-spec.json#L277-L310"><code>depends_on</code> (L277-L310)</a>.
+  </div>
+  <nav>
+    <a href="https://github.com/Mcrich23/Container-Compose">Repository</a>
+    <a href="./AGENTS.md">AGENTS.md</a>
+    <a href="https://github.com/compose-spec/compose-spec/blob/main/spec.md">Compose-spec docs</a>
+    <a href="https://github.com/apple/container">Apple Container</a>
+  </nav>
+</header>
+
+<main>
+  <div class="anchor-callout">
+    <strong>Anchor section: <code>depends_on</code> (compose-spec.json L277-L310)</strong>
+    Schema accepts either a list of service names or an object map with
+    <code>condition</code> ∈ {<code>service_started</code>, <code>service_healthy</code>,
+    <code>service_completed_successfully</code>}, <code>required</code> (bool),
+    <code>restart</code> (bool|string).
+    Container-Compose supports list and object forms, including condition gates for started,
+    healthy, and completed-successfully dependencies; click the rows below for implementation anchors.
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="controls" id="controls">
+    <div class="group">
+      <span class="lbl">Status</span>
+      <button class="chip" data-filter="status" data-value="all" aria-pressed="true">All</button>
+      <button class="chip" data-filter="status" data-value="ok">Implemented</button>
+      <button class="chip" data-filter="status" data-value="partial">Partial</button>
+      <button class="chip" data-filter="status" data-value="miss">Missing</button>
+    </div>
+    <div class="group">
+      <span class="lbl">Tested</span>
+      <button class="chip" data-filter="tested" data-value="all" aria-pressed="true">Any</button>
+      <button class="chip" data-filter="tested" data-value="yes">Yes</button>
+      <button class="chip" data-filter="tested" data-value="no">No</button>
+    </div>
+    <input id="search" type="search" placeholder="Search feature, notes…" autocomplete="off" />
+  </div>
+  <div class="drilldown-hint">Click any feature row to drill into what works, where it is implemented, and what remains for Compose parity.</div>
+
+  <div id="groups"></div>
+  <div class="empty" id="empty">No features match the current filter.</div>
+</main>
+
+<footer>
+  Container-Compose · MIT License · Generated <span id="ts"></span>
+</footer>
+
+<script id="coverage-data" type="application/json">
+{
+  "anchor": "compose-spec.json#L277-L310",
+  "groups": [
+    {
+      "id": "depends_on",
+      "title": "depends_on (anchor \u2014 compose-spec.json L277-L310)",
+      "note": "User-anchored section. List/object forms and condition gates are wired end-to-end.",
+      "rows": [
+        [
+          "shm_size",
+          "partial",
+          "yes",
+          "Decoded; emits --shm-size, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "depends_on (object form)",
+          "ok",
+          "yes",
+          "DependsOn type accepts list/single/object form. Service.dependsOn: DependsOn?."
+        ],
+        [
+          "condition: service_started",
+          "ok",
+          "yes",
+          "waitForCondition(.serviceStarted) gates dependents in configService."
+        ],
+        [
+          "condition: service_healthy",
+          "ok",
+          "yes",
+          "Honored at the gate; checks container.health == .healthy via fork-patched full-chaos/container (CHAOS-1319, ContainerSnapshot.health field). Falls back to .running if no healthcheck is configured. Upstream apple/container does not yet expose health on snapshots."
+        ],
+        [
+          "condition: service_completed_successfully",
+          "ok",
+          "yes",
+          "Honored at the gate; verifies snapshot.lastExitCode == 0 via fork-patched full-chaos/container (CHAOS-1320). Throws ComposeWaitError.nonZeroExitCode on non-zero exit. Falls back to .stopped-only on upstream apple/container (which does not expose lastExitCode)."
+        ],
+        [
+          "required (bool, default true)",
+          "ok",
+          "yes",
+          "DependsOnEntry.required gates whether errors propagate or are warned."
+        ],
+        [
+          "restart (bool|string)",
+          "ok",
+          "yes",
+          "Parsed on DependsOnEntry. Restart policy now emitted as --restart flag via fork-patched container run support."
+        ]
+      ]
+    },
+    {
+      "id": "top",
+      "title": "Top-level Compose keys",
+      "note": "Fields directly under the compose-file root.",
+      "rows": [
+        [
+          "version",
+          "ok",
+          "yes",
+          "Decoded; logged but otherwise ignored at runtime."
+        ],
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as project prefix for container names."
+        ],
+        [
+          "services",
+          "ok",
+          "yes",
+          "[String: Service?] map; service-by-service orchestration in ComposeUp."
+        ],
+        [
+          "networks",
+          "ok",
+          "yes",
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority."
+        ],
+        [
+          "volumes",
+          "ok",
+          "yes",
+          "Implemented via runtime volume CRUD (CHAOS-1368, PR #85). Local-driver volumes use `container volume create` registry; `container run -v <name>:<path>` resolves named volumes via apple/container's `Parser.volume(...)`. driver_opts and labels propagate to runtime. Legacy hardlink-dir data migrated on first use without deletion. Non-`local` drivers warn-and-skip with a clearer fallback notice."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "configs",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:<target> per service.configs entry; uid/gid/mode parsed but not enforced via -v."
+        ],
+        [
+          "include",
+          "ok",
+          "yes",
+          "DockerCompose.loadAndMerge resolves includes recursively with cycle protection."
+        ],
+        [
+          "models",
+          "partial",
+          "yes",
+          "Decoded as top-level Model definitions; compose up warn-skips because AI model provisioning is not wired to Apple container."
+        ]
+      ]
+    },
+    {
+      "id": "service",
+      "title": "Service properties (89 in spec)",
+      "note": "Implemented at parse-and-runtime, parse-only, or unmodeled.",
+      "rows": [
+        [
+          "image",
+          "ok",
+          "yes",
+          "Pulled via ClientImage.list / ImagePull before running."
+        ],
+        [
+          "build",
+          "ok",
+          "yes",
+          "Build struct (context, dockerfile, args). Routed to Application.BuildCommand."
+        ],
+        [
+          "command",
+          "ok",
+          "yes",
+          "Accepts string or [String]; appended after image in argv."
+        ],
+        [
+          "container_name",
+          "ok",
+          "yes",
+          "Overrides default <project>-<service>."
+        ],
+        [
+          "depends_on",
+          "ok",
+          "yes",
+          "List and object forms are decoded through DependsOn; condition/required/restart semantics are covered in the anchor section above."
+        ],
+        [
+          "deploy",
+          "partial",
+          "yes",
+          "Parsed; only deploy.resources.limits.cpus/memory honored at runtime."
+        ],
+        [
+          "entrypoint",
+          "ok",
+          "yes",
+          "Accepts string or [String]; passed via --entrypoint."
+        ],
+        [
+          "env_file",
+          "ok",
+          "yes",
+          "List of paths; loaded via loadEnvFile() and merged."
+        ],
+        [
+          "environment",
+          "ok",
+          "yes",
+          "Map; ${VAR} substitution; running container IPs replace bare service-name values."
+        ],
+        [
+          "healthcheck",
+          "partial",
+          "yes",
+          "Parsed (test/interval/timeout/retries/start_period). Not enforced \u2014 startup never waits on healthy state."
+        ],
+        [
+          "hostname",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --hostname."
+        ],
+        [
+          "platform",
+          "ok",
+          "yes",
+          "--platform applied; split into --os/--arch for builds."
+        ],
+        [
+          "ports",
+          "ok",
+          "yes",
+          "Parsed via composePortToRunArg; supports IPv4/IPv6, protocol, host:container."
+        ],
+        [
+          "privileged",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --privileged."
+        ],
+        [
+          "read_only",
+          "ok",
+          "yes",
+          "Adds --read-only."
+        ],
+        [
+          "restart",
+          "ok",
+          "yes",
+          "Decoded and applied; emits --restart flag via fork-patched full-chaos/container (CHAOS-1321). Upstream apple/container does not yet have --restart — would be a Tier 0 silent failure if fork is dropped. Upstream FR tracked in CHAOS-1385."
+        ],
+        [
+          "stdin_open",
+          "ok",
+          "yes",
+          "Adds -i flag."
+        ],
+        [
+          "tty",
+          "ok",
+          "yes",
+          "Adds -t flag."
+        ],
+        [
+          "user",
+          "ok",
+          "yes",
+          "Adds --user."
+        ],
+        [
+          "volumes",
+          "ok",
+          "yes",
+          "[String] of source:dest[:mode]; bind mounts created if missing."
+        ],
+        [
+          "working_dir",
+          "ok",
+          "yes",
+          "Adds --workdir."
+        ],
+        [
+          "configs",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:<target> per service.configs entry; uid/gid/mode parsed but not enforced via -v."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "networks",
+          "partial",
+          "yes",
+          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority; service-level aliases are parsed but ignored at runtime with a warning because Apple container does not support --alias."
+        ],
+        [
+          "annotations",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — labels variant; no apple/container equivalent."
+        ],
+        [
+          "attach",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Docker attach mode; no apple/container equivalent."
+        ],
+        [
+          "blkio_config",
+          "partial",
+          "yes",
+          "Decoded (BlkioConfig.swift); emits --blkio-weight / --blkio-weight-device / --device-{read,write}-{bps,iops}, but upstream apple/container does not accept these flags (silent failure if set). Tier 0 cleanup tracked in CHAOS-1376; upstream FR in CHAOS-1380."
+        ],
+        [
+          "cap_add",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --cap-add per item."
+        ],
+        [
+          "cap_drop",
+          "ok",
+          "yes",
+          "SecurityArgs.build emits --cap-drop per item."
+        ],
+        [
+          "cgroup",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Linux cgroup config; no apple/container equivalent."
+        ],
+        [
+          "cgroup_parent",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Linux cgroup config; no apple/container equivalent."
+        ],
+        [
+          "cpu_count",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-count, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpu_percent",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-percent, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpu_period",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-period, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpu_quota",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-quota, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpu_rt_period",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-rt-period, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpu_rt_runtime",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-rt-runtime, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpu_shares",
+          "partial",
+          "yes",
+          "Decoded; emits --cpu-shares, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "cpus",
+          "ok",
+          "yes",
+          "Top-level service.cpus \u2192 --cpus; falls back to deploy.resources.limits.cpus."
+        ],
+        [
+          "cpuset",
+          "partial",
+          "yes",
+          "Decoded; emits --cpuset-cpus, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "credential_spec",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Windows-only; no apple/container equivalent."
+        ],
+        [
+          "develop",
+          "ok",
+          "yes",
+          "Develop schema parsed; compose watch implements polling-based watcher with sync/rebuild/restart actions."
+        ],
+        [
+          "device_cgroup_rules",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Linux cgroup rules; no apple/container equivalent."
+        ],
+        [
+          "devices",
+          "partial",
+          "yes",
+          "Decoded; emits --device, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1373."
+        ],
+        [
+          "dns",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns per item with ${VAR} substitution."
+        ],
+        [
+          "dns_opt",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns-option per item."
+        ],
+        [
+          "dns_search",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --dns-search per item."
+        ],
+        [
+          "domainname",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --domainname."
+        ],
+        [
+          "expose",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --expose."
+        ],
+        [
+          "extends",
+          "ok",
+          "yes",
+          "DockerCompose.resolvingExtends() resolves at parse time with cycle detection (same-file)."
+        ],
+        [
+          "external_links",
+          "miss",
+          "no",
+          ""
+        ],
+        [
+          "extra_hosts",
+          "partial",
+          "yes",
+          "Parsed; map form serialized to host:ip, but ignored at runtime with a warning because Apple container does not support --add-host."
+        ],
+        [
+          "gpus",
+          "partial",
+          "yes",
+          "Decoded (Gpus.swift); emits --gpus, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1376; upstream FR in CHAOS-1379."
+        ],
+        [
+          "group_add",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --group-add."
+        ],
+        [
+          "init",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --init when true."
+        ],
+        [
+          "ipc",
+          "partial",
+          "yes",
+          "Decoded; emits --ipc, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1372."
+        ],
+        [
+          "isolation",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Windows-only; no apple/container equivalent."
+        ],
+        [
+          "label_file",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — file-based labels; no apple/container equivalent."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "links",
+          "miss",
+          "no",
+          "(deprecated in compose-spec)"
+        ],
+        [
+          "logging",
+          "partial",
+          "yes",
+          "logging.driver and logging.options are parsed but ignored at runtime with warnings because Apple container does not support --log-driver or --log-opt."
+        ],
+        [
+          "mac_address",
+          "partial",
+          "yes",
+          "Decoded; emits standalone --mac-address, but upstream apple/container only accepts mac= inside the --network <name>,mac=... syntax (silent failure if set as standalone). Tier 0 cleanup tracked in CHAOS-1374."
+        ],
+        [
+          "mem_limit",
+          "ok",
+          "yes",
+          "Top-level service.mem_limit \u2192 --memory; overrides deploy.resources.limits.memory."
+        ],
+        [
+          "mem_reservation",
+          "partial",
+          "yes",
+          "Decoded and emitted as a degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, `mem_reservation` maps onto `--memory` as a fixed VM allocation with a warning. If reservation exceeds limit, Container-Compose emits an invalid-input warning and still applies the limit. Apple container does not implement Docker-style soft reservation semantics in the VM-per-container model."
+        ],
+        [
+          "mem_swappiness",
+          "partial",
+          "yes",
+          "Decoded; emits --memory-swappiness, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "memswap_limit",
+          "partial",
+          "yes",
+          "Decoded; emits --memory-swap, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "models",
+          "partial",
+          "yes",
+          "Decoded as service model references; compose up warn-skips because AI model provisioning is not wired to Apple container."
+        ],
+        [
+          "network_mode",
+          "ok",
+          "yes",
+          "NetworkingArgs emits --network MODE."
+        ],
+        [
+          "oom_kill_disable",
+          "partial",
+          "yes",
+          "Decoded; emits --oom-kill-disable, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "oom_score_adj",
+          "partial",
+          "yes",
+          "Decoded; emits --oom-score-adj, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "pid",
+          "partial",
+          "yes",
+          "Decoded; emits --pid, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1372."
+        ],
+        [
+          "pids_limit",
+          "partial",
+          "yes",
+          "Decoded; emits --pids-limit, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+        ],
+        [
+          "post_start",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — lifecycle hook; no apple/container equivalent."
+        ],
+        [
+          "pre_stop",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — lifecycle hook; no apple/container equivalent."
+        ],
+        [
+          "profiles",
+          "ok",
+          "yes",
+          "Service.filterByProfiles filters services in up/down/build/etc; --profile flag + COMPOSE_PROFILES env."
+        ],
+        [
+          "provider",
+          "partial",
+          "yes",
+          "Decoded as external provider config; compose up warn-skips because provider lifecycle wiring is not implemented."
+        ],
+        [
+          "pull_policy",
+          "ok",
+          "yes",
+          "Routed through pullImage with always/never/build/missing branches."
+        ],
+        [
+          "pull_refresh_after",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — pull-policy timing; no apple/container equivalent."
+        ],
+        [
+          "runtime",
+          "ok",
+          "yes",
+          "LifecycleArgs emits --runtime."
+        ],
+        [
+          "scale",
+          "ok",
+          "yes",
+          "ComposeUp expands services with scale > 1 into <name>-1, <name>-2, ... -N replicas."
+        ],
+        [
+          "security_opt",
+          "partial",
+          "yes",
+          "Decoded; emits --security-opt, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1371."
+        ],
+        [
+          "shm_size",
+          "ok",
+          "yes",
+          "ResourceArgs emits --shm-size."
+        ],
+        [
+          "stop_grace_period",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --stop-timeout."
+        ],
+        [
+          "stop_signal",
+          "partial",
+          "yes",
+          "Decoded; emits warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container does not accept --stop-signal."
+        ],
+        [
+          "storage_opt",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Linux storage opts; no apple/container equivalent."
+        ],
+        [
+          "sysctls",
+          "partial",
+          "yes",
+          "Decoded; emits --sysctl key=value, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1373."
+        ],
+        [
+          "tmpfs",
+          "ok",
+          "yes",
+          "StorageArgs emits --tmpfs per item."
+        ],
+        [
+          "ulimits",
+          "ok",
+          "yes",
+          "Service.ulimits decoded as [String: Ulimit]? (scalar Int and {soft,hard} forms). ResourceArgs emits sorted --ulimit name=value (or soft:hard) per entry."
+        ],
+        [
+          "use_api_socket",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — Docker API socket forwarding; no apple/container equivalent."
+        ],
+        [
+          "userns_mode",
+          "partial",
+          "yes",
+          "Decoded; emits --userns, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1371."
+        ],
+        [
+          "uts",
+          "partial",
+          "yes",
+          "Decoded; emits --uts, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1372."
+        ],
+        [
+          "volumes_from",
+          "miss",
+          "yes",
+          "Decoded; warn-and-skip — deprecated; no apple/container equivalent."
+        ],
+        [
+          "volumes (named-volume short form)",
+          "ok",
+          "yes",
+          "Compose `service.volumes: [name:/path]` (no slash in source) routed through `RuntimeVolumeClient` (CHAOS-1368, PR #85). apple/container's `Parser.volume(...)` resolves bare-name sources via the volume registry — Phase 0 source audit GREEN. Legacy `~/.containers/Volumes/<project>/<name>/` data migrated on first use without deletion."
+        ],
+        [
+          "networks.<n>.ipv4_address",
+          "partial",
+          "yes",
+          "Decoded on ServiceNetworkConfig; emits --ip, but upstream apple/container does not accept this flag (only --network <name>,mac=...,mtu=... is supported). Silent failure if set. Tier 0 cleanup tracked in CHAOS-1374."
+        ],
+        [
+          "networks.<n>.ipv6_address",
+          "partial",
+          "yes",
+          "Decoded on ServiceNetworkConfig; emits --ip6, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1374."
+        ]
+      ]
+    },
+    {
+      "id": "build",
+      "title": "Service.build sub-properties",
+      "rows": [
+        [
+          "context",
+          "ok",
+          "yes",
+          "Resolved relative to compose file directory."
+        ],
+        [
+          "dockerfile",
+          "ok",
+          "yes",
+          "Defaults to ./Dockerfile if absent."
+        ],
+        [
+          "args",
+          "ok",
+          "yes",
+          "Map; ${VAR} substitution applied."
+        ],
+        [
+          "dockerfile_inline",
+          "ok",
+          "yes",
+          "Inline content written to a temp file and passed via --file; cleaned up via defer."
+        ],
+        [
+          "entitlements",
+          "partial",
+          "yes",
+          "Decoded; warn-and-skip at build time — Application.BuildCommand has no --allow flag equivalent."
+        ],
+        [
+          "cache_from",
+          "partial",
+          "yes",
+          "Decoded; ComposeBuild/ComposeUp/ComposeCreate emit warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container build does not accept --cache-from."
+        ],
+        [
+          "cache_to",
+          "partial",
+          "yes",
+          "Decoded; ComposeBuild/ComposeUp/ComposeCreate emit warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container build does not accept --cache-to."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "network",
+          "ok",
+          "yes",
+          "buildService emits --network."
+        ],
+        [
+          "secrets",
+          "ok",
+          "yes",
+          "ConfigsSecretsArgs.build emits -v <hostFile>:/run/secrets/<source> (default target) per service.secrets entry."
+        ],
+        [
+          "ssh",
+          "partial",
+          "yes",
+          "Decoded; ComposeBuild/ComposeUp/ComposeCreate emit warn-skip after Tier 0 R2 (CHAOS-1397) because Apple container build does not accept --ssh."
+        ],
+        [
+          "target",
+          "ok",
+          "yes",
+          "buildService emits --target."
+        ],
+        [
+          "platforms",
+          "ok",
+          "yes",
+          "First platform picked; warn if more than one declared."
+        ],
+        [
+          "shm_size",
+          "ok",
+          "yes",
+          "ResourceArgs emits --shm-size."
+        ],
+        [
+          "no_cache (--no-cache flag)",
+          "ok",
+          "yes",
+          "Honored via CLI flag, not the build.no_cache key."
+        ]
+      ]
+    },
+    {
+      "id": "healthcheck",
+      "title": "Service.healthcheck",
+      "rows": [
+        [
+          "test (CMD / CMD-SHELL / NONE / string)",
+          "partial",
+          "yes",
+          "Decoded; not enforced before dependents start."
+        ],
+        [
+          "interval",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "timeout",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "retries",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "start_period",
+          "partial",
+          "yes",
+          "Decoded only."
+        ],
+        [
+          "start_interval",
+          "partial",
+          "yes",
+          "Decoded only; enforcement gated on ContainerSnapshot health surface."
+        ],
+        [
+          "disable",
+          "partial",
+          "yes",
+          "Decoded only; enforcement gated on ContainerSnapshot health surface."
+        ]
+      ]
+    },
+    {
+      "id": "deploy",
+      "title": "Service.deploy",
+      "rows": [
+        [
+          "mode",
+          "partial",
+          "no",
+          "Parsed; not used (no orchestrator)."
+        ],
+        [
+          "replicas",
+          "partial",
+          "no",
+          "Parsed; not used."
+        ],
+        [
+          "restart_policy",
+          "partial",
+          "no",
+          "Parsed; not used."
+        ],
+        [
+          "resources.limits.cpus",
+          "ok",
+          "yes",
+          "Applied to container run --cpus and build --cpus."
+        ],
+        [
+          "resources.limits.memory",
+          "ok",
+          "yes",
+          "Applied to container run --memory and build --memory."
+        ],
+        [
+          "resources.reservations.cpus",
+          "partial",
+          "yes",
+          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `cpus` / `deploy.limits.cpus` is set, reservation maps onto `--cpus` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins; if reservation exceeds limit, an invalid-input warning fires instead of the generic ignored-reservation warning. VM-per-container model has no inter-container contention, so soft reservation semantics are not honored."
+        ],
+        [
+          "resources.reservations.memory",
+          "partial",
+          "yes",
+          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, reservation maps onto `--memory` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins; if reservation exceeds limit, an invalid-input warning fires instead of the generic ignored-reservation warning."
+        ],
+        [
+          "resources.reservations.devices",
+          "partial",
+          "no",
+          "DeviceReservation parsed; not applied."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "placement",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ],
+        [
+          "rollback_config",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ],
+        [
+          "update_config",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ],
+        [
+          "endpoint_mode",
+          "partial",
+          "yes",
+          "Decoded only; Swarm-only field with no single-host runtime equivalent."
+        ]
+      ]
+    },
+    {
+      "id": "network",
+      "title": "Top-level Network",
+      "rows": [
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as actual network name."
+        ],
+        [
+          "external",
+          "ok",
+          "yes",
+          "Boolean and {name: \u2026} forms via ExternalNetwork; assumed pre-existing."
+        ],
+        [
+          "driver",
+          "ok",
+          "yes",
+          "Phase 5B maps Compose driver \u2192 --plugin on Application.NetworkCreate where supported."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "attachable",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "enable_ipv6",
+          "partial",
+          "yes",
+          "Parsed; warned-and-ignored."
+        ],
+        [
+          "internal",
+          "ok",
+          "yes",
+          "Parsed (as isInternal); emitted as --internal on `container network create` (ComposeUp.swift:372). apple/container's NetworkCreate accepts --internal as host-only mode."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "ipam",
+          "partial",
+          "yes",
+          "Phase 5B Ipam struct. Sub-fields: config[].subnet → --subnet/--subnet-v6 (ok, supported by apple/container NetworkCreate); config[].gateway / ip_range / aux_addresses → warn-skip (no apple/container equivalent, tracked under CHAOS-1334); ipam.driver / ipam.options → warn-skip (no apple/container equivalent)."
+        ]
+      ]
+    },
+    {
+      "id": "volume",
+      "title": "Top-level Volume",
+      "rows": [
+        [
+          "name",
+          "ok",
+          "yes",
+          "Used as actual volume name."
+        ],
+        [
+          "external",
+          "ok",
+          "yes",
+          "Bool and object form via ExternalVolume."
+        ],
+        [
+          "driver",
+          "partial",
+          "yes",
+          "Decoded; 'local' driver wired through runtime volume CRUD via `RuntimeVolumeClient` (CHAOS-1368, PR #85). Non-`local` drivers warn-and-skip with a clearer fallback to the legacy hardlink-dir path \u2014 apple/container has no plugin system upstream (Tier 3, CHAOS-1378)."
+        ],
+        [
+          "driver_opts",
+          "ok",
+          "no",
+          "Parsed and propagated to `container volume create --opt KEY=VALUE` for `local`-driver volumes via `RuntimeVolumeClient.create(...)` (CHAOS-1368 / CHAOS-1335, PR #85). Non-`local` drivers warn-and-skip."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "Parsed and propagated to `container volume create --label KEY=VALUE` for top-level `local`-driver volumes via runtime CRUD (CHAOS-1368 / CHAOS-1335, PR #85). For service.labels, LabelsArgs emits --label."
+        ]
+      ]
+    },
+    {
+      "id": "secret",
+      "title": "Top-level Secret",
+      "rows": [
+        [
+          "file",
+          "ok",
+          "no",
+          "Mounted via `-v hostFile:/run/secrets/<source>` per service.secrets entry."
+        ],
+        [
+          "environment",
+          "ok",
+          "no",
+          "Resolved from host env var; written to content-addressed temp file under `~/.containers/Compose/<project>/configs-secrets/`; bind-mounted via `-v`."
+        ],
+        [
+          "external",
+          "ok",
+          "no",
+          "Bool and object form via ExternalSecret."
+        ],
+        [
+          "name",
+          "ok",
+          "no",
+          "Parsed."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "driver",
+          "partial",
+          "yes",
+          "Decoded; only file-based mount currently honored. Driver plugin model not wired."
+        ],
+        [
+          "driver_opts",
+          "partial",
+          "yes",
+          "Decoded only; bind-mount source support is a follow-up."
+        ],
+        [
+          "template_driver",
+          "partial",
+          "yes",
+          "`golang` templates render host-side before bind-mounting; `file` stays raw and unknown drivers warn + mount raw source."
+        ]
+      ]
+    },
+    {
+      "id": "config",
+      "title": "Top-level Config",
+      "rows": [
+        [
+          "file",
+          "ok",
+          "no",
+          "Mounted via `-v hostFile:<target>` per service.configs entry."
+        ],
+        [
+          "external",
+          "ok",
+          "no",
+          "Bool and object form via ExternalConfig."
+        ],
+        [
+          "name",
+          "ok",
+          "no",
+          "Parsed."
+        ],
+        [
+          "labels",
+          "ok",
+          "yes",
+          "LabelsArgs emits --label k=v per entry."
+        ],
+        [
+          "content",
+          "ok",
+          "yes",
+          "Inline content written to content-addressed temp file; bind-mounted via `-v`."
+        ],
+        [
+          "environment",
+          "ok",
+          "yes",
+          "Resolved from host env var; written to content-addressed temp file; bind-mounted via `-v`."
+        ],
+        [
+          "template_driver",
+          "partial",
+          "yes",
+          "`golang` templates render host-side before bind-mounting; `file` stays raw and unknown drivers warn + mount raw source."
+        ]
+      ]
+    },
+    {
+      "id": "cli",
+      "title": "Compose CLI subcommands",
+      "note": "Versus the canonical docker compose CLI surface.",
+      "rows": [
+        [
+          "compose up",
+          "ok",
+          "yes",
+          "Topo-sorted startup, network/volume creation, image pull/build."
+        ],
+        [
+          "compose down",
+          "ok",
+          "yes",
+          "Stops (and optionally removes) project containers."
+        ],
+        [
+          "compose build",
+          "ok",
+          "yes",
+          "Builds without running. Honors --no-cache, -f."
+        ],
+        [
+          "compose version",
+          "ok",
+          "yes",
+          "Prints tool version (0.11.0)."
+        ],
+        [
+          "compose pull",
+          "ok",
+          "yes",
+          "ComposePull subcommand respects --policy / service.pull_policy."
+        ],
+        [
+          "compose push",
+          "ok",
+          "yes",
+          "ComposePush shells out to `container image push <image>` per service via RunnerEnvironment. Honors profile filter, --include-deps, --ignore-push-failures, --quiet. Build-only services skipped with note."
+        ],
+        [
+          "compose logs",
+          "ok",
+          "yes",
+          "Streams logs via ContainerClient.logs(id:options:) with prefixed colored output. Supports --since (ISO8601 and relative durations) and --timestamps via fork-patched full-chaos/container (CHAOS-1322, ContainerLogOptions)."
+        ],
+        [
+          "compose ps",
+          "ok",
+          "yes",
+          "ComposePs lists project containers with name/image/status/ports table."
+        ],
+        [
+          "compose run",
+          "ok",
+          "yes",
+          "Spawns one-off container with overrides; ports skipped unless --service-ports. Standard -e/-u/-w/-d short flags via fork-patched full-chaos/container (CHAOS-1324, Flags.ProcessBase)."
+        ],
+        [
+          "compose exec",
+          "ok",
+          "yes",
+          "Runs a command inside an existing project container. Standard -e/-u/-w/-d short flags via fork-patched full-chaos/container (CHAOS-1324, Flags.ProcessBase)."
+        ],
+        [
+          "compose start",
+          "ok",
+          "yes",
+          "ComposeStart starts existing containers in topo-sort order."
+        ],
+        [
+          "compose stop",
+          "ok",
+          "yes",
+          "ComposeStop stops in reverse topo-sort order via ContainerClient.stop()."
+        ],
+        [
+          "compose restart",
+          "ok",
+          "yes",
+          "ComposeRestart shares stop+start helpers."
+        ],
+        [
+          "compose kill",
+          "ok",
+          "yes",
+          "ComposeKill shells out to container kill --signal."
+        ],
+        [
+          "compose rm",
+          "ok",
+          "yes",
+          "ComposeRm uses ContainerClient.delete; --force/--stop/--volumes flags."
+        ],
+        [
+          "compose create",
+          "ok",
+          "yes",
+          "ComposeCreate provisions without starting; capability-probe falls back if Apple container lacks 'create'."
+        ],
+        [
+          "compose config",
+          "ok",
+          "yes",
+          "ComposeConfig emits resolved YAML via Yams.YAMLEncoder; --services/--volumes/--profiles."
+        ],
+        [
+          "compose port",
+          "ok",
+          "yes",
+          "ComposePort resolves <service> <private-port> [--protocol tcp|udp] against service.ports via composePortToRunArg; prints 0.0.0.0:<host-port> or exits non-zero if unmapped."
+        ],
+        [
+          "compose top",
+          "ok",
+          "yes",
+          "ComposeTop shells out to `container exec <id> ps -ef` per running project container via RunnerEnvironment. Apple `container` runtime exposes no native top API."
+        ],
+        [
+          "compose events",
+          "ok",
+          "yes",
+          "Uses native ContainerClient.events() API via fork-patched full-chaos/container (CHAOS-1323). Polls events endpoint every 1s, filters by project/service, outputs plain or --json."
+        ],
+        [
+          "compose ls",
+          "ok",
+          "yes",
+          "ComposeLs groups containers by project-name prefix."
+        ],
+        [
+          "compose watch",
+          "ok",
+          "yes",
+          "ComposeWatch is a polling-based file monitor honoring develop.watch[]. FSEvents upgrade is a follow-up improvement, not a missing feature."
+        ]
+      ]
+    }
+  ]
+}
+</script>
+
+<script>
+"use strict";
+
+/* -------- helpers: safe DOM construction -------- */
+function el(tag, attrs, children) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === "class") node.className = attrs[k];
+      else if (k === "text") node.textContent = attrs[k];
+      else if (k.indexOf("data-") === 0) node.setAttribute(k, attrs[k]);
+      else if (k === "title" || k === "type" || k === "placeholder" ||
+               k === "id" || k === "href" || k === "download" ||
+               k === "autocomplete" || k === "value" || k === "role" ||
+               k === "tabindex" || k === "colspan" || k === "aria-pressed" ||
+               k === "aria-expanded" || k === "aria-controls" || k === "aria-hidden") {
+        node.setAttribute(k, attrs[k]);
+      }
+    }
+  }
+  if (children) {
+    for (let i = 0; i < children.length; i++) {
+      const c = children[i];
+      if (c == null) continue;
+      if (typeof c === "string") node.appendChild(document.createTextNode(c));
+      else node.appendChild(c);
+    }
+  }
+  return node;
+}
+
+/* -------- load static data from inline JSON script tag -------- */
+const dataNode = document.getElementById("coverage-data");
+const data = JSON.parse(dataNode.textContent);
+/* Each row is [feature, status, tested, notes, details?] in JSON; expand for readability */
+const groups = data.groups.map(g => ({
+  id: g.id,
+  title: g.title,
+  note: g.note || "",
+  rows: g.rows.map(r => ({ f: r[0], s: r[1], t: r[2], n: r[3] || "", d: r[4] || null })),
+}));
+
+const labels = { ok: "Implemented", partial: "Partial", miss: "Missing" };
+const statusGuidance = {
+  ok: {
+    what: "Implemented in the current runtime path and represented in the coverage matrix as active support.",
+    left: "No row-level parity gap is currently tracked. Keep regression coverage in place as the Compose spec and Apple container evolve."
+  },
+  partial: {
+    what: "Partially supported: Container-Compose parses or handles part of the Compose behavior, but some runtime semantics remain incomplete.",
+    left: "Close the unsupported sub-behavior called out in the note, usually by adding runtime wiring, a fork patch, or a clearer won't-do classification."
+  },
+  miss: {
+    what: "Not runtime-supported today. The field may still decode for schema tolerance, but Container-Compose does not map it to Apple container behavior.",
+    left: "Parity needs a compatible Apple container capability, a deliberate emulation strategy, or an explicit won't-do decision."
+  }
+};
+const groupAnchors = {
+  depends_on: {
+    schema: "Codable Structs/DependsOn.swift + Service.swift",
+    runtime: "Commands/Compose+Wait.swift + ComposeUp.configService",
+    tests: "DependsOnParsingTests.swift + WaitForConditionTests.swift",
+    parity: "Dependency ordering, optionality, restart, and condition gates are tracked here."
+  },
+  top: {
+    schema: "Codable Structs/DockerCompose.swift",
+    runtime: "Application.swift + command-specific loaders",
+    tests: "DockerComposeParsingTests.swift + IncludeTests.swift",
+    parity: "Root keys either feed project orchestration or are decoded as future-facing metadata."
+  },
+  service: {
+    schema: "Codable Structs/Service.swift",
+    runtime: "Commands/Compose+Args*.swift + ComposeUp.configService",
+    tests: "ServicePropertiesParsingTests.swift + *ArgsTests.swift",
+    parity: "Service rows span parse-only fields, direct container flags, and orchestration behavior."
+  },
+  build: {
+    schema: "Codable Structs/Build.swift",
+    runtime: "Commands/ComposeBuild.swift + buildService helpers",
+    tests: "BuildConfigurationTests.swift + BuildSubFeaturesTests.swift + CommandBuildArgvTests.swift",
+    parity: "Build rows map Compose build options to Apple container build support where flags exist."
+  },
+  healthcheck: {
+    schema: "Codable Structs/Healthcheck.swift",
+    runtime: "Compose+ArgsLifecycle.swift + Compose+Wait.swift",
+    tests: "HealthcheckConfigurationTests.swift + WaitForConditionTests.swift",
+    parity: "Health rows distinguish parsed healthcheck shape from dependency gates that consume health status."
+  },
+  deploy: {
+    schema: "Codable Structs/Deploy*.swift",
+    runtime: "Compose+ArgsResource.swift for supported limits",
+    tests: "DeployStubsParsingTests.swift + ResourceArgsTests.swift",
+    parity: "Most deploy fields are swarm/orchestrator semantics rather than single-container runtime flags."
+  },
+  network: {
+    schema: "Codable Structs/Network.swift + ServiceNetworks.swift",
+    runtime: "Compose+ArgsNetworking.swift + network setup in ComposeUp/ComposeCreate",
+    tests: "NetworkConfigurationTests.swift + NetworkArgsTests.swift + NetworkIpamTests.swift",
+    parity: "Networking rows depend heavily on what Apple container exposes for network creation/run flags."
+  },
+  volume: {
+    schema: "Codable Structs/Volume.swift + ExternalVolume.swift",
+    runtime: "ComposeUp.configVolume + ComposeCreate.configVolume",
+    tests: "VolumeDriverTests.swift + RuntimeArgvTests.swift",
+    parity: "Named-volume support currently uses host-directory emulation unless native container volume support is wired."
+  },
+  secret: {
+    schema: "Codable Structs/Secret.swift + ServiceSecret.swift",
+    runtime: "Commands/Compose+ConfigsAndSecrets.swift",
+    tests: "SecretConfigNicheTests.swift + ConfigsSecretsRuntimeTests.swift",
+    parity: "Secrets are materialized as bind-mounted files; uid/gid/mode/template semantics remain constrained by bind mounts."
+  },
+  config: {
+    schema: "Codable Structs/Config.swift + ServiceConfig.swift",
+    runtime: "Commands/Compose+ConfigsAndSecrets.swift",
+    tests: "SecretConfigNicheTests.swift + ConfigsSecretsRuntimeTests.swift",
+    parity: "Configs are materialized as bind-mounted files; uid/gid/mode/template semantics remain constrained by bind mounts."
+  },
+  cli: {
+    schema: "Application.swift command registration",
+    runtime: "Commands/Compose*.swift",
+    tests: "Compose*ParsingTests.swift + Compose*RuntimeArgvTests.swift",
+    parity: "CLI rows track Docker Compose subcommand shape, not only schema decoding."
+  }
+};
+const featureAnchors = [
+  { match: /^(ports|expose|networks|hostname|dns|dns_opt|dns_search|extra_hosts|domainname|mac_address|network_mode|ipc|pid|uts)$/, runtime: "Commands/Compose+ArgsNetworking.swift", tests: "NetworkArgsTests.swift" },
+  { match: /^(cpus|cpu_.*|mem_.*|memswap.*|oom_.*|pids.*|shm_size|ulimits|gpus|blkio_config|deploy.*|resources.*)$/, runtime: "Commands/Compose+ArgsResource.swift", tests: "ResourceArgsTests.swift + GpusBlkioTests.swift" },
+  { match: /^(user|privileged|read_only|cap_add|cap_drop|security_opt|userns_mode|group_add)$/, runtime: "Commands/Compose+ArgsSecurity.swift", tests: "SecurityArgsTests.swift" },
+  { match: /^(working_dir|tmpfs|devices|sysctls|volumes|volumes_from|storage_opt|device_cgroup_rules)$/, runtime: "Commands/Compose+ArgsStorage.swift + command-local volume helpers", tests: "StorageArgsTests.swift + RuntimeArgvTests.swift" },
+  { match: /^(image|command|entrypoint|container_name|restart|stdin_open|tty|init|stop_signal|stop_grace_period|runtime|logging)$/, runtime: "Commands/Compose+ArgsLifecycle.swift", tests: "LifecycleArgsTests.swift + LoggingArgsTests.swift" },
+  { match: /^labels$/, group: "service", runtime: "Commands/Compose+ArgsLabels.swift", tests: "LabelsArgsTests.swift" },
+  { match: /^(configs|secrets|file|content|environment|template_driver|driver_opts)$/, runtime: "Commands/Compose+ConfigsAndSecrets.swift", tests: "ConfigsSecretsRuntimeTests.swift + SecretConfigNicheTests.swift" },
+  { match: /^(build|context|dockerfile|dockerfile_inline|args|target|cache_from|cache_to|labels|network|ssh|platforms|entitlements)$/, group: "build", runtime: "Commands/ComposeBuild.swift", tests: "BuildConfigurationTests.swift + BuildSubFeaturesTests.swift" },
+  { match: /^(depends_on|condition:|required|restart \(bool|string\))/, runtime: "Commands/Compose+Wait.swift", tests: "DependsOnParsingTests.swift + WaitForConditionTests.swift" }
+];
+function pct(n, total) { return total === 0 ? 0 : Math.round((n / total) * 100); }
+function counts(rows) {
+  const c = { ok: 0, partial: 0, miss: 0 };
+  for (let i = 0; i < rows.length; i++) c[rows[i].s]++;
+  return c;
+}
+
+function detailOverride(row, key) {
+  if (!row.d) return "";
+  if (typeof row.d === "string") return key === "what" ? row.d : "";
+  return row.d[key] || "";
+}
+
+function anchorsFor(group, row) {
+  const base = Object.assign({}, groupAnchors[group.id] || groupAnchors.service);
+  for (let i = 0; i < featureAnchors.length; i++) {
+    if ((!featureAnchors[i].group || featureAnchors[i].group === group.id) && featureAnchors[i].match.test(row.f)) {
+      base.runtime = featureAnchors[i].runtime;
+      base.tests = featureAnchors[i].tests;
+      break;
+    }
+  }
+  return base;
+}
+
+function parityText(row, anchors) {
+  const explicit = detailOverride(row, "left");
+  if (explicit) return explicit;
+  if (row.n.indexOf("no apple/container equivalent") !== -1) {
+    return "No Apple container equivalent is available today; parity depends on an upstream runtime capability or an explicit Container-Compose emulation decision.";
+  }
+  if (row.n.indexOf("warn") !== -1 || row.n.indexOf("ignored") !== -1 || row.n.indexOf("not enforced") !== -1) {
+    return "The next parity step is to replace the current warning/ignore path with runtime behavior, or keep the row classified as intentionally unsupported.";
+  }
+  return detailOverride(row, "parity") || anchors.parity || statusGuidance[row.s].left;
+}
+
+function detailModel(group, row) {
+  const anchors = anchorsFor(group, row);
+  return {
+    what: detailOverride(row, "what") || statusGuidance[row.s].what + (row.n ? " Current note: " + row.n : ""),
+    how: detailOverride(row, "how") || "Schema/model support starts at " + anchors.schema + "; runtime behavior is handled in " + anchors.runtime + ".",
+    evidence: detailOverride(row, "evidence") || (row.t === "yes" ? "Covered by tests around " + anchors.tests + "." : "No dedicated test is recorded in this coverage row yet."),
+    left: parityText(row, anchors),
+    anchors: [anchors.schema, anchors.runtime, anchors.tests].filter(Boolean)
+  };
+}
+
+function detailCard(title, body, anchors) {
+  const children = [el("h3", { text: title })];
+  if (Array.isArray(body)) {
+    children.push(el("ul", null, body.map(item => el("li", { text: item }))));
+  } else {
+    children.push(el("p", { text: body }));
+  }
+  if (anchors && anchors.length) {
+    children.push(el("div", { class: "anchor-list" }, anchors.map(a => el("span", { class: "anchor-chip", text: a }))));
+  }
+  return el("div", { class: "detail-card" }, children);
+}
+
+function detailRow(group, row, id) {
+  const model = detailModel(group, row);
+  const panel = el("div", { class: "detail-panel" }, [
+    el("div", { class: "detail-head" }, [
+      el("span", { class: "detail-title", text: row.f }),
+      el("span", { class: "pill " + row.s, text: labels[row.s] }),
+      el("span", { class: "detail-kicker", text: row.t === "yes" ? "Tested" : "No test recorded" }),
+    ]),
+    el("div", { class: "detail-grid" }, [
+      detailCard("What works", model.what),
+      detailCard("How it maps", model.how, model.anchors),
+      detailCard("Evidence", model.evidence),
+      detailCard("Left to parity", model.left),
+    ]),
+  ]);
+  return el("tr", { class: "detail-row", id: id, "aria-hidden": "true" }, [
+    el("td", { class: "detail-cell", colspan: "4" }, [panel]),
+  ]);
+}
+
+/* -------- render summary -------- */
+function renderSummary() {
+  const all = groups.flatMap(g => g.rows);
+  const c = counts(all);
+  const total = all.length;
+  const tested = all.filter(r => r.t === "yes").length;
+  const stats = [
+    { label: "Features audited",  value: total, pct: "" },
+    { label: "Implemented",       value: c.ok,      pct: pct(c.ok, total) + "% of audited" },
+    { label: "Partial",           value: c.partial, pct: pct(c.partial, total) + "% of audited" },
+    { label: "Missing",           value: c.miss,    pct: pct(c.miss, total) + "% of audited" },
+    { label: "Has test coverage", value: tested,    pct: pct(tested, total) + "% of audited" },
+  ];
+  const root = document.getElementById("summary");
+  for (let i = 0; i < stats.length; i++) {
+    const s = stats[i];
+    root.appendChild(el("div", { class: "stat" }, [
+      el("div", { class: "label", text: s.label }),
+      el("div", { class: "value", text: String(s.value) }),
+      el("div", { class: "pct",   text: s.pct }),
+    ]));
+  }
+}
+
+/* -------- render grouped tables -------- */
+function renderGroups() {
+  const root = document.getElementById("groups");
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const c = counts(g.rows);
+    const total = g.rows.length;
+    const okPct = pct(c.ok, total);
+    const partialPct = pct(c.partial, total);
+
+    const okSegment = el("span", { class: "ok" });
+    okSegment.style.width = okPct + "%";
+    const partialSegment = el("span", { class: "partial" });
+    partialSegment.style.width = partialPct + "%";
+    const bar = el("span", {
+      class: "bar",
+      title: c.ok + " ok · " + c.partial + " partial · " + c.miss + " missing",
+    }, [okSegment, partialSegment]);
+
+    const meta = el("span", { class: "meta" }, [
+      bar,
+      " " + c.ok + " / " + total + " implemented · " + c.partial + " partial · " + c.miss + " missing",
+    ]);
+
+    const h2 = el("h2", null, [g.title + "  ", meta]);
+    const section = el("section", { class: "group-section", "data-group-id": g.id }, [h2]);
+
+    if (g.note) section.appendChild(el("div", { class: "note", text: g.note }));
+
+    const thead = el("thead", null, [
+      el("tr", null, [
+        el("th", { "data-sort": "feature", text: "Feature" }),
+        el("th", { "data-sort": "status",  text: "Status" }),
+        el("th", { "data-sort": "tested",  text: "Tested" }),
+        el("th", { text: "Notes" }),
+      ]),
+    ]);
+
+    const tbody = el("tbody");
+    for (let ri = 0; ri < g.rows.length; ri++) {
+      const r = g.rows[ri];
+      const haystack = (r.f + " " + (r.n || "")).toLowerCase();
+      const detailId = "detail-" + g.id + "-" + ri;
+      const row = el("tr", {
+        class: "coverage-row drillable",
+        "data-status": r.s,
+        "data-tested": r.t,
+        "data-haystack": haystack,
+        role: "button",
+        tabindex: "0",
+        "aria-expanded": "false",
+        "aria-controls": detailId,
+      }, [
+        el("td", { class: "feature" }, [
+          el("span", { class: "feature-wrap" }, [
+            el("span", { class: "drill-cue", text: "›" }),
+            el("span", { text: r.f }),
+          ]),
+        ]),
+        el("td", null, [el("span", { class: "pill " + r.s, text: labels[r.s] })]),
+        el("td", { text: r.t === "yes" ? "✓" : "—" }),
+        el("td", { class: "notes", text: r.n || "" }),
+      ]);
+      tbody.appendChild(row);
+      tbody.appendChild(detailRow(g, r, detailId));
+    }
+
+    const table = el("table", { "data-table": "true" }, [thead, tbody]);
+    section.appendChild(table);
+    root.appendChild(section);
+  }
+}
+
+/* -------- filtering -------- */
+const filterState = { status: "all", tested: "all", q: "" };
+
+function applyFilters() {
+  const q = filterState.q.trim().toLowerCase();
+  let visible = 0;
+  const sections = document.querySelectorAll("section.group-section");
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i];
+    let groupVisible = 0;
+    const rows = section.querySelectorAll("tbody tr.coverage-row");
+    for (let j = 0; j < rows.length; j++) {
+      const tr = rows[j];
+      const matchStatus = filterState.status === "all" || tr.getAttribute("data-status") === filterState.status;
+      const matchTested = filterState.tested === "all" || tr.getAttribute("data-tested") === filterState.tested;
+      const matchQ = !q || tr.getAttribute("data-haystack").indexOf(q) !== -1;
+      const show = matchStatus && matchTested && matchQ;
+      tr.style.display = show ? "" : "none";
+      const detail = document.getElementById(tr.getAttribute("aria-controls"));
+      if (detail) detail.style.display = show && tr.getAttribute("aria-expanded") === "true" ? "" : "none";
+      if (show) { groupVisible++; visible++; }
+    }
+    section.style.display = groupVisible === 0 ? "none" : "";
+  }
+  document.getElementById("empty").classList.toggle("shown", visible === 0);
+}
+
+function toggleDrilldown(row) {
+  const detail = document.getElementById(row.getAttribute("aria-controls"));
+  if (!detail) return;
+  const open = row.getAttribute("aria-expanded") !== "true";
+  row.setAttribute("aria-expanded", open ? "true" : "false");
+  row.classList.toggle("open", open);
+  detail.classList.toggle("open", open);
+  detail.setAttribute("aria-hidden", open ? "false" : "true");
+  detail.style.display = open ? "" : "none";
+}
+
+function bindDrilldowns() {
+  const rows = document.querySelectorAll("tbody tr.coverage-row.drillable");
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    row.addEventListener("click", function() { toggleDrilldown(row); });
+    row.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggleDrilldown(row);
+      }
+    });
+  }
+}
+
+function bindFilters() {
+  const chips = document.querySelectorAll(".chip");
+  for (let i = 0; i < chips.length; i++) {
+    const btn = chips[i];
+    btn.addEventListener("click", function() {
+      const f = btn.getAttribute("data-filter");
+      const v = btn.getAttribute("data-value");
+      const peers = document.querySelectorAll('.chip[data-filter="' + f + '"]');
+      for (let j = 0; j < peers.length; j++) peers[j].setAttribute("aria-pressed", "false");
+      btn.setAttribute("aria-pressed", "true");
+      filterState[f] = v;
+      applyFilters();
+    });
+  }
+  document.getElementById("search").addEventListener("input", function(e) {
+    filterState.q = e.target.value;
+    applyFilters();
+  });
+}
+
+/* -------- sorting -------- */
+const sortRank = { ok: 0, partial: 1, miss: 2 };
+function bindSorting() {
+  const tables = document.querySelectorAll("table[data-table]");
+  for (let ti = 0; ti < tables.length; ti++) {
+    const table = tables[ti];
+    const ths = table.querySelectorAll("th[data-sort]");
+    for (let hi = 0; hi < ths.length; hi++) {
+      const th = ths[hi];
+      th.addEventListener("click", function() {
+        const key = th.getAttribute("data-sort");
+        const tbody = table.querySelector("tbody");
+        const rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.coverage-row"));
+        const isAsc = th.classList.contains("sorted-asc");
+        const next = isAsc ? "desc" : "asc";
+        const allTh = table.querySelectorAll("th");
+        for (let k = 0; k < allTh.length; k++) {
+          allTh[k].classList.remove("sorted-asc", "sorted-desc");
+        }
+        th.classList.add(next === "asc" ? "sorted-asc" : "sorted-desc");
+        rows.sort(function(a, b) {
+          let va, vb;
+          if (key === "feature") {
+            va = a.children[0].textContent.toLowerCase();
+            vb = b.children[0].textContent.toLowerCase();
+          } else if (key === "status") {
+            va = sortRank[a.getAttribute("data-status")];
+            vb = sortRank[b.getAttribute("data-status")];
+          } else if (key === "tested") {
+            va = a.getAttribute("data-tested") === "yes" ? 0 : 1;
+            vb = b.getAttribute("data-tested") === "yes" ? 0 : 1;
+          }
+          if (va < vb) return next === "asc" ? -1 : 1;
+          if (va > vb) return next === "asc" ?  1 : -1;
+          return 0;
+        });
+        for (let k = 0; k < rows.length; k++) {
+          tbody.appendChild(rows[k]);
+          const detail = document.getElementById(rows[k].getAttribute("aria-controls"));
+          if (detail) tbody.appendChild(detail);
+        }
+      });
+    }
+  }
+}
+
+/* -------- machine-readable JSON download -------- */
+function attachJson() {
+  const all = groups.map(g => ({
+    id: g.id, title: g.title, note: g.note || null,
+    counts: counts(g.rows),
+    rows: g.rows.map(r => ({ feature: r.f, status: r.s, tested: r.t === "yes", notes: r.n, details: r.d || null })),
+  }));
+  const summary = {
+    generated_at: new Date().toISOString(),
+    anchor: data.anchor,
+    counts: counts(groups.flatMap(g => g.rows)),
+    groups: all,
+  };
+  const json = JSON.stringify(summary, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { id: "download-json", href: url, download: "coverage.json", text: "Download JSON" });
+  document.getElementById("controls").appendChild(a);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("ts").textContent = new Date().toISOString().slice(0, 10);
+  renderSummary();
+  renderGroups();
+  bindDrilldowns();
+  bindFilters();
+  bindSorting();
+  attachJson();
+});
+</script>
+</body>
+</html>

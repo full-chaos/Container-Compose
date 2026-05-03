@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1405-volume-config-drift-warning",
+  "commit": "a4353e5f145a699fd347221866b6389f3cf6ff93",
+  "short": "a4353e5",
+  "target": "a4353e5",
+  "message": "fix(parser): POSIX-tokenize string-form command and entrypoint (CHAOS-1406)",
+  "published_at": "2026-05-03T19:56:09.602537+00:00"
+}
