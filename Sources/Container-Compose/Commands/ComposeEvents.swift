@@ -132,7 +132,7 @@ public struct ComposeEvents: AsyncParsableCommand {
         }
 
         return Set(serviceList.map { serviceName, service in
-            service.container_name ?? "\(projectName)-\(serviceName)"
+            effectiveContainerName(projectName: projectName, serviceName: serviceName, explicit: service.container_name)
         })
     }
 

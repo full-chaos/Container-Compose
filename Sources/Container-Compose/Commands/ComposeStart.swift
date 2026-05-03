@@ -130,12 +130,11 @@ public struct ComposeStart: AsyncParsableCommand {
     // the same mechanism the container CLI uses internally.
     func startServices(_ services: [(serviceName: String, service: Service)], projectName: String) async throws {
         for (serviceName, service) in services {
-            let containerName: String
-            if let explicitName = service.container_name {
-                containerName = explicitName
-            } else {
-                containerName = "\(projectName)-\(serviceName)"
-            }
+            let containerName = effectiveContainerName(
+                projectName: projectName,
+                serviceName: serviceName,
+                explicit: service.container_name
+            )
 
             guard let container = try? await ContainerClientEnvironment.current.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")

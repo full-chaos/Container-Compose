@@ -127,12 +127,11 @@ public struct ComposeStop: AsyncParsableCommand {
 
     func stopServices(_ services: some Sequence<(serviceName: String, service: Service)>, projectName: String) async throws {
         for (serviceName, service) in services {
-            let containerName: String
-            if let explicitName = service.container_name {
-                containerName = explicitName
-            } else {
-                containerName = "\(projectName)-\(serviceName)"
-            }
+            let containerName = effectiveContainerName(
+                projectName: projectName,
+                serviceName: serviceName,
+                explicit: service.container_name
+            )
 
             let provider = ContainerClientEnvironment.current
             guard let container = try? await provider.get(id: containerName) else {

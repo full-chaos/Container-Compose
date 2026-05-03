@@ -145,9 +145,13 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
             return
         }
 
-        // 5. Build list of (serviceName, containerName) pairs, respecting container_name overrides
+        // 5. Build list of (serviceName, containerName) pairs, honoring container_name override (CHAOS-1396).
         let targets: [(serviceName: String, containerName: String)] = allServices.map { serviceName, service in
-            let containerName = service.container_name ?? "\(projectName)-\(serviceName)"
+            let containerName = effectiveContainerName(
+                projectName: projectName,
+                serviceName: serviceName,
+                explicit: service.container_name
+            )
             return (serviceName, containerName)
         }
 

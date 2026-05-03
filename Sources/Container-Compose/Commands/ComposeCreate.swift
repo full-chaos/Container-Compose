@@ -349,13 +349,11 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             throw ComposeError.imageNotFound(serviceName)
         }
 
-        let containerName: String
-        if let explicitName = service.container_name {
-            containerName = explicitName
-            print("Info: Using explicit container_name: \(containerName)")
-        } else {
-            containerName = "\(projectName)-\(serviceName)"
-        }
+        let containerName = effectiveContainerName(
+            projectName: projectName,
+            serviceName: serviceName,
+            explicit: service.container_name
+        )
 
         var createArgs: [String] = []
 
