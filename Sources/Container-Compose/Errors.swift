@@ -64,6 +64,51 @@ public enum TerminalError: Error, LocalizedError {
     }
 }
 
+// MARK: - ComposeValidationError
+
+/// Errors thrown by `DockerCompose.validate()` when a compose file contains
+/// invalid or semantically inconsistent configuration.
+public enum ComposeValidationError: Error, Equatable {
+    /// The compose file defines no services at all.
+    case noServicesDefined
+
+    /// A service does not provide either `image` or `build`.
+    case serviceNeedsImageOrBuild(serviceName: String)
+
+    /// A port specification string cannot be parsed or contains out-of-range
+    /// port numbers.
+    case invalidPortFormat(portSpec: String, serviceName: String)
+
+    /// A `depends_on` chain forms a cycle, making startup order undefined.
+    case circularDependency(serviceChain: [String])
+
+    /// A resource-constraint field (e.g. `deploy.resources.limits.cpus`)
+    /// falls outside the allowed range.
+    case resourceConstraintOutOfRange(field: String, value: String, min: Int, max: Int?)
+}
+
+extension ComposeValidationError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .noServicesDefined:
+            return "Compose file defines no services."
+        case .serviceNeedsImageOrBuild(let name):
+            return "Service '\(name)' must define either 'image' or 'build'."
+        case .invalidPortFormat(let portSpec, let serviceName):
+            return "Service '\(serviceName)': invalid port specification '\(portSpec)'."
+        case .circularDependency(let chain):
+            let chainDescription = chain.joined(separator: " → ")
+            return "Circular dependency detected: \(chainDescription)"
+        case .resourceConstraintOutOfRange(let field, let value, let min, let max):
+            if let max {
+                return "Resource constraint '\(field)' value '\(value)' is out of range [\(min), \(max)]."
+            } else {
+                return "Resource constraint '\(field)' value '\(value)' must be ≥ \(min)."
+            }
+        }
+    }
+}
+
 /// An enum representing streaming output from either `stdout` or `stderr`.
 public enum CommandOutput {
     case stdout(String)
