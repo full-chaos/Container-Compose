@@ -124,14 +124,34 @@ struct ResourceArgsTests {
         #expect(result[idx + 1] == "512m")
     }
 
-    @Test("mem_reservation warn-skips --memory-reservation")
-    func memReservationFlag() throws {
+    // MARK: - Reservation-as-degraded-fallback (CHAOS-1336)
+    //
+    // Apple container does not implement Docker-style soft reservation semantics
+    // (VM-per-container model — there is no inter-container contention inside a
+    // dedicated VM). When a compose service declares a reservation but no limit,
+    // Container-Compose maps the reservation onto the corresponding hard-limit
+    // flag (--cpus / --memory) and warns the user about the degraded semantics.
+    // When both a limit and a reservation are present, the limit wins (current
+    // behavior preserved) and a warning notes that the reservation is ignored.
+    //
+    // Each warning key fires once per process (see warnUnsupportedRuntimeFieldOnce).
+    // To stay deterministic under that dedupe, tests that ASSERT a warning text
+    // are declared BEFORE any other test that triggers the same key. The suite is
+    // .serialized so declaration order is execution order.
+
+    @Test("mem_reservation maps to --memory as degraded fallback when no mem_limit")
+    func memReservationFallsBackToMemory() throws {
         let svc = Service(image: "alpine", mem_reservation: "256m")
-        try expectWarnSkipped(svc, flag: "--memory-reservation", field: "mem_reservation")
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--memory"))
+        let idx = try #require(captured.args.firstIndex(of: "--memory"))
+        #expect(captured.args[idx + 1] == "256m")
+        #expect(captured.output.contains("'service.mem_reservation' is mapped to '--memory'"))
+        #expect(captured.output.contains("does not implement soft reservation semantics"))
     }
 
-    @Test("deploy.resources.reservations.memory warn-skips --memory-reservation")
-    func deployReservationMemoryWarnSkips() throws {
+    @Test("deploy.resources.reservations.memory maps to --memory as degraded fallback when no limit")
+    func deployReservationMemoryFallsBackToMemory() throws {
         let svc = try decodeService("""
           image: alpine
           deploy:
@@ -139,7 +159,106 @@ struct ResourceArgsTests {
               reservations:
                 memory: "256m"
         """)
-        try expectWarnSkipped(svc, flag: "--memory-reservation", field: "deploy.resources.reservations.memory")
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--memory"))
+        let idx = try #require(captured.args.firstIndex(of: "--memory"))
+        #expect(captured.args[idx + 1] == "256m")
+        #expect(captured.output.contains("'service.deploy.resources.reservations.memory' is mapped to '--memory'"))
+    }
+
+    @Test("deploy.resources.reservations.cpus maps to --cpus as degraded fallback when no limit")
+    func deployReservationCpusFallsBackToCpus() throws {
+        let svc = try decodeService("""
+          image: alpine
+          deploy:
+            resources:
+              reservations:
+                cpus: "0.5"
+        """)
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--cpus"))
+        let idx = try #require(captured.args.firstIndex(of: "--cpus"))
+        #expect(captured.args[idx + 1] == "0.5")
+        #expect(captured.output.contains("'service.deploy.resources.reservations.cpus' is mapped to '--cpus'"))
+    }
+
+    // MARK: - Limit-with-reservation (CHAOS-1336): limit wins, ignored-reservation warning
+    //
+    // The warning-asserting tests run FIRST for each shared key
+    // (service.memory.reservation-with-limit, service.cpu.reservation-with-limit).
+    // The argv-only follow-up tests verify precedence without re-asserting on warning state.
+
+    @Test("mem_limit + mem_reservation: --memory limit wins, ignored-reservation warning fires")
+    func memLimitWithReservationWarnsIgnored() throws {
+        let svc = Service(image: "alpine", mem_limit: "1g", mem_reservation: "256m")
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--memory"))
+        let idx = try #require(captured.args.firstIndex(of: "--memory"))
+        #expect(captured.args[idx + 1] == "1g")
+        #expect(!captured.args.contains("256m"))
+        let memCount = captured.args.filter { $0 == "--memory" }.count
+        #expect(memCount == 1)
+        #expect(captured.output.contains("memory reservation is ignored because a memory limit is set"))
+    }
+
+    @Test("deploy.limits.memory + deploy.reservations.memory: --memory limit wins, only one flag emitted")
+    func deployLimitMemoryWithReservationOnlyEmitsLimit() throws {
+        let svc = try decodeService("""
+          image: alpine
+          deploy:
+            resources:
+              limits:
+                memory: "1g"
+              reservations:
+                memory: "256m"
+        """)
+        let result = try args(svc)
+        #expect(result.contains("--memory"))
+        let memCount = result.filter { $0 == "--memory" }.count
+        #expect(memCount == 1)
+        let idx = try #require(result.firstIndex(of: "--memory"))
+        #expect(result[idx + 1] == "1g")
+        #expect(!result.contains("256m"))
+    }
+
+    @Test("cpus_top + deploy.reservations.cpus: --cpus limit wins, ignored-reservation warning fires")
+    func cpusTopWithReservationWarnsIgnored() throws {
+        let svc = try decodeService("""
+          image: alpine
+          cpus: 2.0
+          deploy:
+            resources:
+              reservations:
+                cpus: "0.5"
+        """)
+        let captured = try capturedArgs(svc)
+        #expect(captured.args.contains("--cpus"))
+        let idx = try #require(captured.args.firstIndex(of: "--cpus"))
+        #expect(captured.args[idx + 1] == "2.0")
+        #expect(!captured.args.contains("0.5"))
+        let cpuCount = captured.args.filter { $0 == "--cpus" }.count
+        #expect(cpuCount == 1)
+        #expect(captured.output.contains("CPU reservation is ignored because a CPU limit is set"))
+    }
+
+    @Test("deploy.limits.cpus + deploy.reservations.cpus: --cpus limit wins, only one flag emitted")
+    func deployLimitCpusWithReservationOnlyEmitsLimit() throws {
+        let svc = try decodeService("""
+          image: alpine
+          deploy:
+            resources:
+              limits:
+                cpus: "2.0"
+              reservations:
+                cpus: "0.5"
+        """)
+        let result = try args(svc)
+        #expect(result.contains("--cpus"))
+        let cpuCount = result.filter { $0 == "--cpus" }.count
+        #expect(cpuCount == 1)
+        let idx = try #require(result.firstIndex(of: "--cpus"))
+        #expect(result[idx + 1] == "2.0")
+        #expect(!result.contains("0.5"))
     }
 
     @Test("mem_swappiness warn-skips --memory-swappiness")

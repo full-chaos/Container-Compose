@@ -28,31 +28,67 @@ extension ComposeUp {
             var args: [String] = []
             let svc = ctx.service
 
-            // --cpus: top-level cpus_top wins over deploy.resources.limits.cpus
-            if let cpus = svc.cpus_top {
-                args.append(contentsOf: ["--cpus", String(cpus)])
-            } else if let cpus = svc.deploy?.resources?.limits?.cpus {
+            // --cpus: precedence:
+            //   1. top-level `cpus` (cpus_top)
+            //   2. `deploy.resources.limits.cpus`
+            //   3. `deploy.resources.reservations.cpus` (degraded fallback)
+            //
+            // Apple container's `--cpus` is a fixed VM allocation, not a soft floor.
+            // Compose `reservations` semantics (cgroup-style soft minimum under contention)
+            // are not meaningful in the VM-per-container model — each container is its own
+            // dedicated VM with no inter-container contention inside it. When a reservation
+            // is the only signal we have, we map it onto `--cpus` as a fixed allocation and
+            // warn the user that Docker-style soft semantics are not honored. When a limit
+            // is also present, the limit wins and we warn that the reservation is ignored.
+            // See CHAOS-1336 + docs/feature-parity.md (Tier 1).
+            let cpuLimit = svc.cpus_top.map { String($0) } ?? svc.deploy?.resources?.limits?.cpus
+            let cpuReservation = svc.deploy?.resources?.reservations?.cpus
+
+            if let cpus = cpuLimit {
+                args.append(contentsOf: ["--cpus", cpus])
+                if cpuReservation != nil {
+                    warnUnsupportedRuntimeFieldOnce(
+                        "service.cpu.reservation-with-limit",
+                        "Note: CPU reservation is ignored because a CPU limit is set; Apple container does not implement soft reservation semantics (limit applied as fixed VM allocation)."
+                    )
+                }
+            } else if let cpus = cpuReservation {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.deploy.resources.reservations.cpus",
+                    "Note: 'service.deploy.resources.reservations.cpus' is mapped to '--cpus' as a fixed VM allocation; Apple container does not implement soft reservation semantics."
+                )
                 args.append(contentsOf: ["--cpus", cpus])
             }
 
-            // --memory: top-level mem_limit wins over deploy.resources.limits.memory
-            if let mem = svc.mem_limit {
-                args.append(contentsOf: ["--memory", mem])
-            } else if let mem = svc.deploy?.resources?.limits?.memory {
-                args.append(contentsOf: ["--memory", mem])
-            }
+            // --memory: precedence:
+            //   1. top-level `mem_limit`
+            //   2. `deploy.resources.limits.memory`
+            //   3. top-level `mem_reservation` (degraded fallback)
+            //   4. `deploy.resources.reservations.memory` (degraded fallback)
+            //
+            // Same rationale as --cpus above. See CHAOS-1336.
+            let memLimit = svc.mem_limit ?? svc.deploy?.resources?.limits?.memory
+            let topLevelMemReservation = svc.mem_reservation
+            let deployMemReservation = svc.deploy?.resources?.reservations?.memory
+            let memReservation = topLevelMemReservation ?? deployMemReservation
 
-            // --memory-reservation
-            if svc.mem_reservation != nil {
+            if let mem = memLimit {
+                args.append(contentsOf: ["--memory", mem])
+                if memReservation != nil {
+                    warnUnsupportedRuntimeFieldOnce(
+                        "service.memory.reservation-with-limit",
+                        "Note: memory reservation is ignored because a memory limit is set; Apple container does not implement soft reservation semantics (limit applied as fixed VM allocation)."
+                    )
+                }
+            } else if let mem = memReservation {
+                let key = topLevelMemReservation != nil
+                    ? "service.mem_reservation"
+                    : "service.deploy.resources.reservations.memory"
                 warnUnsupportedRuntimeFieldOnce(
-                    "service.mem_reservation",
-                    "Note: 'mem_reservation' is parsed but not supported by Apple container; ignored."
+                    key,
+                    "Note: '\(key)' is mapped to '--memory' as a fixed VM allocation; Apple container does not implement soft reservation semantics."
                 )
-            } else if svc.deploy?.resources?.reservations?.memory != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.deploy.resources.reservations.memory",
-                    "Note: 'deploy.resources.reservations.memory' is parsed but not supported by Apple container; ignored."
-                )
+                args.append(contentsOf: ["--memory", mem])
             }
 
             // --memory-swappiness
