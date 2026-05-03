@@ -126,7 +126,7 @@ public struct BridgeContainerClientRuntime: Runtime {
         do {
             try await provider.start(id: id)
         } catch {
-            throw RuntimeError.backendFailure(message: "start failed for '\(id)': \(error.localizedDescription)")
+            throw mapUpstreamError(error, id: id, context: "start failed for '\(id)'")
         }
     }
 
@@ -144,7 +144,7 @@ public struct BridgeContainerClientRuntime: Runtime {
         do {
             try await provider.kill(id: id, signal: signal)
         } catch {
-            throw RuntimeError.backendFailure(message: "kill failed for '\(id)' (signal \(signal)): \(error.localizedDescription)")
+            throw mapUpstreamError(error, id: id, context: "kill failed for '\(id)' (signal \(signal))")
         }
     }
 
@@ -221,13 +221,8 @@ public struct BridgeContainerClientRuntime: Runtime {
         do {
             let raw = try await provider.stats(id: id)
             return BridgeContainerClientRuntime.translate(stats: raw)
-        } catch let error as ContainerizationError {
-            if BridgeContainerClientRuntime.isNotFound(error) {
-                throw RuntimeError.notFound(id: id)
-            }
-            throw RuntimeError.backendFailure(message: "stats failed for '\(id)': \(error.localizedDescription)")
         } catch {
-            throw RuntimeError.backendFailure(message: "stats failed for '\(id)': \(error.localizedDescription)")
+            throw mapUpstreamError(error, id: id, context: "stats failed for '\(id)'")
         }
     }
 
@@ -302,6 +297,39 @@ public struct BridgeContainerClientRuntime: Runtime {
         case .destroy:
             return .removed(id: event.containerId, at: event.timestamp)
         }
+    }
+
+    /// Map an upstream error from apple/container's XPC surface into the
+    /// backend-neutral `RuntimeError` vocabulary.
+    ///
+    /// - `ContainerizationError(.notFound)` (recursively through `.cause`) →
+    ///   `.notFound(id:)` — preserves 404 semantics at the route layer.
+    /// - All other upstream errors → `.backendFailure(message:)` — avoids
+    ///   leaking `ContainerizationError` types across the abstraction boundary.
+    ///
+    /// - Parameters:
+    ///   - error: The upstream error to map.
+    ///   - id: The container id involved in the operation. Used in `.notFound`
+    ///     and as part of the `.backendFailure` message when `context` is given.
+    ///   - context: An optional human-readable operation name (e.g.
+    ///     `"stats failed for 'web'"`) prepended to the failure message, so
+    ///     existing diagnostic strings are preserved unchanged.
+    private func mapUpstreamError(
+        _ error: Error,
+        id: String? = nil,
+        context: String? = nil
+    ) -> RuntimeError {
+        if let ce = error as? ContainerizationError,
+           BridgeContainerClientRuntime.isNotFound(ce) {
+            return .notFound(id: id ?? "unknown")
+        }
+        let message: String
+        if let context {
+            message = "\(context): \(error.localizedDescription)"
+        } else {
+            message = error.localizedDescription
+        }
+        return .backendFailure(message: message)
     }
 
     private static func isNotFound(_ error: ContainerizationError) -> Bool {
