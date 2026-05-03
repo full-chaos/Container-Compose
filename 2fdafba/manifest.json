@@ -1,0 +1,8 @@
+{
+  "branch": "feat/chaos-1384-template-driver",
+  "commit": "2fdafbad54245387c68d2fe1fc3a7af5cac5d0bb",
+  "short": "2fdafba",
+  "target": "2fdafba",
+  "message": "feat(configs): host-side template_driver rendering for configs and secrets (CHAOS-1384)",
+  "published_at": "2026-05-03T12:46:40.785033+00:00"
+}
