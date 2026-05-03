@@ -756,7 +756,7 @@
           "mem_reservation",
           "partial",
           "yes",
-          "Decoded and emitted as a degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, `mem_reservation` maps onto `--memory` as a fixed VM allocation with a warning. Apple container does not implement Docker-style soft reservation semantics in the VM-per-container model."
+          "Decoded and emitted as a degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, `mem_reservation` maps onto `--memory` as a fixed VM allocation with a warning. If reservation exceeds limit, Container-Compose emits an invalid-input warning and still applies the limit. Apple container does not implement Docker-style soft reservation semantics in the VM-per-container model."
         ],
         [
           "mem_swappiness",
@@ -1128,13 +1128,13 @@
           "resources.reservations.cpus",
           "partial",
           "yes",
-          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `cpus` / `deploy.limits.cpus` is set, reservation maps onto `--cpus` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins and an ignored-reservation warning fires. VM-per-container model has no inter-container contention, so soft reservation semantics are not honored."
+          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `cpus` / `deploy.limits.cpus` is set, reservation maps onto `--cpus` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins; if reservation exceeds limit, an invalid-input warning fires instead of the generic ignored-reservation warning. VM-per-container model has no inter-container contention, so soft reservation semantics are not honored."
         ],
         [
           "resources.reservations.memory",
           "partial",
           "yes",
-          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, reservation maps onto `--memory` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins and an ignored-reservation warning fires."
+          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, reservation maps onto `--memory` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins; if reservation exceeds limit, an invalid-input warning fires instead of the generic ignored-reservation warning."
         ],
         [
           "resources.reservations.devices",

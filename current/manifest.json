@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "a4dead25ee2184754a2b505c5a178751bb6e0879",
-  "short": "a4dead2",
+  "commit": "f626a1306e0a89e1f1714cefa33047b6bc372078",
+  "short": "f626a13",
   "target": "current",
-  "message": "feat(args): map reservations to --cpus/--memory as degraded fallback (CHAOS-1336) (#90)",
-  "published_at": "2026-05-03T02:02:23.808622+00:00"
+  "message": "feat(args): warn when reservation > limit (CHAOS-1336 follow-up) (#91)",
+  "published_at": "2026-05-03T12:39:06.582835+00:00"
 }
