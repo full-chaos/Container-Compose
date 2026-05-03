@@ -756,7 +756,7 @@
           "mem_reservation",
           "partial",
           "yes",
-          "Decoded; emits --memory-reservation, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1375."
+          "Decoded and emitted as a degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, `mem_reservation` maps onto `--memory` as a fixed VM allocation with a warning. Apple container does not implement Docker-style soft reservation semantics in the VM-per-container model."
         ],
         [
           "mem_swappiness",
@@ -1127,14 +1127,14 @@
         [
           "resources.reservations.cpus",
           "partial",
-          "no",
-          "Parsed; not applied."
+          "yes",
+          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `cpus` / `deploy.limits.cpus` is set, reservation maps onto `--cpus` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins and an ignored-reservation warning fires. VM-per-container model has no inter-container contention, so soft reservation semantics are not honored."
         ],
         [
           "resources.reservations.memory",
           "partial",
-          "no",
-          "Parsed; not applied."
+          "yes",
+          "Emitted as degraded compose-side fallback (CHAOS-1336): when no `mem_limit` / `deploy.limits.memory` is set, reservation maps onto `--memory` as a fixed VM allocation with a warning. When both limit and reservation are present, limit wins and an ignored-reservation warning fires."
         ],
         [
           "resources.reservations.devices",
