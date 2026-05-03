@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1398-down-removes-volumes-and-up-idempotent-create",
+  "commit": "9b5b88ef4105379a061db3bc8842af63251ced13",
+  "short": "9b5b88e",
+  "target": "9b5b88e",
+  "message": "refactor(volumes): extract isNamedVolumeSource helper (CHAOS-1398 follow-up)",
+  "published_at": "2026-05-03T15:34:15.818137+00:00"
+}
