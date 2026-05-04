@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "f40fb171974be3b21205b18eb852b881ab0a1e2c",
-  "short": "f40fb17",
+  "commit": "72b8f6cb387f40141eb0297419629666c4f1e07e",
+  "short": "72b8f6c",
   "target": "current",
-  "message": "fix(volumes): down -v cleans orphaned volume.img (CHAOS-1413 Layer 2) (#103)",
-  "published_at": "2026-05-04T14:40:26.842079+00:00"
+  "message": "fix(volumes): skip legacy migration when runtime source is block-image .img (CHAOS-1418) (#104)",
+  "published_at": "2026-05-04T16:10:38.044476+00:00"
 }
