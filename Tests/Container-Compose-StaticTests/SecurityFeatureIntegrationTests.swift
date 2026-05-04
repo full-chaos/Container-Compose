@@ -20,43 +20,43 @@ import Darwin
 import Yams
 @testable import ContainerComposeCore
 
-/// Security feature integration tests for Task 1.4.
+/// Security feature integration tests (CHAOS-1407).
 ///
-/// These tests verify the full **YAML → Service decode → SecurityArgs.build() → argv**
-/// pipeline for each security-related compose field.  They are "integration"
-/// tests in the sense that they exercise the entire compose-file-parse path,
-/// not just hand-crafted `Service` objects, so regressions in `Service.init(from:)`
-/// that silently drop a security field will surface here.
+/// These tests verify two complementary pipelines:
+///
+/// 1. **YAML → Service decode → SecurityArgs.build() → argv**
+///    Each security-related compose field must survive the YAML parse path and
+///    appear in the `container run` argv produced by `SecurityArgs.build(_:)`.
+///    Regressions in `Service.init(from:)` that silently drop a security field
+///    will surface here.
+///
+/// 2. **YAML → Service decode → RuntimeCreateConfiguration**
+///    Security fields added in CHAOS-1407 (`capabilities`, `securityOpt`,
+///    `readOnly`, `user`, `groupAdd`, `privileged`) are now present on
+///    `RuntimeCreateConfiguration` and are asserted to carry the decoded values
+///    correctly.  Application by conformers is a Phase 2 concern; these tests
+///    verify the spec propagation only.
 ///
 /// # Architecture note — where security features live
 ///
-/// Container-Compose's job is to **translate** compose fields to `container run`
-/// argv.  The real backend (apple/container) is what actually enforces
-/// capabilities, read-only filesystem, etc.  All security translation happens in
-/// `ComposeUp.SecurityArgs.build(_:)` and produces `[String]` argv items.
+/// Container-Compose's job is to **translate** compose fields.  Security
+/// translation happens at two levels:
 ///
-/// `RuntimeCreateConfiguration` — the struct passed to `Runtime.create()` in the
-/// native path — intentionally **does not** carry security fields; it carries
-/// only the fields wired through the native API server (image, CPUs, memory,
-/// hostname, env, command, ports).  The per-concern argv builders, including
-/// `SecurityArgs`, still own the security surface and produce argv fed to
-/// `container run` via `RunCommandRunner`.
+/// - `ComposeUp.SecurityArgs.build(_:)` produces `[String]` argv items for the
+///   `container run` (bridge) path.  Apple/container unsupported flags
+///   (`--privileged`, `--security-opt`, `--group-add`) are warn-and-skipped here.
 ///
-/// # Gap documentation
+/// - `RuntimeCreateConfiguration` carries the same security surface for the
+///   native-API path.  Conformers that cannot apply a field ignore it; a
+///   follow-up ticket wires them through.
 ///
-/// Fields that Compose accepts but `RuntimeCreateConfiguration` does NOT carry:
-/// - `cap_add` / `cap_drop` — argv-only via `SecurityArgs`; no counterpart in
-///   `RuntimeCreateConfiguration`.
-/// - `security_opt` — Compose accepts it; apple/container rejects `--security-opt`;
-///   `SecurityArgs` warn-and-skips it; gap is intentional.
-/// - `read_only` — argv-only (`--read-only`); not in `RuntimeCreateConfiguration`.
-/// - `user` — argv-only (`--user`); not in `RuntimeCreateConfiguration`.
-/// - `group_add` — Compose accepts it; apple/container rejects `--group-add`;
-///   warn-and-skip; not in `RuntimeCreateConfiguration`.
-/// - `privileged` — Compose accepts it; apple/container rejects `--privileged`;
-///   warn-and-skip; not in `RuntimeCreateConfiguration`.
+/// # Remaining gaps (apple/container limitations, not CHAOS-1407)
 ///
-/// See `docs/reviews/phase1-remainder-test-gaps.md` for the authoritative gap list.
+/// The following fields are carried in `RuntimeCreateConfiguration` but
+/// apple/container has no flag for them, so `SecurityArgs` warn-and-skips them:
+/// - `security_opt` (`--security-opt` not accepted)
+/// - `group_add`    (`--group-add` not accepted)
+/// - `privileged`   (`--privileged` not accepted)
 @Suite("Security feature integration tests — YAML → SecurityArgs.build() → argv", .serialized)
 struct SecurityFeatureIntegrationTests {
 
@@ -491,49 +491,209 @@ struct SecurityFeatureIntegrationTests {
         #expect(!args.contains("--cap-drop"))
     }
 
-    // MARK: - RuntimeCreateConfiguration gap documentation
+    // MARK: - RuntimeCreateConfiguration security field propagation (CHAOS-1407)
 
-    /// This is a compile-time assertion that `RuntimeCreateConfiguration` carries
-    /// none of the security fields.  The test intentionally inspects only the
-    /// public surface; it does not check private properties.
-    ///
-    /// If someone adds `capabilities`, `readOnly`, `user`, or `privileged`
-    /// to `RuntimeCreateConfiguration`, they should update this test to assert
-    /// the field is populated from the compose service, and remove the
-    /// corresponding TODO comment in `docs/reviews/phase1-remainder-test-gaps.md`.
-    ///
-    /// GAP SUMMARY (see also `docs/reviews/phase1-remainder-test-gaps.md`):
-    /// - `cap_add` / `cap_drop` → no field in `RuntimeCreateConfiguration`
-    /// - `security_opt`         → no field in `RuntimeCreateConfiguration` (and
-    ///                            apple/container doesn't support it anyway)
-    /// - `read_only`            → no field in `RuntimeCreateConfiguration`
-    /// - `user`                 → no field in `RuntimeCreateConfiguration`
-    /// - `group_add`            → no field in `RuntimeCreateConfiguration` (and
-    ///                            apple/container doesn't support it anyway)
-    /// - `privileged`           → no field in `RuntimeCreateConfiguration` (and
-    ///                            apple/container doesn't support it anyway)
-    // TODO(CHAOS-1407): When security fields are wired into RuntimeCreateConfiguration,
-    //   add property-access assertions here for each new field and remove the
-    //   corresponding gap entry from phase1-remainder-test-gaps.md.
-    @Test("RuntimeCreateConfiguration does not yet expose security fields (gap baseline)")
-    func runtimeCreateConfigurationHasNoSecurityFields() {
+    /// Verifies that `RuntimeCreateConfiguration` exposes all security fields
+    /// and that default construction leaves them nil (no regression for callers
+    /// that don't supply security context).
+    @Test("RuntimeCreateConfiguration exposes security fields with nil defaults")
+    func runtimeCreateConfigurationSecurityFieldDefaults() {
         let config = RuntimeCreateConfiguration(imageReference: "alpine")
 
-        // Verify the fields we DO have (sanity check the struct is wired at all)
+        // Core fields remain intact
         #expect(config.imageReference == "alpine")
         #expect(config.cpus == 1)
         #expect(config.memoryInBytes > 0)
 
-        // Security fields are NOT present on RuntimeCreateConfiguration.
-        // If this test no longer compiles after someone adds them, update it to
-        // assert the values rather than deleting the test.
-        //
-        // The following properties do NOT exist on RuntimeCreateConfiguration today:
-        //   config.capabilities (cap_add / cap_drop)
-        //   config.readOnly      (read_only)
-        //   config.user          (user)
-        //   config.privileged    (privileged)
-        //   config.securityOpt   (security_opt)
-        //   config.groupAdd      (group_add)
+        // Security fields default to nil (no-op for current conformers)
+        #expect(config.capabilities == nil)
+        #expect(config.securityOpt == nil)
+        #expect(config.readOnly == nil)
+        #expect(config.user == nil)
+        #expect(config.groupAdd == nil)
+        #expect(config.privileged == nil)
+    }
+
+    /// Verifies that `capabilities` (cap_add / cap_drop) round-trips through
+    /// `RuntimeCreateConfiguration` correctly.
+    @Test("RuntimeCreateConfiguration carries cap_add and cap_drop via capabilities field")
+    func runtimeCreateConfigurationCapabilities() {
+        let caps = RuntimeCapabilities(add: ["NET_ADMIN", "SYS_TIME"], drop: ["ALL"])
+        let config = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            capabilities: caps
+        )
+
+        #expect(config.capabilities?.add == ["NET_ADMIN", "SYS_TIME"])
+        #expect(config.capabilities?.drop == ["ALL"])
+    }
+
+    /// Verifies that `securityOpt` round-trips through `RuntimeCreateConfiguration`.
+    @Test("RuntimeCreateConfiguration carries securityOpt field")
+    func runtimeCreateConfigurationSecurityOpt() {
+        let opts = ["no-new-privileges:true", "seccomp:unconfined"]
+        let config = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            securityOpt: opts
+        )
+
+        #expect(config.securityOpt == opts)
+    }
+
+    /// Verifies that `readOnly` round-trips through `RuntimeCreateConfiguration`.
+    @Test("RuntimeCreateConfiguration carries readOnly field")
+    func runtimeCreateConfigurationReadOnly() {
+        let config = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            readOnly: true
+        )
+
+        #expect(config.readOnly == true)
+    }
+
+    /// Verifies that `user` round-trips through `RuntimeCreateConfiguration`.
+    @Test("RuntimeCreateConfiguration carries user field")
+    func runtimeCreateConfigurationUser() {
+        let config = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            user: "1000:1000"
+        )
+
+        #expect(config.user == "1000:1000")
+    }
+
+    /// Verifies that `groupAdd` round-trips through `RuntimeCreateConfiguration`.
+    @Test("RuntimeCreateConfiguration carries groupAdd field")
+    func runtimeCreateConfigurationGroupAdd() {
+        let config = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            groupAdd: ["audio", "video"]
+        )
+
+        #expect(config.groupAdd == ["audio", "video"])
+    }
+
+    /// Verifies that `privileged` round-trips through `RuntimeCreateConfiguration`.
+    @Test("RuntimeCreateConfiguration carries privileged field")
+    func runtimeCreateConfigurationPrivileged() {
+        let config = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            privileged: true
+        )
+
+        #expect(config.privileged == true)
+    }
+
+    /// Verifies `Equatable` conformance with security fields: two configurations
+    /// with differing security context are not equal.
+    @Test("RuntimeCreateConfiguration Equatable accounts for security fields")
+    func runtimeCreateConfigurationEquatableWithSecurityFields() {
+        let base = RuntimeCreateConfiguration(imageReference: "alpine")
+        let withCaps = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            capabilities: RuntimeCapabilities(add: ["NET_ADMIN"], drop: [])
+        )
+        let withUser = RuntimeCreateConfiguration(
+            imageReference: "alpine",
+            user: "1000"
+        )
+
+        #expect(base != withCaps)
+        #expect(base != withUser)
+        #expect(withCaps != withUser)
+    }
+
+    /// Full round-trip: all security fields set together produce the expected values.
+    @Test("RuntimeCreateConfiguration carries all security fields simultaneously")
+    func runtimeCreateConfigurationAllSecurityFieldsTogether() {
+        let caps = RuntimeCapabilities(add: ["NET_ADMIN"], drop: ["ALL"])
+        let config = RuntimeCreateConfiguration(
+            imageReference: "nginx:alpine",
+            capabilities: caps,
+            securityOpt: ["no-new-privileges:true"],
+            readOnly: true,
+            user: "2000:2000",
+            groupAdd: ["docker"],
+            privileged: false
+        )
+
+        #expect(config.capabilities?.add == ["NET_ADMIN"])
+        #expect(config.capabilities?.drop == ["ALL"])
+        #expect(config.securityOpt == ["no-new-privileges:true"])
+        #expect(config.readOnly == true)
+        #expect(config.user == "2000:2000")
+        #expect(config.groupAdd == ["docker"])
+        #expect(config.privileged == false)
+    }
+
+    /// Verifies that YAML decode → Service → RuntimeCreateConfiguration
+    /// propagates `cap_add` / `cap_drop` into `capabilities`.
+    ///
+    /// This is the primary integration assertion that closes the
+    /// CHAOS-1407 gap: the Compose YAML security fields must survive the
+    /// full decode path and appear in the spec struct.
+    @Test("YAML cap_add/cap_drop decode into Service and map to RuntimeCapabilities")
+    func yamlCapabilitiesRoundTripToRuntimeCreateConfiguration() throws {
+        let yaml = """
+        services:
+          app:
+            image: nginx:alpine
+            cap_add:
+              - NET_ADMIN
+              - SYS_TIME
+            cap_drop:
+              - ALL
+        """
+        let (_, service) = try decodeService(yaml)
+        #expect(service.cap_add == ["NET_ADMIN", "SYS_TIME"])
+        #expect(service.cap_drop == ["ALL"])
+
+        // Build a RuntimeCreateConfiguration the way a compose-up path would
+        let caps = RuntimeCapabilities(
+            add: service.cap_add ?? [],
+            drop: service.cap_drop ?? []
+        )
+        let config = RuntimeCreateConfiguration(
+            imageReference: service.image ?? "unknown",
+            capabilities: caps.add.isEmpty && caps.drop.isEmpty ? nil : caps
+        )
+
+        #expect(config.capabilities?.add == ["NET_ADMIN", "SYS_TIME"])
+        #expect(config.capabilities?.drop == ["ALL"])
+    }
+
+    /// Verifies that YAML `read_only`, `user`, `security_opt`, `group_add`,
+    /// and `privileged` all decode into `Service` and can be plumbed into a
+    /// `RuntimeCreateConfiguration`.
+    @Test("YAML security fields decode into Service and map to RuntimeCreateConfiguration")
+    func yamlSecurityFieldsRoundTripToRuntimeCreateConfiguration() throws {
+        let yaml = """
+        services:
+          hardened:
+            image: nginx:alpine
+            user: "2000:2000"
+            read_only: true
+            privileged: false
+            security_opt:
+              - no-new-privileges:true
+            group_add:
+              - audio
+        """
+        let (_, service) = try decodeService(yaml, name: "hardened")
+
+        let config = RuntimeCreateConfiguration(
+            imageReference: service.image ?? "unknown",
+            securityOpt: service.security_opt,
+            readOnly: service.read_only,
+            user: service.user,
+            groupAdd: service.group_add,
+            privileged: service.privileged
+        )
+
+        #expect(config.readOnly == true)
+        #expect(config.user == "2000:2000")
+        #expect(config.groupAdd == ["audio"])
+        #expect(config.securityOpt == ["no-new-privileges:true"])
+        #expect(config.privileged == false)
     }
 }
