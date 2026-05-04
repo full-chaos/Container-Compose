@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1418-block-image-migration",
+  "commit": "4235061009c6f52ec15f45f5f7cbb2970a585ed3",
+  "short": "4235061",
+  "target": "4235061",
+  "message": "fix(volumes): skip legacy migration when runtime source is block-image .img (CHAOS-1418)",
+  "published_at": "2026-05-04T15:42:26.116335+00:00"
+}
