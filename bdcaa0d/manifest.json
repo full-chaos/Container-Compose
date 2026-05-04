@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1413-down-v-orphan-recovery",
+  "commit": "bdcaa0d0352a009191a1b827ac1caa090b7251e2",
+  "short": "bdcaa0d",
+  "target": "bdcaa0d",
+  "message": "fix(volumes): down -v cleans orphaned volume.img (CHAOS-1413 Layer 2)",
+  "published_at": "2026-05-04T14:21:23.600017+00:00"
+}
