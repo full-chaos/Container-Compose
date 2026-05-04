@@ -55,4 +55,50 @@ public enum EventStream {
         public let isParameterized: Bool?
         public let sourceLocation: SourceLocation
     }
+
+    /// Payload of a `kind:"event"` record. The `kind` field discriminates
+    /// between lifecycle events. Forward-compatible: unrecognized kinds are
+    /// preserved as `.unknown(rawValue)` rather than rejected.
+    public struct EventPayload: Decodable, Equatable, Sendable {
+        public enum Kind: Equatable, Sendable {
+            case runStarted
+            case runEnded
+            case testStarted
+            case testEnded
+            case testSkipped
+            case issueRecorded
+            case unknown(String)
+
+            init(rawValue: String) {
+                switch rawValue {
+                case "runStarted": self = .runStarted
+                case "runEnded": self = .runEnded
+                case "testStarted": self = .testStarted
+                case "testEnded": self = .testEnded
+                case "testSkipped": self = .testSkipped
+                case "issueRecorded": self = .issueRecorded
+                default: self = .unknown(rawValue)
+                }
+            }
+        }
+
+        public let kind: Kind
+        public let instant: Instant
+        public let messages: [Message]
+        public let testID: String?
+        public let issue: Issue?
+
+        private enum CodingKeys: String, CodingKey {
+            case kind, instant, messages, testID, issue
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            self.kind = Kind(rawValue: try c.decode(String.self, forKey: .kind))
+            self.instant = try c.decode(Instant.self, forKey: .instant)
+            self.messages = try c.decode([Message].self, forKey: .messages)
+            self.testID = try c.decodeIfPresent(String.self, forKey: .testID)
+            self.issue = try c.decodeIfPresent(Issue.self, forKey: .issue)
+        }
+    }
 }

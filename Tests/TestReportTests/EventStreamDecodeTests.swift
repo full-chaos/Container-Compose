@@ -71,3 +71,66 @@ struct EventStreamCatalogDecodeTests {
         #expect(payload.isParameterized == false)
     }
 }
+
+@Suite("EventStream event payload")
+struct EventStreamEventPayloadDecodeTests {
+    @Test("runStarted decodes")
+    func decodeRunStarted() throws {
+        let json = #"""
+        {"instant":{"absolute":1.0,"since1970":2.0},"kind":"runStarted","messages":[{"symbol":"default","text":"Test run started."}]}
+        """#
+        let p = try JSONDecoder().decode(EventStream.EventPayload.self, from: Data(json.utf8))
+        #expect(p.kind == .runStarted)
+        #expect(p.testID == nil)
+        #expect(p.issue == nil)
+        #expect(p.messages.count == 1)
+    }
+
+    @Test("testStarted decodes with testID")
+    func decodeTestStarted() throws {
+        let json = #"""
+        {"instant":{"absolute":1,"since1970":2},"kind":"testStarted","messages":[],"testID":"Mod.MyTests/myCase()"}
+        """#
+        let p = try JSONDecoder().decode(EventStream.EventPayload.self, from: Data(json.utf8))
+        #expect(p.kind == .testStarted)
+        #expect(p.testID == "Mod.MyTests/myCase()")
+    }
+
+    @Test("testEnded decodes")
+    func decodeTestEnded() throws {
+        let json = #"""
+        {"instant":{"absolute":1,"since1970":2},"kind":"testEnded","messages":[{"symbol":"pass","text":"x"}],"testID":"Mod.X/y()"}
+        """#
+        let p = try JSONDecoder().decode(EventStream.EventPayload.self, from: Data(json.utf8))
+        #expect(p.kind == .testEnded)
+    }
+
+    @Test("issueRecorded decodes with issue and testID")
+    func decodeIssueRecorded() throws {
+        let json = #"""
+        {"instant":{"absolute":1,"since1970":2},"issue":{"isFailure":true,"isKnown":false,"severity":"error","sourceLocation":{"_filePath":"x","column":9,"fileID":"Mod/F.swift","filePath":"x","line":7}},"kind":"issueRecorded","messages":[{"symbol":"fail","text":"Expectation failed"}],"testID":"Mod.X/y()"}
+        """#
+        let p = try JSONDecoder().decode(EventStream.EventPayload.self, from: Data(json.utf8))
+        #expect(p.kind == .issueRecorded)
+        #expect(p.issue?.isFailure == true)
+        #expect(p.issue?.sourceLocation?.line == 7)
+    }
+
+    @Test("runEnded decodes")
+    func decodeRunEnded() throws {
+        let json = #"""
+        {"instant":{"absolute":1,"since1970":2},"kind":"runEnded","messages":[{"symbol":"pass","text":"done"}]}
+        """#
+        let p = try JSONDecoder().decode(EventStream.EventPayload.self, from: Data(json.utf8))
+        #expect(p.kind == .runEnded)
+    }
+
+    @Test("unknown event kind decodes as .unknown(...)")
+    func decodeUnknownEventKind() throws {
+        let json = #"""
+        {"instant":{"absolute":1,"since1970":2},"kind":"someFutureKind","messages":[]}
+        """#
+        let p = try JSONDecoder().decode(EventStream.EventPayload.self, from: Data(json.utf8))
+        #expect(p.kind == .unknown("someFutureKind"))
+    }
+}
