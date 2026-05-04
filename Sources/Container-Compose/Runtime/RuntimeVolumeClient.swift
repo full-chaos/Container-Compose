@@ -16,7 +16,6 @@
 
 import ContainerAPIClient
 import ContainerResource
-import ContainerizationError
 import Foundation
 
 enum RuntimeVolumeClient {
@@ -38,60 +37,24 @@ enum RuntimeVolumeClient {
                 labels: spec.labels
             )
             return translate(volume)
-        } catch let error as VolumeError {
-            switch error {
-            case .volumeAlreadyExists(let name):
-                throw RuntimeError.alreadyExists(id: name)
-            default:
-                throw RuntimeError.backendFailure(message: error.localizedDescription)
-            }
-        } catch let error as ContainerizationError {
-            if error.message.contains("already exists") {
-                throw RuntimeError.alreadyExists(id: spec.name)
-            }
-            throw RuntimeError.backendFailure(message: error.localizedDescription)
         } catch {
-            throw RuntimeError.backendFailure(message: error.localizedDescription)
+            throw RuntimeErrorMapper.map(error, id: spec.name)
         }
     }
 
     static func remove(name: String) async throws {
         do {
             try await ClientVolume.delete(name: name)
-        } catch let error as VolumeError {
-            switch error {
-            case .volumeNotFound(let missing):
-                throw RuntimeError.notFound(id: missing)
-            default:
-                throw RuntimeError.backendFailure(message: error.localizedDescription)
-            }
-        } catch let error as ContainerizationError {
-            if error.message.contains("not found") {
-                throw RuntimeError.notFound(id: name)
-            }
-            throw RuntimeError.backendFailure(message: error.localizedDescription)
         } catch {
-            throw RuntimeError.backendFailure(message: error.localizedDescription)
+            throw RuntimeErrorMapper.map(error, id: name)
         }
     }
 
     static func inspect(name: String) async throws -> ContainerResource.Volume {
         do {
             return try await ClientVolume.inspect(name)
-        } catch let error as VolumeError {
-            switch error {
-            case .volumeNotFound(let missing):
-                throw RuntimeError.notFound(id: missing)
-            default:
-                throw RuntimeError.backendFailure(message: error.localizedDescription)
-            }
-        } catch let error as ContainerizationError {
-            if error.message.contains("not found") {
-                throw RuntimeError.notFound(id: name)
-            }
-            throw RuntimeError.backendFailure(message: error.localizedDescription)
         } catch {
-            throw RuntimeError.backendFailure(message: error.localizedDescription)
+            throw RuntimeErrorMapper.map(error, id: name)
         }
     }
 
