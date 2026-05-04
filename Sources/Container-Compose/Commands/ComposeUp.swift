@@ -1070,30 +1070,24 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         switch spec.kind {
         case .bindMount:
-            // Bind mount: verify the host path is a directory (or create it).
-            var isDirectory: ObjCBool = false
-            // Ensure the path is absolute or relative to the current directory for FileManager
-            let fullHostPath = (source.starts(with: "/") || source.starts(with: "~")) ? source : (cwd + "/" + source)
-
-            if fileManager.fileExists(atPath: fullHostPath, isDirectory: &isDirectory) {
-                if isDirectory.boolValue {
-                    // Host path exists and is a directory, add the volume
-                    runCommandArgs.append("-v")
-                    runCommandArgs.append("\(source):\(destination)")
-                } else {
-                    // Host path exists but is a file
-                    print("Warning: Volume mount source '\(source)' is a file. The 'container' tool does not support direct file mounts. Skipping this volume.")
-                }
-            } else {
-                // Host path does not exist, assume it's meant to be a directory and try to create it.
-                do {
-                    try fileManager.createDirectory(atPath: fullHostPath, withIntermediateDirectories: true, attributes: nil)
-                    print("Info: Created missing host directory for volume: \(fullHostPath)")
-                    runCommandArgs.append("-v")
-                    runCommandArgs.append("\(source):\(destination)")
-                } catch {
-                    print("Error: Could not create host directory '\(fullHostPath)' for volume '\(resolvedVolume)': \(error.localizedDescription). Skipping this volume.")
-                }
+            // Bind mount: delegate filesystem-checking to VolumeMountFSChecker
+            // so the path-existence / auto-creation logic is unit-testable in
+            // isolation (CHAOS-1410).
+            switch VolumeMountFSChecker.check(
+                source: source,
+                destination: destination,
+                cwd: cwd,
+                fileManager: fileManager
+            ) {
+            case .mount(let args):
+                runCommandArgs.append(contentsOf: args)
+            case .skipFile(let src):
+                print("Warning: Volume mount source '\(src)' is a file. The 'container' tool does not support direct file mounts. Skipping this volume.")
+            case .created(let fullHostPath, let args):
+                print("Info: Created missing host directory for volume: \(fullHostPath)")
+                runCommandArgs.append(contentsOf: args)
+            case .skipCreateError(let fullHostPath, let underlyingError):
+                print("Error: Could not create host directory '\(fullHostPath)' for volume '\(resolvedVolume)': \(underlyingError). Skipping this volume.")
             }
 
         case .namedVolume:
