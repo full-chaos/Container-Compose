@@ -64,24 +64,12 @@ struct FormatterGoldenTests {
         // Compare structurally rather than as raw strings to absorb whitespace
         // differences from regen flows. Drift in shape (added/removed fields)
         // still surfaces because TestRun is the canonical Codable.
-        // durationSeconds is intentionally excluded — it varies per run.
+        // durationSeconds is deterministic here: it's computed from the fixed
+        // runStarted/runEnded `instant.absolute` values inside the captured
+        // fixture, not from wall-clock during the test.
         let decoder = JSONDecoder()
         let a = try decoder.decode(TestRun.self, from: Data(actual.utf8))
         let e = try decoder.decode(TestRun.self, from: Data(expected.utf8))
-        #expect(
-            a.schemaVersion == e.schemaVersion
-            && a.toolchainVersion == e.toolchainVersion
-            && a.summary.totalTests == e.summary.totalTests
-            && a.summary.passed == e.summary.passed
-            && a.summary.failed == e.summary.failed
-            && a.summary.skipped == e.summary.skipped
-            && a.summary.knownIssues == e.summary.knownIssues
-            && a.summary.runCompleted == e.summary.runCompleted
-            && a.summary.malformedLineCount == e.summary.malformedLineCount
-            && a.failures == e.failures
-            && a.skipped == e.skipped
-            && a.unknownEventKinds == e.unknownEventKinds,
-            "Run `swift run test-report Tests/TestReportTests/Fixtures/sample-events-pass.jsonl --format json > Tests/TestReportTests/Fixtures/expected-pass-report.json` to regenerate after intentional shape changes."
-        )
+        #expect(a == e, "Run `swift run test-report Tests/TestReportTests/Fixtures/sample-events-pass.jsonl --format json > Tests/TestReportTests/Fixtures/expected-pass-report.json` to regenerate after intentional shape changes.")
     }
 }
