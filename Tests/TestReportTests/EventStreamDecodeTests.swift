@@ -43,3 +43,31 @@ struct EventStreamFoundationalDecodeTests {
         #expect(issue.sourceLocation?.line == 7)
     }
 }
+
+@Suite("EventStream test catalog payload")
+struct EventStreamCatalogDecodeTests {
+    @Test("suite payload decodes")
+    func decodeSuite() throws {
+        let json = #"""
+        {"displayName":"Scale Expansion Tests","id":"Mod.ScaleTests","kind":"suite","name":"ScaleTests","sourceLocation":{"_filePath":"x","column":2,"fileID":"Mod/ScaleTests.swift","filePath":"x","line":27}}
+        """#
+        let payload = try JSONDecoder().decode(EventStream.TestCatalogPayload.self, from: Data(json.utf8))
+        #expect(payload.kind == .suite)
+        #expect(payload.id == "Mod.ScaleTests")
+        #expect(payload.name == "ScaleTests")
+        #expect(payload.displayName == "Scale Expansion Tests")
+        #expect(payload.isParameterized == nil)
+        #expect(payload.sourceLocation.line == 27)
+    }
+
+    @Test("function payload decodes with isParameterized")
+    func decodeFunction() throws {
+        let json = #"""
+        {"displayName":"scale = 1","id":"Mod.ScaleTests/scaleOne()/X.swift:57:6","isParameterized":false,"kind":"function","name":"scaleOne()","sourceLocation":{"_filePath":"x","column":6,"fileID":"Mod/ScaleTests.swift","filePath":"x","line":57}}
+        """#
+        let payload = try JSONDecoder().decode(EventStream.TestCatalogPayload.self, from: Data(json.utf8))
+        #expect(payload.kind == .function)
+        #expect(payload.name == "scaleOne()")
+        #expect(payload.isParameterized == false)
+    }
+}

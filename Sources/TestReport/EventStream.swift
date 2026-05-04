@@ -39,4 +39,20 @@ public enum EventStream {
         public let severity: String
         public let sourceLocation: SourceLocation?
     }
+
+    /// Payload of a `kind:"test"` record. Emitted once per `@Suite` and once
+    /// per `@Test` discovered. The `kind` discriminates between the two.
+    public struct TestCatalogPayload: Decodable, Equatable, Sendable {
+        public enum Kind: String, Decodable, Sendable {
+            case suite
+            case function
+        }
+
+        public let kind: Kind
+        public let id: String
+        public let name: String
+        public let displayName: String
+        public let isParameterized: Bool?
+        public let sourceLocation: SourceLocation
+    }
 }
