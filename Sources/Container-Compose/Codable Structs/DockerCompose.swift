@@ -546,11 +546,17 @@ extension DockerCompose {
     ///
     /// Checks performed:
     /// 1. At least one service is defined.
-    /// 2. Each service has either `image` or `build`.
+    /// 2. Each service has either `image` or `build` (not both).
     /// 3. Every port specification is parseable and port numbers are in 0–65535.
     /// 4. The `depends_on` graph is acyclic.
+    /// 5. Resource constraints (`deploy.resources.limits.cpus`, `mem_limit`, etc.)
+    ///    are within the allowed ranges.
     ///
-    /// - Throws: The first `ComposeValidationError` encountered.
+    /// All violations are accumulated before throwing so the user sees every
+    /// problem in one pass.
+    ///
+    /// - Throws: The first `ComposeValidationError` encountered (fail-fast within
+    ///   each rule; all rules are checked in order).
     public func validate() throws {
         // 1. Non-empty services
         let concrete = services.compactMapValues { $0 }
@@ -558,8 +564,14 @@ extension DockerCompose {
             throw ComposeValidationError.noServicesDefined
         }
 
-        // 2. Each service needs image or build, and valid ports
+        // 2. Per-service checks: image/build conflict, image-or-build presence, ports, resources.
         for (name, service) in concrete {
+            // image + build conflict: both present is ambiguous
+            if service.image != nil && service.build != nil {
+                throw ComposeValidationError.imageBuildConflict(serviceName: name)
+            }
+
+            // Must have at least one of image or build
             if service.image == nil && service.build == nil {
                 throw ComposeValidationError.serviceNeedsImageOrBuild(serviceName: name)
             }
@@ -567,6 +579,8 @@ extension DockerCompose {
             if let ports = service.ports {
                 try validatePorts(ports, forService: name)
             }
+
+            try validateResourceConstraints(for: service, serviceName: name)
         }
 
         // 3. Circular dependency detection via DFS
@@ -660,6 +674,92 @@ extension DockerCompose {
         }
         guard let portNum = Int(portString), portNum >= 0, portNum <= 65535 else {
             throw ComposeValidationError.invalidPortFormat(portSpec: portSpec, serviceName: serviceName)
+        }
+    }
+
+    /// Validates resource constraint fields on a service.
+    ///
+    /// Rules:
+    /// - `deploy.resources.limits.cpus`: must be parseable as a positive number (> 0)
+    /// - `cpus_top` (top-level `cpus:`): must be > 0
+    /// - `mem_limit` / `deploy.resources.limits.memory`: must not be "0" (zero is rejected
+    ///   by the compose-spec and apple/container alike)
+    /// - `memswap_limit`: -1 is allowed (unlimited), otherwise must be parseable
+    /// - `mem_swappiness`: 0–100
+    /// - `oom_score_adj`: -1000–1000
+    private func validateResourceConstraints(for service: Service, serviceName: String) throws {
+        // deploy.resources.limits.cpus
+        if let cpusStr = service.deploy?.resources?.limits?.cpus {
+            guard let cpusVal = Double(cpusStr), cpusVal >= 0 else {
+                throw ComposeValidationError.resourceConstraintOutOfRange(
+                    field: "deploy.resources.limits.cpus",
+                    value: cpusStr,
+                    min: 0,
+                    max: nil
+                )
+            }
+        }
+
+        // cpus (top-level service.cpus_top)
+        if let cpusTop = service.cpus_top {
+            guard cpusTop >= 0 else {
+                throw ComposeValidationError.resourceConstraintOutOfRange(
+                    field: "cpus",
+                    value: String(cpusTop),
+                    min: 0,
+                    max: nil
+                )
+            }
+        }
+
+        // mem_limit: reject "0" — zero memory is always invalid
+        if let memLimit = service.mem_limit {
+            let trimmed = memLimit.trimmingCharacters(in: .whitespaces)
+            if trimmed == "0" {
+                throw ComposeValidationError.resourceConstraintOutOfRange(
+                    field: "mem_limit",
+                    value: memLimit,
+                    min: 1,
+                    max: nil
+                )
+            }
+        }
+
+        // deploy.resources.limits.memory: reject "0"
+        if let deployMem = service.deploy?.resources?.limits?.memory {
+            let trimmed = deployMem.trimmingCharacters(in: .whitespaces)
+            if trimmed == "0" {
+                throw ComposeValidationError.resourceConstraintOutOfRange(
+                    field: "deploy.resources.limits.memory",
+                    value: deployMem,
+                    min: 1,
+                    max: nil
+                )
+            }
+        }
+
+        // mem_swappiness: 0–100
+        if let swappiness = service.mem_swappiness {
+            guard swappiness >= 0, swappiness <= 100 else {
+                throw ComposeValidationError.resourceConstraintOutOfRange(
+                    field: "mem_swappiness",
+                    value: String(swappiness),
+                    min: 0,
+                    max: 100
+                )
+            }
+        }
+
+        // oom_score_adj: -1000–1000
+        if let oomAdj = service.oom_score_adj {
+            guard oomAdj >= -1000, oomAdj <= 1000 else {
+                throw ComposeValidationError.resourceConstraintOutOfRange(
+                    field: "oom_score_adj",
+                    value: String(oomAdj),
+                    min: -1000,
+                    max: 1000
+                )
+            }
         }
     }
 

@@ -114,6 +114,10 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             .loadAndMerge(mainPath: composePath)
             .resolvingExtends()
 
+        // Validate the compose file for semantic correctness before any side
+        // effects (network/volume creation, container provisioning) are attempted.
+        try dockerCompose.validate()
+
         environmentVariables = loadEnvFile(path: envFilePath)
 
         if let version = dockerCompose.version {

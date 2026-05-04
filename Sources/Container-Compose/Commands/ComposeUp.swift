@@ -146,6 +146,10 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             .loadAndMerge(mainPath: composePath)
             .resolvingExtends()
 
+        // Validate the compose file for semantic correctness before any side
+        // effects (network/volume creation, container starts) are attempted.
+        try dockerCompose.validate()
+
         // Load environment variables from .env file
         environmentVariables = loadEnvFile(path: envFilePath)
 

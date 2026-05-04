@@ -204,7 +204,157 @@ struct ComposeValidationTests {
         #expect(throws: Never.self) { try compose.validate() }
     }
 
-    // MARK: - resourceConstraintOutOfRange (error type only — no validate() logic yet)
+    // MARK: - imageBuildConflict
+
+    @Test("Service with both image and build throws imageBuildConflict")
+    func serviceBothImageAndBuildThrows() throws {
+        let yaml = """
+        services:
+          app:
+            image: myapp:latest
+            build: .
+        """
+        let compose = try decode(yaml)
+        #expect(throws: ComposeValidationError.imageBuildConflict(serviceName: "app")) {
+            try compose.validate()
+        }
+    }
+
+    @Test("Service with only image and no build does not throw imageBuildConflict")
+    func serviceOnlyImageNoConflict() throws {
+        let service = Service(image: "nginx:latest")
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("Service with only build and no image does not throw imageBuildConflict")
+    func serviceOnlyBuildNoConflict() throws {
+        let yaml = """
+        services:
+          app:
+            build:
+              context: .
+        """
+        let compose = try decode(yaml)
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("imageBuildConflict errorDescription mentions service name")
+    func imageBuildConflictDescriptionMentionsServiceName() {
+        let err = ComposeValidationError.imageBuildConflict(serviceName: "myservice")
+        #expect(err.errorDescription?.contains("myservice") == true)
+    }
+
+    @Test("imageBuildConflict equality by service name")
+    func imageBuildConflictEquality() {
+        let a = ComposeValidationError.imageBuildConflict(serviceName: "web")
+        let b = ComposeValidationError.imageBuildConflict(serviceName: "web")
+        let c = ComposeValidationError.imageBuildConflict(serviceName: "api")
+        #expect(a == b)
+        #expect(a != c)
+    }
+
+    // MARK: - resourceConstraintOutOfRange (validate() logic)
+
+    @Test("Negative cpus_top throws resourceConstraintOutOfRange")
+    func negativeCpusTopThrows() {
+        let service = Service(image: "nginx:latest", cpus_top: -1)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: ComposeValidationError.self) { try compose.validate() }
+    }
+
+    @Test("Zero cpus_top (0.0) is valid")
+    func zeroCpusTopIsValid() {
+        let service = Service(image: "nginx:latest", cpus_top: 0)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("Positive cpus_top is valid")
+    func positiveCpusTopIsValid() {
+        let service = Service(image: "nginx:latest", cpus_top: 2.5)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("mem_limit of '0' throws resourceConstraintOutOfRange")
+    func memLimitZeroThrows() {
+        let service = Service(image: "nginx:latest", mem_limit: "0")
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: ComposeValidationError.self) { try compose.validate() }
+    }
+
+    @Test("mem_limit of '512m' is valid")
+    func memLimitValidStringIsValid() {
+        let service = Service(image: "nginx:latest", mem_limit: "512m")
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("mem_swappiness of 101 throws resourceConstraintOutOfRange")
+    func memSwappiness101Throws() {
+        let service = Service(image: "nginx:latest", mem_swappiness: 101)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: ComposeValidationError.self) { try compose.validate() }
+    }
+
+    @Test("mem_swappiness of -1 throws resourceConstraintOutOfRange")
+    func memSwappinessNegativeThrows() {
+        let service = Service(image: "nginx:latest", mem_swappiness: -1)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: ComposeValidationError.self) { try compose.validate() }
+    }
+
+    @Test("mem_swappiness of 0 is valid")
+    func memSwappiness0IsValid() {
+        let service = Service(image: "nginx:latest", mem_swappiness: 0)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("mem_swappiness of 100 is valid")
+    func memSwappiness100IsValid() {
+        let service = Service(image: "nginx:latest", mem_swappiness: 100)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("oom_score_adj of 1001 throws resourceConstraintOutOfRange")
+    func oomScoreAdj1001Throws() {
+        let service = Service(image: "nginx:latest", oom_score_adj: 1001)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: ComposeValidationError.self) { try compose.validate() }
+    }
+
+    @Test("oom_score_adj of -1001 throws resourceConstraintOutOfRange")
+    func oomScoreAdjNeg1001Throws() {
+        let service = Service(image: "nginx:latest", oom_score_adj: -1001)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: ComposeValidationError.self) { try compose.validate() }
+    }
+
+    @Test("oom_score_adj of 0 is valid")
+    func oomScoreAdj0IsValid() {
+        let service = Service(image: "nginx:latest", oom_score_adj: 0)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("oom_score_adj of 1000 is valid")
+    func oomScoreAdj1000IsValid() {
+        let service = Service(image: "nginx:latest", oom_score_adj: 1000)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    @Test("oom_score_adj of -1000 is valid")
+    func oomScoreAdjNeg1000IsValid() {
+        let service = Service(image: "nginx:latest", oom_score_adj: -1000)
+        let compose = makeCompose(services: ["web": service])
+        #expect(throws: Never.self) { try compose.validate() }
+    }
+
+    // MARK: - resourceConstraintOutOfRange (error type — description)
 
     @Test("resourceConstraintOutOfRange description with max bound")
     func resourceConstraintOutOfRangeWithMaxDescription() {
