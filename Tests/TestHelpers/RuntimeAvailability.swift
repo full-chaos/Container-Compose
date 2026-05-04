@@ -24,8 +24,31 @@ import Foundation
 /// boots the container system *before* the test body — a body-level guard
 /// would never run.
 public enum RuntimeAvailability {
-    /// Returns true if `container --version` exits cleanly within a few seconds.
+    /// Maximum time to wait for `container --version` before treating the
+    /// runtime as unavailable. Apple's `container` daemon can wedge — XPC
+    /// connections cycle activate→cancel forever — and an unbounded wait
+    /// would hang every dynamic suite's `.enabled(if:)` check, blowing up
+    /// total test runtime.
+    private static let probeTimeoutSeconds: TimeInterval = 5.0
+
+    /// Cached probe result. Computed once per test process to avoid spawning
+    /// N child processes for N suites (each suite trait calls `isAvailable()`).
+    nonisolated(unsafe) private static var cachedResult: Bool?
+    private static let cacheLock = NSLock()
+
+    /// Returns true if `container --version` exits cleanly within
+    /// `probeTimeoutSeconds`. The result is cached for the lifetime of the
+    /// test process; subsequent calls return without re-probing.
     public static func isAvailable() -> Bool {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        if let cached = cachedResult { return cached }
+        let result = probe()
+        cachedResult = result
+        return result
+    }
+
+    private static func probe() -> Bool {
         let process = Process()
         let stdout = Pipe()
         let stderr = Pipe()
@@ -42,7 +65,21 @@ public enum RuntimeAvailability {
         } catch {
             return false
         }
-        process.waitUntilExit()
+
+        let deadline = Date().addingTimeInterval(probeTimeoutSeconds)
+        while process.isRunning {
+            if Date() > deadline {
+                process.terminate()
+                // Give SIGTERM a moment, then escalate.
+                Thread.sleep(forTimeInterval: 0.1)
+                if process.isRunning {
+                    kill(process.processIdentifier, SIGKILL)
+                }
+                process.waitUntilExit()
+                return false
+            }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
         return process.terminationStatus == 0
     }
 }
