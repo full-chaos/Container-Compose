@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c485c2b4d7d9c4d53ef74f948678e8c1a88d4298",
-  "short": "c485c2b",
+  "commit": "c58051342be05acc8f6818c296c863df84a3c541",
+  "short": "c580513",
   "target": "current",
-  "message": "feat(runtime): add security fields to RuntimeCreateConfiguration (CHAOS-1407) (#106)",
-  "published_at": "2026-05-04T16:52:32.895356+00:00"
+  "message": "feat(network): migrate compose up to Runtime.createNetwork (CHAOS-1408) (#107)",
+  "published_at": "2026-05-04T17:41:01.644775+00:00"
 }
