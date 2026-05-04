@@ -79,7 +79,7 @@ union-tag changes.
 |---|---|---|
 | `TestReport` library | `Sources/TestReport/` | Event `Codable` types, aggregator, formatters. Pure — no I/O. |
 | `test-report` executable | `Sources/TestReportCLI/` | ArgumentParser CLI: read JSONL, call library, print. |
-| `TestReport-Tests` | `Tests/TestReport-Tests/` | swift-testing tests — decode fixtures, aggregator, formatter snapshots. |
+| `TestReportTests` | `Tests/TestReportTests/` | swift-testing tests — decode fixtures, aggregator, formatter snapshots. |
 | `make test-json` | `Makefile` | One-shot: run tests with event stream, then run report, propagate exit code. |
 
 The library/CLI split exists so the aggregator and formatters are unit-testable
@@ -179,15 +179,16 @@ Rationale for shape:
 - **Empty events file** → exit 2, distinct message: `events file is empty — 'swift test' may have crashed before emitting any events`
 - **Malformed JSON line** → log to stderr, skip the line, continue. Don't abort the entire report on one bad line. Track count, surface in summary.
 - **Unknown event kind** → counted under `unknownEventKinds`, surfaced in summary. Forward-compatible.
-- **Schema version mismatch** → if events declare a `version` we don't recognize, log a stderr warning naming the seen version and proceed best-effort (the schema has been stable across recent toolchain versions; warn but don't abort). Decode failures on individual events still hit the malformed-line path.
+- **Schema version mismatch** → the observed `version` is surfaced as `toolchainVersion` in the JSON output and as a header line in the human output. Per-event decode failures hit the malformed-line path. We don't gate on version explicitly — the schema has been stable across recent toolchain versions, and the visible `toolchainVersion` is enough to diagnose drift.
 - **Run did not finish (no `runEnded` event)** → set `summary.runCompleted = false` and report what we have. Useful when `swift test` itself crashed mid-run.
 
 ## Testing
 
 - **Capture a real fixture once**: run `swift test --filter ScaleTests --experimental-event-stream-output
-  Tests/TestReport-Tests/Fixtures/sample-events.jsonl` (or another small
+  Tests/TestReportTests/Fixtures/sample-events-pass.jsonl` (or another small
   static-test class) against the existing tests, scrub host-specific paths,
-  check the file in. A second handcrafted fixture covers failure events.
+  check the file in. A second fixture covers failure events (captured by adding
+  a temporary failing test, running the event stream, then removing the test).
 - **Decode tests**: every event kind appearing in the fixture decodes cleanly.
   This catches schema drift when toolchain updates.
 - **Aggregator tests**: synthetic event sequences (constructed in code, not from
@@ -209,10 +210,9 @@ Rationale for shape:
 ## Risks
 
 - **Schema instability**: the flag is `--experimental-event-stream-output`,
-  signaling Apple may evolve it. The `version` field on every record is the
-  signal we monitor; on unrecognized versions we warn and proceed best-effort
-  rather than abort, but per-event decode failures still surface as malformed
-  lines.
+  signaling Apple may evolve it. The `version` field on every record is
+  surfaced in the report's `toolchainVersion`, so drift is diagnosable. Per-event
+  decode failures still surface as malformed lines.
 - **Fixture drift**: the captured JSONL fixture will need refresh after each
   Swift toolchain bump. This is the same risk any consumer of the schema has;
   the decode tests will fail loudly if we miss a bump.
