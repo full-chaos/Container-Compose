@@ -19,18 +19,26 @@ on:
 
 permissions: {}
 
-# Both files share `name: Tests` so the produced check has the same
-# identity (`Tests / Build and Test`) and either satisfies a required
-# check entry. Use a file-specific concurrency group so a mixed-change
-# PR (code + docs) doesn't have the two workflows cancel each other.
+# Both files share `name: Tests` so the produced checks share the same
+# workflow identity. The matrix here mirrors tests.yml's matrix so the
+# check names match exactly:
+#   - `Tests / Static Tests`
+#   - `Tests / Dynamic Tests`
+# Either workflow's matrix entry satisfies the corresponding required check.
+# Use a file-specific concurrency group so a mixed-change PR (code + docs)
+# doesn't have the two workflows cancel each other.
 concurrency:
   group: tests-skip-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: Build and Test
+    name: ${{ matrix.suite }} Tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [ Static, Dynamic ]
     steps:
       - name: Report success for non-buildable change
-        run: echo "No buildable code changed; reporting Build and Test as success."
+        run: echo "No buildable code changed; reporting ${{ matrix.suite }} Tests as success."

@@ -36,9 +36,30 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  # Two suites run on parallel macOS runners so a slow or flaky dynamic
+  # suite cannot pin the wall-clock time for fast static feedback.
+  #
+  # - Static (`Container-Compose-StaticTests`): pure, deterministic, uses
+  #   RecordingRuntime / MockRuntime. Runs with --parallel for speed.
+  # - Dynamic (`Container-Compose-DynamicTests`): integration tests against
+  #   a real apple/container daemon. CI runners do not ship apple/container,
+  #   so dynamic suites apply `.enabled(if: RuntimeAvailability.isAvailable())`
+  #   and skip cleanly here. We still build them to catch compile errors.
+  #   Run sequentially (no --parallel) to avoid daemon contention on machines
+  #   that DO have apple/container installed.
   test:
-    name: Build and Test
+    name: ${{ matrix.suite }} Tests
     runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: Static
+            target: Container-Compose-StaticTests
+            extra_args: "--parallel"
+          - suite: Dynamic
+            target: Container-Compose-DynamicTests
+            extra_args: ""
 
     steps:
     - name: Checkout code
@@ -51,10 +72,6 @@ jobs:
       uses: swift-actions/setup-swift@v3
       with:
         swift-version: "6.3.1"
-
-    # CI runners do not ship Apple `container`. Dynamic suites apply
-    # .enabled(if: RuntimeAvailability.isAvailable()), so they skip cleanly here
-    # — no --filter / --skip needed. See Tests/TestHelpers/RuntimeAvailability.swift.
 
     # Cache only the SwiftPM dependency download cache, not `.build`.
     # `.build` contains clang module-cache `.pcm` files with embedded
@@ -72,13 +89,13 @@ jobs:
     - name: Build tests
       run: swift build --build-tests
 
-    - name: Run tests
-      run: swift test
+    - name: Run ${{ matrix.suite }} tests
+      run: swift test --filter "${{ matrix.target }}" ${{ matrix.extra_args }}
 
     - name: Upload test artifacts on failure
       if: failure()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
+        name: test-results-${{ matrix.suite }}
         path: .build/debug/*.xctest
         if-no-files-found: ignore
