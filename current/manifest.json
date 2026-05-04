@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9010c0a25481029d7b2f380e951688a5c61f9332",
-  "short": "9010c0a",
+  "commit": "5285662a35bc04a165a1cd2698904aa8d1538546",
+  "short": "5285662",
   "target": "current",
-  "message": "review: finish all Phase 2 follow-up items in one sweep (CHAOS-1411, 1420, 1410, 1419) (#108)",
-  "published_at": "2026-05-04T19:01:12.877270+00:00"
+  "message": "docs(coverage): refresh coverage map after review-finding sweep (#109)",
+  "published_at": "2026-05-04T19:18:15.607028+00:00"
 }

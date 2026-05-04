@@ -341,7 +341,7 @@
           "volumes",
           "ok",
           "yes",
-          "Implemented via runtime volume CRUD (CHAOS-1368, PR #85). Local-driver volumes use `container volume create` registry; `container run -v <name>:<path>` resolves named volumes via apple/container's `Parser.volume(...)`. driver_opts and labels propagate to runtime. Legacy hardlink-dir data migrated on first use without deletion. Non-`local` drivers warn-and-skip with a clearer fallback notice."
+          "Implemented via runtime volume CRUD (CHAOS-1368, PR #85). Local-driver volumes use `container volume create` registry; `container run -v <name>:<path>` resolves named volumes via apple/container's `Parser.volume(...)`. driver_opts and labels propagate to runtime. Legacy hardlink-dir data migrated on first use without deletion (block-image source paths skip migration with a marker — CHAOS-1418, PR #104). Non-`local` drivers warn-and-skip with a clearer fallback notice."
         ],
         [
           "secrets",
@@ -366,6 +366,18 @@
           "partial",
           "yes",
           "Decoded as top-level Model definitions; compose up warn-skips because AI model provisioning is not wired to Apple container."
+        ],
+        [
+          "compose file validation",
+          "ok",
+          "yes",
+          "DockerCompose.validate() runs after decode in compose up/create. Catches image+build conflict, malformed port specs, depends_on cycles, and out-of-range resource constraints (cpus, mem_limit, mem_swappiness, oom_score_adj). Throws ComposeValidationError with service name + offending field on first violation. (CHAOS-1417, PR #101)"
+        ],
+        [
+          "variable interpolation",
+          "ok",
+          "yes",
+          "Helper Functions.swift `resolveVariable` handles ${VAR}, ${VAR:-default}, ${VAR-default}, ${VAR:?error}, ${VAR?error}, $$ literal-dollar escape (CHAOS-1411, PR #108), and nested ${OUTER_${INNER}} references bounded at 4 levels (CHAOS-1420 / Phase 2 F2, PR #108)."
         ]
       ]
     },
@@ -426,7 +438,7 @@
           "environment",
           "ok",
           "yes",
-          "Map; ${VAR} substitution; running container IPs replace bare service-name values."
+          "Map; ${VAR} substitution with $$ literal-dollar escape and nested ${OUTER_${INNER}} expansion (bounded at 4 levels). Running container IPs replace bare service-name values. See `top.variable interpolation` for resolver details."
         ],
         [
           "healthcheck",
@@ -1230,7 +1242,7 @@
           "ipam",
           "partial",
           "yes",
-          "Phase 5B Ipam struct. Sub-fields: config[].subnet → --subnet/--subnet-v6 (ok, supported by apple/container NetworkCreate); config[].gateway / ip_range / aux_addresses → warn-skip (no apple/container equivalent, tracked under CHAOS-1334); ipam.driver / ipam.options → warn-skip (no apple/container equivalent)."
+          "Phase 5B Ipam struct. Sub-fields: config[].subnet → --subnet/--subnet-v6 (ok, supported by apple/container NetworkCreate); config[].gateway → --gateway via Runtime.createNetwork (ok, CHAOS-1408 PR #107 + CHAOS-1409 PR #105 round-trip); config[].ip_range / aux_addresses → warn-skip (no apple/container equivalent, tracked under CHAOS-1334); ipam.driver / ipam.options → warn-skip (no apple/container equivalent)."
         ]
       ]
     },
@@ -1387,7 +1399,7 @@
           "compose down",
           "ok",
           "yes",
-          "Stops (and optionally removes) project containers."
+          "Stops (and optionally removes) project containers. `--volumes`/`-v` removes named volumes via `RuntimeVolumeClient.remove`; orphaned `volume.img` files (registry forgot the volume but file still on disk) are cleaned up via the on-disk fallback (CHAOS-1413 Layer 2, PR #103)."
         ],
         [
           "compose build",
