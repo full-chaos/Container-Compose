@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1408-network-runtime-migration",
+  "commit": "1d33f2558e3011f92116ef5f11a92b283abcb949",
+  "short": "1d33f25",
+  "target": "1d33f25",
+  "message": "feat(network): migrate compose up to Runtime.createNetwork (CHAOS-1408)",
+  "published_at": "2026-05-04T17:17:20.115183+00:00"
+}
