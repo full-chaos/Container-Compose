@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1415-naming-audit-followup",
+  "commit": "864005c557608423e400257c3cf9ad55c8ab62eb",
+  "short": "864005c",
+  "target": "864005c",
+  "message": "fix(naming): honor container_name across run/start/stop (CHAOS-1415)",
+  "published_at": "2026-05-04T13:16:23.055147+00:00"
+}
