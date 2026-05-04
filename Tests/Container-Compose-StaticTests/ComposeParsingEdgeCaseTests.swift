@@ -336,6 +336,36 @@ struct ComposeParsingEdgeCaseTests {
         #expect(result == "http://localhost:8080/api")
     }
 
+    // MARK: - Variable interpolation: nested references (CHAOS-1420)
+
+    @Test("Nested variable references ${OUTER_${INNER}} expand inside-out (CHAOS-1420)")
+    func nestedVariablesExpandInsideOut() {
+        // resolveVariable uses inside-out resolution: first ${INNER} → "VALUE",
+        // then ${OUTER_VALUE} → "resolved".
+        let env: [String: String] = ["INNER": "VALUE", "OUTER_VALUE": "resolved"]
+        let input = "${OUTER_${INNER}}"
+        let result = resolveVariable(input, with: env)
+        #expect(result == "resolved", "nested variable references must be expanded inside-out (CHAOS-1420)")
+    }
+
+    @Test("Nested reference where inner var is undefined leaves outer unchanged (CHAOS-1420)")
+    func nestedVariableInnerUndefinedLeavesOuter() {
+        // If ${INNER} is not defined, the outer ${OUTER_${INNER}} can't be
+        // assembled, so the whole expression is left as-is.
+        let env: [String: String] = ["OUTER_VALUE": "resolved"]
+        let input = "${OUTER_${INNER}}"
+        let result = resolveVariable(input, with: env)
+        // Inner var undefined → outer name not assembled → left unchanged.
+        #expect(result == "${OUTER_${INNER}}")
+    }
+
+    @Test("Doubly-nested ${A_${B_${C}}} expands correctly (CHAOS-1420)")
+    func doublyNestedVariableExpands() {
+        let env: [String: String] = ["C": "X", "B_X": "Y", "A_Y": "final"]
+        let result = resolveVariable("${A_${B_${C}}}", with: env)
+        #expect(result == "final")
+    }
+
     // MARK: - Variable interpolation: $$ literal dollar escape (CHAOS-1411)
 
     @Test("Double-dollar $$ produces literal $ per compose-spec (CHAOS-1411)")
