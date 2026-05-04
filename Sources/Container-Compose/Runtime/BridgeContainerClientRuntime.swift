@@ -300,12 +300,9 @@ public struct BridgeContainerClientRuntime: Runtime {
     }
 
     /// Map an upstream error from apple/container's XPC surface into the
-    /// backend-neutral `RuntimeError` vocabulary.
-    ///
-    /// - `ContainerizationError(.notFound)` (recursively through `.cause`) →
-    ///   `.notFound(id:)` — preserves 404 semantics at the route layer.
-    /// - All other upstream errors → `.backendFailure(message:)` — avoids
-    ///   leaking `ContainerizationError` types across the abstraction boundary.
+    /// backend-neutral `RuntimeError` vocabulary via the shared
+    /// `RuntimeErrorMapper`. See `RuntimeErrorMapper.map(_:id:)` for the full
+    /// mapping table.
     ///
     /// - Parameters:
     ///   - error: The upstream error to map.
@@ -319,27 +316,13 @@ public struct BridgeContainerClientRuntime: Runtime {
         id: String? = nil,
         context: String? = nil
     ) -> RuntimeError {
-        if let ce = error as? ContainerizationError,
-           BridgeContainerClientRuntime.isNotFound(ce) {
-            return .notFound(id: id ?? "unknown")
+        let mapped = RuntimeErrorMapper.map(error, id: id)
+        // Prepend the context string to backendFailure messages so existing
+        // diagnostic output is preserved unchanged.
+        if let context, case .backendFailure(let msg) = mapped {
+            return .backendFailure(message: "\(context): \(msg)")
         }
-        let message: String
-        if let context {
-            message = "\(context): \(error.localizedDescription)"
-        } else {
-            message = error.localizedDescription
-        }
-        return .backendFailure(message: message)
-    }
-
-    private static func isNotFound(_ error: ContainerizationError) -> Bool {
-        if error.isCode(.notFound) {
-            return true
-        }
-        if let cause = error.cause as? ContainerizationError {
-            return isNotFound(cause)
-        }
-        return false
+        return mapped
     }
 
     private static func streamLogs(
