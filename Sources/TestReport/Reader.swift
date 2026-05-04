@@ -5,12 +5,22 @@ public enum Reader {
         case fileNotFound
     }
 
-    public struct Result {
+    public struct MalformedLine: Equatable, Sendable {
+        public let index: Int
+        public let snippet: String
+
+        public init(index: Int, snippet: String) {
+            self.index = index
+            self.snippet = snippet
+        }
+    }
+
+    public struct Result: Sendable {
         public let records: [EventStreamRecord]
         public let malformedLineCount: Int
-        public let malformedLines: [(index: Int, snippet: String)]
+        public let malformedLines: [MalformedLine]
 
-        public init(records: [EventStreamRecord], malformedLineCount: Int, malformedLines: [(index: Int, snippet: String)]) {
+        public init(records: [EventStreamRecord], malformedLineCount: Int, malformedLines: [MalformedLine]) {
             self.records = records
             self.malformedLineCount = malformedLineCount
             self.malformedLines = malformedLines
@@ -24,14 +34,18 @@ public enum Reader {
         let data = try Data(contentsOf: url)
         guard let text = String(data: data, encoding: .utf8) else {
             // Treat as malformed file rather than crashing.
-            return Result(records: [], malformedLineCount: 1, malformedLines: [(0, "<non-utf8>")])
+            return Result(
+                records: [],
+                malformedLineCount: 1,
+                malformedLines: [MalformedLine(index: 0, snippet: "<non-utf8>")]
+            )
         }
 
         let decoder = JSONDecoder()
         var records: [EventStreamRecord] = []
-        var malformed: [(Int, String)] = []
+        var malformed: [MalformedLine] = []
 
-        for (index, rawLine) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+        for (index, rawLine) in text.components(separatedBy: .newlines).enumerated() {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty { continue }
             do {
@@ -39,7 +53,7 @@ public enum Reader {
                 records.append(record)
             } catch {
                 let snippet = trimmed.prefix(120) + (trimmed.count > 120 ? "..." : "")
-                malformed.append((index, String(snippet)))
+                malformed.append(MalformedLine(index: index, snippet: String(snippet)))
             }
         }
 

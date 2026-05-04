@@ -14,13 +14,8 @@ struct ReaderTests {
     @Test("missing file throws .fileNotFound")
     func missingFile() {
         let url = URL(fileURLWithPath: "/tmp/definitely-does-not-exist-\(UUID().uuidString).jsonl")
-        do {
-            _ = try Reader.read(from: url)
-            Issue.record("expected throw")
-        } catch let err as Reader.Error {
-            #expect(err == .fileNotFound)
-        } catch {
-            Issue.record("unexpected error: \(error)")
+        #expect(throws: Reader.Error.fileNotFound) {
+            try Reader.read(from: url)
         }
     }
 
