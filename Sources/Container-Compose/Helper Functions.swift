@@ -256,24 +256,36 @@ public func mergeServiceEnvironment(
 }
 
 /// Resolves environment variables within a string (e.g., ${VAR:-default}, ${VAR:?error}).
-/// This function supports default values and error-on-missing variable syntax.
+///
+/// Implements compose-spec §12 variable substitution rules, including the `$$`
+/// escape sequence for a literal `$` character (e.g. `$$PORT` → `$PORT`).
+///
 /// - Parameters:
 ///   - value: The string possibly containing environment variable references.
 ///   - envVars: A dictionary of environment variables to use for resolution.
 /// - Returns: The string with all recognized environment variables resolved.
 public func resolveVariable(_ value: String, with envVars: [String: String]) -> String {
-    var resolvedValue = value
-    // Regex to find ${VAR}, ${VAR:-default}, ${VAR:?error}
-    let regex = try! NSRegularExpression(pattern: #"\$\{([A-Za-z0-9_]+)(:?-(.*?))?(:\?(.*?))?\}"#, options: [])
-    
+    // Compose-spec §12: $$ is the escape sequence that produces a literal $.
+    // We use a two-pass approach:
+    //   Pre-pass:  replace every $$ with a NUL placeholder (\0) so the main
+    //              regex never sees the escape sequence.
+    //   Post-pass: restore every \0 back to a single $.
+    // NUL (\0) is chosen because it is never a legal character in compose file
+    // values, making it a safe sentinel with zero collision risk.
+    let placeholder = "\0"
+    var resolvedValue = value.replacingOccurrences(of: "$$", with: placeholder)
+
     // Combine process environment with loaded .env file variables, prioritizing process environment
     let combinedEnv = ProcessInfo.processInfo.environment.merging(envVars) { (current, _) in current }
-    
-    // Loop to resolve all occurrences of variables in the string
+
+    // Regex to find ${VAR}, ${VAR:-default}, ${VAR:?error}
+    let regex = try! NSRegularExpression(pattern: #"\$\{([A-Za-z0-9_]+)(:?-(.*?))?(:\?(.*?))?\}"#, options: [])
+
+    // Main substitution loop: resolves ${VAR}, ${VAR:-default}, ${VAR:?error}.
     while let match = regex.firstMatch(in: resolvedValue, options: [], range: NSRange(resolvedValue.startIndex..<resolvedValue.endIndex, in: resolvedValue)) {
         guard let varNameRange = Range(match.range(at: 1), in: resolvedValue) else { break }
         let varName = String(resolvedValue[varNameRange])
-        
+
         if let envValue = combinedEnv[varName] {
             // Variable found in environment, replace with its value
             resolvedValue.replaceSubrange(Range(match.range(at: 0), in: resolvedValue)!, with: envValue)
@@ -291,7 +303,9 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
             break
         }
     }
-    return resolvedValue
+
+    // Post-pass: restore $$ escapes to literal $.
+    return resolvedValue.replacingOccurrences(of: placeholder, with: "$")
 }
 
 /// Renders a minimal subset of Go text/template syntax against the supplied environment.
