@@ -347,6 +347,12 @@ extension AppleContainerizationRuntime {
     /// CLI wraps platform networking via shell process invocations; we do not
     /// replicate those here. Documented as abstraction leak in
     /// `docs/plans/runtime-abstraction-leaks.md` (Leak #9).
+    ///
+    /// CHAOS-1409 IPAM note: when this conformer eventually supports
+    /// `createNetwork`, it must plumb `spec.subnet` and `spec.gateway` into the
+    /// returned `RuntimeNetwork`. If the `apple/containerization` API does not
+    /// surface IPAM details after creation, leave `subnet`/`gateway` as `nil`
+    /// on `RuntimeNetwork` and document the limitation here.
     public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
         throw RuntimeError.notSupported(
             operation: "createNetwork",

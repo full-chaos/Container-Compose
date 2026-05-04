@@ -336,10 +336,14 @@ extension MockRuntime {
         if networks.contains(where: { $0.name == spec.name }) {
             throw RuntimeError.alreadyExists(id: spec.name)
         }
+        // CHAOS-1409: plumb subnet/gateway from the spec so round-trip assertions
+        // are possible without querying the (in-memory) backend again.
         let network = RuntimeNetwork(
             id: UUID().uuidString,
             name: spec.name,
             driver: spec.driver,
+            subnet: spec.subnet,
+            gateway: spec.gateway,
             labels: spec.labels,
             attachedContainerIds: []
         )
