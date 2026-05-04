@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "fbaa59ebe20ac5ed12108d6f62be2bd4726f60bc",
-  "short": "fbaa59e",
+  "commit": "850d143c7f312ecb4ffe35295f50301deb969dfc",
+  "short": "850d143",
   "target": "current",
-  "message": "review: complete Phase 1 + Phase 2 remainder test coverage (#98)",
-  "published_at": "2026-05-04T00:56:26.566580+00:00"
+  "message": "fix(naming): honor container_name across run/start/stop (CHAOS-1415) (#99)",
+  "published_at": "2026-05-04T14:13:27.632874+00:00"
 }
