@@ -1,0 +1,8 @@
+{
+  "branch": "review-tests-remainder",
+  "commit": "58078d19643758a613c151c41b2f491fa5b5fa9e",
+  "short": "58078d1",
+  "target": "58078d1",
+  "message": "fix(tests): add timeout + caching to RuntimeAvailability.isAvailable()",
+  "published_at": "2026-05-04T00:39:49.950503+00:00"
+}
