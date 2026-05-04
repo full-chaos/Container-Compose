@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "3e02325406342faf5346f897856cba702de1a9cf",
-  "short": "3e02325",
+  "commit": "c485c2b4d7d9c4d53ef74f948678e8c1a88d4298",
+  "short": "c485c2b",
   "target": "current",
-  "message": "feat(runtime): add subnet/gateway to RuntimeNetwork for IPAM round-trip (CHAOS-1409) (#105)",
-  "published_at": "2026-05-04T16:52:09.118081+00:00"
+  "message": "feat(runtime): add security fields to RuntimeCreateConfiguration (CHAOS-1407) (#106)",
+  "published_at": "2026-05-04T16:52:32.895356+00:00"
 }
