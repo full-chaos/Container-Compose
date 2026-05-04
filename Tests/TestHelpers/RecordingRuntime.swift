@@ -233,10 +233,14 @@ public actor RecordingRuntime: Runtime {
         if let createNetworkError {
             throw createNetworkError
         }
+        // CHAOS-1409: plumb subnet/gateway through so callers that inspect the
+        // returned RuntimeNetwork can assert IPAM field preservation.
         return RuntimeNetwork(
             id: UUID().uuidString,
             name: spec.name,
             driver: spec.driver,
+            subnet: spec.subnet,
+            gateway: spec.gateway,
             labels: spec.labels,
             attachedContainerIds: []
         )

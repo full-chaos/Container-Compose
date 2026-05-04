@@ -421,6 +421,13 @@ extension BridgeContainerClientRuntime {
     /// the `container network create/remove` CLI in the existing Compose command
     /// paths. Throwing `.notSupported` here is intentional and documented as an
     /// abstraction leak in `docs/plans/runtime-abstraction-leaks.md` (Leak #9).
+    ///
+    /// CHAOS-1409 IPAM note: when this conformer eventually supports
+    /// `createNetwork`, it must plumb `spec.subnet` and `spec.gateway` into the
+    /// returned `RuntimeNetwork` so the round-trip assertion holds. The upstream
+    /// `apple/container` network API does not currently surface IPAM details in
+    /// its inspect response; if that remains true when wiring happens, leave
+    /// `subnet`/`gateway` as `nil` on `RuntimeNetwork` and document the gap.
     public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
         throw RuntimeError.notSupported(
             operation: "createNetwork",
