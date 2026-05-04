@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "850d143c7f312ecb4ffe35295f50301deb969dfc",
-  "short": "850d143",
+  "commit": "f40fb171974be3b21205b18eb852b881ab0a1e2c",
+  "short": "f40fb17",
   "target": "current",
-  "message": "fix(naming): honor container_name across run/start/stop (CHAOS-1415) (#99)",
-  "published_at": "2026-05-04T14:13:27.632874+00:00"
+  "message": "fix(volumes): down -v cleans orphaned volume.img (CHAOS-1413 Layer 2) (#103)",
+  "published_at": "2026-05-04T14:40:26.842079+00:00"
 }
