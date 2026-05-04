@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1409-runtime-network-ipam",
+  "commit": "6953cfb9c8858ff8c7a09ac370b71806dc76297d",
+  "short": "6953cfb",
+  "target": "6953cfb",
+  "message": "feat(runtime): add subnet/gateway to RuntimeNetwork for IPAM round-trip (CHAOS-1409)",
+  "published_at": "2026-05-04T16:19:28.652900+00:00"
+}
