@@ -566,6 +566,68 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         return ["--plugin", driver]
     }
 
+    // MARK: - Network creation helpers
+
+    /// Emit warnings for compose network fields that have no equivalent in
+    /// apple/container's network create API. Called before every `createNetwork`
+    /// invocation so the user knows which parts of their config are ignored.
+    private func warnUnsupportedNetworkFields(networkName: String, config networkConfig: Network?) {
+        // driver_opts: NetworkCreate has no --opt flag.
+        if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
+            print(
+                "Warning: Network '\(networkName)' specifies driver_opts \(driverOpts) which are not supported by Apple container network create; ignoring."
+            )
+        }
+
+        // Attachable: not supported by Apple container network create.
+        if networkConfig?.attachable == true {
+            print(
+                "Warning: Network '\(networkName)' sets 'attachable: true' which is not supported by Apple container network create; ignoring."
+            )
+        }
+
+        // enable_ipv6: use --subnet-v6 flag if an IPv6 subnet is provided in IPAM config;
+        // a bare enable_ipv6 without a subnet is not directly actionable here.
+        if networkConfig?.enable_ipv6 == true {
+            print(
+                "Warning: Network '\(networkName)' sets 'enable_ipv6: true'. Provide an IPv6 subnet in ipam.config to pass --subnet-v6; bare flag not supported."
+            )
+        }
+
+        // IPAM config unsupported sub-fields.
+        if let ipamConfigs = networkConfig?.ipam?.config {
+            for ipamConfig in ipamConfigs {
+                if let ipRange = ipamConfig.ip_range, !ipRange.isEmpty {
+                    print(
+                        "Warning: Network '\(networkName)' ipam.config ip_range '\(ipRange)' is not supported by Apple container network create; ignoring."
+                    )
+                }
+                if let gateway = ipamConfig.gateway, !gateway.isEmpty {
+                    print(
+                        "Warning: Network '\(networkName)' ipam.config gateway '\(gateway)' is not supported by Apple container network create; ignoring."
+                    )
+                }
+                if let auxAddresses = ipamConfig.aux_addresses, !auxAddresses.isEmpty {
+                    print(
+                        "Warning: Network '\(networkName)' ipam.config aux_addresses are not supported by Apple container network create; ignoring."
+                    )
+                }
+            }
+        }
+
+        // IPAM driver/options.
+        if let ipamDriver = networkConfig?.ipam?.driver, !ipamDriver.isEmpty {
+            print(
+                "Warning: Network '\(networkName)' ipam.driver '\(ipamDriver)' is not supported by Apple container network create; ignoring."
+            )
+        }
+        if let ipamOptions = networkConfig?.ipam?.options, !ipamOptions.isEmpty {
+            print(
+                "Warning: Network '\(networkName)' ipam.options are not supported by Apple container network create; ignoring."
+            )
+        }
+    }
+
     private func setupNetwork(name networkName: String, config networkConfig: Network?) async throws {
         let actualNetworkName = networkConfig?.name ?? networkName  // Use explicit name or key as name
 
@@ -573,100 +635,33 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             print("Info: Network '\(networkName)' is declared as external.")
             print("This tool assumes external network '\(externalNetwork.name ?? actualNetworkName)' already exists and will not attempt to create it.")
         } else {
-            var commands: [String] = [actualNetworkName]
+            // Emit warnings for unsupported compose fields before attempting creation.
+            warnUnsupportedNetworkFields(networkName: networkName, config: networkConfig)
 
-            commands.append(contentsOf: Self.networkPluginArgs(for: networkConfig?.driver))
-
-            // driver_opts: NetworkCreate has no --opt flag; warn and skip.
-            if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
-                print(
-                    "Warning: Network '\(networkName)' specifies driver_opts \(driverOpts) which are not supported by Apple container network create; ignoring."
-                )
-            }
-
-            // --internal: maps to NetworkCreate's --internal flag (hostOnly mode).
-            if networkConfig?.isInternal == true {
-                commands.append("--internal")
-            }
-
-            // Attachable: not supported by Apple container network create; warn only.
-            if networkConfig?.attachable == true {
-                print(
-                    "Warning: Network '\(networkName)' sets 'attachable: true' which is not supported by Apple container network create; ignoring."
-                )
-            }
-
-            // enable_ipv6: use --subnet-v6 flag if an IPv6 subnet is provided in IPAM config;
-            // a bare enable_ipv6 without a subnet is not directly actionable here.
-            if networkConfig?.enable_ipv6 == true {
-                print(
-                    "Warning: Network '\(networkName)' sets 'enable_ipv6: true'. Provide an IPv6 subnet in ipam.config to pass --subnet-v6; bare flag not supported."
-                )
-            }
-
-            // IPAM config: emit --subnet (IPv4) or --subnet-v6 (IPv6) for each config entry.
-            // ip_range and gateway are not supported by Apple container network create; warn if present.
-            if let ipamConfigs = networkConfig?.ipam?.config {
-                for ipamConfig in ipamConfigs {
-                    if let subnet = ipamConfig.subnet, !subnet.isEmpty {
-                        // Heuristic: IPv6 subnets contain ':', IPv4 use '.'
-                        if subnet.contains(":") {
-                            commands.append(contentsOf: ["--subnet-v6", subnet])
-                        } else {
-                            commands.append(contentsOf: ["--subnet", subnet])
-                        }
-                    }
-                    if let ipRange = ipamConfig.ip_range, !ipRange.isEmpty {
-                        print(
-                            "Warning: Network '\(networkName)' ipam.config ip_range '\(ipRange)' is not supported by Apple container network create; ignoring."
-                        )
-                    }
-                    if let gateway = ipamConfig.gateway, !gateway.isEmpty {
-                        print(
-                            "Warning: Network '\(networkName)' ipam.config gateway '\(gateway)' is not supported by Apple container network create; ignoring."
-                        )
-                    }
-                    if let auxAddresses = ipamConfig.aux_addresses, !auxAddresses.isEmpty {
-                        print(
-                            "Warning: Network '\(networkName)' ipam.config aux_addresses are not supported by Apple container network create; ignoring."
-                        )
-                    }
-                }
-            }
-
-            // IPAM driver/options: warn if present since they have no CLI equivalent.
-            if let ipamDriver = networkConfig?.ipam?.driver, !ipamDriver.isEmpty {
-                print(
-                    "Warning: Network '\(networkName)' ipam.driver '\(ipamDriver)' is not supported by Apple container network create; ignoring."
-                )
-            }
-            if let ipamOptions = networkConfig?.ipam?.options, !ipamOptions.isEmpty {
-                print(
-                    "Warning: Network '\(networkName)' ipam.options are not supported by Apple container network create; ignoring."
-                )
-            }
-
-            // Add labels — NetworkCreate.parse accepts repeated --label key=value
-            if let labels = networkConfig?.labels, !labels.isEmpty {
-                for (labelKey, labelValue) in labels.sorted(by: { $0.key < $1.key }) {
-                    commands.append(contentsOf: ["--label", "\(labelKey)=\(labelValue)"])
-                }
-            }
+            // Build a backend-neutral spec from the compose Network model.
+            // CHAOS-1408: network creation now routes through the Runtime abstraction
+            // rather than shelling out via RunnerEnvironment/RunCommandRunner.
+            // Subnet and gateway (IPAM) are intentionally excluded here — that is
+            // CHAOS-1409 territory and those fields are being added to
+            // RuntimeCreateNetworkSpec there in parallel.
+            let driver = networkConfig?.driver ?? "bridge"
+            let spec = RuntimeCreateNetworkSpec(
+                name: actualNetworkName,
+                driver: driver,
+                labels: networkConfig?.labels ?? [:]
+            )
 
             print("Creating network: \(networkName) (Actual name: \(actualNetworkName))")
-            print("Executing container network create with args: \(commands.joined(separator: " "))")
-            guard (try? await ContainerClientEnvironment.current.networkGet(id: actualNetworkName)) == nil else {
-                print("Network '\(networkName)' already exists")
-                return
-            }
 
-            let networkCreateArgv = commands + logging.passThroughCommands()
-            _ = try await RunnerEnvironment.current.run(
-                RunRequest(kind: .swiftAPI(name: "NetworkCreate"), argv: networkCreateArgv, cwd: nil),
-                onStdout: nil,
-                onStderr: nil
-            )
-            print("Network '\(networkName)' created")
+            do {
+                _ = try await RuntimeEnvironment.current.createNetwork(spec: spec)
+                print("Network '\(networkName)' created")
+            } catch RuntimeError.alreadyExists {
+                // Idempotent: network already exists from a previous run. This
+                // matches the pre-migration behaviour where `networkGet` returning
+                // non-nil caused an early return with "already exists".
+                print("Network '\(networkName)' already exists")
+            }
         }
     }
 

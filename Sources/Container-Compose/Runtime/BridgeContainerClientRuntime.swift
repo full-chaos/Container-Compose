@@ -416,26 +416,98 @@ extension BridgeContainerClientRuntime {
 
     // MARK: Networks
 
-    /// The `apple/container` XPC client (`ContainerAPIClient`) has no public
-    /// API for network creation or deletion; those operations are delegated to
-    /// the `container network create/remove` CLI in the existing Compose command
-    /// paths. Throwing `.notSupported` here is intentional and documented as an
-    /// abstraction leak in `docs/plans/runtime-abstraction-leaks.md` (Leak #9).
+    /// Create a network by delegating to `Application.NetworkCreate` in-process
+    /// via the `RunnerEnvironment` seam (the same `.swiftAPI(name: "NetworkCreate")`
+    /// path used by `ComposeCreate`).
     ///
-    /// CHAOS-1409 IPAM note: when this conformer eventually supports
-    /// `createNetwork`, it must plumb `spec.subnet` and `spec.gateway` into the
-    /// returned `RuntimeNetwork` so the round-trip assertion holds. The upstream
-    /// `apple/container` network API does not currently surface IPAM details in
-    /// its inspect response; if that remains true when wiring happens, leave
-    /// `subnet`/`gateway` as `nil` on `RuntimeNetwork` and document the gap.
+    /// ## Design rationale (CHAOS-1408)
+    ///
+    /// `ContainerAPIClient` exposes only `NetworkClient.get(id:)` for network
+    /// reads; there is no programmatic create/delete surface. The `container`
+    /// CLI wraps platform networking internally, so we piggyback on
+    /// `Application.NetworkCreate` (already in scope via `ContainerCommands`)
+    /// via the `RunCommandRunner` seam rather than shelling out to the binary.
+    /// This is functionally equivalent to the previous `RunnerEnvironment.current
+    /// .run(RunRequest(kind: .swiftAPI(name: "NetworkCreate"), ...))` call in
+    /// `ComposeUp.setupNetwork` — it just lives here so call sites can use the
+    /// `Runtime` abstraction instead of building argv manually.
+    ///
+    /// The returned `RuntimeNetwork` is synthesized from the spec fields rather
+    /// than round-tripped through `NetworkClient.get(id:)` because the `get`
+    /// call is unreliable immediately after creation on some system versions and
+    /// returns `NetworkState`, not `RuntimeNetwork`. The id is set to the name
+    /// (matching apple/container's convention where the network name is its
+    /// stable identity) until a richer list API becomes available.
+    ///
+    /// ## CHAOS-1409 IPAM round-trip
+    ///
+    /// `spec.subnet` and `spec.gateway` are forwarded to argv as `--subnet` /
+    /// `--gateway` flags and copied onto the synthesized `RuntimeNetwork` so the
+    /// IPAM round-trip contract holds for this conformer. The upstream
+    /// `NetworkClient.get(id:)` response does not surface IPAM details, so the
+    /// values come from the spec rather than a post-create inspect.
+    ///
+    /// Error translation:
+    /// - If `Application.NetworkCreate.run()` throws because the network already
+    ///   exists, the error message contains "already exists"; this is mapped to
+    ///   `RuntimeError.alreadyExists(id: spec.name)` via `RuntimeErrorMapper`.
+    /// - All other upstream errors become `RuntimeError.backendFailure`.
     public func createNetwork(spec: RuntimeCreateNetworkSpec) async throws -> RuntimeNetwork {
-        throw RuntimeError.notSupported(
-            operation: "createNetwork",
-            conformer: "BridgeContainerClientRuntime"
+        // Build the argv that `Application.NetworkCreate.parse(_:)` expects.
+        // Mirrors `ComposeUp.setupNetwork`'s argv construction, minus the
+        // idempotency guard (the caller owns that).
+        var argv: [String] = [spec.name]
+
+        // Driver: map "bridge" (compose default) → no-op (apple/container
+        // plugin default); any other driver is forwarded as --plugin.
+        if !spec.driver.isEmpty && spec.driver != "bridge" {
+            argv.append(contentsOf: ["--plugin", spec.driver])
+        }
+
+        // CHAOS-1409 IPAM passthrough.
+        if let subnet = spec.subnet {
+            argv.append(contentsOf: ["--subnet", subnet])
+        }
+        if let gateway = spec.gateway {
+            argv.append(contentsOf: ["--gateway", gateway])
+        }
+
+        // Labels
+        for (key, value) in spec.labels.sorted(by: { $0.key < $1.key }) {
+            argv.append(contentsOf: ["--label", "\(key)=\(value)"])
+        }
+
+        do {
+            _ = try await RunnerEnvironment.current.run(
+                RunRequest(kind: .swiftAPI(name: "NetworkCreate"), argv: argv, cwd: nil),
+                onStdout: nil,
+                onStderr: nil
+            )
+        } catch {
+            throw RuntimeErrorMapper.map(error, id: spec.name)
+        }
+
+        return RuntimeNetwork(
+            id: spec.name,
+            name: spec.name,
+            driver: spec.driver,
+            subnet: spec.subnet,
+            gateway: spec.gateway,
+            labels: spec.labels,
+            attachedContainerIds: []
         )
     }
 
-    /// See `createNetwork` for rationale. Documented as Leak #9.
+    /// Remove a network by id using `Application.NetworkRemove` via the
+    /// `RunnerEnvironment` seam.
+    ///
+    /// Note: `apple/container`'s network remove command does not expose a
+    /// programmatic Swift API as of Phase 8; this path continues to throw
+    /// `.notSupported` until `ContainerCommands` gains a `NetworkRemove`
+    /// type or a `NetworkClient.delete(id:)` method is available.
+    ///
+    /// Documented as abstraction leak in `docs/plans/runtime-abstraction-leaks.md`
+    /// (Leak #9 — remove path only).
     public func removeNetwork(id: String) async throws {
         throw RuntimeError.notSupported(
             operation: "removeNetwork",

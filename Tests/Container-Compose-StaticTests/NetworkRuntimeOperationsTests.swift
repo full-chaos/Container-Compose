@@ -468,31 +468,36 @@ struct NetworkRuntimeOperationsTests {
 
     // MARK: - BridgeContainerClientRuntime conformer contract
 
-    /// Confirms that the current `BridgeContainerClientRuntime` conformer
-    /// throws `.notSupported` for `createNetwork`.  This is the expected Phase 1
-    /// behaviour; the test should be removed and replaced with a success test
-    /// once the bridge is wired to apple/container's network API.
+    /// Confirms that `BridgeContainerClientRuntime.createNetwork` now dispatches
+    /// through `RunnerEnvironment` (CHAOS-1408) and returns a `RuntimeNetwork`
+    /// rather than throwing `.notSupported`.
     ///
-    /// NOTE: This test documents a known gap — it does NOT mean the feature is
-    /// broken, it means it is intentionally not yet implemented.
-    @Test("BridgeContainerClientRuntime.createNetwork throws notSupported (known gap)")
-    func bridgeCreateNetworkIsNotSupported() async throws {
+    /// A `RecordingRunner` is bound so the test never invokes the real
+    /// `container` binary or opens an XPC connection.
+    @Test("BridgeContainerClientRuntime.createNetwork succeeds via RunnerEnvironment (CHAOS-1408)")
+    func bridgeCreateNetworkSucceedsViaBridgeRunner() async throws {
         let bridge = BridgeContainerClientRuntime()
+        let runner = RecordingRunner()
 
-        await #expect(
-            throws: RuntimeError.notSupported(
-                operation: "createNetwork",
-                conformer: "BridgeContainerClientRuntime"
-            )
-        ) {
-            _ = try await bridge.createNetwork(
+        let network = try await RunnerEnvironment.$current.withValue(runner) {
+            try await bridge.createNetwork(
                 spec: RuntimeCreateNetworkSpec(name: "any", driver: "bridge")
             )
         }
+
+        // Bridge returns a RuntimeNetwork synthesized from the spec fields.
+        #expect(network.name == "any")
+        #expect(network.driver == "bridge")
+
+        // Runner must have been called.
+        let recorded = await runner.recordedRequests()
+        #expect(!recorded.isEmpty,
+                "bridge must dispatch through RunnerEnvironment for createNetwork; got no runner calls")
     }
 
     /// Confirms that the current `BridgeContainerClientRuntime` conformer
-    /// throws `.notSupported` for `removeNetwork`.
+    /// still throws `.notSupported` for `removeNetwork` (remove path is not yet
+    /// wired — CHAOS-1409 territory).
     @Test("BridgeContainerClientRuntime.removeNetwork throws notSupported (known gap)")
     func bridgeRemoveNetworkIsNotSupported() async throws {
         let bridge = BridgeContainerClientRuntime()
