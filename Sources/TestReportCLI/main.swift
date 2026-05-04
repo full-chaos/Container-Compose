@@ -1,4 +1,3 @@
-import Foundation
 import TestReport
 
 // Stub: implemented in Task 12.

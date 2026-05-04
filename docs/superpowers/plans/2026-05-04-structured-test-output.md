@@ -57,16 +57,12 @@ touch Tests/TestReportTests/Fixtures/.gitkeep
 
 `Sources/TestReport/EventStream.swift`:
 ```swift
-import Foundation
-
 // Stub: types defined in Task 3-6.
 public enum EventStream {}
 ```
 
 `Sources/TestReport/Reader.swift`:
 ```swift
-import Foundation
-
 // Stub: implemented in Task 8.
 public struct Reader {
     public init() {}
@@ -75,8 +71,6 @@ public struct Reader {
 
 `Sources/TestReport/TestRun.swift`:
 ```swift
-import Foundation
-
 // Stub: implemented in Task 9.
 public struct TestRun: Sendable {
     public init() {}
@@ -85,8 +79,6 @@ public struct TestRun: Sendable {
 
 `Sources/TestReport/Aggregator.swift`:
 ```swift
-import Foundation
-
 // Stub: implemented in Task 10.
 public struct Aggregator {
     public init() {}
@@ -95,8 +87,6 @@ public struct Aggregator {
 
 `Sources/TestReport/Formatters.swift`:
 ```swift
-import Foundation
-
 // Stub: implemented in Task 11-12.
 public enum ReportFormat: String, Sendable {
     case json
@@ -106,12 +96,13 @@ public enum ReportFormat: String, Sendable {
 
 `Sources/TestReportCLI/main.swift`:
 ```swift
-import Foundation
 import TestReport
 
 // Stub: implemented in Task 12.
 print("test-report stub")
 ```
+
+Note: stubs deliberately omit `import Foundation`. Each later task (Reader, Formatters, CLI) re-introduces it when the file actually uses Foundation symbols. EventStream/TestRun/Aggregator never need it.
 
 `Tests/TestReportTests/Placeholder.swift`:
 ```swift
@@ -294,8 +285,6 @@ Expected: build error — `EventStream.SourceLocation`, `Instant`, `Message`, `I
 Replace the contents of `Sources/TestReport/EventStream.swift` with:
 
 ```swift
-import Foundation
-
 /// Codable types for swift-testing's `--experimental-event-stream-output` JSONL records.
 ///
 /// The schema is derived from observing real output of swift-testing 1743 (Swift 6.3.1).
@@ -995,8 +984,6 @@ isolation; populated by `Aggregator` in the next task.
 Replace `Sources/TestReport/TestRun.swift` with:
 
 ```swift
-import Foundation
-
 /// Aggregated summary of an event-stream run. The `Encodable` shape is the
 /// contract surfaced to `--format json` consumers. Fields are intentionally
 /// flat scalars where possible so callers can answer "did everything pass?"
@@ -1147,8 +1134,6 @@ Expected: build error — `Aggregator.aggregate(records:malformedLineCount:)` un
 
 Replace `Sources/TestReport/Aggregator.swift` with:
 ```swift
-import Foundation
-
 public enum Aggregator {
     public static func aggregate(records: [EventStreamRecord], malformedLineCount: Int) -> TestRun {
         var catalog: [String: EventStream.TestCatalogPayload] = [:]
