@@ -538,7 +538,7 @@ struct VolumeMountIntegrationTests {
     func wordpressFixtureNamedVolumes() throws {
         let dc = try YAMLDecoder().decode(DockerCompose.self, from: DockerComposeYamlFiles.dockerComposeYaml1)
         // Both wordpress_data and db_data are declared in the top-level volumes section.
-        let volumeKeys = Set(dc.volumes?.keys ?? [])
+        let volumeKeys: Set<String> = dc.volumes.map { Set($0.keys) } ?? []
         #expect(volumeKeys.contains("wordpress_data"))
         #expect(volumeKeys.contains("db_data"))
 
@@ -552,7 +552,7 @@ struct VolumeMountIntegrationTests {
     @Test("Webapp compose fixture (dockerComposeYaml2) has db-data named volume with hyphen")
     func webappFixtureHyphenatedVolume() throws {
         let dc = try YAMLDecoder().decode(DockerCompose.self, from: DockerComposeYamlFiles.dockerComposeYaml2)
-        let volumeKeys = Set(dc.volumes?.keys ?? [])
+        let volumeKeys: Set<String> = dc.volumes.map { Set($0.keys) } ?? []
         #expect(volumeKeys.contains("db-data"))
 
         // VolumeMountParser should classify "db-data:/var/lib/postgresql/data" as a named volume.

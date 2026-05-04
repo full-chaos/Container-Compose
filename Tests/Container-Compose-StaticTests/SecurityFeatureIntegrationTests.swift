@@ -65,7 +65,7 @@ struct SecurityFeatureIntegrationTests {
     /// Decode a `DockerCompose` from YAML and return the named service.
     private func decodeService(_ yaml: String, name: String = "app") throws -> (DockerCompose, Service) {
         let dc = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
-        guard let service = dc.services[name] else {
+        guard let service = dc.services[name] ?? nil else {
             throw TestError.missingService(name)
         }
         return (dc, service)
