@@ -1,0 +1,8 @@
+{
+  "branch": "review-tests-remainder",
+  "commit": "04b787bb5c45d6823dbb66895fa6fa795fd407cd",
+  "short": "04b787b",
+  "target": "04b787b",
+  "message": "fix(tests): resolve compile errors in Phase 1+2 remainder tests",
+  "published_at": "2026-05-04T00:21:37.823781+00:00"
+}
