@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1416-runtime-error-mapper",
+  "commit": "37e07a9bcf4318da12ececc87f46a70be29e7c45",
+  "short": "37e07a9",
+  "target": "37e07a9",
+  "message": "feat(runtime): symmetric error mapper (CHAOS-1416)",
+  "published_at": "2026-05-04T13:45:34.581624+00:00"
+}
