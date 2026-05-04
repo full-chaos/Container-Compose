@@ -130,7 +130,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     private static let availableContainerConsoleColors: Set<NamedColor> = [
         .blue, .cyan, .magenta, .lightBlack, .lightBlue, .lightCyan, .lightYellow, .yellow, .lightGreen, .green,
     ]
-    private static let testNamedVolumeSourceOverrideEnv = "CONTAINER_COMPOSE_TEST_NAMED_VOLUME_SOURCE"
+    internal static let testNamedVolumeSourceOverrideEnv = "CONTAINER_COMPOSE_TEST_NAMED_VOLUME_SOURCE"
 
     private struct PreparedVolumeSource {
         let mountSource: String
@@ -387,7 +387,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
     }
 
-    private func migrateLegacyNamedVolumeDataIfNeeded(
+    internal func migrateLegacyNamedVolumeDataIfNeeded(
         projectName: String,
         actualVolumeName: String,
     ) async throws {
@@ -404,6 +404,21 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         } else {
             try await RuntimeVolumeClient.inspect(name: actualVolumeName).source
         }
+
+        // Block-image volumes (volume.img) are opaque — we cannot merge a legacy
+        // directory tree into them without mounting. Skip the migration and write
+        // the marker so we don't retry every `up`. Users who need data preserved
+        // must mount the image manually.
+        if runtimeVolumeSource.hasSuffix(".img") {
+            writeWarningToStandardError(
+                "Warning: legacy volume data at '\(legacyPath)' cannot be auto-migrated into block-image runtime volume '\(actualVolumeName)' at '\(runtimeVolumeSource)'. Mount the volume image manually if data preservation is required. Skipping migration; future attempts will be suppressed."
+            )
+            try fileManager.createDirectory(at: markerURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try "migration-skipped-block-image".write(to: markerURL, atomically: true, encoding: .utf8)
+            return
+        }
+
+        // Pre-CHAOS-1368 runtime / non-block source: existing directory-merge behavior.
         try fileManager.createDirectory(atPath: runtimeVolumeSource, withIntermediateDirectories: true)
         try mergeLegacyVolumeContents(from: legacyPath, into: runtimeVolumeSource)
 
