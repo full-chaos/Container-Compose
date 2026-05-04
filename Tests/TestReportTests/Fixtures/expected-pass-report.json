@@ -1,0 +1,23 @@
+{
+  "failures" : [
+
+  ],
+  "schemaVersion" : 1,
+  "skipped" : [
+
+  ],
+  "summary" : {
+    "durationSeconds" : 0.003821332997176796,
+    "failed" : 0,
+    "knownIssues" : 0,
+    "malformedLineCount" : 0,
+    "passed" : 7,
+    "runCompleted" : true,
+    "skipped" : 0,
+    "totalTests" : 7
+  },
+  "toolchainVersion" : "6.3.0",
+  "unknownEventKinds" : [
+
+  ]
+}
