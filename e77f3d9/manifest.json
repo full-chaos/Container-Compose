@@ -1,0 +1,8 @@
+{
+  "branch": "chris/review-followups-final-sweep",
+  "commit": "e77f3d985828bd93456990c305ddd8cb85bd9263",
+  "short": "e77f3d9",
+  "target": "e77f3d9",
+  "message": "test(extends): pin extends-in-included-file resolution (CHAOS-1419 / F4)",
+  "published_at": "2026-05-04T18:38:08.836118+00:00"
+}
