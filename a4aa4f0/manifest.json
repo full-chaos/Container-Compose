@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1417-compose-validation",
+  "commit": "a4aa4f0676bd784baada98f62fad3f00701e3948",
+  "short": "a4aa4f0",
+  "target": "a4aa4f0",
+  "message": "feat(compose): runtime validation (CHAOS-1417)",
+  "published_at": "2026-05-04T13:38:05.218878+00:00"
+}
