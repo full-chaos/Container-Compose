@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c58051342be05acc8f6818c296c863df84a3c541",
-  "short": "c580513",
+  "commit": "9010c0a25481029d7b2f380e951688a5c61f9332",
+  "short": "9010c0a",
   "target": "current",
-  "message": "feat(network): migrate compose up to Runtime.createNetwork (CHAOS-1408) (#107)",
-  "published_at": "2026-05-04T17:41:01.644775+00:00"
+  "message": "review: finish all Phase 2 follow-up items in one sweep (CHAOS-1411, 1420, 1410, 1419) (#108)",
+  "published_at": "2026-05-04T19:01:12.877270+00:00"
 }
