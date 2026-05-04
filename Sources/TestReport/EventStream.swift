@@ -102,3 +102,39 @@ public enum EventStream {
         }
     }
 }
+
+/// One line of `swift test --experimental-event-stream-output` JSONL.
+/// Forward-compatible: unrecognized top-level `kind` values become `.unknown`.
+public enum EventStreamRecord: Decodable, Sendable {
+    case event(EventEnvelope)
+    case test(TestEnvelope)
+    case unknown(kind: String, version: String)
+
+    public struct EventEnvelope: Decodable, Sendable {
+        public let version: String
+        public let payload: EventStream.EventPayload
+    }
+
+    public struct TestEnvelope: Decodable, Sendable {
+        public let version: String
+        public let payload: EventStream.TestCatalogPayload
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind, version
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try c.decode(String.self, forKey: .kind)
+        let version = try c.decode(String.self, forKey: .version)
+        switch kind {
+        case "event":
+            self = .event(try EventEnvelope(from: decoder))
+        case "test":
+            self = .test(try TestEnvelope(from: decoder))
+        default:
+            self = .unknown(kind: kind, version: version)
+        }
+    }
+}

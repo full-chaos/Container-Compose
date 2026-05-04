@@ -134,3 +134,64 @@ struct EventStreamEventPayloadDecodeTests {
         #expect(p.kind == .unknown("someFutureKind"))
     }
 }
+
+@Suite("EventStreamRecord union")
+struct EventStreamRecordDecodeTests {
+    @Test("kind:'event' decodes as .event")
+    func decodeEventRecord() throws {
+        let json = #"""
+        {"kind":"event","payload":{"instant":{"absolute":1,"since1970":2},"kind":"runStarted","messages":[]},"version":"6.3.0"}
+        """#
+        let r = try JSONDecoder().decode(EventStreamRecord.self, from: Data(json.utf8))
+        guard case .event(let env) = r else {
+            Issue.record("expected .event variant"); return
+        }
+        #expect(env.version == "6.3.0")
+        #expect(env.payload.kind == .runStarted)
+    }
+
+    @Test("kind:'test' decodes as .test")
+    func decodeTestRecord() throws {
+        let json = #"""
+        {"kind":"test","payload":{"displayName":"X","id":"a","kind":"suite","name":"X","sourceLocation":{"_filePath":"x","column":1,"fileID":"a/b.swift","filePath":"x","line":1}},"version":"6.3.0"}
+        """#
+        let r = try JSONDecoder().decode(EventStreamRecord.self, from: Data(json.utf8))
+        guard case .test(let env) = r else {
+            Issue.record("expected .test variant"); return
+        }
+        #expect(env.payload.kind == .suite)
+    }
+
+    @Test("unknown record kind decodes as .unknown")
+    func decodeUnknownRecord() throws {
+        let json = #"{"kind":"future","payload":{"x":1},"version":"99.0"}"#
+        let r = try JSONDecoder().decode(EventStreamRecord.self, from: Data(json.utf8))
+        guard case .unknown(let kind, let version) = r else {
+            Issue.record("expected .unknown variant"); return
+        }
+        #expect(kind == "future")
+        #expect(version == "99.0")
+    }
+}
+
+@Suite("EventStream fixture round-trip")
+struct EventStreamFixtureDecodeTests {
+    @Test("every line in sample-events-pass.jsonl decodes")
+    func decodeWholePassFixture() throws {
+        let url = Bundle.module.url(forResource: "sample-events-pass", withExtension: "jsonl", subdirectory: "Fixtures")
+        try #require(url != nil)
+        let data = try Data(contentsOf: url!)
+        let lines = String(decoding: data, as: UTF8.self)
+            .split(separator: "\n")
+            .filter { !$0.isEmpty }
+        #expect(lines.count > 0)
+
+        let decoder = JSONDecoder()
+        var decoded = 0
+        for line in lines {
+            _ = try decoder.decode(EventStreamRecord.self, from: Data(line.utf8))
+            decoded += 1
+        }
+        #expect(decoded == lines.count)
+    }
+}
