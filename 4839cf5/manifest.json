@@ -1,0 +1,8 @@
+{
+  "branch": "feat/structured-test-output",
+  "commit": "4839cf5e0fe225116b16d33d5c718151d591343d",
+  "short": "4839cf5",
+  "target": "4839cf5",
+  "message": "feat(test-report): JSON and human formatters",
+  "published_at": "2026-05-04T22:38:22.091500+00:00"
+}
