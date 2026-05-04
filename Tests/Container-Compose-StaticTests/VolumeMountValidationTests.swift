@@ -236,25 +236,174 @@ struct VolumeMountValidationTests {
     }
 
     // MARK: - Disabled: direct configVolume filesystem-side-effect tests
+    // (now covered by VolumeMountFSCheckerTests below via the extracted helper)
 
-    @Test(
-        "Bind mount source non-existence should warn and skip the volume",
-        .disabled("CHAOS-1410: configVolume is private; filesystem side-effects are tested via integration in VolumeMountIntegrationTests")
-    )
-    func bindMountNonExistentSourceWarnSkip() async throws {
-        // configVolume checks whether the bind-mount source directory exists and
-        // warns+skips if it does not. This cannot be tested directly because
-        // configVolume is `private mutating func ComposeUp`.
-        // The behavior is covered end-to-end in VolumeMountIntegrationTests.swift.
+    @Test("Bind mount source non-existence auto-creates the directory (CHAOS-1410)")
+    func bindMountNonExistentSourceCreatesDirectory() async throws {
+        // Previously disabled because configVolume was private. Now we test the
+        // extracted VolumeMountFSChecker.check directly.
+        let stub = StubFS(
+            existsResult: false,     // path does not exist
+            isDirectory: false,
+            createShouldSucceed: true
+        )
+        let result = VolumeMountFSChecker.check(
+            source: "./data",
+            destination: "/app/data",
+            cwd: "/project",
+            fileManager: stub
+        )
+        guard case .created(let fullPath, let args) = result else {
+            Issue.record("Expected .created but got \(result)")
+            return
+        }
+        #expect(fullPath == "/project/./data")
+        #expect(args == ["-v", "./data:/app/data"])
     }
 
-    @Test(
-        "Bind mount source that is a file (not directory) should warn and skip",
-        .disabled("CHAOS-1410: configVolume is private; bind-mount directory auto-creation is tested via integration")
-    )
+    @Test("Bind mount source that is a file (not directory) warns and skips (CHAOS-1410)")
     func bindMountSourceIsFileNotDirectory() async throws {
-        // When the bind-mount source path exists but is a regular file rather
-        // than a directory, configVolume should warn+skip.
-        // The behavior is covered end-to-end in VolumeMountIntegrationTests.swift.
+        // Previously disabled because configVolume was private. Now we test the
+        // extracted VolumeMountFSChecker.check directly.
+        let stub = StubFS(
+            existsResult: true,
+            isDirectory: false,   // file, not a directory
+            createShouldSucceed: false
+        )
+        let result = VolumeMountFSChecker.check(
+            source: "/etc/myconfig.conf",
+            destination: "/etc/myconfig.conf",
+            cwd: "/project",
+            fileManager: stub
+        )
+        guard case .skipFile(let src) = result else {
+            Issue.record("Expected .skipFile but got \(result)")
+            return
+        }
+        #expect(src == "/etc/myconfig.conf")
+    }
+}
+
+// MARK: - VolumeMountFSChecker unit tests (CHAOS-1410)
+
+/// Stub filesystem for `VolumeMountFSChecker` tests. Allows injecting canned
+/// responses for `fileExists` and `createDirectory` without touching disk.
+private final class StubFS: VolumeMountFSChecker.FSOperations {
+    let existsResult: Bool
+    let isDirectory: Bool
+    let createShouldSucceed: Bool
+
+    init(existsResult: Bool, isDirectory: Bool, createShouldSucceed: Bool) {
+        self.existsResult = existsResult
+        self.isDirectory = isDirectory
+        self.createShouldSucceed = createShouldSucceed
+    }
+
+    func fileExists(atPath path: String, isDirectory: UnsafeMutablePointer<ObjCBool>?) -> Bool {
+        isDirectory?.pointee = ObjCBool(self.isDirectory)
+        return existsResult
+    }
+
+    func createDirectory(atPath path: String, withIntermediateDirectories: Bool, attributes: [FileAttributeKey: Any]?) throws {
+        if !createShouldSucceed {
+            struct CreateFailed: Error {}
+            throw CreateFailed()
+        }
+    }
+}
+
+@Suite("VolumeMountFSChecker")
+struct VolumeMountFSCheckerTests {
+
+    // MARK: - Directory exists
+
+    @Test("Existing directory source returns mount args (CHAOS-1410)")
+    func existingDirectoryReturnsMountArgs() {
+        let stub = StubFS(existsResult: true, isDirectory: true, createShouldSucceed: false)
+        let result = VolumeMountFSChecker.check(
+            source: "./data",
+            destination: "/app/data",
+            cwd: "/project",
+            fileManager: stub
+        )
+        #expect(result == .mount(args: ["-v", "./data:/app/data"]))
+    }
+
+    @Test("Absolute-path source is passed through unchanged to mount args (CHAOS-1410)")
+    func absolutePathSourceUnchangedInArgs() {
+        let stub = StubFS(existsResult: true, isDirectory: true, createShouldSucceed: false)
+        let result = VolumeMountFSChecker.check(
+            source: "/var/data",
+            destination: "/app",
+            cwd: "/project",
+            fileManager: stub
+        )
+        #expect(result == .mount(args: ["-v", "/var/data:/app"]))
+    }
+
+    // MARK: - File exists (not a directory)
+
+    @Test("File source returns skipFile result (CHAOS-1410)")
+    func fileSourceReturnsSkipFile() {
+        let stub = StubFS(existsResult: true, isDirectory: false, createShouldSucceed: false)
+        let result = VolumeMountFSChecker.check(
+            source: "/etc/conf.d/app.conf",
+            destination: "/etc/app.conf",
+            cwd: "/project",
+            fileManager: stub
+        )
+        #expect(result == .skipFile(source: "/etc/conf.d/app.conf"))
+    }
+
+    // MARK: - Source does not exist
+
+    @Test("Non-existent source successfully auto-creates directory and returns created result (CHAOS-1410)")
+    func nonExistentSourceAutoCreatesDirectory() {
+        let stub = StubFS(existsResult: false, isDirectory: false, createShouldSucceed: true)
+        let result = VolumeMountFSChecker.check(
+            source: "logs",
+            destination: "/app/logs",
+            cwd: "/project",
+            fileManager: stub
+        )
+        guard case .created(let fullPath, let args) = result else {
+            Issue.record("Expected .created but got \(result)")
+            return
+        }
+        // Relative source is joined to cwd.
+        #expect(fullPath == "/project/logs")
+        #expect(args == ["-v", "logs:/app/logs"])
+    }
+
+    @Test("Non-existent source fails creation and returns skipCreateError (CHAOS-1410)")
+    func nonExistentSourceCreateFailureReturnsSkipError() {
+        let stub = StubFS(existsResult: false, isDirectory: false, createShouldSucceed: false)
+        let result = VolumeMountFSChecker.check(
+            source: "missing-dir",
+            destination: "/app/data",
+            cwd: "/project",
+            fileManager: stub
+        )
+        guard case .skipCreateError(let fullPath, _) = result else {
+            Issue.record("Expected .skipCreateError but got \(result)")
+            return
+        }
+        #expect(fullPath == "/project/missing-dir")
+    }
+
+    // MARK: - Path resolution: tilde prefix
+
+    @Test("Tilde-prefixed source is used as-is (not joined to cwd) (CHAOS-1410)")
+    func tildePrefixedSourceUsedAsIs() {
+        let stub = StubFS(existsResult: true, isDirectory: true, createShouldSucceed: false)
+        let result = VolumeMountFSChecker.check(
+            source: "~/mydata",
+            destination: "/app/data",
+            cwd: "/project",
+            fileManager: stub
+        )
+        // The checker passes ~/mydata as-is to FileManager (callers expand ~
+        // via NSString.expandingTildeInPath upstream if needed).
+        #expect(result == .mount(args: ["-v", "~/mydata:/app/data"]))
     }
 }

@@ -307,17 +307,14 @@ struct ComposeParsingEdgeCaseTests {
         #expect(result == "hello")
     }
 
-    @Test("Double-dollar sign $$ is NOT resolved by resolveVariable (opaque to regex)")
+    @Test("Double-dollar sign $$ passes through unchanged when no braces follow")
     func doubleDollarLiteralEscapePassThrough() {
-        // The compose-spec says $$ should produce a literal $. The current
-        // resolveVariable() regex pattern is `\$\{...}\}` so $$ without braces
-        // is never matched. Document the actual behavior so changes are noticed.
+        // compose-spec §12: $$ → literal $. With the pre/post-pass implementation,
+        // $$SUFFIX (no braces) becomes $SUFFIX (the placeholder is restored to $).
         let input = "prefix$$SUFFIX"
         let result = resolveVariable(input, with: [:])
-        // resolveVariable does not touch $$ — it passes through unchanged.
-        // The test pins the current behavior; if $$ processing is ever added
-        // this test will catch the change.
-        #expect(result == "prefix$$SUFFIX")
+        // $$ without braces → $ (the escape collapses the double-dollar to one).
+        #expect(result == "prefix$SUFFIX")
     }
 
     @Test("Variable with default value ${VAR:-default} uses default when var is absent")
@@ -339,33 +336,59 @@ struct ComposeParsingEdgeCaseTests {
         #expect(result == "http://localhost:8080/api")
     }
 
-    @Test("Nested variable references ${OUTER_${INNER}} are not expanded (unsupported)")
-    func nestedVariablesNotExpanded() {
-        // The compose-spec does not define nested variable expansion.
-        // The current regex only handles `${VARNAME}` tokens with alphanumeric
-        // + underscore names. A nested reference like ${OUTER_${INNER}} will
-        // not match the outer pattern (because `$` is not a valid char inside
-        // the inner `[A-Za-z0-9_]+` group).  Document that these are left as-is.
+    // MARK: - Variable interpolation: nested references (CHAOS-1420)
+
+    @Test("Nested variable references ${OUTER_${INNER}} expand inside-out (CHAOS-1420)")
+    func nestedVariablesExpandInsideOut() {
+        // resolveVariable uses inside-out resolution: first ${INNER} → "VALUE",
+        // then ${OUTER_VALUE} → "resolved".
         let env: [String: String] = ["INNER": "VALUE", "OUTER_VALUE": "resolved"]
         let input = "${OUTER_${INNER}}"
         let result = resolveVariable(input, with: env)
-        // The whole expression is left unchanged because it does not match the regex.
-        // If the implementation ever supports nesting, the expected value would be "resolved".
-        #expect(result == "${OUTER_${INNER}}", "nested variable references must be left as-is (unsupported)")
+        #expect(result == "resolved", "nested variable references must be expanded inside-out (CHAOS-1420)")
     }
 
-    // MARK: - Variable interpolation: disabled test for proper $$ → $ handling
+    @Test("Nested reference where inner var is undefined leaves outer unchanged (CHAOS-1420)")
+    func nestedVariableInnerUndefinedLeavesOuter() {
+        // If ${INNER} is not defined, the outer ${OUTER_${INNER}} can't be
+        // assembled, so the whole expression is left as-is.
+        let env: [String: String] = ["OUTER_VALUE": "resolved"]
+        let input = "${OUTER_${INNER}}"
+        let result = resolveVariable(input, with: env)
+        // Inner var undefined → outer name not assembled → left unchanged.
+        #expect(result == "${OUTER_${INNER}}")
+    }
 
-    @Test(
-        "Double-dollar $$ should produce literal $ per compose-spec",
-        .disabled("CHAOS-1411: $$ literal dollar escape is not yet implemented in resolveVariable")
-    )
+    @Test("Doubly-nested ${A_${B_${C}}} expands correctly (CHAOS-1420)")
+    func doublyNestedVariableExpands() {
+        let env: [String: String] = ["C": "X", "B_X": "Y", "A_Y": "final"]
+        let result = resolveVariable("${A_${B_${C}}}", with: env)
+        #expect(result == "final")
+    }
+
+    // MARK: - Variable interpolation: $$ literal dollar escape (CHAOS-1411)
+
+    @Test("Double-dollar $$ produces literal $ per compose-spec (CHAOS-1411)")
     func doubleDollarShouldProduceLiteralDollar() {
-        // compose-spec §12 states that $$ escapes to a literal $.
-        // The current resolveVariable() does not implement this; $$ passes
-        // through unchanged. Once implemented, this assertion should hold.
+        // compose-spec §12: $$ is the escape sequence for a literal $.
+        // resolveVariable uses a pre-pass ($$→\0) / post-pass (\0→$) so the
+        // main regex never sees $$, and the final string contains a single $.
         let result = resolveVariable("$$MY_VAR", with: [:])
         #expect(result == "$MY_VAR")
+    }
+
+    @Test("$${VAR} produces literal ${VAR} (double-dollar before braces, CHAOS-1411)")
+    func doubleDollarBeforeBracesProducesLiteralBraces() {
+        // $${VAR} → ${VAR} (the $$ collapses to $, leaving {VAR} literal).
+        let result = resolveVariable("$${PORT}", with: ["PORT": "8080"])
+        #expect(result == "${PORT}")
+    }
+
+    @Test("Mixed $$ escape and normal variable in same string (CHAOS-1411)")
+    func mixedDoubleDollarAndNormalVariable() {
+        // "$$PREFIX_${SUFFIX}" should produce "$PREFIX_value".
+        let result = resolveVariable("$$PREFIX_${SUFFIX}", with: ["SUFFIX": "value"])
+        #expect(result == "$PREFIX_value")
     }
 
     // MARK: - Include + extends interaction
