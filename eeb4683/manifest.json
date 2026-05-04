@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1414-runtime-docs",
+  "commit": "eeb4683761630bd87f86b9a477b91c3607491324",
+  "short": "eeb4683",
+  "target": "eeb4683",
+  "message": "docs(runtime): protocol contract + error codes guide (CHAOS-1414)",
+  "published_at": "2026-05-04T13:19:06.604299+00:00"
+}
