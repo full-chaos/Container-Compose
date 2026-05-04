@@ -36,16 +36,18 @@ own the adapter forever as the schema evolves.
 
 ## Why native event stream
 
-Swift Testing 6.0+ ships a structured event stream:
+Swift Testing (bundled with the Swift toolchain) ships a structured event stream:
 
 ```
-swift test --event-stream-output-path <file> --event-stream-version 0
+swift test --experimental-event-stream-output <path>
 ```
 
 This writes one JSON object per line (JSONL) covering test discovery, run
 boundaries, individual test start/end, recorded issues with source locations,
-skips, and a final run summary. The version flag is explicitly stable — Apple
-will introduce v1 alongside v0 rather than break it.
+skips, and a final run summary. The flag is currently named with an
+`--experimental-` prefix; the schema itself carries a `version` field (a
+swift-testing release string such as `"6.3.0"`) that we surface in errors and
+warnings if it changes shape.
 
 This is exactly the structured data the user asked for, sourced from the
 testing framework itself rather than recovered from console output.
@@ -56,7 +58,7 @@ One small library target plus a thin executable wrapper, one Makefile addition.
 No runtime impact on `container-compose` itself.
 
 ```
-swift test --event-stream-output-path .build/test-events.jsonl
+swift test --experimental-event-stream-output .build/test-events.jsonl
                           │
                           ▼
             test-report (new executable target)
@@ -87,7 +89,7 @@ without touching the filesystem.
 
 1. `make test-json` runs:
    ```
-   swift test --event-stream-output-path .build/test-events.jsonl --event-stream-version 0
+   swift test --experimental-event-stream-output .build/test-events.jsonl
    ```
 2. After the test run finishes (success or failure), it runs:
    ```
@@ -105,15 +107,17 @@ without touching the filesystem.
 ## CLI surface
 
 ```
-test-report <events.jsonl> [--format json|human] [--include-passed] [--schema-version 0]
+test-report <events.jsonl> [--format json|human] [--include-passed]
 ```
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `<events.jsonl>` | (required) | Positional path to a JSONL produced by `swift test --event-stream-output-path`. |
+| `<events.jsonl>` | (required) | Positional path to a JSONL produced by `swift test --experimental-event-stream-output`. |
 | `--format` | `human` | `json` for agent consumption; `human` for terminal. |
 | `--include-passed` | off | List every test, not just failures. Useful for diffing. |
-| `--schema-version` | `0` | Match `--event-stream-version`. Fails loudly on mismatch. |
+
+The schema's `version` field is read off the first record and surfaced in
+errors when it doesn't match what the decoder was built against.
 
 `--format human` is default because `make test-json` is also run interactively;
 defaulting to JSON would print machine output to a TTY. Agents pass
@@ -175,14 +179,15 @@ Rationale for shape:
 - **Empty events file** → exit 2, distinct message: `events file is empty — 'swift test' may have crashed before emitting any events`
 - **Malformed JSON line** → log to stderr, skip the line, continue. Don't abort the entire report on one bad line. Track count, surface in summary.
 - **Unknown event kind** → counted under `unknownEventKinds`, surfaced in summary. Forward-compatible.
-- **Schema version mismatch** → if events declare a version we don't speak, abort with explicit message naming both versions. Don't silently misinterpret.
+- **Schema version mismatch** → if events declare a `version` we don't recognize, log a stderr warning naming the seen version and proceed best-effort (the schema has been stable across recent toolchain versions; warn but don't abort). Decode failures on individual events still hit the malformed-line path.
 - **Run did not finish (no `runEnded` event)** → set `summary.runCompleted = false` and report what we have. Useful when `swift test` itself crashed mid-run.
 
 ## Testing
 
-- **Capture a real fixture once**: run `swift test --event-stream-output-path
-  Tests/TestReport-Tests/Fixtures/sample-events.jsonl` against the existing
-  static tests, scrub host-specific paths, check the file in.
+- **Capture a real fixture once**: run `swift test --filter ScaleTests --experimental-event-stream-output
+  Tests/TestReport-Tests/Fixtures/sample-events.jsonl` (or another small
+  static-test class) against the existing tests, scrub host-specific paths,
+  check the file in. A second handcrafted fixture covers failure events.
 - **Decode tests**: every event kind appearing in the fixture decodes cleanly.
   This catches schema drift when toolchain updates.
 - **Aggregator tests**: synthetic event sequences (constructed in code, not from
@@ -203,16 +208,19 @@ Rationale for shape:
 
 ## Risks
 
-- **Schema instability**: `--event-stream-version 0` is the only published
-  version. Apple has signaled future versions. Pinning to v0 with explicit
-  mismatch errors keeps surprises out of CI.
+- **Schema instability**: the flag is `--experimental-event-stream-output`,
+  signaling Apple may evolve it. The `version` field on every record is the
+  signal we monitor; on unrecognized versions we warn and proceed best-effort
+  rather than abort, but per-event decode failures still surface as malformed
+  lines.
 - **Fixture drift**: the captured JSONL fixture will need refresh after each
   Swift toolchain bump. This is the same risk any consumer of the schema has;
   the decode tests will fail loudly if we miss a bump.
 - **Behavioral coupling to the Swift toolchain**: if a future toolchain
-  rejects `--event-stream-output-path` (deprecated in favor of v1+), the
-  Makefile target breaks. Mitigation: pin to v0 explicitly in the flag, surface
-  toolchain version in the report header.
+  renames `--experimental-event-stream-output` (drops the prefix when
+  promoted to stable), the Makefile target breaks. Mitigation: surface the
+  observed toolchain `version` in the report header so the failure is
+  diagnosable, and update the Makefile target alongside the toolchain bump.
 
 ## Open questions
 
