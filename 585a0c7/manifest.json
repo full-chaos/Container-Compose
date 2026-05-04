@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1407-security-spec-fields",
+  "commit": "585a0c7bc58aac20708bfc80990b2a356a855274",
+  "short": "585a0c7",
+  "target": "585a0c7",
+  "message": "feat(runtime): add security fields to RuntimeCreateConfiguration (CHAOS-1407)",
+  "published_at": "2026-05-04T16:21:06.835087+00:00"
+}
