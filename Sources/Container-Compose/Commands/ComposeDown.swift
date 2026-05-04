@@ -201,12 +201,57 @@ public struct ComposeDown: AsyncParsableCommand {
                 try await RuntimeEnvironment.current.removeVolume(name: actualVolumeName)
                 print("Removed volume: \(actualVolumeName)")
             } catch RuntimeError.notFound {
-                // Already gone — idempotent.
+                // Registry says no — but a partial failure during a previous
+                // compose up can leave a stranded volume.img on disk. Attempt
+                // filesystem-level cleanup so the next compose up doesn't fail
+                // with "file with the same name already exists".
+                cleanupOrphanedVolumeDirectory(name: actualVolumeName)
             } catch {
                 print("Error removing volume '\(actualVolumeName)': \(error)")
             }
         }
         print("--- Volumes Removed ---\n")
+    }
+
+    /// Conventional on-disk base for apple/container volumes, derived from the
+    /// per-user Application Support directory. Exposed as an internal parameter
+    /// so unit tests can redirect to a temporary directory without touching real
+    /// data under ~/Library/Application Support.
+    internal static func defaultVolumesBaseURL() -> URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSString(string: "~/Library/Application Support").expandingTildeInPath)
+        return appSupport.appending(path: "com.apple.container/volumes", directoryHint: .isDirectory)
+    }
+
+    /// CHAOS-1413: Cleans up the on-disk volume directory left behind when
+    /// apple/container's registry no longer knows about a volume but its
+    /// `volume.img` is still present. Only invoked from the `.notFound` catch
+    /// path — a successful `removeVolume` call already tears down the directory
+    /// via the runtime, so running this on the success path is unnecessary.
+    ///
+    /// - Parameter name: the actual volume name (after `volumeConfig?.name` override resolution)
+    /// - Parameter volumesBaseURL: base directory for apple/container volumes;
+    ///   defaults to `~/Library/Application Support/com.apple.container/volumes`.
+    ///   Tests pass a temporary directory here to avoid touching real data.
+    internal func cleanupOrphanedVolumeDirectory(
+        name: String,
+        volumesBaseURL: URL = ComposeDown.defaultVolumesBaseURL()
+    ) {
+        let volumeDir = volumesBaseURL.appending(path: name, directoryHint: .isDirectory)
+        let volumeImg = volumeDir.appending(path: "volume.img", directoryHint: .notDirectory)
+
+        guard fileManager.fileExists(atPath: volumeImg.path) else {
+            // No orphan on disk — truly gone. Silent, idempotent.
+            return
+        }
+
+        print("Warning: removing orphaned volume directory at \(volumeDir.path) (registry had no record of '\(name)')")
+        do {
+            try fileManager.removeItem(at: volumeDir)
+            print("Removed orphaned volume directory: \(volumeDir.path)")
+        } catch {
+            print("Error removing orphaned volume directory '\(volumeDir.path)': \(error)")
+        }
     }
 
     /// Helper for `removeNamedVolumes`: collects all named-volume sources
