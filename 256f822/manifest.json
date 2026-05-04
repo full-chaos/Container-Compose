@@ -1,0 +1,8 @@
+{
+  "branch": "chris/coverage-map-update-post-review-sweep",
+  "commit": "256f8226bb2addf0b0b3954a6b863dee79a46b37",
+  "short": "256f822",
+  "target": "256f822",
+  "message": "docs(coverage): refresh coverage map after review-finding sweep",
+  "published_at": "2026-05-04T19:16:33.439996+00:00"
+}
