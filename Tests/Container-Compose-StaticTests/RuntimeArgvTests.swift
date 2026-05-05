@@ -241,6 +241,26 @@ struct RuntimeArgvTests {
         #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
     }
 
+    @Test("run: stop signal and grace period warn-skip unsupported runtime flags")
+    func run_warn_skips_stop_signal_and_grace_period() async throws {
+        let yaml = """
+        services:
+          app:
+            image: alpine:latest
+            stop_signal: SIGTERM
+            stop_grace_period: 30s
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let argv = try await recordedRunArgv {
+            try ComposeRun.parse(["-f", compose.path, "app"])
+        }
+
+        #expect(!argv.contains("--stop-signal"), "Apple container run rejects --stop-signal; full argv: \(argv)")
+        #expect(!argv.contains("--stop-timeout"), "Apple container run rejects --stop-timeout; full argv: \(argv)")
+    }
+
     // MARK: - Plan §8 #3 — `compose create` entrypoint placement (PR-4 regression)
 
     @Test("create: --entrypoint precedes image (regression for ComposeCreate §1 bug)")
@@ -741,8 +761,8 @@ struct RuntimeArgvTests {
         #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
     }
 
-    @Test("up: inline BuildCommand argv skips unsupported cache and ssh flags")
-    func up_build_skips_unsupported_cache_and_ssh_flags() async throws {
+    @Test("up: inline BuildCommand argv skips unsupported build flags")
+    func up_build_skips_unsupported_build_flags() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
@@ -756,7 +776,6 @@ struct RuntimeArgvTests {
         let yaml = """
         services:
           api:
-            image: example/api:latest
             build:
               context: .
               dockerfile: Dockerfile
@@ -766,10 +785,14 @@ struct RuntimeArgvTests {
                 - type=inline
               labels:
                 app: api
+              network: host
               secrets:
                 - api-token
               ssh:
                 - default
+              shm_size: 128m
+              entitlements:
+                - network.host
         """
         let compose = dir.appendingPathComponent("docker-compose.yml")
         try yaml.write(to: compose, atomically: true, encoding: .utf8)
@@ -782,11 +805,14 @@ struct RuntimeArgvTests {
         #expect(argv.contains("--secret"), "supported --secret should remain in BuildCommand argv: \(argv)")
         #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
         #expect(!argv.contains("--cache-to"), "Apple container BuildCommand rejects --cache-to; full argv: \(argv)")
+        #expect(!argv.contains("--network"), "Apple container BuildCommand rejects --network; full argv: \(argv)")
         #expect(!argv.contains("--ssh"), "Apple container BuildCommand rejects --ssh; full argv: \(argv)")
+        #expect(!argv.contains("--shm-size"), "Apple container BuildCommand rejects --shm-size; full argv: \(argv)")
+        #expect(!argv.contains("--allow"), "Apple container BuildCommand has no entitlement --allow support; full argv: \(argv)")
     }
 
-    @Test("create: inline BuildCommand argv skips unsupported cache and ssh flags")
-    func create_build_skips_unsupported_cache_and_ssh_flags() async throws {
+    @Test("create: inline BuildCommand argv skips unsupported build flags")
+    func create_build_skips_unsupported_build_flags() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
@@ -800,7 +826,6 @@ struct RuntimeArgvTests {
         let yaml = """
         services:
           api:
-            image: example/api:latest
             build:
               context: .
               dockerfile: Dockerfile
@@ -810,10 +835,14 @@ struct RuntimeArgvTests {
                 - type=inline
               labels:
                 app: api
+              network: host
               secrets:
                 - api-token
               ssh:
                 - default
+              shm_size: 128m
+              entitlements:
+                - network.host
         """
         let compose = dir.appendingPathComponent("docker-compose.yml")
         try yaml.write(to: compose, atomically: true, encoding: .utf8)
@@ -826,7 +855,10 @@ struct RuntimeArgvTests {
         #expect(argv.contains("--secret"), "supported --secret should remain in BuildCommand argv: \(argv)")
         #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
         #expect(!argv.contains("--cache-to"), "Apple container BuildCommand rejects --cache-to; full argv: \(argv)")
+        #expect(!argv.contains("--network"), "Apple container BuildCommand rejects --network; full argv: \(argv)")
         #expect(!argv.contains("--ssh"), "Apple container BuildCommand rejects --ssh; full argv: \(argv)")
+        #expect(!argv.contains("--shm-size"), "Apple container BuildCommand rejects --shm-size; full argv: \(argv)")
+        #expect(!argv.contains("--allow"), "Apple container BuildCommand has no entitlement --allow support; full argv: \(argv)")
     }
 
     // MARK: - Plan §8 #8 — kill emits --signal in argv (PR-5 regression)

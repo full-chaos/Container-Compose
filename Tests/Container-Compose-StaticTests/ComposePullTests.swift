@@ -206,4 +206,41 @@ struct ComposePullTests {
         #expect(platform == "linux/amd64")
         #endif
     }
+
+    @Test("ComposePull --include-deps pulls selected service dependencies")
+    func composePullIncludeDepsPullsDependencies() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let yaml = """
+        services:
+          db:
+            image: postgres:16
+          api:
+            image: example/api:latest
+            depends_on:
+              - db
+          web:
+            image: nginx:latest
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                var cmd = try ComposePull.parse(["--include-deps", "-f", compose.path, "api"])
+                try await cmd.run()
+            }
+        }
+
+        let pulledImages = await recorder.swiftAPIArgvs(named: "ImagePull").compactMap(\.first)
+        #expect(pulledImages == [
+            "docker.io/library/postgres:16",
+            "docker.io/example/api:latest",
+        ])
+    }
 }

@@ -118,6 +118,7 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
         // Filter by active profiles
         let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
         allServices = Service.filterByProfiles(allServices, activeProfiles: activeProfiles)
+        allServices = try Service.topoSortConfiguredServices(allServices)
 
         // Filter by requested service names
         if !services.isEmpty {

@@ -262,17 +262,36 @@ extension ComposeUp {
         private static func writeTempFile(content: Data, kind: String, sourceName: String, projectName: String) throws -> String {
             let digest = SHA256.hash(data: content)
             let hashPrefix = digest.map { String(format: "%02x", $0) }.joined().prefix(12)
-            let directoryPath = NSString(string: "~/.containers/Compose/\(projectName)/configs-secrets").expandingTildeInPath
-            let directoryURL = URL(fileURLWithPath: directoryPath, isDirectory: true)
-            try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            let safeProjectName = sanitizedHostPathComponent(projectName)
+            let safeSourceName = sanitizedHostPathComponent(sourceName)
+            let directoryURL = FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: ".containers/Compose/\(safeProjectName)/configs-secrets", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(
+                at: directoryURL,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryURL.path)
 
-            let fileName = "\(kind)-\(sourceName)-\(hashPrefix)"
+            let fileName = "\(kind)-\(safeSourceName)-\(hashPrefix)"
             let fileURL = directoryURL.appending(path: fileName)
             if !FileManager.default.fileExists(atPath: fileURL.path) {
                 try content.write(to: fileURL, options: .atomic)
             }
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
 
             return fileURL.path
+        }
+
+        private static func sanitizedHostPathComponent(_ value: String) -> String {
+            let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
+            let sanitizedScalars = value.unicodeScalars.map { scalar in
+                allowed.contains(scalar) ? Character(scalar) : "_"
+            }
+            let sanitized = String(sanitizedScalars)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return sanitized.isEmpty ? "unnamed" : sanitized
         }
     }
 }

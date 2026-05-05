@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 import Testing
+import Foundation
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -49,6 +50,46 @@ struct NewerSpecParsingTests {
         #expect(model.model == "ai/llama:latest")
         #expect(model.context_size == 4096)
         #expect(model.runtime_flags == ["--gpu"])
+    }
+
+    @Test("File loading preserves top-level models")
+    func fileLoadingPreservesTopLevelModels() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let composePath = dir.appendingPathComponent("compose.yaml")
+        try """
+        services:
+          app:
+            image: alpine:latest
+        models:
+          llama:
+            model: ai/llama:latest
+        """.write(to: composePath, atomically: true, encoding: .utf8)
+
+        let compose = try DockerCompose.loadAndMerge(mainPath: composePath.path)
+        #expect(compose.models?["llama"]?.model == "ai/llama:latest")
+    }
+
+    @Test("Encoding preserves top-level models")
+    func encodingPreservesTopLevelModels() throws {
+        let compose = DockerCompose(
+            version: nil,
+            name: nil,
+            services: ["app": Service(image: "alpine:latest")],
+            models: ["llama": Model(name: nil, model: "ai/llama:latest", context_size: nil, runtime_flags: nil)],
+            volumes: nil,
+            networks: nil,
+            configs: nil,
+            secrets: nil
+        )
+
+        let encoded = try YAMLEncoder().encode(compose)
+        #expect(encoded.contains("models:"))
+        #expect(encoded.contains("llama:"))
+        #expect(encoded.contains("model: ai/llama:latest"))
     }
 
     @Test("Parse service.models list form")

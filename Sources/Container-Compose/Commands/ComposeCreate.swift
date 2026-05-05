@@ -218,35 +218,12 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--target", target])
         }
 
-        // apple/container build does not accept --cache-from (verified Tier 0 R2 audit).
-        if let cacheFrom = buildConfig.cache_from, !cacheFrom.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.cache_from",
-                "Note: 'build.cache_from' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
-        // apple/container build does not accept --cache-to (verified Tier 0 R2 audit).
-        if let cacheTo = buildConfig.cache_to, !cacheTo.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.cache_to",
-                "Note: 'build.cache_to' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
+        warnUnsupportedContainerBuildFields(buildConfig, serviceName: serviceName)
         for (key, value) in buildConfig.labels ?? [:] {
             commands.append(contentsOf: ["--label", "\(key)=\(value)"])
         }
-        if let network = buildConfig.network {
-            commands.append(contentsOf: ["--network", network])
-        }
         for secretId in buildConfig.secrets ?? [] {
             commands.append(contentsOf: ["--secret", "id=\(secretId)"])
-        }
-        // apple/container build does not accept --ssh (verified Tier 0 R2 audit).
-        if let ssh = buildConfig.ssh, !ssh.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.ssh",
-                "Note: 'build.ssh' is parsed but not supported by Apple container's build; ignored."
-            )
         }
 
         if let buildPlatforms = buildConfig.platforms, !buildPlatforms.isEmpty {
@@ -262,10 +239,6 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             let os = String(split?.first ?? "linux")
             let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
             commands.append(contentsOf: ["--os", os, "--arch", arch])
-        }
-
-        if let shmSize = buildConfig.shm_size {
-            commands.append(contentsOf: ["--shm-size", shmSize])
         }
 
         commands.append(contentsOf: ["--tag", imageToRun])

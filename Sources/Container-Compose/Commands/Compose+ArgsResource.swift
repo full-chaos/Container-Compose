@@ -110,8 +110,11 @@ extension ComposeUp {
             }
 
             // --shm-size
-            if let shm = svc.shm_size {
-                args.append(contentsOf: ["--shm-size", shm])
+            if svc.shm_size != nil {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.shm_size",
+                    "Note: 'shm_size' is parsed but not supported by Apple container; ignored."
+                )
             }
 
             // --oom-kill-disable (flag only, emitted when true)

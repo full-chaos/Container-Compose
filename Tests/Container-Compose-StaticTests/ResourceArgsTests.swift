@@ -372,13 +372,10 @@ struct ResourceArgsTests {
         try expectWarnSkipped(svc, flag: "--pids-limit", field: "pids_limit")
     }
 
-    @Test("shm_size emits --shm-size")
+    @Test("shm_size warn-skips --shm-size")
     func shmSizeFlag() throws {
         let svc = Service(image: "alpine", shm_size: "128m")
-        let result = try args(svc)
-        #expect(result.contains("--shm-size"))
-        let idx = try #require(result.firstIndex(of: "--shm-size"))
-        #expect(result[idx + 1] == "128m")
+        try expectWarnSkipped(svc, flag: "--shm-size", field: "shm_size")
     }
 
     @Test("oom_kill_disable true warn-skips --oom-kill-disable flag")
