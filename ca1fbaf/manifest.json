@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1424-pr3-lifecycle",
+  "commit": "ca1fbaf3de2b14738d5448de7acffceea891f900",
+  "short": "ca1fbaf",
+  "target": "ca1fbaf",
+  "message": "feat(runtime): CHAOS-1424 PR3 \u2014 lifecycle wire-up + Kernel acquisition + ContainerManager init",
+  "published_at": "2026-05-05T21:10:28.922644+00:00"
+}
