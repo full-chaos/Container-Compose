@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1425-runtime-build-pull",
+  "commit": "8a02619cca489feb0a11d93e320a889d93bbb2da",
+  "short": "8a02619",
+  "target": "8a02619",
+  "message": "feat(runtime): CHAOS-1425 \u2014 wire Runtime.build/pull through to BuildCommand + ImagePull (Leak #14)",
+  "published_at": "2026-05-05T22:07:11.544862+00:00"
+}
