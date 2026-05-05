@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "2f1570a77ed3d3898e1932b93f7a9fb9a0aa4081",
-  "short": "2f1570a",
+  "commit": "61d4d9b30b10d566128e6ee0577f058051c5e4b0",
+  "short": "61d4d9b",
   "target": "current",
-  "message": "feat(runtime): CHAOS-1424 PR4 \u2014 statistics translation + native runtime test target (closes CHAOS-1362) (#116)",
-  "published_at": "2026-05-05T21:17:38.586036+00:00"
+  "message": "feat(runtime): CHAOS-1424 PR3 \u2014 lifecycle wire-up + Kernel acquisition (#117)",
+  "published_at": "2026-05-05T21:18:06.632582+00:00"
 }
