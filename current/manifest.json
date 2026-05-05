@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "61d4d9b30b10d566128e6ee0577f058051c5e4b0",
-  "short": "61d4d9b",
+  "commit": "bcbef2ff4b6e1ec5a37cc9b933d14df2ddbcfe0b",
+  "short": "bcbef2f",
   "target": "current",
-  "message": "feat(runtime): CHAOS-1424 PR3 \u2014 lifecycle wire-up + Kernel acquisition (#117)",
-  "published_at": "2026-05-05T21:18:06.632582+00:00"
+  "message": "feat(server): CHAOS-1426 \u2014 POST /projects/{name} compose YAML ingestion (Decision #12) (#119)",
+  "published_at": "2026-05-05T23:01:07.262035+00:00"
 }
