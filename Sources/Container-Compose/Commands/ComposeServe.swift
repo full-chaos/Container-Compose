@@ -297,8 +297,11 @@ public enum ServeDaemon {
     /// Caller must invoke `isAlreadyServing` FIRST and only proceed when it
     /// returns false.
     public static func cleanupStaleSocketIfNeeded(at socketPath: String) throws {
-        guard FileManager.default.fileExists(atPath: socketPath) else { return }
-        try FileManager.default.removeItem(atPath: socketPath)
+        do {
+            try FileManager.default.removeItem(atPath: socketPath)
+        } catch let error as CocoaError where error.code == .fileNoSuchFile {
+            // Already gone — nothing to clean up.
+        }
     }
 
     public static func ensureParentDirectory(for socketPath: String) throws {
@@ -565,10 +568,10 @@ struct SocketCleanupService: ServiceLifecycle.Service {
             try await Task.sleep(for: .seconds(60 * 60 * 24 * 365 * 100))
         } onGracefulShutdown: {
             do {
-                if FileManager.default.fileExists(atPath: socketPath) {
-                    try FileManager.default.removeItem(atPath: socketPath)
-                    logger.info("Unlinked socket at \(socketPath)")
-                }
+                try FileManager.default.removeItem(atPath: socketPath)
+                logger.info("Unlinked socket at \(socketPath)")
+            } catch let error as CocoaError where error.code == .fileNoSuchFile {
+                // File already gone — nothing to log.
             } catch {
                 logger.warning("Failed to unlink socket at \(socketPath): \(error.localizedDescription)")
             }
