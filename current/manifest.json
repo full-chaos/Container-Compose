@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "81f7f2bec84a6e331e38182ea8b8cb7f7c3d2c58",
-  "short": "81f7f2b",
+  "commit": "69afc98d86678a42537426f395e159b29d6fa609",
+  "short": "69afc98",
   "target": "current",
-  "message": "review: simplify pass \u2014 formatter hoist + cert dedup + TOCTOU fix (#113)",
-  "published_at": "2026-05-05T18:04:25.502396+00:00"
+  "message": "chore(ci): bump GitHub Actions to Node 24-targeting versions (CHAOS-1412) (#114)",
+  "published_at": "2026-05-05T19:55:16.182351+00:00"
 }
