@@ -1,0 +1,308 @@
+name: OpenAPI SDKs
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Resources/openapi.yaml'
+      - '.github/workflows/openapi-sdks.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: openapi-sdks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  validate-spec:
+    name: Validate OpenAPI spec
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Swift
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: "6.3.1"
+
+      - name: Cache SwiftPM dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-swiftpm-deps-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swiftpm-deps-
+
+      - name: Verify bundled OpenAPI route
+        run: swift test --filter OpenAPIRouteTests
+
+  sdk:
+    name: Build ${{ matrix.sdk.name }} SDK
+    needs: validate-spec
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk:
+          - name: Swift
+            package_name: container-compose-client-swift
+            channel_suffix: ""
+            generator: swift
+          - name: TypeScript
+            package_name: "@full-chaos/container-compose-client"
+            channel_suffix: ""
+            generator: typescript
+          - name: Python
+            package_name: container-compose-client
+            channel_suffix: ""
+            generator: python
+          - name: Go
+            package_name: github.com/full-chaos/container-compose-client
+            channel_suffix: ""
+            generator: go
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Swift
+        if: matrix.sdk.generator == 'swift'
+        uses: SwiftyLab/setup-swift@v1
+        with:
+          swift-version: "6.3.1"
+
+      - name: Setup Java for OpenAPI Generator
+        if: matrix.sdk.generator == 'typescript'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Node.js
+        if: matrix.sdk.generator == 'typescript'
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Setup Python
+        if: matrix.sdk.generator == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup Go
+        if: matrix.sdk.generator == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache: false
+
+      - name: Assemble version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            python_version="${version}"
+            npm_tag="latest"
+          else
+            version="0.0.0-snapshot.${GITHUB_SHA::7}"
+            python_version="0.0.0.dev${GITHUB_RUN_NUMBER}"
+            npm_tag="snapshot"
+          fi
+          {
+            echo "value=${version}"
+            echo "python_value=${python_version}"
+            echo "npm_tag=${npm_tag}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Prepare output directory
+        run: mkdir -p dist/${{ matrix.sdk.generator }}
+
+      - name: Copy source OpenAPI spec
+        run: cp Resources/openapi.yaml dist/${{ matrix.sdk.generator }}/openapi.yaml
+
+      - name: Generate SDK source
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.sdk.generator }}" in
+            swift)
+              mkdir -p dist/swift/Sources/ContainerComposeClient
+              cp Resources/openapi.yaml dist/swift/Sources/ContainerComposeClient/openapi.yaml
+              {
+                printf '%s\n' '// swift-tools-version: 6.0'
+                printf '%s\n' 'import PackageDescription'
+                printf '%s\n' ''
+                printf '%s\n' 'let package = Package('
+                printf '%s\n' '    name: "ContainerComposeClient",'
+                printf '%s\n' '    platforms: ['
+                printf '%s\n' '        .macOS(.v15),'
+                printf '%s\n' '        .iOS(.v17),'
+                printf '%s\n' '        .tvOS(.v17),'
+                printf '%s\n' '        .watchOS(.v10)'
+                printf '%s\n' '    ],'
+                printf '%s\n' '    products: ['
+                printf '%s\n' '        .library(name: "ContainerComposeClient", targets: ["ContainerComposeClient"])'
+                printf '%s\n' '    ],'
+                printf '%s\n' '    dependencies: ['
+                printf '%s\n' '        .package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),'
+                printf '%s\n' '        .package(url: "https://github.com/apple/swift-openapi-generator.git", from: "1.10.0"),'
+                printf '%s\n' '        .package(url: "https://github.com/apple/swift-openapi-runtime.git", from: "1.8.0"),'
+                printf '%s\n' '        .package(url: "https://github.com/apple/swift-openapi-urlsession.git", from: "1.0.0")'
+                printf '%s\n' '    ],'
+                printf '%s\n' '    targets: ['
+                printf '%s\n' '        .target('
+                printf '%s\n' '            name: "ContainerComposeClient",'
+                printf '%s\n' '            dependencies: ['
+                printf '%s\n' '                .product(name: "HTTPTypes", package: "swift-http-types"),'
+                printf '%s\n' '                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),'
+                printf '%s\n' '                .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession")'
+                printf '%s\n' '            ],'
+                printf '%s\n' '            plugins: ['
+                printf '%s\n' '                .plugin(name: "OpenAPIGenerator", package: "swift-openapi-generator")'
+                printf '%s\n' '            ]'
+                printf '%s\n' '        )'
+                printf '%s\n' '    ]'
+                printf '%s\n' ')'
+              } > dist/swift/Package.swift
+              {
+                printf '%s\n' 'generate:'
+                printf '%s\n' '  - types'
+                printf '%s\n' '  - client'
+                printf '%s\n' 'accessModifier: public'
+                printf '%s\n' 'namingStrategy: idiomatic'
+              } > dist/swift/Sources/ContainerComposeClient/openapi-generator-config.yaml
+              {
+                printf '%s\n' 'public struct ContainerComposeClientPackage {'
+                printf '%s\n' '    public static let openAPISpecification = "openapi.yaml"'
+                printf '%s\n' '}'
+              } > dist/swift/Sources/ContainerComposeClient/ContainerComposeClient.swift
+              swift build --package-path dist/swift
+              ;;
+            typescript)
+              npx --yes openapi-typescript Resources/openapi.yaml -o dist/typescript/schema.d.ts
+              {
+                printf '%s\n' 'import createOpenAPIFetch from "openapi-fetch";'
+                printf '%s\n' ''
+                printf '%s\n' 'export function createClient(options = {}) {'
+                printf '%s\n' '  const { baseUrl = "http://127.0.0.1:8080", token, fetch: fetchImpl } = options;'
+                # shellcheck disable=SC2016
+                printf '%s\n' '  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;'
+                printf '%s\n' '  return createOpenAPIFetch({ baseUrl, headers, fetch: fetchImpl });'
+                printf '%s\n' '}'
+              } > dist/typescript/index.js
+              {
+                printf '%s\n' 'import type { Client } from "openapi-fetch";'
+                printf '%s\n' 'import type { paths } from "./schema";'
+                printf '%s\n' ''
+                printf '%s\n' 'export type { paths, components, operations } from "./schema";'
+                printf '%s\n' ''
+                printf '%s\n' 'export interface ContainerComposeClientOptions {'
+                printf '%s\n' '  baseUrl?: string;'
+                printf '%s\n' '  token?: string;'
+                printf '%s\n' '  fetch?: typeof fetch;'
+                printf '%s\n' '}'
+                printf '%s\n' ''
+                printf '%s\n' 'export type ContainerComposeClient = Client<paths>;'
+                printf '%s\n' ''
+                printf '%s\n' 'export declare function createClient(options?: ContainerComposeClientOptions): ContainerComposeClient;'
+              } > dist/typescript/index.d.ts
+              {
+                printf '%s\n' '{'
+                printf '%s\n' '  "name": "${{ matrix.sdk.package_name }}",'
+                printf '%s\n' '  "version": "${{ steps.version.outputs.value }}",'
+                printf '%s\n' '  "description": "TypeScript types for the container-compose daemon API.",'
+                printf '%s\n' '  "type": "module",'
+                printf '%s\n' '  "main": "./index.js",'
+                printf '%s\n' '  "types": "./index.d.ts",'
+                printf '%s\n' '  "files": ["index.js", "index.d.ts", "schema.d.ts", "openapi.yaml"],'
+                printf '%s\n' '  "dependencies": {'
+                printf '%s\n' '    "openapi-fetch": "^0.15.0"'
+                printf '%s\n' '  },'
+                printf '%s\n' '  "license": "MIT"'
+                printf '%s\n' '}'
+              } > dist/typescript/package.json
+              npm pack dist/typescript --dry-run
+              ;;
+            python)
+              python3 -m pip install --upgrade openapi-python-client
+              {
+                printf '%s\n' 'project_name_override: container-compose-client'
+                printf '%s\n' 'package_name_override: container_compose_client'
+              } > dist/python/openapi-python-client-config.yaml
+              openapi-python-client generate --path Resources/openapi.yaml --output-path dist/python --config dist/python/openapi-python-client-config.yaml --overwrite
+              python3 -c 'from pathlib import Path; p=Path("dist/python/pyproject.toml"); s=p.read_text(); import re; s=re.sub(r"(?m)^version = .*$", "version = \"${{ steps.version.outputs.python_value }}\"", s); p.write_text(s)'
+              python3 -m pip install --upgrade build
+              python3 -m build dist/python
+              ;;
+            go)
+              go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+              "$(go env GOPATH)/bin/oapi-codegen" --package containercomposeclient --generate types,client -o dist/go/client.gen.go Resources/openapi.yaml
+              {
+                printf '%s\n' 'module github.com/full-chaos/container-compose-client'
+                printf '%s\n' ''
+                printf '%s\n' 'go 1.25'
+                printf '%s\n' ''
+                printf '%s\n' 'require github.com/oapi-codegen/runtime v1.1.2'
+              } > dist/go/go.mod
+              gofmt -w dist/go/client.gen.go
+              go test ./dist/go/...
+              ;;
+          esac
+
+      - name: Package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ matrix.sdk.package_name }}" > "dist/${{ matrix.sdk.generator }}/PACKAGE_NAME"
+          printf '%s\n' "${{ steps.version.outputs.value }}" > "dist/${{ matrix.sdk.generator }}/VERSION"
+          tar -C dist/${{ matrix.sdk.generator }} -czf "dist/openapi-sdk-${{ matrix.sdk.generator }}-${{ steps.version.outputs.value }}.tar.gz" .
+
+      - name: Upload generated SDK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: openapi-sdk-${{ matrix.sdk.generator }}
+          path: dist/openapi-sdk-${{ matrix.sdk.generator }}-${{ steps.version.outputs.value }}.tar.gz
+
+      - name: Publish release artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/openapi-sdk-${{ matrix.sdk.generator }}-${{ steps.version.outputs.value }}.tar.gz
+          tag_name: ${{ github.ref_name }}
+
+      - name: Publish TypeScript package to npm
+        if: matrix.sdk.generator == 'typescript' && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main')
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${NPM_TOKEN}"
+          npm config set //registry.npmjs.org/:_authToken "${NPM_TOKEN}"
+          npm publish dist/typescript --access public --tag "${{ steps.version.outputs.npm_tag }}"
+
+      - name: Publish Python package to PyPI
+        if: matrix.sdk.generator == 'python' && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${TWINE_PASSWORD}"
+          python3 -m pip install --upgrade twine
+          python3 -m twine upload dist/python/dist/*
