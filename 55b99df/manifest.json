@@ -1,0 +1,8 @@
+{
+  "branch": "chore/simplify-formatter-cert-toctou",
+  "commit": "55b99df530759f62731ec5ff110f1db9df237cd9",
+  "short": "55b99df",
+  "target": "55b99df",
+  "message": "review: simplify pass \u2014 formatter hoist + cert dedup + TOCTOU fix",
+  "published_at": "2026-05-05T17:45:40.501356+00:00"
+}
