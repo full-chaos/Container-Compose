@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-111-6186e5bf1b56d4ee52fad2c4551ec3575f44630a",
+  "commit": "dab828e6ecc86c185d0575f5c6715375b8c9c2a2",
+  "short": "dab828e",
+  "target": "dab828e",
+  "message": "Refine compose parity and hardening (#111)",
+  "published_at": "2026-05-05T14:15:41.333115+00:00"
+}
