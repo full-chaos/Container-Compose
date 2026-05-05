@@ -1,0 +1,8 @@
+{
+  "branch": "enhacement/final-features",
+  "commit": "74826a0f5271e1f15c723247efa060daf88d9686",
+  "short": "74826a0",
+  "target": "74826a0",
+  "message": "Add shutdown escalation contract to `serve` (CHAOS-1423)",
+  "published_at": "2026-05-05T13:50:45.616921+00:00"
+}
