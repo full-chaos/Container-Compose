@@ -1,0 +1,8 @@
+{
+  "branch": "enhacement/final-features",
+  "commit": "9fea3ca94adc65f63370cabf29cddeb2ed4d86d4",
+  "short": "9fea3ca",
+  "target": "9fea3ca",
+  "message": "Centralize runtime warnings + add follow-up tests and PATH audit (CHAOS-1421)",
+  "published_at": "2026-05-05T12:52:59.944520+00:00"
+}
