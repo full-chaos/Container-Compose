@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1423-shutdown-watchdog",
+  "commit": "30775cbf1c0e9d420833ed405c96009725e372ea",
+  "short": "30775cb",
+  "target": "30775cb",
+  "message": "feat(serve): diagnostic shutdown watchdog (CHAOS-1423 follow-up)",
+  "published_at": "2026-05-05T15:01:34.651024+00:00"
+}
