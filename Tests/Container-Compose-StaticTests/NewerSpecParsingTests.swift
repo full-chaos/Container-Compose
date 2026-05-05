@@ -73,6 +73,54 @@ struct NewerSpecParsingTests {
         #expect(compose.models?["llama"]?.model == "ai/llama:latest")
     }
 
+    @Test("loadAndMerge preserves and overrides top-level models across include")
+    func loadAndMergeMergesTopLevelModels() throws {
+        // Per DockerCompose.mergeTwo (and the loadAndMerge callsite that
+        // applies the main file last), the override wins on key collision.
+        // For include:, the main file is the override — so a model defined in
+        // both places must end up with the main file's definition, while
+        // models present only in the included file are preserved.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let includedPath = dir.appendingPathComponent("included.yaml")
+        try """
+        services:
+          worker:
+            image: alpine:worker
+        models:
+          llama:
+            model: ai/llama:included
+          embed:
+            model: ai/embed:latest
+        """.write(to: includedPath, atomically: true, encoding: .utf8)
+
+        let mainPath = dir.appendingPathComponent("compose.yaml")
+        try """
+        services:
+          app:
+            image: alpine:latest
+        models:
+          llama:
+            model: ai/llama:main
+        include:
+          - ./included.yaml
+        """.write(to: mainPath, atomically: true, encoding: .utf8)
+
+        let merged = try DockerCompose.loadAndMerge(mainPath: mainPath.path)
+
+        // Both models must be present in the merged document.
+        #expect(merged.models?.count == 2)
+
+        // `embed` exists only in the included file — must survive the merge.
+        #expect(merged.models?["embed"]?.model == "ai/embed:latest")
+
+        // `llama` exists in both files — main (override) wins per mergeTwo.
+        #expect(merged.models?["llama"]?.model == "ai/llama:main")
+    }
+
     @Test("Encoding preserves top-level models")
     func encodingPreservesTopLevelModels() throws {
         let compose = DockerCompose(

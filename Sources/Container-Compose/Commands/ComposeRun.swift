@@ -213,18 +213,11 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
         if service.stdin_open == true { runArgs.append("-i") }
         if service.tty == true { runArgs.append("-t") }
         if service.init_ == true { runArgs.append("--init") }
-        if service.stop_signal != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.stop_signal",
-                "Note: 'service.stop_signal' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.stop_grace_period != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.stop_grace_period",
-                "Note: 'service.stop_grace_period' is parsed but not supported by Apple container; ignored."
-            )
-        }
+        // stop_signal + stop_grace_period — Apple container's `container run`
+        // accepts neither flag, so both warn-and-skip. Centralized helper keeps
+        // the message strings in sync with `LifecycleArgs` (warn-once dedup
+        // makes calling from both sites safe).
+        warnUnsupportedContainerLifecycleStopFields(service)
         if let runtime = service.runtime {
             runArgs.append(contentsOf: ["--runtime", runtime])
         }

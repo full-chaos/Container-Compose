@@ -861,6 +861,75 @@ struct RuntimeArgvTests {
         #expect(!argv.contains("--allow"), "Apple container BuildCommand has no entitlement --allow support; full argv: \(argv)")
     }
 
+    // MARK: - CHAOS-1421 — image+build coexistence drives BuildCommand --tag
+
+    /// Regression coverage for a service that declares BOTH `image:` and
+    /// `build:`. Per compose-spec, the build path produces the image and the
+    /// resulting tag is whatever `image:` says (qualified for Apple container).
+    /// Recent build-argv refactors removed the `image:` field from the inline
+    /// build-flag tests, leaving the realistic coexistence case uncovered.
+    @Test("build: BuildCommand argv tags built image with service.image when both image+build are set")
+    func build_uses_service_image_as_tag_when_image_and_build_both_set() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let dockerfile = dir.appendingPathComponent("Dockerfile")
+        try "FROM alpine:latest\n".write(to: dockerfile, atomically: true, encoding: .utf8)
+
+        let yaml = """
+        services:
+          api:
+            image: example/api:latest
+            build:
+              context: .
+              dockerfile: Dockerfile
+              args:
+                FOO: bar
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let argv = try await recordedBuildCommandArgv {
+            try ComposeBuild.parse(["-f", compose.path])
+        }
+
+        // Helper: collect every `[flag, value]` pair from the argv.
+        func valuesFor(flag: String) -> [String] {
+            var values: [String] = []
+            var idx = 0
+            while idx < argv.count {
+                if argv[idx] == flag, idx + 1 < argv.count {
+                    values.append(argv[idx + 1])
+                    idx += 2
+                } else {
+                    idx += 1
+                }
+            }
+            return values
+        }
+
+        // The qualified form of `example/api:latest` (no dot/colon in the
+        // first segment) is `docker.io/example/api:latest` per
+        // ComposeUp.qualifyImageReference. The build path must emit this as
+        // its `--tag` so the produced image is addressable by service.image.
+        let tags = valuesFor(flag: "--tag")
+        #expect(
+            tags.contains("docker.io/example/api:latest"),
+            "expected --tag docker.io/example/api:latest from service.image when image+build coexist (got tags: \(tags), full argv: \(argv))"
+        )
+
+        // build.args must propagate as --build-arg KEY=VALUE.
+        let buildArgs = valuesFor(flag: "--build-arg")
+        #expect(
+            buildArgs.contains("FOO=bar"),
+            "expected --build-arg FOO=bar (got: \(buildArgs), full argv: \(argv))"
+        )
+    }
+
     // MARK: - Plan §8 #8 — kill emits --signal in argv (PR-5 regression)
 
     /// Plan §8 #8: every recorded `container kill` argv carries

@@ -41,15 +41,11 @@ extension ComposeUp {
                 }
             }
 
-            // sysctls — not supported by Apple container; warn once and skip
-            if let sysctls = ctx.service.sysctls, !sysctls.isEmpty {
-                warnUnsupportedRuntimeFieldOnce("service.sysctls", "Note: 'sysctls' is parsed but not supported by Apple container; ignored.")
-            }
-
-            // devices — not supported by Apple container; warn once and skip
-            if let devices = ctx.service.devices, !devices.isEmpty {
-                warnUnsupportedRuntimeFieldOnce("service.devices", "Note: 'devices' is parsed but not supported by Apple container; ignored.")
-            }
+            // sysctls + devices — not supported by Apple container; warn once
+            // and skip. Centralized in `warnUnsupportedContainerStorageFields`
+            // so the trivial presence-only warnings live next to their resource
+            // counterparts in `Compose+RuntimeWarnings.swift`.
+            warnUnsupportedContainerStorageFields(ctx.service)
 
             // volumes_from — not supported by Apple container; warn and skip
             if let volumesFrom = ctx.service.volumes_from, !volumesFrom.isEmpty {
