@@ -90,4 +90,19 @@ struct OpenAPIRouteTests {
             }
         }
     }
+
+    @Test("GET /openapi.yaml documents remote command endpoints")
+    func openAPIBodyMentionsRemoteCommandEndpoints() async throws {
+        try await makeApp().test(.router) { client in
+            try await client.execute(uri: "/openapi.yaml", method: .get) { response in
+                let body = String(buffer: response.body)
+                #expect(body.contains("/containers/{id}/exec"))
+                #expect(body.contains("operationId: execContainer"))
+                #expect(body.contains("/containers/{id}/top"))
+                #expect(body.contains("operationId: topContainer"))
+                #expect(body.contains("/images/push"))
+                #expect(body.contains("operationId: pushImage"))
+            }
+        }
+    }
 }

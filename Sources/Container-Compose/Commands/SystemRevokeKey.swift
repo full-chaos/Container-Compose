@@ -38,6 +38,8 @@ public struct SystemRevokeKey: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
+        try RuntimeModeSupport.requireLocalOnly(operation: "system revoke-key")
+
         let url = SystemKeyCommands.resolveAuthFile(authFile)
         let store = try await FileAuthStore(path: url)
         let removed = try await store.remove(name: name)

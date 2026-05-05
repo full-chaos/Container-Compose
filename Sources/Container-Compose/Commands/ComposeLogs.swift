@@ -222,6 +222,27 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
         since: Date?,
         timestamps: Bool
     ) async {
+        if RuntimeExecutionMode.isRemote {
+            do {
+                let frames = try await RuntimeEnvironment.current.logs(
+                    id: containerName,
+                    options: RuntimeLogOptions(follow: follow, tail: numLines, since: since, timestamps: timestamps)
+                )
+                let formatter = ISO8601DateFormatter()
+                for await frame in frames {
+                    let raw = String(decoding: frame.data, as: UTF8.self)
+                    for line in raw.split(whereSeparator: \.isNewline) {
+                        let rendered = timestamps ? "\(formatter.string(from: frame.timestamp)) \(line)" : String(line)
+                        print(prefixedLogLine(rendered, serviceName: serviceName, serviceColor: serviceColor, noColor: noColor))
+                    }
+                }
+            } catch {
+                let msg = "Warning: Could not retrieve logs for container '\(containerName)': \(error.localizedDescription)"
+                print(noColor ? msg : msg.applyingColor(.red))
+            }
+            return
+        }
+
         let provider = ContainerClientEnvironment.current
         let options = ContainerLogOptions(since: since, timestamps: timestamps)
 
@@ -241,9 +262,7 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
 
         // Format a line with the service prefix
         func prefixed(_ line: String) -> String {
-            let prefix = "\(serviceName) |"
-            let full = "\(prefix) \(line)"
-            return noColor ? full : full.applyingColor(serviceColor)
+            prefixedLogLine(line, serviceName: serviceName, serviceColor: serviceColor, noColor: noColor)
         }
 
         // Tail mode: seek backwards and collect N lines
@@ -308,6 +327,17 @@ public struct ComposeLogs: AsyncParsableCommand, @unchecked Sendable {
                 print(prefixed(line))
             }
         }
+    }
+
+    private static func prefixedLogLine(
+        _ line: String,
+        serviceName: String,
+        serviceColor: NamedColor,
+        noColor: Bool
+    ) -> String {
+        let prefix = "\(serviceName) |"
+        let full = "\(prefix) \(line)"
+        return noColor ? full : full.applyingColor(serviceColor)
     }
 
     static func parseSinceDate(_ raw: String?) -> Date? {

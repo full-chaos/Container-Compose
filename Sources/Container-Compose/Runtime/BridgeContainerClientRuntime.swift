@@ -226,6 +226,61 @@ public struct BridgeContainerClientRuntime: Runtime {
         }
     }
 
+    // MARK: - Commands
+
+    public func exec(id: String, command: [String], options: RuntimeExecOptions) async throws -> RuntimeExecResult {
+        var argv = ["container", "exec"]
+        if options.detach { argv.append("-d") }
+        if options.interactive { argv.append("-i") }
+        if options.tty { argv.append("-t") }
+        for env in options.environment {
+            argv.append(contentsOf: ["-e", env])
+        }
+        if let user = options.user {
+            argv.append(contentsOf: ["--user", user])
+        }
+        if let workingDirectory = options.workingDirectory {
+            argv.append(contentsOf: ["--workdir", workingDirectory])
+        }
+        argv.append(id)
+        argv.append(contentsOf: command)
+
+        let lines = LockedCommandLines()
+        let result = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .streaming, argv: argv),
+            onStdout: { lines.appendStdout($0) },
+            onStderr: { lines.appendStderr($0) }
+        )
+        return RuntimeExecResult(stdout: lines.stdoutSnapshot(), stderr: lines.stderrSnapshot(), exitCode: result.exitCode)
+    }
+
+    public func processes(id: String) async throws -> RuntimeProcessList {
+        let result = try await exec(
+            id: id,
+            command: ["ps", "-ef"],
+            options: RuntimeExecOptions(detach: false, interactive: false, tty: false)
+        )
+        guard result.exitCode == 0 else {
+            throw RuntimeError.backendFailure(message: result.stderr.joined(separator: "\n"))
+        }
+        return RuntimeProcessList(containerId: id, output: result.stdout)
+    }
+
+    public func pushImage(reference: String) async throws -> RuntimeImagePushResult {
+        let lines = LockedCommandLines()
+        let result = try await RunnerEnvironment.current.run(
+            RunRequest(kind: .streaming, argv: ["container", "image", "push", reference]),
+            onStdout: { lines.appendStdout($0) },
+            onStderr: { lines.appendStderr($0) }
+        )
+        return RuntimeImagePushResult(
+            imageReference: reference,
+            stdout: lines.stdoutSnapshot(),
+            stderr: lines.stderrSnapshot(),
+            exitCode: result.exitCode
+        )
+    }
+
     // MARK: - Stats translation
 
     static func translate(stats: ContainerStats) -> RuntimeStatistics {
@@ -496,6 +551,28 @@ extension BridgeContainerClientRuntime {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+}
+
+private final class LockedCommandLines: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stdout: [String] = []
+    private var stderr: [String] = []
+
+    func appendStdout(_ line: String) {
+        lock.withLock { stdout.append(line) }
+    }
+
+    func appendStderr(_ line: String) {
+        lock.withLock { stderr.append(line) }
+    }
+
+    func stdoutSnapshot() -> [String] {
+        lock.withLock { stdout }
+    }
+
+    func stderrSnapshot() -> [String] {
+        lock.withLock { stderr }
     }
 }
 

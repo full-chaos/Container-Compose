@@ -281,6 +281,41 @@ public struct ComposeDown: AsyncParsableCommand {
     private func stopOldStuff(_ services: [(serviceName: String, service: Service)], remove: Bool) async throws {
         guard let projectName else { return }
 
+        if RuntimeExecutionMode.isRemote {
+            let runtime = RuntimeEnvironment.current
+
+            for (serviceName, service) in services {
+                let containerName = effectiveContainerName(
+                    projectName: projectName,
+                    serviceName: serviceName,
+                    explicit: service.container_name
+                )
+
+                print("Stopping container: \(containerName)")
+
+                guard let container = try? await runtime.get(id: containerName) else {
+                    print("Warning: Container '\(containerName)' not found, skipping.")
+                    continue
+                }
+
+                do {
+                    try await runtime.stop(id: container.id, options: .default)
+                    print("Successfully stopped container: \(containerName)")
+                } catch {
+                    print("Error Stopping Container: \(error)")
+                }
+                if remove {
+                    do {
+                        try await runtime.remove(id: container.id, force: false)
+                        print("Successfully removed container: \(containerName)")
+                    } catch {
+                        print("Error Removing Container: \(error)")
+                    }
+                }
+            }
+            return
+        }
+
         for (serviceName, service) in services {
             let containerName = effectiveContainerName(
                 projectName: projectName,

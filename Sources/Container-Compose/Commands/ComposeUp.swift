@@ -214,6 +214,11 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             })
         }
 
+        if RuntimeExecutionMode.isRemote {
+            try await remoteUp(services, from: dockerCompose)
+            return
+        }
+
         // Stop Services
         try await stopOldStuff(services, remove: true)
 
@@ -248,6 +253,103 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
         if !detach {
             await waitForever()
+        }
+    }
+
+    private func remoteUp(
+        _ services: [(serviceName: String, service: Service)],
+        from dockerCompose: DockerCompose
+    ) async throws {
+        guard let projectName else { return }
+        let runtime = RuntimeEnvironment.current
+
+        if let networks = dockerCompose.networks {
+            for (networkName, networkConfig) in networks {
+                guard let networkConfig else { continue }
+                let ipamConfig = networkConfig.ipam?.config?.first
+                let spec = RuntimeCreateNetworkSpec(
+                    name: networkName,
+                    driver: networkConfig.driver ?? "bridge",
+                    subnet: ipamConfig?.subnet,
+                    gateway: ipamConfig?.gateway,
+                    labels: networkConfig.labels ?? [:]
+                )
+                _ = try? await runtime.createNetwork(spec: spec)
+            }
+        }
+
+        if let volumes = dockerCompose.volumes {
+            for (volumeName, volumeConfig) in volumes {
+                guard volumeConfig != nil else { continue }
+                _ = try? await runtime.createVolume(spec: RuntimeCreateVolumeSpec(name: volumeName))
+            }
+        }
+
+        for (serviceName, service) in services {
+            let containerName = effectiveContainerName(
+                projectName: projectName,
+                serviceName: serviceName,
+                explicit: service.container_name
+            )
+
+            if let existing = try? await runtime.get(id: containerName) {
+                try? await runtime.stop(id: existing.id, options: .default)
+                try? await runtime.remove(id: existing.id, force: true)
+            }
+
+            guard let image = service.image else {
+                if service.build != nil {
+                    throw RuntimeError.notSupported(operation: "remote compose up for build-only service '\(serviceName)'", conformer: "RemoteRuntime")
+                }
+                throw ComposeError.imageNotFound(serviceName)
+            }
+
+            let config = RuntimeCreateConfiguration(
+                imageReference: Self.qualifyImageReference(image),
+                cpus: Int(service.cpus_top ?? 1),
+                hostname: service.hostname,
+                environment: remoteEnvironment(for: service),
+                command: service.command ?? [],
+                workingDirectory: service.working_dir,
+                publishedPorts: remotePublishedPorts(for: service),
+                capabilities: RuntimeCapabilities(add: service.cap_add ?? [], drop: service.cap_drop ?? []),
+                securityOpt: service.security_opt,
+                readOnly: service.read_only,
+                user: service.user,
+                groupAdd: service.group_add,
+                privileged: service.privileged
+            )
+            _ = try await runtime.create(id: containerName, configuration: config)
+            try await runtime.start(id: containerName)
+            print("Started remote container: \(containerName)")
+        }
+    }
+
+    private func remoteEnvironment(for service: Service) -> [String] {
+        var merged = environmentVariables
+        for (key, value) in service.environment ?? [:] {
+            merged[key] = value
+        }
+        return merged.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+    }
+
+    private func remotePublishedPorts(for service: Service) -> [RuntimePublishedPort] {
+        (service.ports ?? []).compactMap { raw in
+            let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
+            guard parts.count >= 2 else { return nil }
+            let hostPart = String(parts[parts.count - 2])
+            let containerPart = String(parts[parts.count - 1])
+            guard
+                let hostPort = UInt16(hostPart),
+                let containerPort = UInt16(containerPart.split(separator: "/").first ?? "")
+            else { return nil }
+            let proto = containerPart.hasSuffix("/udp") ? RuntimePortProtocol.udp : .tcp
+            return RuntimePublishedPort(
+                hostAddress: "0.0.0.0",
+                hostPort: hostPort,
+                containerPort: containerPort,
+                proto: proto
+            )
         }
     }
 

@@ -75,10 +75,16 @@ public struct ComposeLs: AsyncParsableCommand {
     // MARK: - run
 
     public mutating func run() async throws {
-        let provider = ContainerClientEnvironment.current
-
         // List all containers; filter stopped ones below when --all is not set.
-        let containers = try await provider.list(filters: .all)
+        let containers: [(id: String, status: String)]
+        if RuntimeExecutionMode.isRemote {
+            containers = try await RuntimeEnvironment.current.list(filters: .all)
+                .map { (id: $0.id, status: $0.status.rawValue) }
+        } else {
+            let provider = ContainerClientEnvironment.current
+            containers = try await provider.list(filters: .all)
+                .map { (id: $0.id, status: $0.status.rawValue) }
+        }
 
         // Build a project summary: project name → (running count, exited count).
         // Use String rawValues to avoid referencing ContainerSnapshot/RuntimeStatus by name.
@@ -89,8 +95,7 @@ public struct ComposeLs: AsyncParsableCommand {
             guard let project = ComposeLs.extractProject(from: container.id) else {
                 continue
             }
-            let statusValue = container.status.rawValue
-            if statusValue == "running" {
+            if container.status == "running" {
                 runningCount[project, default: 0] += 1
             } else {
                 exitedCount[project, default: 0] += 1

@@ -219,6 +219,84 @@ components:
           items:
             type: string
 
+    ExecRequest:
+      type: object
+      required: [command]
+      properties:
+        command:
+          type: array
+          items:
+            type: string
+        detach:
+          type: boolean
+          nullable: true
+        interactive:
+          type: boolean
+          nullable: true
+        tty:
+          type: boolean
+          nullable: true
+        environment:
+          type: array
+          items:
+            type: string
+        user:
+          type: string
+          nullable: true
+        workingDirectory:
+          type: string
+          nullable: true
+
+    ExecResponse:
+      type: object
+      required: [stdout, stderr, exitCode]
+      properties:
+        stdout:
+          type: array
+          items:
+            type: string
+        stderr:
+          type: array
+          items:
+            type: string
+        exitCode:
+          type: integer
+
+    ProcessListResponse:
+      type: object
+      required: [containerId, output]
+      properties:
+        containerId:
+          type: string
+        output:
+          type: array
+          items:
+            type: string
+
+    ImagePushRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+
+    ImagePushResponse:
+      type: object
+      required: [image, stdout, stderr, exitCode]
+      properties:
+        image:
+          type: string
+        stdout:
+          type: array
+          items:
+            type: string
+        stderr:
+          type: array
+          items:
+            type: string
+        exitCode:
+          type: integer
+
     VersionResponse:
       type: object
       required: [apiVersion, version, serverName, runtimeBackend, arch]
@@ -544,6 +622,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIErrorEnvelope"
 
+  /containers/{id}/exec:
+    post:
+      summary: Execute a command in a container
+      operationId: execContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecRequest"
+      responses:
+        "200":
+          description: Command result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /containers/{id}/top:
+    get:
+      summary: List container processes
+      operationId: topContainer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Process list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessListResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
   /containers/{id}/logs:
     get:
       summary: Stream container logs (NDJSON)
@@ -810,6 +938,26 @@ paths:
             application/x-ndjson:
               schema:
                 type: object
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+
+  /images/push:
+    post:
+      summary: Push an image from the runtime host
+      operationId: pushImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImagePushRequest"
+      responses:
+        "200":
+          description: Image push result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagePushResponse"
         "501":
           $ref: "#/components/responses/NotImplemented"
 

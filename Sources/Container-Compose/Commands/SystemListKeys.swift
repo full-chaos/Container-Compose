@@ -35,6 +35,8 @@ public struct SystemListKeys: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
+        try RuntimeModeSupport.requireLocalOnly(operation: "system list-keys")
+
         let url = SystemKeyCommands.resolveAuthFile(authFile)
         let store = try await FileAuthStore(path: url)
         let keys = await store.list()

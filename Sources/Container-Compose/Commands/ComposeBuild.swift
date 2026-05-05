@@ -113,6 +113,16 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     }
 
     public mutating func run() async throws {
+        if RuntimeExecutionMode.isRemote {
+            let projectName = resolveProjectName(
+                cliOverride: projectFlags.projectName,
+                composeName: nil,
+                projectDirectory: effectiveProjectDirectory
+            )
+            try await remoteBuild(projectName: projectName)
+            return
+        }
+
         // Decode (and recursively merge includes) into the DockerCompose struct.
         let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
         let environmentVariables = loadEnvFile(path: envFilePath)
@@ -153,6 +163,37 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             try await buildService(service.build!, for: service, serviceName: serviceName, projectName: projectName, environmentVariables: environmentVariables)
         }
         print("Build complete")
+    }
+
+    private func remoteBuild(projectName: String) async throws {
+        guard let remoteRuntime = RuntimeEnvironment.current as? RemoteRuntime else {
+            throw RuntimeError.notSupported(operation: "compose build", conformer: "RemoteRuntime")
+        }
+
+        let stream = try await remoteRuntime.buildProject(
+            name: projectName,
+            services: services,
+            noCache: noCache,
+            pull: false
+        )
+
+        var unsupportedMessages: [String] = []
+        var errorMessages: [String] = []
+        for await frame in stream {
+            print("[\(frame.service)] \(frame.line)")
+            if frame.type == "notSupported" {
+                unsupportedMessages.append(frame.line)
+            } else if frame.type == "error" {
+                errorMessages.append(frame.line)
+            }
+        }
+
+        if let first = unsupportedMessages.first {
+            throw RuntimeError.notSupported(operation: "compose build: \(first)", conformer: "RemoteRuntime")
+        }
+        if let first = errorMessages.first {
+            throw RuntimeError.backendFailure(message: first)
+        }
     }
 
     private func buildService(

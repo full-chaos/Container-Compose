@@ -41,6 +41,9 @@ public actor RecordingRuntime: Runtime {
         case logs(id: String, options: RuntimeLogOptions)
         case events
         case statistics(id: String)
+        case exec(id: String, command: [String])
+        case processes(id: String)
+        case pushImage(reference: String)
         // CHAOS-1353
         case createNetwork(name: String)
         case removeNetwork(id: String)
@@ -264,6 +267,21 @@ public actor RecordingRuntime: Runtime {
             }
             continuation.finish()
         }
+    }
+
+    public func exec(id: String, command: [String], options: RuntimeExecOptions) async throws -> RuntimeExecResult {
+        entries.append(.exec(id: id, command: command))
+        return RuntimeExecResult(stdout: ["exec \(command.joined(separator: " "))"], exitCode: 0)
+    }
+
+    public func processes(id: String) async throws -> RuntimeProcessList {
+        entries.append(.processes(id: id))
+        return RuntimeProcessList(containerId: id, output: ["PID CMD", "1 init"])
+    }
+
+    public func pushImage(reference: String) async throws -> RuntimeImagePushResult {
+        entries.append(.pushImage(reference: reference))
+        return RuntimeImagePushResult(imageReference: reference, stdout: ["pushed \(reference)"], exitCode: 0)
     }
 
     // MARK: - CHAOS-1353 resource CRUD
