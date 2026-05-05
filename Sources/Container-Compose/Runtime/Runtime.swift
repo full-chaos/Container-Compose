@@ -117,6 +117,32 @@ public protocol Runtime: Sendable {
     /// stats endpoint maintains its own polling loop on top of this.
     func statistics(for id: String) async throws -> RuntimeStatistics
 
+    // MARK: - Image lifecycle (CHAOS-1425, Leak #14)
+
+    /// Pull one or more images and emit a stream of `RuntimePullEvent`s.
+    /// The daemon's typical caller passes one spec per registry-resident
+    /// service; conformers iterate sequentially and emit `started` →
+    /// `completed`/`failed` per spec. When `ignoreFailures` is true the
+    /// stream continues after a `failed` frame; otherwise the stream
+    /// terminates (the consumer decides whether to surface the failure).
+    /// Conformers that lack pull capability (e.g. fully synthetic mocks)
+    /// MAY emit synthetic frames instead of throwing.
+    func pull(
+        specs: [RuntimePullSpec],
+        ignoreFailures: Bool
+    ) async throws -> AsyncStream<RuntimePullEvent>
+
+    /// Build one or more images and emit a stream of `RuntimeBuildEvent`s.
+    /// Today most conformers throw `RuntimeError.notSupported(...)` because
+    /// the daemon does not yet receive compose-file context (Dockerfile
+    /// path, build context directory) — CHAOS-1426 unblocks that. The
+    /// protocol method exists so the route layer can stop emitting fully
+    /// synthetic frames and instead respond to the conformer's actual
+    /// capability.
+    func build(
+        specs: [RuntimeBuildSpec]
+    ) async throws -> AsyncStream<RuntimeBuildEvent>
+
     // MARK: - Resource CRUD (CHAOS-1353)
 
     // MARK: Networks

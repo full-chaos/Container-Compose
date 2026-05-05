@@ -544,6 +544,96 @@ public actor AppleContainerizationRuntime: Runtime {
     }
 }
 
+// MARK: - Image lifecycle (CHAOS-1425, Leak #14)
+
+extension AppleContainerizationRuntime {
+
+    /// Pull each spec sequentially via the `RunCommandRunner.swiftAPI(name:)` seam,
+    /// emitting `started` / `completed` / `failed` events. See the
+    /// `BridgeContainerClientRuntime` companion for the per-blob-progress
+    /// limitation (in-process `ImagePull` prints to host stdout, bypassing the
+    /// runner's `onStdout` callback). This conformer's pull behavior is
+    /// identical to the bridge today — the abstraction lives here so future
+    /// native-only progress wiring (e.g. `ClientImage.pull(progressUpdate:)`)
+    /// can swap in without touching call sites.
+    public func pull(
+        specs: [RuntimePullSpec],
+        ignoreFailures: Bool
+    ) async throws -> AsyncStream<RuntimePullEvent> {
+        AsyncStream { continuation in
+            let task = Task {
+                for spec in specs {
+                    if Task.isCancelled { break }
+                    let qualified = ComposeUp.qualifyImageReference(spec.imageReference)
+                    let platform = spec.platform ?? defaultRuntimePlatform()
+                    let argv = [qualified, "--platform", platform]
+
+                    continuation.yield(RuntimePullEvent(
+                        timestamp: Date(),
+                        service: spec.service,
+                        imageReference: qualified,
+                        kind: .started
+                    ))
+
+                    do {
+                        _ = try await RunnerEnvironment.current.run(
+                            RunRequest(
+                                kind: .swiftAPI(name: "ImagePull"),
+                                argv: argv,
+                                cwd: nil
+                            ),
+                            onStdout: nil,
+                            onStderr: nil
+                        )
+                        continuation.yield(RuntimePullEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            imageReference: qualified,
+                            kind: .completed
+                        ))
+                    } catch {
+                        continuation.yield(RuntimePullEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            imageReference: qualified,
+                            kind: .failed,
+                            message: error.localizedDescription
+                        ))
+                        if !ignoreFailures { break }
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Build is not supported on this conformer for the same reason as the
+    /// bridge: the daemon's registry does not track Dockerfile paths or
+    /// build-context directories. CHAOS-1426 (compose-file upload via daemon
+    /// API) unblocks this; until then each spec returns a `notSupported`
+    /// event with attribution.
+    public func build(
+        specs: [RuntimeBuildSpec]
+    ) async throws -> AsyncStream<RuntimeBuildEvent> {
+        AsyncStream { continuation in
+            let task = Task {
+                for spec in specs {
+                    if Task.isCancelled { break }
+                    continuation.yield(RuntimeBuildEvent(
+                        timestamp: Date(),
+                        service: spec.service,
+                        kind: .notSupported,
+                        message: "Build not supported via daemon API — use `container-compose build` CLI. Tracking: CHAOS-1426 (compose-file upload)."
+                    ))
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
 // MARK: - Resource CRUD (CHAOS-1353)
 
 extension AppleContainerizationRuntime {

@@ -50,6 +50,9 @@ public actor RecordingRuntime: Runtime {
         case listSecrets
         case createSecret(name: String)
         case removeSecret(name: String)
+        // CHAOS-1425
+        case pull(specCount: Int, ignoreFailures: Bool)
+        case build(specCount: Int)
     }
 
     public private(set) var entries: [Entry] = []
@@ -224,6 +227,43 @@ public actor RecordingRuntime: Runtime {
             }
         }
         return RuntimeStatistics(id: id, sampledAt: Date())
+    }
+
+    // MARK: - CHAOS-1425 image lifecycle
+
+    public func pull(
+        specs: [RuntimePullSpec],
+        ignoreFailures: Bool
+    ) async throws -> AsyncStream<RuntimePullEvent> {
+        entries.append(.pull(specCount: specs.count, ignoreFailures: ignoreFailures))
+        return AsyncStream { continuation in
+            for spec in specs {
+                continuation.yield(RuntimePullEvent(
+                    timestamp: Date(),
+                    service: spec.service,
+                    imageReference: spec.imageReference,
+                    kind: .completed
+                ))
+            }
+            continuation.finish()
+        }
+    }
+
+    public func build(
+        specs: [RuntimeBuildSpec]
+    ) async throws -> AsyncStream<RuntimeBuildEvent> {
+        entries.append(.build(specCount: specs.count))
+        return AsyncStream { continuation in
+            for spec in specs {
+                continuation.yield(RuntimeBuildEvent(
+                    timestamp: Date(),
+                    service: spec.service,
+                    kind: .notSupported,
+                    message: "RecordingRuntime stub"
+                ))
+            }
+            continuation.finish()
+        }
     }
 
     // MARK: - CHAOS-1353 resource CRUD
