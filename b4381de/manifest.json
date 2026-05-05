@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1428-openapi-sdks",
+  "commit": "b4381de4ca4bc65e8777be4759e3d54ad3835a78",
+  "short": "b4381de",
+  "target": "b4381de",
+  "message": "ci(openapi-sdks): pin codegen versions, drop unused id-token, add go mod tidy",
+  "published_at": "2026-05-05T23:47:06.404557+00:00"
+}
