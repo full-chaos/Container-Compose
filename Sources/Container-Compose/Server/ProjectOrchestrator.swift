@@ -498,27 +498,79 @@ public struct ProjectOrchestrator: Sendable {
                         timestamp: Date(),
                         type: "error"
                     ))
-                } else {
-                    for name in serviceNames {
-                        guard !Task.isCancelled else { break }
-                        continuation.yield(APIProjectBuildFrame(
-                            service: name,
-                            line: "Build not supported via daemon API — use `container-compose build` CLI",
-                            timestamp: Date(),
-                            type: "notSupported"
-                        ))
+                    continuation.finish()
+                    return
+                }
+
+                // CHAOS-1425: delegate to Runtime.build(...). Today every
+                // conformer responds `notSupported` because the daemon does
+                // not yet receive compose-file context (Dockerfile path,
+                // build context dir) — that's CHAOS-1426. Translate each
+                // event back to APIProjectBuildFrame so the wire format
+                // stays unchanged for clients.
+                let specs = serviceNames.map {
+                    RuntimeBuildSpec(
+                        service: $0,
+                        noCache: noCache,
+                        pullBaseImages: pull
+                    )
+                }
+                do {
+                    let stream = try await runtime.build(specs: specs)
+                    for await event in stream {
+                        if Task.isCancelled { break }
+                        continuation.yield(translate(event: event))
                     }
+                } catch let error as RuntimeError {
                     continuation.yield(APIProjectBuildFrame(
                         service: project,
-                        line: "Build dispatch complete",
+                        line: error.localizedDescription,
                         timestamp: Date(),
-                        type: "done"
+                        type: "error"
+                    ))
+                } catch {
+                    continuation.yield(APIProjectBuildFrame(
+                        service: project,
+                        line: error.localizedDescription,
+                        timestamp: Date(),
+                        type: "error"
                     ))
                 }
+                continuation.yield(APIProjectBuildFrame(
+                    service: project,
+                    line: "Build dispatch complete",
+                    timestamp: Date(),
+                    type: "done"
+                ))
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    private static func translate(event: RuntimeBuildEvent) -> APIProjectBuildFrame {
+        let type: String
+        let line: String
+        switch event.kind {
+        case .started:
+            type = "log"
+            line = event.message ?? "Build started"
+        case .completed:
+            type = "log"
+            line = event.message ?? "Build completed"
+        case .failed:
+            type = "error"
+            line = event.message ?? "Build failed"
+        case .notSupported:
+            type = "notSupported"
+            line = event.message ?? "Build not supported"
+        }
+        return APIProjectBuildFrame(
+            service: event.service,
+            line: line,
+            timestamp: event.timestamp,
+            type: type
+        )
     }
 
     // MARK: - Pull (NDJSON progress stream)
@@ -552,7 +604,7 @@ public struct ProjectOrchestrator: Sendable {
                     containers = allContainers ?? []
                 }
 
-                if containers.isEmpty {
+                guard !containers.isEmpty else {
                     continuation.yield(APIProjectPullFrame(
                         service: project,
                         image: "none",
@@ -560,30 +612,75 @@ public struct ProjectOrchestrator: Sendable {
                         type: "error",
                         message: "No containers found for project '\(project)'"
                     ))
-                } else {
-                    for container in containers.sorted(by: { $0.id < $1.id }) {
-                        guard !Task.isCancelled else { break }
-                        let svcName = extractServiceName(from: container.id, project: project)
-                        continuation.yield(APIProjectPullFrame(
-                            service: svcName,
-                            image: container.imageReference,
-                            timestamp: Date(),
-                            type: "pulling",
-                            message: "Pull not supported via daemon API — use `container-compose pull` CLI"
-                        ))
+                    continuation.finish()
+                    return
+                }
+
+                // CHAOS-1425: delegate to Runtime.pull(...). One spec per
+                // resolved container; the conformer iterates and emits
+                // started/completed/failed events. Coarse-grained progress
+                // (no per-blob frames) — see RuntimePullEvent doc comment.
+                let specs = containers
+                    .sorted(by: { $0.id < $1.id })
+                    .map { container in
+                        RuntimePullSpec(
+                            service: extractServiceName(from: container.id, project: project),
+                            imageReference: container.imageReference
+                        )
                     }
+                do {
+                    let stream = try await runtime.pull(specs: specs, ignoreFailures: ignoreFailures)
+                    for await event in stream {
+                        if Task.isCancelled { break }
+                        continuation.yield(translate(event: event))
+                    }
+                } catch let error as RuntimeError {
                     continuation.yield(APIProjectPullFrame(
                         service: project,
-                        image: "done",
+                        image: "none",
                         timestamp: Date(),
-                        type: "done",
-                        message: nil
+                        type: "error",
+                        message: error.localizedDescription
+                    ))
+                } catch {
+                    continuation.yield(APIProjectPullFrame(
+                        service: project,
+                        image: "none",
+                        timestamp: Date(),
+                        type: "error",
+                        message: error.localizedDescription
                     ))
                 }
+                continuation.yield(APIProjectPullFrame(
+                    service: project,
+                    image: "done",
+                    timestamp: Date(),
+                    type: "done",
+                    message: nil
+                ))
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    private static func translate(event: RuntimePullEvent) -> APIProjectPullFrame {
+        let type: String
+        switch event.kind {
+        case .started:
+            type = "pulling"
+        case .completed:
+            type = "log"
+        case .failed:
+            type = "error"
+        }
+        return APIProjectPullFrame(
+            service: event.service,
+            image: event.imageReference,
+            timestamp: event.timestamp,
+            type: type,
+            message: event.message
+        )
     }
 
     // MARK: - Private helpers

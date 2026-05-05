@@ -429,6 +429,12 @@ struct ContainerCreateRouteTests {
             throw Self.unsupported("createSecret")
         }
         func removeSecret(name: String) async throws { throw Self.unsupported("removeSecret") }
+        func pull(specs: [RuntimePullSpec], ignoreFailures: Bool) async throws -> AsyncStream<RuntimePullEvent> {
+            throw Self.unsupported("pull")
+        }
+        func build(specs: [RuntimeBuildSpec]) async throws -> AsyncStream<RuntimeBuildEvent> {
+            throw Self.unsupported("build")
+        }
     }
 
     @Test("POST /containers/create returns 501 when runtime throws RuntimeError.notSupported")

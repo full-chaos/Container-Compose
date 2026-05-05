@@ -410,6 +410,95 @@ public struct BridgeContainerClientRuntime: Runtime {
     }
 }
 
+// MARK: - Image lifecycle (CHAOS-1425, Leak #14)
+
+extension BridgeContainerClientRuntime {
+
+    /// Pull each spec sequentially via `RunCommandRunner.swiftAPI(name: "ImagePull")`,
+    /// emitting `started` / `completed` / `failed` events. Per-blob progress is
+    /// not surfaced — `ImagePull` runs in-process under `.swiftAPI` and prints
+    /// its `ProgressBar` directly to host stdout, bypassing the runner's
+    /// `onStdout` callback. Capturing that requires either bypassing the
+    /// runner to call `ClientImage.pull(progressUpdate:)` directly, or
+    /// redirecting host stdout — both are out of scope for CHAOS-1425.
+    public func pull(
+        specs: [RuntimePullSpec],
+        ignoreFailures: Bool
+    ) async throws -> AsyncStream<RuntimePullEvent> {
+        AsyncStream { continuation in
+            let task = Task {
+                for spec in specs {
+                    if Task.isCancelled { break }
+                    let qualified = ComposeUp.qualifyImageReference(spec.imageReference)
+                    let platform = spec.platform ?? defaultRuntimePlatform()
+                    let argv = [qualified, "--platform", platform]
+
+                    continuation.yield(RuntimePullEvent(
+                        timestamp: Date(),
+                        service: spec.service,
+                        imageReference: qualified,
+                        kind: .started
+                    ))
+
+                    do {
+                        _ = try await RunnerEnvironment.current.run(
+                            RunRequest(
+                                kind: .swiftAPI(name: "ImagePull"),
+                                argv: argv,
+                                cwd: nil
+                            ),
+                            onStdout: nil,
+                            onStderr: nil
+                        )
+                        continuation.yield(RuntimePullEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            imageReference: qualified,
+                            kind: .completed
+                        ))
+                    } catch {
+                        continuation.yield(RuntimePullEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            imageReference: qualified,
+                            kind: .failed,
+                            message: error.localizedDescription
+                        ))
+                        if !ignoreFailures { break }
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Build is not supported via the bridge: the daemon's container registry
+    /// does not track Dockerfile paths or build-context directories. Each
+    /// `RuntimeBuildSpec` is responded to with a `notSupported` event so the
+    /// route layer can attribute the limitation per-service. CHAOS-1426
+    /// (compose-file upload via daemon API) unlocks this path.
+    public func build(
+        specs: [RuntimeBuildSpec]
+    ) async throws -> AsyncStream<RuntimeBuildEvent> {
+        AsyncStream { continuation in
+            let task = Task {
+                for spec in specs {
+                    if Task.isCancelled { break }
+                    continuation.yield(RuntimeBuildEvent(
+                        timestamp: Date(),
+                        service: spec.service,
+                        kind: .notSupported,
+                        message: "Build not supported via daemon API — use `container-compose build` CLI. Tracking: CHAOS-1426 (compose-file upload)."
+                    ))
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
 // MARK: - Resource CRUD (CHAOS-1353)
 
 extension BridgeContainerClientRuntime {

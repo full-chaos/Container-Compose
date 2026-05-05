@@ -58,6 +58,18 @@ public final actor MockRuntime: Runtime {
     private var logContinuations: [String: [UUID: AsyncStream<RuntimeLogFrame>.Continuation]] = [:]
     private var statisticsSnapshots: [String: RuntimeStatistics] = [:]
 
+    /// Test-only injection of pull failures, keyed by image reference.
+    private var pullFailures: [String: String] = [:]
+    /// Test-only injection of build outcomes, keyed by service name.
+    private var buildOutcomes: [String: BuildOutcome] = [:]
+
+    /// Per-service outcome for `MockRuntime.build(...)` tests.
+    public enum BuildOutcome: Sendable {
+        case notSupported(message: String)
+        case successful
+        case failed(message: String)
+    }
+
     // MARK: - Init
 
     public init(
@@ -243,6 +255,86 @@ public final actor MockRuntime: Runtime {
         return RuntimeStatistics(id: id, sampledAt: Date())
     }
 
+    // MARK: - Image lifecycle (CHAOS-1425)
+
+    /// Synthetic deterministic pull stream — one `started` + one `completed`
+    /// frame per spec, no failures unless `injectPullFailure(...)` was called.
+    public func pull(
+        specs: [RuntimePullSpec],
+        ignoreFailures: Bool
+    ) async throws -> AsyncStream<RuntimePullEvent> {
+        let injectedFailures = pullFailures
+        return AsyncStream { continuation in
+            let task = Task {
+                for spec in specs {
+                    if Task.isCancelled { break }
+                    let qualified = spec.imageReference
+                    continuation.yield(RuntimePullEvent(
+                        timestamp: Date(),
+                        service: spec.service,
+                        imageReference: qualified,
+                        kind: .started
+                    ))
+                    if let message = injectedFailures[qualified] {
+                        continuation.yield(RuntimePullEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            imageReference: qualified,
+                            kind: .failed,
+                            message: message
+                        ))
+                        if !ignoreFailures { break }
+                    } else {
+                        continuation.yield(RuntimePullEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            imageReference: qualified,
+                            kind: .completed
+                        ))
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Synthetic deterministic build stream — emits `notSupported` per spec
+    /// by default, mirroring real conformer behavior. Tests that need
+    /// `started`/`completed`/`failed` shapes inject via `injectBuildOutcome`.
+    public func build(
+        specs: [RuntimeBuildSpec]
+    ) async throws -> AsyncStream<RuntimeBuildEvent> {
+        let injectedOutcomes = buildOutcomes
+        return AsyncStream { continuation in
+            let task = Task {
+                for spec in specs {
+                    if Task.isCancelled { break }
+                    let outcome = injectedOutcomes[spec.service] ?? .notSupported(
+                        message: "Build not supported via daemon API — use `container-compose build` CLI."
+                    )
+                    switch outcome {
+                    case .notSupported(let msg):
+                        continuation.yield(RuntimeBuildEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            kind: .notSupported,
+                            message: msg
+                        ))
+                    case .successful:
+                        continuation.yield(RuntimeBuildEvent(timestamp: Date(), service: spec.service, kind: .started))
+                        continuation.yield(RuntimeBuildEvent(timestamp: Date(), service: spec.service, kind: .completed))
+                    case .failed(let msg):
+                        continuation.yield(RuntimeBuildEvent(timestamp: Date(), service: spec.service, kind: .started))
+                        continuation.yield(RuntimeBuildEvent(timestamp: Date(), service: spec.service, kind: .failed, message: msg))
+                    }
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     // MARK: - Test affordances
 
     public func injectLogFrame(_ frame: RuntimeLogFrame, forContainerID id: String) async {
@@ -261,6 +353,27 @@ public final actor MockRuntime: Runtime {
     public func injectStatistics(_ statistics: RuntimeStatistics, forContainerID id: String) async throws {
         _ = try requireContainer(id: id)
         statisticsSnapshots[id] = statistics
+    }
+
+    /// Inject a synthetic pull failure for the given image reference. Subsequent
+    /// `pull(specs:ignoreFailures:)` calls return a `failed` event for matching
+    /// specs. Reset by calling with `nil` message.
+    public func injectPullFailure(reference: String, message: String?) async {
+        if let message {
+            pullFailures[reference] = message
+        } else {
+            pullFailures.removeValue(forKey: reference)
+        }
+    }
+
+    /// Inject a build outcome for the given service. Subsequent
+    /// `build(specs:)` calls emit the matching event(s) for this service.
+    public func injectBuildOutcome(service: String, outcome: BuildOutcome?) async {
+        if let outcome {
+            buildOutcomes[service] = outcome
+        } else {
+            buildOutcomes.removeValue(forKey: service)
+        }
     }
 
     public func snapshot() async -> [String: RuntimeContainer] {

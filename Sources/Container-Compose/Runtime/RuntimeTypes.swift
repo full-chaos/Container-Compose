@@ -340,6 +340,125 @@ public struct RuntimeLogFrame: Sendable, Hashable {
     }
 }
 
+// MARK: - Build / Pull (CHAOS-1425, Leak #14)
+
+/// Per-image input to `Runtime.pull(specs:ignoreFailures:)`. Carries the
+/// service label that owns the image (so the route layer can attribute frames
+/// back to a specific service), the image reference itself, and an optional
+/// platform string. The platform mirrors the existing `pullImage()` helper's
+/// `--platform` argument; nil falls back to `defaultRuntimePlatform()` inside
+/// the conformer.
+public struct RuntimePullSpec: Sendable, Hashable {
+    public let service: String
+    public let imageReference: String
+    public let platform: String?
+
+    public init(service: String, imageReference: String, platform: String? = nil) {
+        self.service = service
+        self.imageReference = imageReference
+        self.platform = platform
+    }
+}
+
+/// One frame emitted by `Runtime.pull(...)`. Coarse-grained — one `started`
+/// and one `completed` (or `failed`) per spec — because the upstream
+/// `ImagePull` is invoked via the in-process `.swiftAPI` seam and prints its
+/// per-blob progress directly to host stdout (`ProgressBar`), bypassing
+/// `RunCommandRunner`'s onStdout callback. Per-line progress is a CHAOS-1425
+/// follow-up: it requires either bypassing `RunCommandRunner` to call
+/// `ClientImage.pull(progressUpdate:)` directly, or capturing host stdout
+/// while the in-process command runs. Neither is in scope for this PR.
+public struct RuntimePullEvent: Sendable, Hashable {
+    public enum Kind: String, Sendable, Hashable {
+        case started
+        case completed
+        case failed
+    }
+    public let timestamp: Date
+    public let service: String
+    public let imageReference: String
+    public let kind: Kind
+    /// Optional message — populated on `failed` (the error description) and
+    /// nil-able on success frames for forward-compat extension.
+    public let message: String?
+
+    public init(
+        timestamp: Date,
+        service: String,
+        imageReference: String,
+        kind: Kind,
+        message: String? = nil
+    ) {
+        self.timestamp = timestamp
+        self.service = service
+        self.imageReference = imageReference
+        self.kind = kind
+        self.message = message
+    }
+}
+
+/// Per-service input to `Runtime.build(specs:)`. The daemon's container
+/// registry does not track Dockerfile paths or build-context directories — a
+/// `BuildCommand` invocation needs both. Until CHAOS-1426 (compose-file upload
+/// via daemon API) lands, conformers throw `RuntimeError.notSupported(...)`
+/// from `build(...)` even when this spec is constructed; the route layer
+/// translates that to the existing "Build not supported via daemon API" frame.
+public struct RuntimeBuildSpec: Sendable, Hashable {
+    public let service: String
+    public let imageTag: String?
+    public let contextPath: String?
+    public let dockerfile: String?
+    public let noCache: Bool
+    public let pullBaseImages: Bool
+
+    public init(
+        service: String,
+        imageTag: String? = nil,
+        contextPath: String? = nil,
+        dockerfile: String? = nil,
+        noCache: Bool = false,
+        pullBaseImages: Bool = false
+    ) {
+        self.service = service
+        self.imageTag = imageTag
+        self.contextPath = contextPath
+        self.dockerfile = dockerfile
+        self.noCache = noCache
+        self.pullBaseImages = pullBaseImages
+    }
+}
+
+/// One frame emitted by `Runtime.build(...)`. Same coarse-grained shape as
+/// `RuntimePullEvent` — see that doc comment for the `.swiftAPI` constraint.
+public struct RuntimeBuildEvent: Sendable, Hashable {
+    public enum Kind: String, Sendable, Hashable {
+        case started
+        case completed
+        case failed
+        /// Emitted when the runtime cannot build (e.g., no build context
+        /// available because compose-file upload — CHAOS-1426 — has not
+        /// landed). The route layer maps this to the existing "Build not
+        /// supported via daemon API — use CLI" frame for backward compat.
+        case notSupported
+    }
+    public let timestamp: Date
+    public let service: String
+    public let kind: Kind
+    public let message: String?
+
+    public init(
+        timestamp: Date,
+        service: String,
+        kind: Kind,
+        message: String? = nil
+    ) {
+        self.timestamp = timestamp
+        self.service = service
+        self.kind = kind
+        self.message = message
+    }
+}
+
 // MARK: - RuntimeVolume (CHAOS-1353)
 
 /// Runtime-side volume representation for `Runtime.listVolumes()` /
