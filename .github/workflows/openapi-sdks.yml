@@ -20,7 +20,6 @@ concurrency:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   validate-spec:
@@ -51,7 +50,7 @@ jobs:
     name: Build ${{ matrix.sdk.name }} SDK
     needs: validate-spec
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -193,7 +192,7 @@ jobs:
               swift build --package-path dist/swift
               ;;
             typescript)
-              npx --yes openapi-typescript Resources/openapi.yaml -o dist/typescript/schema.d.ts
+              npx --yes openapi-typescript@7.4.4 Resources/openapi.yaml -o dist/typescript/schema.d.ts
               {
                 printf '%s\n' 'import createOpenAPIFetch from "openapi-fetch";'
                 printf '%s\n' ''
@@ -238,18 +237,18 @@ jobs:
               npm pack dist/typescript --dry-run
               ;;
             python)
-              python3 -m pip install --upgrade openapi-python-client
+              python3 -m pip install 'openapi-python-client==0.21.7'
               {
                 printf '%s\n' 'project_name_override: container-compose-client'
                 printf '%s\n' 'package_name_override: container_compose_client'
               } > dist/python/openapi-python-client-config.yaml
               openapi-python-client generate --path Resources/openapi.yaml --output-path dist/python --config dist/python/openapi-python-client-config.yaml --overwrite
               python3 -c 'from pathlib import Path; p=Path("dist/python/pyproject.toml"); s=p.read_text(); import re; s=re.sub(r"(?m)^version = .*$", "version = \"${{ steps.version.outputs.python_value }}\"", s); p.write_text(s)'
-              python3 -m pip install --upgrade build
+              python3 -m pip install 'build==1.2.2'
               python3 -m build dist/python
               ;;
             go)
-              go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+              go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1
               "$(go env GOPATH)/bin/oapi-codegen" --package containercomposeclient --generate types,client -o dist/go/client.gen.go Resources/openapi.yaml
               {
                 printf '%s\n' 'module github.com/full-chaos/container-compose-client'
@@ -259,6 +258,7 @@ jobs:
                 printf '%s\n' 'require github.com/oapi-codegen/runtime v1.1.2'
               } > dist/go/go.mod
               gofmt -w dist/go/client.gen.go
+              (cd dist/go && go mod tidy)
               go test ./dist/go/...
               ;;
           esac
@@ -304,5 +304,5 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${TWINE_PASSWORD}"
-          python3 -m pip install --upgrade twine
+          python3 -m pip install 'twine==5.1.1'
           python3 -m twine upload dist/python/dist/*
