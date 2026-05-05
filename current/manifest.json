@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "6186e5bf1b56d4ee52fad2c4551ec3575f44630a",
-  "short": "6186e5b",
+  "commit": "9d4796d840667ba20d95a3eef4e5a2d26f725cd0",
+  "short": "9d4796d",
   "target": "current",
-  "message": "feat(test-report): structured event-stream output for agent consumption (#110)",
-  "published_at": "2026-05-05T01:06:36.049753+00:00"
+  "message": "Refine compose parity and hardening (#111)",
+  "published_at": "2026-05-05T14:17:35.935922+00:00"
 }
