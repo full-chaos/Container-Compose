@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1427-remote-runtime",
+  "commit": "c71ee5a252bc310587a85f69abcfbce5d1993a02",
+  "short": "c71ee5a",
+  "target": "c71ee5a",
+  "message": "Wire remote daemon runtime",
+  "published_at": "2026-05-05T23:26:03.711582+00:00"
+}
