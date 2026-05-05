@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "bcbef2ff4b6e1ec5a37cc9b933d14df2ddbcfe0b",
-  "short": "bcbef2f",
+  "commit": "df60d30fdeb0d101a38f1b415d6d9ef23dcd3f6d",
+  "short": "df60d30",
   "target": "current",
-  "message": "feat(server): CHAOS-1426 \u2014 POST /projects/{name} compose YAML ingestion (Decision #12) (#119)",
-  "published_at": "2026-05-05T23:01:07.262035+00:00"
+  "message": "feat(runtime): CHAOS-1425 \u2014 wire Runtime.build/pull through to BuildCommand + ImagePull (Leak #14) (#118)",
+  "published_at": "2026-05-05T23:01:29.955774+00:00"
 }
