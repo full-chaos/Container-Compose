@@ -449,9 +449,14 @@ public enum ServeDaemon {
             logger: logger
         )
 
+        // CHAOS-1423 follow-up: shared registry tracking which services are
+        // currently inside their `run()` body. The watchdog reads it 5s into
+        // shutdown to name the wedged service.
+        let liveness = ServiceLivenessRegistry()
+
         var services: [ServiceGroupConfiguration.ServiceConfiguration] = [
             .init(
-                service: app,
+                service: ShutdownTrackedService(name: "hummingbird", registry: liveness, wrapped: app),
                 successTerminationBehavior: .gracefullyShutdownGroup,
                 failureTerminationBehavior: .gracefullyShutdownGroup
             )
@@ -460,8 +465,17 @@ public enum ServeDaemon {
         // Unix socket cleanup on shutdown
         if case .unix(let path) = listen {
             let cleanup = SocketCleanupService(socketPath: path, logger: logger)
-            services.append(.init(service: cleanup))
+            services.append(.init(
+                service: ShutdownTrackedService(name: "socket-cleanup", registry: liveness, wrapped: cleanup)
+            ))
         }
+
+        // CHAOS-1423 follow-up: detached watchdog that logs which tracked
+        // service is still alive 5s into shutdown. Detached so the diagnostic
+        // survives even if the entire group is wedged on cancellation.
+        services.append(.init(
+            service: ShutdownWatchdogService(registry: liveness, logger: logger)
+        ))
 
         // CHAOS-1423: shutdown escalation contract.
         // - SIGINT / SIGTERM trigger graceful shutdown (close listener, drain).
