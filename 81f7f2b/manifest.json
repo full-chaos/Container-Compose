@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-113-2d578002ea6f01f9434f9e1e4a18242c26b8dcb3",
+  "commit": "81f7f2bec84a6e331e38182ea8b8cb7f7c3d2c58",
+  "short": "81f7f2b",
+  "target": "81f7f2b",
+  "message": "review: simplify pass \u2014 formatter hoist + cert dedup + TOCTOU fix (#113)",
+  "published_at": "2026-05-05T17:54:33.083417+00:00"
+}
