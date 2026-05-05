@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9d4796d840667ba20d95a3eef4e5a2d26f725cd0",
-  "short": "9d4796d",
+  "commit": "2d578002ea6f01f9434f9e1e4a18242c26b8dcb3",
+  "short": "2d57800",
   "target": "current",
-  "message": "Refine compose parity and hardening (#111)",
-  "published_at": "2026-05-05T14:17:35.935922+00:00"
+  "message": "feat(serve): diagnostic shutdown watchdog (CHAOS-1423 follow-up) (#112)",
+  "published_at": "2026-05-05T15:03:58.342673+00:00"
 }
