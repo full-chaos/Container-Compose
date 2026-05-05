@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import Yams
 
 // MARK: - ProjectOrchestrator
 
@@ -59,6 +60,114 @@ public struct ProjectOrchestrator: Sendable {
         case serviceNotFound(project: String, service: String)
         /// `replicas` field was < 0.
         case invalidReplicaCount(Int)
+        /// Uploaded YAML failed to parse — surfaces decoder error message.
+        case malformedComposeYAML(String)
+        /// Uploaded YAML contained `include:` directives (which require a local
+        /// filesystem and aren't meaningful for a remote upload).
+        case includesNotPermitted
+        /// Uploaded YAML had no services.
+        case emptyComposeDocument
+        /// Project name in URL collides with an already-ingested project whose
+        /// content differs.
+        case projectAlreadyIngested(name: String)
+    }
+
+    // MARK: - Ingest (CHAOS-1426)
+
+    /// Ingest a compose YAML body and store it under the given project name.
+    ///
+    /// Architecture: this is the daemon-side counterpart to the CLI's
+    /// `compose up` parsing pass. The daemon parses + validates the YAML,
+    /// stores the resulting `DockerCompose` document in `ProjectRegistry`,
+    /// and returns a summary. Subsequent `up`/`down`/`restart` calls can
+    /// then operate against the ingested project state.
+    ///
+    /// Idempotency: if the project is already stored AND the new YAML
+    /// hashes byte-identically, returns `.unchanged`. If the content
+    /// differs, throws `projectAlreadyIngested` so the route can emit 409.
+    /// Clients must explicitly delete + re-upload to replace.
+    ///
+    /// Validation:
+    /// - `include:` directives → `includesNotPermitted` (no filesystem context)
+    /// - zero services → `emptyComposeDocument`
+    /// - YAML decode failure → `malformedComposeYAML(String)` carrying the
+    ///   underlying message safe to surface in 400 responses (no Swift
+    ///   internals leaked).
+    public static func ingest(
+        projectName: String,
+        yaml: Data,
+        registry: ProjectRegistry,
+        now: Date = Date()
+    ) async throws -> (response: APIProjectIngestResponse, outcome: ProjectRegistry.IngestOutcome) {
+        guard let yamlString = String(data: yaml, encoding: .utf8) else {
+            throw OrchestratorError.malformedComposeYAML("Body is not valid UTF-8")
+        }
+        let trimmed = yamlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw OrchestratorError.malformedComposeYAML("Body is empty")
+        }
+
+        let document: DockerCompose
+        do {
+            document = try YAMLDecoder().decode(DockerCompose.self, from: yamlString)
+        } catch let error as DecodingError {
+            throw OrchestratorError.malformedComposeYAML(decodingErrorSummary(error))
+        } catch {
+            throw OrchestratorError.malformedComposeYAML(error.localizedDescription)
+        }
+
+        // Validation lives here (orchestrator) rather than inside the actor so
+        // the actor only deals with already-Sendable inputs (yaml string +
+        // service-name list). Keeps DockerCompose out of the actor boundary.
+        if let includes = document.include, !includes.isEmpty {
+            throw OrchestratorError.includesNotPermitted
+        }
+        let services = document.services.keys.sorted()
+        guard !services.isEmpty else {
+            throw OrchestratorError.emptyComposeDocument
+        }
+
+        do {
+            let result = try await registry.ingest(
+                name: projectName,
+                yaml: yamlString,
+                services: services,
+                now: now
+            )
+            let outcomeString: String = (result.outcome == .created) ? "created" : "unchanged"
+            let response = APIProjectIngestResponse(
+                name: projectName,
+                serviceCount: result.entry.services.count,
+                services: result.entry.services,
+                ingestedAt: result.entry.ingestedAt,
+                outcome: outcomeString
+            )
+            return (response, result.outcome)
+        } catch ProjectRegistry.IngestError.conflict(let name) {
+            throw OrchestratorError.projectAlreadyIngested(name: name)
+        }
+    }
+
+    /// Translate a `DecodingError` into a single-line summary safe to surface
+    /// in HTTP 400 messages — keys + minimal context, no full call stacks.
+    private static func decodingErrorSummary(_ error: DecodingError) -> String {
+        switch error {
+        case .keyNotFound(let key, let ctx):
+            return "Missing required key '\(key.stringValue)' at \(pathString(ctx.codingPath))"
+        case .typeMismatch(_, let ctx):
+            return "Type mismatch at \(pathString(ctx.codingPath)): \(ctx.debugDescription)"
+        case .valueNotFound(_, let ctx):
+            return "Missing value at \(pathString(ctx.codingPath)): \(ctx.debugDescription)"
+        case .dataCorrupted(let ctx):
+            return "Data corrupted at \(pathString(ctx.codingPath)): \(ctx.debugDescription)"
+        @unknown default:
+            return "Compose YAML decoding failed"
+        }
+    }
+
+    private static func pathString(_ path: [CodingKey]) -> String {
+        guard !path.isEmpty else { return "<root>" }
+        return path.map { $0.stringValue }.joined(separator: ".")
     }
 
     // MARK: - Up

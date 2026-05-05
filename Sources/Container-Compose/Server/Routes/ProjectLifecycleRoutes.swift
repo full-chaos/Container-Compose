@@ -50,12 +50,131 @@ import Hummingbird
 public enum ProjectLifecycleRoutes {
 
     public static func register(router: Router<BasicRequestContext>) {
+        registerIngest(router: router)
         registerUp(router: router)
         registerDown(router: router)
         registerRestart(router: router)
         registerBuild(router: router)
         registerPull(router: router)
         registerScale(router: router)
+    }
+
+    // MARK: - POST /projects/{name}  (CHAOS-1426 — compose YAML ingestion)
+
+    /// Maximum YAML body size accepted by `POST /projects/{name}`.
+    /// Generous for hand-authored compose files; prevents trivially abusive bodies.
+    private static let maxIngestBodyBytes = 1 * 1024 * 1024  // 1 MiB
+
+    /// Content-Type values accepted on the ingest route. JSON bodies are not
+    /// accepted in v1 — the canonical compose source-of-truth on disk is YAML
+    /// and the daemon stores YAML verbatim for byte-identical idempotency.
+    private static let acceptedIngestContentTypes: Set<String> = [
+        "application/yaml",
+        "application/x-yaml",
+        "text/yaml",
+        "text/x-yaml",
+    ]
+
+    private static func registerIngest(router: Router<BasicRequestContext>) {
+        router.post("/projects/:name") { request, context -> Response in
+            let name = try context.parameters.require("name")
+
+            // Content-Type guard — also tolerates YAML uploaded with no
+            // explicit type (curl --data-binary defaults to nothing useful).
+            // An explicitly-set non-YAML type (e.g. application/json) is
+            // rejected with 415 so clients fail loudly.
+            if let rawType = request.headers[.contentType] {
+                let baseType = rawType
+                    .split(separator: ";", maxSplits: 1, omittingEmptySubsequences: false)
+                    .first
+                    .map { String($0).trimmingCharacters(in: .whitespaces).lowercased() } ?? ""
+                if !baseType.isEmpty, !acceptedIngestContentTypes.contains(baseType) {
+                    return try EditedResponse(
+                        status: .unsupportedMediaType,
+                        response: APIErrorEnvelope.legacy(
+                            .unsupportedMediaType,
+                            message: "Content-Type must be application/yaml (got \(rawType))",
+                            requestId: context.id.description
+                        )
+                    ).response(from: request, context: context)
+                }
+            }
+
+            let bodyBuffer: ByteBuffer
+            do {
+                bodyBuffer = try await request.body.collect(upTo: maxIngestBodyBytes)
+            } catch {
+                return try EditedResponse(
+                    status: .contentTooLarge,
+                    response: APIErrorEnvelope.legacy(
+                        .contentTooLarge,
+                        message: "Compose YAML body exceeds \(maxIngestBodyBytes) bytes",
+                        requestId: context.id.description
+                    )
+                ).response(from: request, context: context)
+            }
+
+            let yamlData = Data(buffer: bodyBuffer)
+            guard !yamlData.isEmpty else {
+                return try EditedResponse(
+                    status: .badRequest,
+                    response: APIErrorEnvelope.legacy(
+                        .badRequest,
+                        message: "Compose YAML body is required",
+                        requestId: context.id.description
+                    )
+                ).response(from: request, context: context)
+            }
+
+            let registry = RuntimeEnvironment.projectRegistry
+
+            do {
+                let (response, outcome) = try await ProjectOrchestrator.ingest(
+                    projectName: name,
+                    yaml: yamlData,
+                    registry: registry
+                )
+                let status: HTTPResponse.Status = (outcome == .created) ? .created : .ok
+                return try EditedResponse(status: status, response: response)
+                    .response(from: request, context: context)
+            } catch ProjectOrchestrator.OrchestratorError.malformedComposeYAML(let detail) {
+                return try EditedResponse(
+                    status: .badRequest,
+                    response: APIErrorEnvelope.legacy(
+                        .badRequest,
+                        message: "Malformed compose YAML: \(detail)",
+                        requestId: context.id.description
+                    )
+                ).response(from: request, context: context)
+            } catch ProjectOrchestrator.OrchestratorError.includesNotPermitted {
+                return try EditedResponse(
+                    status: .badRequest,
+                    response: APIErrorEnvelope.legacy(
+                        .badRequest,
+                        message: "Compose YAML uploaded via API must not contain `include:` directives — uploads are evaluated without filesystem context",
+                        requestId: context.id.description
+                    )
+                ).response(from: request, context: context)
+            } catch ProjectOrchestrator.OrchestratorError.emptyComposeDocument {
+                return try EditedResponse(
+                    status: .badRequest,
+                    response: APIErrorEnvelope.legacy(
+                        .badRequest,
+                        message: "Compose document declared no services",
+                        requestId: context.id.description
+                    )
+                ).response(from: request, context: context)
+            } catch ProjectOrchestrator.OrchestratorError.projectAlreadyIngested(let n) {
+                return try EditedResponse(
+                    status: .conflict,
+                    response: APIErrorEnvelope.legacy(
+                        .conflict,
+                        message: "Project '\(n)' already ingested with different content. DELETE /projects/\(n) first to replace.",
+                        requestId: context.id.description
+                    )
+                ).response(from: request, context: context)
+            }
+        }
     }
 
     // MARK: - POST /projects/{name}/up
@@ -306,6 +425,8 @@ public enum ProjectLifecycleRoutes {
 
 // MARK: - ResponseEncodable conformances
 
+extension APIProjectIngestResponse: ResponseEncodable {}
+extension APIProjectDetail: ResponseEncodable {}
 extension APIProjectUpResponse: ResponseEncodable {}
 extension APIProjectDownResponse: ResponseEncodable {}
 extension APIProjectRestartResponse: ResponseEncodable {}

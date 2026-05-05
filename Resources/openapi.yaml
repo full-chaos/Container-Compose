@@ -827,6 +827,83 @@ paths:
                 items:
                   type: object
 
+  /projects/{name}:
+    get:
+      summary: Get project detail (ingested or synthesized)
+      description: |
+        Returns the parsed compose state when the project was ingested via
+        `POST /projects/{name}` (source=ingested). Otherwise synthesizes a
+        view from registered containers using the project-name prefix
+        convention (source=synthesized). 404 only when neither source
+        knows the project.
+      operationId: getProject
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Ingest a compose YAML document
+      description: |
+        Upload a compose YAML body so the daemon owns the parsed project
+        state. Subsequent `up`/`down`/`restart` calls operate against the
+        ingested document. Idempotent on byte-identical re-uploads (200);
+        differing content under the same project name yields 409.
+
+        Documents containing `include:` directives are rejected — uploaded
+        compose is evaluated without filesystem context. CHAOS-1426
+        (Decision #12 follow-up).
+      operationId: ingestProject
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/yaml:
+            schema:
+              type: string
+              format: binary
+              description: Compose YAML document (max 1 MiB)
+          application/x-yaml:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Idempotent re-upload of byte-identical content
+          content:
+            application/json:
+              schema:
+                type: object
+        "201":
+          description: New project ingested
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Malformed YAML, includes:-directive present, or empty service map
+        "409":
+          description: Project name already ingested with different content
+        "413":
+          description: Body exceeds 1 MiB
+        "415":
+          description: Content-Type is set but not application/yaml or text/yaml
+
   /projects/{name}/services:
     get:
       summary: List services in a project
