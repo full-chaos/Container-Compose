@@ -271,6 +271,13 @@ extension ComposeUp {
                 withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700]
             )
+            // The `attributes:` argument above only applies to directories newly
+            // created in this call; pre-existing intermediate directories keep
+            // their prior mode. Re-apply 0o700 explicitly to close that gap. A
+            // small TOCTOU window remains between createDirectory and
+            // setAttributes — mitigated in practice by the project-scoped, hash-
+            // suffixed naming that makes opportunistic file creation by another
+            // local process implausible.
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryURL.path)
 
             let fileName = "\(kind)-\(safeSourceName)-\(hashPrefix)"
@@ -284,12 +291,16 @@ extension ComposeUp {
         }
 
         private static func sanitizedHostPathComponent(_ value: String) -> String {
+            // Allow-list filter neutralizes path separators and shell metacharacters
+            // by mapping any disallowed scalar to '_'. The `..` → `__` replacement
+            // then collapses the only remaining traversal pattern. Leading dots
+            // alone are preserved so legitimate names like `.staging` survive.
             let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
             let sanitizedScalars = value.unicodeScalars.map { scalar in
                 allowed.contains(scalar) ? Character(scalar) : "_"
             }
             let sanitized = String(sanitizedScalars)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                .replacingOccurrences(of: "..", with: "__")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return sanitized.isEmpty ? "unnamed" : sanitized
         }

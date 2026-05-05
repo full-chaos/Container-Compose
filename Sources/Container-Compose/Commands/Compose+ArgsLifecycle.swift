@@ -42,21 +42,9 @@ extension ComposeUp {
                 args.append("--init")
             }
 
-            // apple/container does not accept --stop-signal (verified Tier 0 R2 audit).
-            if ctx.service.stop_signal != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.stop_signal",
-                    "Note: 'service.stop_signal' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // apple/container does not accept --stop-timeout (verified Tier 0 R2 audit).
-            if ctx.service.stop_grace_period != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.stop_grace_period",
-                    "Note: 'service.stop_grace_period' is parsed but not supported by Apple container; ignored."
-                )
-            }
+            // apple/container does not accept --stop-signal / --stop-timeout
+            // (verified Tier 0 R2 audit). Centralized in Compose+RuntimeWarnings.
+            warnUnsupportedContainerLifecycleStopFields(ctx.service)
 
             // --runtime: pass the runtime name
             if let runtime = ctx.service.runtime {

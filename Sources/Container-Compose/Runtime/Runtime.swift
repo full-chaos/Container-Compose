@@ -197,6 +197,14 @@ public enum RuntimeError: Error, Sendable, Equatable {
     case notSupported(operation: String, conformer: String)
     case backendFailure(message: String)
     case persistenceFailure(message: String)
+    /// Apple's `container` (or `container-compose`) binary could not be located
+    /// in the resolution PATH. CHAOS-1421 — see
+    /// `docs/reviews/path-execution-audit-2026-05-05.md`.
+    case cliBinaryNotFound(binary: String, searchPath: String)
+    /// An explicit env-var override was set but does not point to an executable
+    /// file. Setting the override is a user contract, so we fail loudly rather
+    /// than silently falling back to the resolution PATH.
+    case binaryOverrideInvalid(envVar: String, path: String)
 }
 
 extension RuntimeError: LocalizedError {
@@ -218,6 +226,10 @@ extension RuntimeError: LocalizedError {
             return "Runtime backend failure: \(message)"
         case .persistenceFailure(let message):
             return "Runtime persistence failure: \(message)"
+        case .cliBinaryNotFound(let binary, let searchPath):
+            return "Runtime: '\(binary)' CLI not found in PATH (\(searchPath)). Install Apple's container CLI or set CONTAINER_COMPOSE_CONTAINER_BIN to its absolute path."
+        case .binaryOverrideInvalid(let envVar, let path):
+            return "Runtime: \(envVar)='\(path)' is not an executable file. Unset the env var or point it at an executable."
         }
     }
 }
