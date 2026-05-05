@@ -237,19 +237,41 @@ public actor AppleContainerizationRuntime: Runtime {
         guard await registry.get(id: id) != nil else {
             throw RuntimeError.notFound(id: id)
         }
-        // CHAOS-1358 Phase 4 fallback: the real vsock statistics path requires
-        // a live LinuxContainer instance, which in turn requires the full Phase 2
-        // lifecycle wiring (ContainerManager, vmlinux kernel, virtualization
-        // entitlement, macOS 26). Until that wiring lands, we return an empty
-        // snapshot so the route produces structurally valid NDJSON frames rather
-        // than a 501 error. The absence of CPU/memory data is visible to clients
-        // as null fields in the NDJSON output.
-        //
-        // To wire the real path: hold a [String: LinuxContainer] map alongside
-        // stdoutBuffers/stderrBuffers; call container.statistics() here.
-        //
-        // Abstraction leak documented in docs/plans/runtime-abstraction-leaks.md.
+        // CHAOS-1424 PR4 / closes CHAOS-1362: when PR3's lifecycle wiring has
+        // populated `liveContainers`, route through the real vsock statistics
+        // path. Until then (registry-only fallback) the map stays empty and we
+        // emit the structurally valid empty snapshot — same behavior as
+        // pre-PR4, so existing clients see no regression.
+        if let container = liveContainers[id] {
+            let raw = try await container.statistics(categories: .all)
+            return Self.translate(raw, id: id)
+        }
         return RuntimeStatistics(id: id, sampledAt: Date())
+    }
+
+    /// Pure value-to-value mapping from the `apple/containerization`
+    /// `ContainerStatistics` shape to our backend-neutral `RuntimeStatistics`.
+    /// Kept `internal static` so static-target tests can construct
+    /// `ContainerStatistics` directly and exercise every field without a live
+    /// `LinuxContainer`. Field mapping verified against
+    /// `.build/checkouts/containerization/Sources/Containerization/ContainerStatistics.swift`
+    /// (closes Leak #7 in `docs/plans/runtime-abstraction-leaks.md`).
+    static func translate(_ raw: ContainerStatistics, id: String) -> RuntimeStatistics {
+        RuntimeStatistics(
+            id: id,
+            cpuUsageUsec: raw.cpu?.usageUsec,
+            memoryUsageBytes: raw.memory?.usageBytes,
+            memoryLimitBytes: raw.memory?.limitBytes,
+            oomKillCount: raw.memoryEvents?.oomKill,
+            networks: (raw.networks ?? []).map {
+                RuntimeStatistics.Network(
+                    interface: $0.interface,
+                    receivedBytes: $0.receivedBytes,
+                    transmittedBytes: $0.transmittedBytes
+                )
+            },
+            sampledAt: Date()
+        )
     }
 
     // MARK: - Test affordances

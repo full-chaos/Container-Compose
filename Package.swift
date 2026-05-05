@@ -118,6 +118,26 @@ let package = Package(
             ]
         ),
 
+        // CHAOS-1424 PR4: backend-specific tests for the apple/containerization
+        // runtime conformer. Distinct from -DynamicTests (which exercises the
+        // apple/container CLI bridge) and -StaticTests (backend-neutral). Tests
+        // here run on macOS only; tests that require a live VM (full lifecycle,
+        // statistics vsock probe) are gated behind the
+        // CONTAINER_COMPOSE_RUN_NATIVE_TESTS env var so CI can skip them until
+        // a macOS 26 runner with the virtualization entitlement is available.
+        // Skip in inner-loop runs with `--skip Container-Compose-NativeRuntimeTests`.
+        .testTarget(
+            name: "Container-Compose-NativeRuntimeTests",
+            dependencies: [
+                "ContainerComposeCore",
+                "TestHelpers",
+                .product(
+                    name: "Containerization",
+                    package: "containerization"
+                ),
+            ]
+        ),
+
         // CHAOS-XXXX: structured test output for agent consumption.
         // Library — Codable types, reader, aggregator, formatters.
         .target(
