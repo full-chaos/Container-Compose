@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1424-pr4-stats-target",
+  "commit": "f4281c6660eb130a7250a31c0f79ebe172e8bf16",
+  "short": "f4281c6",
+  "target": "f4281c6",
+  "message": "feat(runtime): CHAOS-1424 PR4 \u2014 statistics translation + native runtime test target (closes CHAOS-1362)",
+  "published_at": "2026-05-05T20:52:47.644770+00:00"
+}
