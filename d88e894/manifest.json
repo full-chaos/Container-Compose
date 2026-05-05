@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1424-pr1-scaffolding",
+  "commit": "d88e8944cf8188d520c02aa1bd363d1edffebe5f",
+  "short": "d88e894",
+  "target": "d88e894",
+  "message": "feat(runtime): CHAOS-1424 PR1 \u2014 Phase 2 lifecycle scaffolding + verified SDK signatures",
+  "published_at": "2026-05-05T20:12:56.993741+00:00"
+}
