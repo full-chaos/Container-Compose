@@ -1,0 +1,8 @@
+{
+  "branch": "enhacement/final-features",
+  "commit": "dc34e71b7572f0e0b5210e928e36f0ec74710a45",
+  "short": "dc34e71",
+  "target": "dc34e71",
+  "message": "Resolve container binary at startup + close hardening loop (CHAOS-1421)",
+  "published_at": "2026-05-05T13:10:32.771845+00:00"
+}
