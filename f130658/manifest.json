@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1428-openapi-sdks",
+  "commit": "f130658a79bb108a5d4739b491b2a32d30d42d44",
+  "short": "f130658",
+  "target": "f130658",
+  "message": "Pin versions for build actions, per security findings",
+  "published_at": "2026-05-05T23:26:43.488534+00:00"
+}
