@@ -205,6 +205,16 @@ public enum RuntimeError: Error, Sendable, Equatable {
     /// file. Setting the override is a user contract, so we fail loudly rather
     /// than silently falling back to the resolution PATH.
     case binaryOverrideInvalid(envVar: String, path: String)
+    /// The native `apple/containerization` lifecycle requires macOS 26+ APIs
+    /// (Virtualization.framework + the `@available(macOS 26.0, *)` SDK gate).
+    /// CHAOS-1424 — Phase 2 lifecycle methods short-circuit with this on
+    /// pre-26 hosts rather than silently writing a registry-only record.
+    case requiresMacOS26(operation: String)
+    /// vmlinux kernel could not be acquired by the native runtime (missing
+    /// binary, unreadable cache, or network failure during fetch). CHAOS-1424
+    /// — Phase 2 surfaces this when `LinuxContainer` cannot be instantiated
+    /// because the `Kernel` value is unobtainable.
+    case kernelUnavailable(reason: String)
 }
 
 extension RuntimeError: LocalizedError {
@@ -230,6 +240,10 @@ extension RuntimeError: LocalizedError {
             return "Runtime: '\(binary)' CLI not found in PATH (\(searchPath)). Install Apple's container CLI or set CONTAINER_COMPOSE_CONTAINER_BIN to its absolute path."
         case .binaryOverrideInvalid(let envVar, let path):
             return "Runtime: \(envVar)='\(path)' is not an executable file. Unset the env var or point it at an executable."
+        case .requiresMacOS26(let operation):
+            return "Runtime: operation '\(operation)' requires macOS 26.0 or later. Upgrade the host or use a remote daemon over tls://."
+        case .kernelUnavailable(let reason):
+            return "Runtime: vmlinux kernel unavailable — \(reason)."
         }
     }
 }

@@ -60,6 +60,18 @@ public actor AppleContainerizationRuntime: Runtime {
     private var stdoutBuffers: [String: LogRingBuffer] = [:]
     private var stderrBuffers: [String: LogRingBuffer] = [:]
 
+    /// CHAOS-1424 PR1 scaffold: per-id map of live `LinuxContainer` instances
+    /// produced by `ContainerManager.create(...)`. PR1 ships the empty map +
+    /// test affordance only. PR2 populates it during `create()` (after
+    /// `registry.register`) and evicts during `remove()`. Keys mirror
+    /// `stdoutBuffers` / `stderrBuffers` — the same `id` used everywhere else.
+    /// `LinuxContainer` is `Sendable` (verified at
+    /// `.build/checkouts/containerization/Sources/Containerization/LinuxContainer.swift:30`)
+    /// so the actor's isolation boundary suffices; we never expose raw
+    /// `LinuxContainer` values across the actor edge — see
+    /// `_testLifecycleMap(for:)` for the read-only Bool affordance pattern.
+    private var liveContainers: [String: LinuxContainer] = [:]
+
     private var eventContinuations: [UUID: AsyncStream<RuntimeContainerEvent>.Continuation] = [:]
 
     // MARK: - Init
@@ -252,6 +264,16 @@ public actor AppleContainerizationRuntime: Runtime {
 
     public func _testStderrBuffer(for id: String) -> LogRingBuffer? {
         stderrBuffers[id]
+    }
+
+    /// CHAOS-1424 PR1: returns `true` iff a live `LinuxContainer` is currently
+    /// registered for `id` in the lifecycle map. Returns a Bool rather than
+    /// the raw `LinuxContainer` so the actor's isolation boundary is
+    /// preserved — callers can't leak the upstream type across the edge. PR2
+    /// populates the map; PR1 ships it empty so this affordance always
+    /// returns `false` until lifecycle wiring lands.
+    public func _testLifecycleMap(for id: String) -> Bool {
+        liveContainers[id] != nil
     }
 
     // MARK: - Private
