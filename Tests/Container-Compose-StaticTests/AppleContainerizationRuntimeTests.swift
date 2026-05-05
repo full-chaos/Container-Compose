@@ -173,6 +173,53 @@ struct AppleContainerizationRuntimeTests {
         #expect(await runtime._testLifecycleMap(for: "demo-svc-1") == false)
     }
 
+    // MARK: - CHAOS-1424 PR3 — native lifecycle error paths
+
+    @Test("CHAOS-1424 PR3 — kernelURL pointing to missing file throws kernelUnavailable on create")
+    func phase3_missingKernelURL_throwsKernelUnavailable() async throws {
+        let path = Self.temporaryStoragePath()
+        defer { Self.cleanup(path) }
+        let registry = try await ContainerRegistry(storagePath: path)
+        let bogusKernel = URL(fileURLWithPath: "/tmp/nonexistent-vmlinux-\(UUID().uuidString)")
+        let runtime = AppleContainerizationRuntime(
+            registry: registry,
+            kernelURL: bogusKernel
+        )
+
+        await #expect(throws: RuntimeError.self) {
+            _ = try await runtime.create(
+                id: "demo-svc-1",
+                configuration: RuntimeCreateConfiguration(imageReference: "alpine:3")
+            )
+        }
+
+        // Compensating rollback: registry should be empty after the failed create.
+        let listed = try await runtime.list(filters: .all)
+        #expect(listed.isEmpty, "registry must be rolled back after native-create failure")
+    }
+
+    @Test("CHAOS-1424 PR3 — registry-only mode (kernelURL=nil) preserves existing lifecycle behavior")
+    func phase3_nilKernelURL_preservesRegistryOnlyMode() async throws {
+        let path = Self.temporaryStoragePath()
+        defer { Self.cleanup(path) }
+        let registry = try await ContainerRegistry(storagePath: path)
+        // Default init — kernelURL = nil — registry-only mode.
+        let runtime = AppleContainerizationRuntime(registry: registry)
+
+        let id = "demo-svc-1"
+        _ = try await runtime.create(
+            id: id,
+            configuration: RuntimeCreateConfiguration(imageReference: "alpine:3")
+        )
+        try await runtime.start(id: id)
+        try await runtime.stop(id: id, options: .default)
+
+        let stopped = try await runtime.get(id: id)
+        #expect(stopped.status == .exited)
+        // Lifecycle map stays empty — native path not taken.
+        #expect(await runtime._testLifecycleMap(for: id) == false)
+    }
+
     @Test("remove() rejects running container without force")
     func removeRunningRequiresForce() async throws {
         let path = Self.temporaryStoragePath()

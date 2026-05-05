@@ -60,26 +60,44 @@ public actor AppleContainerizationRuntime: Runtime {
     private var stdoutBuffers: [String: LogRingBuffer] = [:]
     private var stderrBuffers: [String: LogRingBuffer] = [:]
 
-    /// CHAOS-1424 PR1 scaffold: per-id map of live `LinuxContainer` instances
-    /// produced by `ContainerManager.create(...)`. PR1 ships the empty map +
-    /// test affordance only. PR2 populates it during `create()` (after
-    /// `registry.register`) and evicts during `remove()`. Keys mirror
-    /// `stdoutBuffers` / `stderrBuffers` — the same `id` used everywhere else.
-    /// `LinuxContainer` is `Sendable` (verified at
-    /// `.build/checkouts/containerization/Sources/Containerization/LinuxContainer.swift:30`)
-    /// so the actor's isolation boundary suffices; we never expose raw
-    /// `LinuxContainer` values across the actor edge — see
-    /// `_testLifecycleMap(for:)` for the read-only Bool affordance pattern.
+    /// Per-id map of live `LinuxContainer` instances produced by
+    /// `ContainerManager.create(...)`. Populated when native lifecycle is
+    /// enabled (init with `kernelURL` set + macOS 26+ host); empty in
+    /// registry-only mode. Keys mirror `stdoutBuffers` / `stderrBuffers`.
     private var liveContainers: [String: LinuxContainer] = [:]
 
     private var eventContinuations: [UUID: AsyncStream<RuntimeContainerEvent>.Continuation] = [:]
 
+    // CHAOS-1424 PR3 — native lifecycle state. `kernelURL` is the opt-in
+    // selector: when nil, the runtime stays in registry-only mode (existing
+    // behavior, used by all static tests). When set, lifecycle methods try
+    // the native VM path on macOS 26+. The `manager` and `kernel` are lazily
+    // constructed on first `create()` call so initialization failures
+    // surface at the right call site (not at runtime construction).
+    private let kernelURL: URL?
+    private let initfsReference: String
+    private var kernel: Kernel?
+    private var manager: ContainerManager?
+
     // MARK: - Init
 
-    public init(registry: ContainerRegistry, logCapacity: Int = 4_096) {
+    public init(
+        registry: ContainerRegistry,
+        logCapacity: Int = 4_096,
+        kernelURL: URL? = nil,
+        initfsReference: String = AppleContainerizationRuntime.defaultInitfsReference
+    ) {
         self.registry = registry
         self.logCapacity = logCapacity
+        self.kernelURL = kernelURL
+        self.initfsReference = initfsReference
     }
+
+    /// Default initfs reference used by `ContainerManager.init(kernel:initfsReference:...)`.
+    /// Apple's containerization SDK pulls and caches this image for the VM's init filesystem.
+    /// The `apple/containerization` README documents this image path; production deployments
+    /// can override via init parameter or env var.
+    public static let defaultInitfsReference = "ghcr.io/apple/containerization/vminitd:latest"
 
     // MARK: - Discovery
 
@@ -137,6 +155,27 @@ public actor AppleContainerizationRuntime: Runtime {
         try await registry.register(record)
         stdoutBuffers[id] = LogRingBuffer(source: .stdout, capacity: logCapacity)
         stderrBuffers[id] = LogRingBuffer(source: .stderr, capacity: logCapacity)
+
+        // CHAOS-1424 PR3: native lifecycle wiring — only when opted in via
+        // kernelURL. The `manager.create(...)` call boots a VM and pulls the
+        // image, so it stays out of the registry-only path used by static
+        // tests. On failure we compensate with `registry.remove(id:)` to
+        // avoid orphan records.
+        if kernelURL != nil {
+            do {
+                if #available(macOS 26.0, *) {
+                    try await self.nativeCreate(id: id, configuration: configuration)
+                } else {
+                    throw RuntimeError.requiresMacOS26(operation: "create")
+                }
+            } catch {
+                stdoutBuffers.removeValue(forKey: id)
+                stderrBuffers.removeValue(forKey: id)
+                try? await registry.remove(id: id)
+                throw mapUpstreamError(error, id: id)
+            }
+        }
+
         emit(.created(id: id, at: now))
         return record.toRuntimeContainer()
     }
@@ -152,6 +191,19 @@ public actor AppleContainerizationRuntime: Runtime {
                 actual: record.state
             )
         }
+
+        if let container = liveContainers[id] {
+            if #available(macOS 26.0, *) {
+                do {
+                    try await container.start()
+                } catch {
+                    throw mapUpstreamError(error, id: id)
+                }
+            } else {
+                throw RuntimeError.requiresMacOS26(operation: "start")
+            }
+        }
+
         let now = Date()
         try await registry.updateState(id: id, state: .running, startedAt: now)
         emit(.started(id: id, at: now))
@@ -164,6 +216,19 @@ public actor AppleContainerizationRuntime: Runtime {
         guard record.state == .running else {
             return
         }
+
+        if let container = liveContainers[id] {
+            if #available(macOS 26.0, *) {
+                do {
+                    try await container.stop()
+                } catch {
+                    throw mapUpstreamError(error, id: id)
+                }
+            } else {
+                throw RuntimeError.requiresMacOS26(operation: "stop")
+            }
+        }
+
         let now = Date()
         try await registry.updateState(id: id, state: .stopping)
         let exit = RuntimeExitStatus(exitCode: 0, exitedAt: now)
@@ -177,6 +242,19 @@ public actor AppleContainerizationRuntime: Runtime {
         guard await registry.get(id: id) != nil else {
             throw RuntimeError.notFound(id: id)
         }
+
+        if let container = liveContainers[id] {
+            if #available(macOS 26.0, *) {
+                do {
+                    try await container.kill(signal)
+                } catch {
+                    throw mapUpstreamError(error, id: id)
+                }
+            } else {
+                throw RuntimeError.requiresMacOS26(operation: "kill")
+            }
+        }
+
         emit(.killed(id: id, signal: signal, at: Date()))
     }
 
@@ -197,6 +275,11 @@ public actor AppleContainerizationRuntime: Runtime {
         if record.state == .running && !force {
             throw RuntimeError.invalidState(id: id, expected: .stopped, actual: record.state)
         }
+
+        // Evict from native lifecycle map first so a partial registry-remove
+        // failure leaves a clean slate (the LinuxContainer is gone either way).
+        liveContainers.removeValue(forKey: id)
+
         try await registry.remove(id: id)
         stdoutBuffers.removeValue(forKey: id)
         stderrBuffers.removeValue(forKey: id)
@@ -343,6 +426,87 @@ public actor AppleContainerizationRuntime: Runtime {
         id: String? = nil
     ) -> RuntimeError {
         RuntimeErrorMapper.map(error, id: id)
+    }
+
+    // MARK: - Native lifecycle wiring (CHAOS-1424 PR3)
+
+    /// Construct a `LinuxContainer` via the SDK's `ContainerManager.create`
+    /// path and store it in `liveContainers`. Caller already wrote the
+    /// registry record; on failure here, the caller compensates by removing
+    /// the registry entry to avoid orphans.
+    @available(macOS 26.0, *)
+    private func nativeCreate(
+        id: String,
+        configuration: RuntimeCreateConfiguration
+    ) async throws {
+        var manager = try await getOrCreateManager()
+        let container = try await manager.create(
+            id,
+            reference: configuration.imageReference
+        ) { _ in
+            // Default LinuxContainer.Configuration is sufficient for PR3.
+            // Compose-specific fields (env, command, mounts) wire in a follow-up.
+        }
+        // Manager is mutating; persist the modified copy back.
+        self.manager = manager
+        liveContainers[id] = container
+    }
+
+    /// Lazy ContainerManager init. First call constructs `Kernel` from the
+    /// configured `kernelURL` and `ContainerManager` via the simplest SDK
+    /// overload (init with `initfsReference` — pulls + caches the initfs
+    /// image on first use). Subsequent calls return the cached manager.
+    ///
+    /// Throws `RuntimeError.kernelUnavailable` if `kernelURL` is absent or
+    /// the file isn't readable. The actual SDK init can fail with
+    /// network/filesystem errors during initfs pull — those are mapped via
+    /// `mapUpstreamError`.
+    @available(macOS 26.0, *)
+    private func getOrCreateManager() async throws -> ContainerManager {
+        if let manager = manager {
+            return manager
+        }
+        guard let url = kernelURL else {
+            throw RuntimeError.kernelUnavailable(
+                reason: "kernelURL not configured — pass kernelURL to AppleContainerizationRuntime.init"
+            )
+        }
+        guard FileManager.default.isReadableFile(atPath: url.path) else {
+            throw RuntimeError.kernelUnavailable(
+                reason: "vmlinux not readable at \(url.path)"
+            )
+        }
+
+        let platform = AppleContainerizationRuntime.hostSystemPlatform
+        let kernel = Kernel(path: url, platform: platform)
+        self.kernel = kernel
+
+        do {
+            let mgr = try await ContainerManager(
+                kernel: kernel,
+                initfsReference: initfsReference
+            )
+            self.manager = mgr
+            return mgr
+        } catch {
+            // Network/filesystem failure during initfs pull or VMM construction.
+            // Surface as kernelUnavailable so callers see a single coherent
+            // "native lifecycle didn't initialize" error vocabulary.
+            throw RuntimeError.kernelUnavailable(
+                reason: "ContainerManager init failed: \(error.localizedDescription)"
+            )
+        }
+    }
+
+    /// Map host architecture to the SDK's `SystemPlatform`. The SDK ships
+    /// `SystemPlatform.linuxArm` / `.linuxAmd` only — Linux guests on
+    /// arm64 or x86_64 macOS hosts.
+    private static var hostSystemPlatform: SystemPlatform {
+        #if arch(arm64)
+        return .linuxArm
+        #else
+        return .linuxAmd
+        #endif
     }
 
     // MARK: - Phase 2 anchor
