@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1412-runner-upgrade",
+  "commit": "f37bdaaea48579aea7186b3833510c0241041d31",
+  "short": "f37bdaa",
+  "target": "f37bdaa",
+  "message": "chore(ci): bump GitHub Actions to Node 24-targeting versions (CHAOS-1412)",
+  "published_at": "2026-05-05T19:44:37.571575+00:00"
+}
