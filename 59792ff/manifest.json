@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1426-compose-yaml-upload",
+  "commit": "59792ffd00c8422f13a8f26b0b9a02be680d71f0",
+  "short": "59792ff",
+  "target": "59792ff",
+  "message": "feat(server): CHAOS-1426 \u2014 POST /projects/{name} compose YAML ingestion (Decision #12)",
+  "published_at": "2026-05-05T22:16:30.729465+00:00"
+}
