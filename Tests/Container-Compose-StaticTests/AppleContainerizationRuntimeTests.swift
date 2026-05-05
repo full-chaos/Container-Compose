@@ -143,6 +143,36 @@ struct AppleContainerizationRuntimeTests {
         #expect(String(data: collected[1].data, encoding: .utf8) == "world")
     }
 
+    // MARK: - CHAOS-1424 PR1 — lifecycle storage scaffold
+
+    @Test("CHAOS-1424 PR1 — _testLifecycleMap is empty for fresh runtime")
+    func phase2_lifecycleMap_emptyForFreshRuntime() async throws {
+        let path = Self.temporaryStoragePath()
+        defer { Self.cleanup(path) }
+        let registry = try await ContainerRegistry(storagePath: path)
+        let runtime = AppleContainerizationRuntime(registry: registry)
+
+        #expect(await runtime._testLifecycleMap(for: "anything") == false)
+    }
+
+    @Test("CHAOS-1424 PR1 — _testLifecycleMap stays empty after registry-only create()")
+    func phase2_lifecycleMap_emptyAfterRegistryOnlyCreate() async throws {
+        let path = Self.temporaryStoragePath()
+        defer { Self.cleanup(path) }
+        let registry = try await ContainerRegistry(storagePath: path)
+        let runtime = AppleContainerizationRuntime(registry: registry)
+
+        _ = try await runtime.create(
+            id: "demo-svc-1",
+            configuration: RuntimeCreateConfiguration(imageReference: "alpine:3")
+        )
+
+        // PR1 ships the map empty — PR2 will populate via ContainerManager.create.
+        // This test guards the registry-only-fallback AC from regressing while
+        // the lifecycle wiring lands in PR2.
+        #expect(await runtime._testLifecycleMap(for: "demo-svc-1") == false)
+    }
+
     @Test("remove() rejects running container without force")
     func removeRunningRequiresForce() async throws {
         let path = Self.temporaryStoragePath()

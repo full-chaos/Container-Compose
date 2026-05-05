@@ -61,6 +61,38 @@ struct RuntimeErrorTests {
             argv: ["docker.io/library/alpine:3"]
         ) == nil)
     }
+
+    // MARK: - CHAOS-1424 Phase 2 lifecycle errors
+
+    @Test func requiresMacOS26_errorDescription_namesOperation() {
+        let err = RuntimeError.requiresMacOS26(operation: "create")
+        #expect(err.errorDescription?.contains("'create'") == true)
+        #expect(err.errorDescription?.contains("macOS 26") == true)
+    }
+
+    @Test func requiresMacOS26_equality_byOperation() {
+        let a = RuntimeError.requiresMacOS26(operation: "create")
+        let b = RuntimeError.requiresMacOS26(operation: "create")
+        let c = RuntimeError.requiresMacOS26(operation: "start")
+
+        #expect(a == b)
+        #expect(a != c)
+    }
+
+    @Test func kernelUnavailable_errorDescription_includesReason() {
+        let err = RuntimeError.kernelUnavailable(reason: "vmlinux missing at /tmp/k")
+        #expect(err.errorDescription?.contains("vmlinux missing at /tmp/k") == true)
+        #expect(err.errorDescription?.contains("kernel") == true)
+    }
+
+    @Test func kernelUnavailable_equality_byReason() {
+        let a = RuntimeError.kernelUnavailable(reason: "missing")
+        let b = RuntimeError.kernelUnavailable(reason: "missing")
+        let c = RuntimeError.kernelUnavailable(reason: "checksum mismatch")
+
+        #expect(a == b)
+        #expect(a != c)
+    }
 }
 
 private struct UpstreamImagePullError: LocalizedError, CustomStringConvertible {
