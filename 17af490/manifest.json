@@ -1,0 +1,8 @@
+{
+  "branch": "feat/structured-test-output",
+  "commit": "17af49038650879ca4411f3aa326fdd414368cb3",
+  "short": "17af490",
+  "target": "17af490",
+  "message": "feat(test-report): \\`make test-json\\` Makefile target",
+  "published_at": "2026-05-05T00:49:26.236525+00:00"
+}
