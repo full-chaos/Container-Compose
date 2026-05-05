@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "2d578002ea6f01f9434f9e1e4a18242c26b8dcb3",
-  "short": "2d57800",
+  "commit": "81f7f2bec84a6e331e38182ea8b8cb7f7c3d2c58",
+  "short": "81f7f2b",
   "target": "current",
-  "message": "feat(serve): diagnostic shutdown watchdog (CHAOS-1423 follow-up) (#112)",
-  "published_at": "2026-05-05T15:03:58.342673+00:00"
+  "message": "review: simplify pass \u2014 formatter hoist + cert dedup + TOCTOU fix (#113)",
+  "published_at": "2026-05-05T18:04:25.502396+00:00"
 }
