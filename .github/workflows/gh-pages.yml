@@ -22,6 +22,13 @@ concurrency:
   group: gh-pages-${{ github.ref }}
   cancel-in-progress: true
 
+# peaceiris/actions-gh-pages@v4 is the latest stable release but still ships
+# `using: node20`; this env var forces it onto Node 24 ahead of GitHub's
+# June 2026 forced migration. Drop once peaceiris ships a Node-24 release.
+# https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -29,7 +36,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
