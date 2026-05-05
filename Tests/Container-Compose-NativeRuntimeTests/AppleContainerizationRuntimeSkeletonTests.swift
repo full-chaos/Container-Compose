@@ -20,8 +20,16 @@ import Foundation
 import Testing
 @testable import ContainerComposeCore
 
+/// Backend-specific coverage for `AppleContainerizationRuntime`'s
+/// registry-only Phase 1 skeleton. Migrated from
+/// `Tests/Container-Compose-StaticTests/AppleContainerizationRuntimeTests.swift`
+/// in CHAOS-1424 PR4 to close Leak #1 in `docs/plans/runtime-abstraction-leaks.md`
+/// — these are integration-shaped tests for one specific conformer, not
+/// portable `Runtime` contract coverage, so they belong in the
+/// native-runtime target alongside the live-VM smoke tests that will land
+/// once the macOS 26 + virtualization entitlement path is wired.
 @Suite("AppleContainerizationRuntime skeleton lifecycle")
-struct AppleContainerizationRuntimeTests {
+struct AppleContainerizationRuntimeSkeletonTests {
 
     private static func temporaryStoragePath() -> String {
         FileManager.default.temporaryDirectory
@@ -167,9 +175,9 @@ struct AppleContainerizationRuntimeTests {
             configuration: RuntimeCreateConfiguration(imageReference: "alpine:3")
         )
 
-        // PR1 ships the map empty — PR2 will populate via ContainerManager.create.
+        // PR1 ships the map empty — PR3 will populate via ContainerManager.create.
         // This test guards the registry-only-fallback AC from regressing while
-        // the lifecycle wiring lands in PR2.
+        // the lifecycle wiring lands in PR3.
         #expect(await runtime._testLifecycleMap(for: "demo-svc-1") == false)
     }
 

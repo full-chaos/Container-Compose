@@ -79,52 +79,15 @@ struct RuntimeProtocolExtensionsTests {
         #expect(!version.arch.isEmpty)
     }
 
-    #if os(macOS)
-    @Test("AppleContainerizationRuntime version reports apple-containerization backend")
-    func appleRuntimeVersion() async throws {
-        let path = Self.temporaryStoragePath()
-        defer { Self.cleanup(path) }
-        let registry = try await ContainerRegistry(storagePath: path)
-        let runtime = AppleContainerizationRuntime(registry: registry)
-
-        let version = try await runtime.version()
-        #expect(version.apiVersion == "v1")
-        #expect(version.daemonVersion == Main.version)
-        #expect(version.serverName == "container-compose")
-        #expect(version.backendDescription == "apple-containerization 0.31.0")
-        #expect(!version.arch.isEmpty)
-    }
-
-    @Test("AppleContainerizationRuntime listNetworks returns empty Phase 3 placeholder")
-    func appleRuntimeListNetworksEmpty() async throws {
-        let path = Self.temporaryStoragePath()
-        defer { Self.cleanup(path) }
-        let registry = try await ContainerRegistry(storagePath: path)
-        let runtime = AppleContainerizationRuntime(registry: registry)
-
-        let networks = try await runtime.listNetworks()
-        #expect(networks.isEmpty)
-    }
-    #endif
+    // CHAOS-1424 PR4: AppleContainerizationRuntime version + listNetworks
+    // smoke tests moved to Container-Compose-NativeRuntimeTests
+    // (AppleContainerizationRuntimeProtocolTests). Closes Leak #2 in
+    // docs/plans/runtime-abstraction-leaks.md — backend-specific coverage
+    // belongs with the live-VM target, not in the backend-neutral suite.
 
     private static let sampleContainers: [RuntimeContainer] = [
         RuntimeContainer(id: "demo-web-1", imageReference: "nginx:1", status: .running),
         RuntimeContainer(id: "demo-db-1", imageReference: "postgres:16", status: .stopped),
         RuntimeContainer(id: "other-web-1", imageReference: "nginx:1", status: .running)
     ]
-
-    #if os(macOS)
-    private static func temporaryStoragePath() -> String {
-        FileManager.default.temporaryDirectory
-            .appending(path: "container-compose-tests")
-            .appending(path: UUID().uuidString)
-            .appending(path: "registry.json")
-            .path
-    }
-
-    private static func cleanup(_ path: String) {
-        let dir = (path as NSString).deletingLastPathComponent
-        try? FileManager.default.removeItem(atPath: dir)
-    }
-    #endif
 }
