@@ -81,6 +81,11 @@ struct ConfigsSecretsRuntimeTests {
         mount.split(separator: ":", maxSplits: 1).first.map(String.init) ?? ""
     }
 
+    private func posixMode(path: String) throws -> Int {
+        let attrs = try FileManager.default.attributesOfItem(atPath: path)
+        return (attrs[.posixPermissions] as? NSNumber)?.intValue ?? -1
+    }
+
     // MARK: - Configs
 
     @Test("Config with explicit target emits -v hostPath:target")
@@ -564,6 +569,74 @@ struct ConfigsSecretsRuntimeTests {
         #expect(mount == "\(tempPath):/run/secrets/env_secret")
         #expect(FileManager.default.fileExists(atPath: tempPath))
         #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "super-secret-value")
+        #expect(try posixMode(path: dir.path) == 0o700)
+        #expect(try posixMode(path: tempPath) == 0o600)
+    }
+
+    @Test("Secret materialization sanitizes host path components")
+    func secretMaterializationSanitizesHostPathComponents() throws {
+        let unsafeProjectName = "../unsafe project"
+        // Allow-list maps `/` and space to `_`, then `..` → `__` collapses the
+        // leading traversal pattern. Net: `..` + `/` + `unsafe` + ` ` + `project`
+        // becomes `__` + `_` + `unsafe` + `_` + `project` = `___unsafe_project`.
+        let safeProjectName = "___unsafe_project"
+        let dir = configsSecretsDir(projectName: safeProjectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let envName = "PATH_SAFE_SECRET_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+        setenv(envName, "safe-value", 1)
+        defer { unsetenv(envName) }
+
+        let unsafeSource = "../env secret"
+        let ss = ServiceSecret(source: unsafeSource)
+        let topSecret = Secret(environment: envName)
+        let service = Service(image: "alpine:latest", secrets: [ss])
+        let dc = makeDockerCompose(secrets: [unsafeSource: topSecret])
+        let ctx = makeContext(service: service, dockerCompose: dc, projectName: unsafeProjectName)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mount = try #require(volumeMounts(from: args).first)
+        let tempPath = hostPath(from: mount)
+        #expect(tempPath.hasPrefix(dir.path + "/"))
+        #expect(URL(fileURLWithPath: tempPath).lastPathComponent.hasPrefix("secret-___env_secret-"))
+        #expect(!tempPath.contains("/../"))
+        #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "safe-value")
+        #expect(try posixMode(path: dir.path) == 0o700)
+        #expect(try posixMode(path: tempPath) == 0o600)
+    }
+
+    @Test("Secret materialization preserves leading-dot project names")
+    func secretMaterializationPreservesLeadingDotInProjectName() throws {
+        // Leading-dot names like `.staging` are legitimate Unix-style hidden
+        // directories. They should pass through the sanitizer unchanged
+        // (no `..` traversal pattern, no disallowed characters). Regression
+        // for the over-aggressive `trimmingCharacters(in: ".")` rule that
+        // CHAOS-1421 replaced.
+        let projectName = ".staging"
+        let dir = configsSecretsDir(projectName: projectName)
+        try? FileManager.default.removeItem(at: dir)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let envName = "DOT_PREFIX_SECRET_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
+        setenv(envName, "dot-value", 1)
+        defer { unsetenv(envName) }
+
+        let sourceName = "env_secret"
+        let ss = ServiceSecret(source: sourceName)
+        let topSecret = Secret(environment: envName)
+        let service = Service(image: "alpine:latest", secrets: [ss])
+        let dc = makeDockerCompose(secrets: [sourceName: topSecret])
+        let ctx = makeContext(service: service, dockerCompose: dc, projectName: projectName)
+
+        let args = ComposeUp.ConfigsSecretsArgs.build(ctx)
+
+        let mount = try #require(volumeMounts(from: args).first)
+        let tempPath = hostPath(from: mount)
+        // The leading-dot directory component must survive verbatim.
+        #expect(tempPath.contains("/.staging/"))
+        #expect(try String(contentsOfFile: tempPath, encoding: .utf8) == "dot-value")
     }
 
     @Test("Secret template_driver golang renders env function")

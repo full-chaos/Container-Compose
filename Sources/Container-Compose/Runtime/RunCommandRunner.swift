@@ -146,24 +146,50 @@ public enum RunnerEnvironment {
 
 // MARK: - ProductionRunner
 
-/// The concrete `RunCommandRunner` used in production. Wraps the existing
-/// `Process()`-based helpers byte-for-byte (per plan §5). PR-1 introduces
-/// this type but does NOT switch any call sites; that happens in PR-2..5.
+/// The concrete `RunCommandRunner` used in production.
 ///
-/// Behaviour parity invariants (per plan §5 / §10 Q5):
-/// - `executableURL = /usr/bin/env`, argv passed verbatim.
+/// Behaviour parity invariants:
+/// - `executableURL` resolved via `BinaryResolver` once per process for
+///   `container` and `container-compose` (CHAOS-1421 narrows the original
+///   plan §5 invariant; see `docs/reviews/path-execution-audit-2026-05-05.md`).
+///   Honors `CONTAINER_COMPOSE_CONTAINER_BIN` and `CONTAINER_COMPOSE_SELF_BIN`
+///   overrides; surfaces `RuntimeError.cliBinaryNotFound` /
+///   `RuntimeError.binaryOverrideInvalid` instead of the historic exit-127.
+/// - `arguments = Array(argv.dropFirst())` — argv[0] used to be the program
+///   name consumed by `/usr/bin/env`; the resolver consumes it now.
 /// - `currentDirectoryURL = cwd ?? FileManager.default.currentDirectoryPath`.
-/// - PATH merged identically: `/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`.
+/// - Child `PATH` is still injected with the same hardcoded value so the
+///   resolved binary's own subprocess lookups stay predictable.
 /// - `.streaming` with non-nil closures: data routed through closures.
 /// - `.streaming` with nil closures: stdout to `print(_:terminator:)`,
 ///   stderr to `fputs(_:stderr)` (preserves `ComposeRun.streamCommand` parity).
 /// - `.awaitOnly`: stdio inherited (no pipes wired).
 /// - `.probe`: stdio sent to `/dev/null`; exit==0 ⇒ `probeAvailable: true`.
+///   Probe swallows resolver errors and returns `probeAvailable: false`,
+///   since "feature unavailable" is the right semantic when the binary is
+///   missing — the streaming/await paths surface the real diagnostic.
 ///
 /// Non-zero exit codes are returned via `RunResult.exitCode`, never thrown.
 /// Caller-side error translation per plan §10 Q4.
 public struct ProductionRunner: RunCommandRunner {
     public init() {}
+
+    /// Cached absolute path to Apple's `container` CLI.
+    /// `static let` is lazy in Swift, so resolution happens at first use and
+    /// the result (URL or error) is materialized exactly once per process.
+    static let containerBin: Result<URL, RuntimeError> =
+        BinaryResolver.cachedResolve("container", envOverride: "CONTAINER_COMPOSE_CONTAINER_BIN")
+
+    /// Cached absolute path to this binary, used by `ComposeWatch` self-invocation.
+    static let selfBin: Result<URL, RuntimeError> =
+        BinaryResolver.cachedResolve("container-compose", envOverride: "CONTAINER_COMPOSE_SELF_BIN")
+
+    /// Pick the right cached binary for an argv whose first element is the
+    /// program name (`"container"` or `"container-compose"`).
+    fileprivate static func resolveBinary(forArgv argv: [String]) throws -> URL {
+        let cached: Result<URL, RuntimeError> = (argv.first == "container-compose") ? selfBin : containerBin
+        return try cached.get()
+    }
 
     public func run(
         _ request: RunRequest,
@@ -311,13 +337,14 @@ public struct ProductionRunner: RunCommandRunner {
         onStdout: (@Sendable (String) -> Void)?,
         onStderr: (@Sendable (String) -> Void)?
     ) async throws -> Int32 {
-        try await withCheckedThrowingContinuation { continuation in
+        let resolvedBin = try Self.resolveBinary(forArgv: argv)
+        return try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()
 
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = argv
+            process.executableURL = resolvedBin
+            process.arguments = Array(argv.dropFirst())
             process.currentDirectoryURL = URL(
                 fileURLWithPath: cwd ?? FileManager.default.currentDirectoryPath
             )
@@ -325,7 +352,7 @@ public struct ProductionRunner: RunCommandRunner {
             process.standardError = stderrPipe
 
             process.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                "PATH": BinaryResolver.resolutionPath
             ]) { _, new in new }
 
             let stdoutHandle = stdoutPipe.fileHandleForReading
@@ -398,15 +425,16 @@ public struct ProductionRunner: RunCommandRunner {
     /// translation (Sources/Container-Compose/Commands/ComposeCreate.swift:438-475).
     /// Caller translates exit codes per plan §10 Q4. stdio inherited (no pipes).
     private func spawnAwait(argv: [String], cwd: String?) async throws -> Int32 {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Int32, Error>) in
+        let resolvedBin = try Self.resolveBinary(forArgv: argv)
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Int32, Error>) in
             let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = argv
+            proc.executableURL = resolvedBin
+            proc.arguments = Array(argv.dropFirst())
             proc.currentDirectoryURL = URL(
                 fileURLWithPath: cwd ?? FileManager.default.currentDirectoryPath
             )
             proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                "PATH": BinaryResolver.resolutionPath
             ]) { _, new in new }
 
             proc.terminationHandler = { p in
@@ -425,17 +453,23 @@ public struct ProductionRunner: RunCommandRunner {
     /// (Sources/Container-Compose/Commands/ComposeCreate.swift:478-497).
     /// stdio nulled. Returns true iff exit==0.
     private func spawnProbe(argv: [String], cwd: String?) async -> Bool {
-        await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+        // Probe semantics: "is this feature available?" — swallow resolver
+        // errors (binary missing or override invalid) and return false.
+        // Streaming/await paths surface the real diagnostic when actually used.
+        guard let resolvedBin = try? Self.resolveBinary(forArgv: argv) else {
+            return false
+        }
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            proc.arguments = argv
+            proc.executableURL = resolvedBin
+            proc.arguments = Array(argv.dropFirst())
             if let cwd {
                 proc.currentDirectoryURL = URL(fileURLWithPath: cwd)
             }
             proc.standardOutput = FileHandle.nullDevice
             proc.standardError = FileHandle.nullDevice
             proc.environment = ProcessInfo.processInfo.environment.merging([
-                "PATH": "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                "PATH": BinaryResolver.resolutionPath
             ]) { _, new in new }
             proc.terminationHandler = { p in
                 continuation.resume(returning: p.terminationStatus == 0)
@@ -445,6 +479,63 @@ public struct ProductionRunner: RunCommandRunner {
             } catch {
                 continuation.resume(returning: false)
             }
+        }
+    }
+}
+
+// MARK: - BinaryResolver
+
+/// Resolves the absolute path to a binary by searching a fixed PATH list,
+/// optionally honoring an env-var override. Centralizes the PATH literal that
+/// previously lived inside three `Process()` spawners (CHAOS-1421;
+/// `docs/reviews/path-execution-audit-2026-05-05.md`).
+///
+/// Lookup precedence:
+/// 1. If `envOverride` is set in the process environment and non-empty:
+///    - If the path is executable → use it.
+///    - If the path is set but NOT executable → throw
+///      `RuntimeError.binaryOverrideInvalid`. Setting the override is a user
+///      contract; falling back silently to the PATH walk would hide a config
+///      error.
+/// 2. Otherwise walk `resolutionPath` and return the first executable found.
+/// 3. If neither path locates an executable, return nil.
+enum BinaryResolver {
+    /// Hardcoded resolution PATH. Mirrors the union of common macOS binary
+    /// locations across Apple Silicon (`/opt/homebrew/bin`) and Intel
+    /// (`/usr/local/bin`) installs, plus the system defaults.
+    static let resolutionPath = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+    /// Resolve `name` against the resolution PATH, optionally honoring an
+    /// env-var override. See type doc for precedence rules.
+    static func resolve(_ name: String, envOverride: String) throws -> URL? {
+        if let override = ProcessInfo.processInfo.environment[envOverride], !override.isEmpty {
+            guard FileManager.default.isExecutableFile(atPath: override) else {
+                throw RuntimeError.binaryOverrideInvalid(envVar: envOverride, path: override)
+            }
+            return URL(fileURLWithPath: override)
+        }
+        for dir in resolutionPath.split(separator: ":") {
+            let candidate = "\(dir)/\(name)"
+            if FileManager.default.isExecutableFile(atPath: candidate) {
+                return URL(fileURLWithPath: candidate)
+            }
+        }
+        return nil
+    }
+
+    /// Resolve and pre-materialize as a `Result` for `static let` caching.
+    /// Translates a nil PATH-walk result into `RuntimeError.cliBinaryNotFound`
+    /// so the cached value is always either a usable URL or a typed error.
+    static func cachedResolve(_ name: String, envOverride: String) -> Result<URL, RuntimeError> {
+        do {
+            if let url = try resolve(name, envOverride: envOverride) {
+                return .success(url)
+            }
+            return .failure(.cliBinaryNotFound(binary: name, searchPath: resolutionPath))
+        } catch let err as RuntimeError {
+            return .failure(err)
+        } catch {
+            return .failure(.backendFailure(message: error.localizedDescription))
         }
     }
 }

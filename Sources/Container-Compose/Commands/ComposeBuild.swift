@@ -200,46 +200,16 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--target", target])
         }
 
-        // Add cache-from references
-        if let cacheFrom = buildConfig.cache_from, !cacheFrom.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.cache_from",
-                "Note: 'build.cache_from' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
-
-        // Add cache-to references
-        if let cacheTo = buildConfig.cache_to, !cacheTo.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.cache_to",
-                "Note: 'build.cache_to' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
+        warnUnsupportedContainerBuildFields(buildConfig, serviceName: serviceName)
 
         // Add labels
         for (key, value) in buildConfig.labels ?? [:] {
             commands.append(contentsOf: ["--label", "\(key)=\(value)"])
         }
 
-        // Add network mode
-        if buildConfig.network != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.network",
-                "Note: 'build.network' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
-
         // Add secrets
         for secretId in buildConfig.secrets ?? [] {
             commands.append(contentsOf: ["--secret", "id=\(secretId)"])
-        }
-
-        // Add SSH agent/key mappings
-        if let ssh = buildConfig.ssh, !ssh.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.ssh",
-                "Note: 'build.ssh' is parsed but not supported by Apple container's build; ignored."
-            )
         }
 
         // Add platform — build.platforms overrides service.platform; only first is used.
@@ -257,22 +227,6 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
             let os = String(split?.first ?? "linux")
             let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
             commands.append(contentsOf: ["--os", os, "--arch", arch])
-        }
-
-        // Add shm-size
-        if buildConfig.shm_size != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.shm_size",
-                "Note: 'build.shm_size' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
-
-        // build.entitlements: Detected, But Not Supported.
-        // Application.BuildCommand does not expose an --allow flag; entitlements
-        // are ignored at build time. When the upstream container package adds
-        // support, plumb through as `--allow <entitlement>` per buildkit CLI.
-        if let entitlements = buildConfig.entitlements, !entitlements.isEmpty {
-            print("Warning: 'build.entitlements' [\(entitlements.joined(separator: ", "))] Detected, But Not Supported for service '\(serviceName)'. Entitlements will be ignored.")
         }
 
         let cpuCount = Int64(service.deploy?.resources?.limits?.cpus ?? "2") ?? 2

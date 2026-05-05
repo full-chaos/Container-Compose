@@ -123,6 +123,7 @@ public struct DockerCompose: Codable {
         try container.encodeIfPresent(version, forKey: .version)
         try container.encodeIfPresent(name, forKey: .name)
         try container.encode(services, forKey: .services)
+        try container.encodeIfPresent(models, forKey: .models)
         try container.encodeIfPresent(volumes, forKey: .volumes)
         try container.encodeIfPresent(networks, forKey: .networks)
         try container.encodeIfPresent(configs, forKey: .configs)
@@ -239,6 +240,7 @@ extension DockerCompose {
             version: decoded.version,
             name: decoded.name,
             services: decoded.services,
+            models: decoded.models,
             volumes: decoded.volumes,
             networks: decoded.networks,
             configs: decoded.configs,

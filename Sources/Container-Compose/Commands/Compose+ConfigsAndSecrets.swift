@@ -262,17 +262,47 @@ extension ComposeUp {
         private static func writeTempFile(content: Data, kind: String, sourceName: String, projectName: String) throws -> String {
             let digest = SHA256.hash(data: content)
             let hashPrefix = digest.map { String(format: "%02x", $0) }.joined().prefix(12)
-            let directoryPath = NSString(string: "~/.containers/Compose/\(projectName)/configs-secrets").expandingTildeInPath
-            let directoryURL = URL(fileURLWithPath: directoryPath, isDirectory: true)
-            try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            let safeProjectName = sanitizedHostPathComponent(projectName)
+            let safeSourceName = sanitizedHostPathComponent(sourceName)
+            let directoryURL = FileManager.default.homeDirectoryForCurrentUser
+                .appending(path: ".containers/Compose/\(safeProjectName)/configs-secrets", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(
+                at: directoryURL,
+                withIntermediateDirectories: true,
+                attributes: [.posixPermissions: 0o700]
+            )
+            // The `attributes:` argument above only applies to directories newly
+            // created in this call; pre-existing intermediate directories keep
+            // their prior mode. Re-apply 0o700 explicitly to close that gap. A
+            // small TOCTOU window remains between createDirectory and
+            // setAttributes — mitigated in practice by the project-scoped, hash-
+            // suffixed naming that makes opportunistic file creation by another
+            // local process implausible.
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryURL.path)
 
-            let fileName = "\(kind)-\(sourceName)-\(hashPrefix)"
+            let fileName = "\(kind)-\(safeSourceName)-\(hashPrefix)"
             let fileURL = directoryURL.appending(path: fileName)
             if !FileManager.default.fileExists(atPath: fileURL.path) {
                 try content.write(to: fileURL, options: .atomic)
             }
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
 
             return fileURL.path
+        }
+
+        private static func sanitizedHostPathComponent(_ value: String) -> String {
+            // Allow-list filter neutralizes path separators and shell metacharacters
+            // by mapping any disallowed scalar to '_'. The `..` → `__` replacement
+            // then collapses the only remaining traversal pattern. Leading dots
+            // alone are preserved so legitimate names like `.staging` survive.
+            let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
+            let sanitizedScalars = value.unicodeScalars.map { scalar in
+                allowed.contains(scalar) ? Character(scalar) : "_"
+            }
+            let sanitized = String(sanitizedScalars)
+                .replacingOccurrences(of: "..", with: "__")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return sanitized.isEmpty ? "unnamed" : sanitized
         }
     }
 }

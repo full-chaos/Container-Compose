@@ -54,6 +54,24 @@ public struct ComposeLs: AsyncParsableCommand {
         return project
     }
 
+    // MARK: - Table row formatting
+
+    /// Format a single row of the `compose ls` table.
+    ///
+    /// Pads `name` with trailing spaces to reach `nameWidth` and joins it with
+    /// `status` using a two-space separator. Does NOT truncate names that
+    /// exceed `nameWidth` — callers are expected to pass a width derived from
+    /// the longest name being displayed.
+    ///
+    /// Replaces the historic `String(format: "%-\(width)s  %s", ...)` form,
+    /// which crashed at runtime: NSString's printf bridge interprets a Swift
+    /// `String` passed to a `%s` slot as a `char *` pointer, then `strlen`
+    /// walks off into unmapped memory.
+    public static func formatTableRow(name: String, status: String, nameWidth: Int) -> String {
+        let padding = String(repeating: " ", count: max(0, nameWidth - name.count))
+        return "\(name)\(padding)  \(status)"
+    }
+
     // MARK: - run
 
     public mutating func run() async throws {
@@ -107,7 +125,7 @@ public struct ComposeLs: AsyncParsableCommand {
             "NAME".count
         )
 
-        print(String(format: "%-\(nameWidth)s  %s", "NAME", "STATUS"))
+        print(Self.formatTableRow(name: "NAME", status: "STATUS", nameWidth: nameWidth))
 
         for project in sortedProjects {
             let running = runningCount[project, default: 0]
@@ -123,7 +141,7 @@ public struct ComposeLs: AsyncParsableCommand {
                 statusString = "running(\(running)), exited(\(exited))"
             }
 
-            print(String(format: "%-\(nameWidth)s  %s", project, statusString))
+            print(Self.formatTableRow(name: project, status: statusString, nameWidth: nameWidth))
         }
     }
 }

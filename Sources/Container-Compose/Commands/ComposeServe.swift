@@ -463,18 +463,28 @@ public enum ServeDaemon {
             services.append(.init(service: cleanup))
         }
 
-        let group = ServiceGroup(
-            configuration: ServiceGroupConfiguration(
-                services: services,
-                gracefulShutdownSignals: [.sigterm, .sigint],
-                logger: logger
-            )
+        // CHAOS-1423: shutdown escalation contract.
+        // - SIGINT / SIGTERM trigger graceful shutdown (close listener, drain).
+        // - If graceful drain stalls (e.g., a wedged accept-loop child task),
+        //   maximumGracefulShutdownDuration escalates to Task cancellation.
+        // - SIGQUIT (Ctrl-\) is an explicit force-cancel — same mechanism, no wait.
+        // - If cancellation also stalls, maximumCancellationDuration triggers
+        //   fatalError so the process is guaranteed to exit. This caps total
+        //   shutdown latency at ~15s in the worst case.
+        var configuration = ServiceGroupConfiguration(
+            services: services,
+            gracefulShutdownSignals: [.sigterm, .sigint],
+            cancellationSignals: [.sigquit],
+            logger: logger
         )
+        configuration.maximumGracefulShutdownDuration = .seconds(10)
+        configuration.maximumCancellationDuration = .seconds(5)
+        let group = ServiceGroup(configuration: configuration)
 
         let prefix = logPrefix(launchdManaged: launchdManaged)
         print("\(prefix)container-compose daemon listening at \(listen.description)")
         if !launchdManaged {
-            print("(send SIGTERM or Ctrl-C for graceful shutdown)")
+            print("(Ctrl-C / SIGTERM = graceful shutdown; Ctrl-\\ / SIGQUIT = force cancel)")
         }
 
         try await group.run()

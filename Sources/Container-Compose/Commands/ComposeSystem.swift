@@ -16,7 +16,6 @@
 
 import ArgumentParser
 import Foundation
-import NIOSSL
 
 // MARK: - ComposeSystem
 
@@ -90,26 +89,30 @@ public struct ComposeSystemStatus: AsyncParsableCommand {
 
         switch listen {
         case .unix(let resolvedSocketPath):
-            var daemonRunning = false
-            let elapsed = ContinuousClock().measure {
-                daemonRunning = ServeDaemon.isAlreadyServing(at: resolvedSocketPath)
-            }
-
-            if daemonRunning {
-                print("Daemon:    running (connected in \(Self.milliseconds(for: elapsed))ms)")
+            // CHAOS-1421: HTTP probe over http+unix:// rather than the legacy
+            // connect-and-immediately-close pattern that triggered
+            // `NIOFcntlFailedError` noise in the daemon's accept loop.
+            let probeResult = await DaemonClient.probe(address: listen)
+            switch probeResult {
+            case .alive(let elapsedMs):
+                print("Daemon:    running (responded to /_ping in \(elapsedMs)ms)")
                 print("Socket:    \(resolvedSocketPath)")
                 print("Registry:  \(registryPath) \(registrySummary)")
                 print("Server:    \(Main.versionString)")
-                return
+            case .unexpectedResponse(let status):
+                print("Daemon:    unexpected response (HTTP \(status))")
+                print("Socket:    \(resolvedSocketPath)")
+                print("Registry:  \(registryPath) \(registrySummary)")
+                throw ExitCode(1)
+            case .error:
+                let socketSuffix = FileManager.default.fileExists(atPath: resolvedSocketPath) ? " (stale)" : " (no file)"
+                print("Daemon:    not running")
+                print("Socket:    \(resolvedSocketPath)\(socketSuffix)")
+                print("Registry:  \(registryPath) \(registrySummary)")
+                print()
+                print("To start the daemon: container-compose serve")
+                throw ExitCode(1)
             }
-
-            let socketSuffix = FileManager.default.fileExists(atPath: resolvedSocketPath) ? " (stale)" : " (no file)"
-            print("Daemon:    not running")
-            print("Socket:    \(resolvedSocketPath)\(socketSuffix)")
-            print("Registry:  \(registryPath) \(registrySummary)")
-            print()
-            print("To start the daemon: container-compose serve")
-            throw ExitCode(1)
 
         case .tcp, .tls:
             let probeResult = await DaemonClient.probe(address: listen, cacertPath: cacertPath)
@@ -129,12 +132,6 @@ public struct ComposeSystemStatus: AsyncParsableCommand {
                 throw ExitCode(1)
             }
         }
-    }
-
-    private static func milliseconds(for duration: Duration) -> Int {
-        let components = duration.components
-        let nanoseconds = components.seconds * 1_000_000_000 + components.attoseconds / 1_000_000_000
-        return max(1, Int((Double(nanoseconds) / 1_000_000.0).rounded()))
     }
 
     private static func registrySummary() async -> String {

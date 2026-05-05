@@ -692,39 +692,72 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             }
         }
 
-        // CHAOS-1303: Parity fields — decode-only; warn and skip at runtime.
+        // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
         if service.cgroup_parent != nil {
-            print("Note: 'cgroup_parent' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.cgroup_parent",
+                "Note: 'cgroup_parent' is parsed but not supported by Apple container; ignored."
+            )
         }
         if service.credential_spec != nil {
-            print("Note: 'credential_spec' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.credential_spec",
+                "Note: 'credential_spec' is parsed but not supported by Apple container; ignored."
+            )
         }
         if service.isolation != nil {
-            print("Note: 'isolation' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.isolation",
+                "Note: 'isolation' is parsed but not supported by Apple container; ignored."
+            )
         }
         if let labelFile = service.label_file, !labelFile.isEmpty {
-            print("Note: 'label_file' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.label_file",
+                "Note: 'label_file' is parsed but not supported by Apple container; ignored."
+            )
         }
         if let postStart = service.post_start, !postStart.isEmpty {
-            print("Note: 'post_start' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.post_start",
+                "Note: 'post_start' is parsed but not supported by Apple container; ignored."
+            )
         }
         if let preStop = service.pre_stop, !preStop.isEmpty {
-            print("Note: 'pre_stop' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.pre_stop",
+                "Note: 'pre_stop' is parsed but not supported by Apple container; ignored."
+            )
         }
         if service.pull_refresh_after != nil {
-            print("Note: 'pull_refresh_after' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.pull_refresh_after",
+                "Note: 'pull_refresh_after' is parsed but not supported by Apple container; ignored."
+            )
         }
         if service.use_api_socket != nil {
-            print("Note: 'use_api_socket' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.use_api_socket",
+                "Note: 'use_api_socket' is parsed but not supported by Apple container; ignored."
+            )
         }
         if let annotations = service.annotations, !annotations.isEmpty {
-            print("Note: 'annotations' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.annotations",
+                "Note: 'annotations' is parsed but not supported by Apple container; ignored."
+            )
         }
         if service.attach != nil {
-            print("Note: 'attach' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.attach",
+                "Note: 'attach' is parsed but not supported by Apple container; ignored."
+            )
         }
         if service.cgroup != nil {
-            print("Note: 'cgroup' for service '\(serviceName)' is not supported by Apple container; ignored.")
+            warnUnsupportedRuntimeFieldOnce(
+                "service.cgroup",
+                "Note: 'cgroup' is parsed but not supported by Apple container; ignored."
+            )
         }
         if let models = service.models, !models.isEmpty, !didWarnServiceModelsUnsupported {
             print("'service.models' Detected, But Not Supported")
@@ -952,43 +985,16 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             commands.append(contentsOf: ["--target", target])
         }
 
-        // apple/container build does not accept --cache-from (verified Tier 0 R2 audit).
-        if let cacheFrom = buildConfig.cache_from, !cacheFrom.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.cache_from",
-                "Note: 'build.cache_from' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
-
-        // apple/container build does not accept --cache-to (verified Tier 0 R2 audit).
-        if let cacheTo = buildConfig.cache_to, !cacheTo.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.cache_to",
-                "Note: 'build.cache_to' is parsed but not supported by Apple container's build; ignored."
-            )
-        }
+        warnUnsupportedContainerBuildFields(buildConfig, serviceName: serviceName)
 
         // Add labels
         for (key, value) in buildConfig.labels ?? [:] {
             commands.append(contentsOf: ["--label", "\(key)=\(value)"])
         }
 
-        // Add network mode
-        if let network = buildConfig.network {
-            commands.append(contentsOf: ["--network", network])
-        }
-
         // Add secrets
         for secretId in buildConfig.secrets ?? [] {
             commands.append(contentsOf: ["--secret", "id=\(secretId)"])
-        }
-
-        // apple/container build does not accept --ssh (verified Tier 0 R2 audit).
-        if let ssh = buildConfig.ssh, !ssh.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "build.ssh",
-                "Note: 'build.ssh' is parsed but not supported by Apple container's build; ignored."
-            )
         }
 
         // Add platform — build.platforms overrides service.platform; only first is used.
@@ -1008,11 +1014,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
             let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
             commands.append(contentsOf: ["--os", os])
             commands.append(contentsOf: ["--arch", arch])
-        }
-
-        // Add shm-size
-        if let shmSize = buildConfig.shm_size {
-            commands.append(contentsOf: ["--shm-size", shmSize])
         }
 
         // Add image name

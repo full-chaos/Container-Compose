@@ -21,6 +21,49 @@ import Foundation
 @Suite("ComposeLs Tests")
 struct ComposeLsTests {
 
+    // MARK: - Table row formatting (regression coverage for SIGSEGV in run())
+
+    /// Pre-fix, `ComposeLs.run()` called `String(format: "%-\(width)s  %s", ...)`
+    /// with Swift `String` values. NSString's printf bridge interpreted the
+    /// String pointer as `char *` and `strlen` walked off into unmapped memory,
+    /// crashing whenever there was at least one project to list. The new
+    /// `formatTableRow` helper avoids `String(format:)` entirely.
+    @Test("formatTableRow pads name to nameWidth with trailing spaces")
+    func formatTableRowPadsName() {
+        let row = ComposeLs.formatTableRow(name: "web", status: "running(2)", nameWidth: 10)
+        #expect(row == "web         running(2)")
+        // 3 chars + 7 spaces of padding = 10, then "  " separator, then status.
+    }
+
+    @Test("formatTableRow does not truncate names longer than nameWidth")
+    func formatTableRowDoesNotTruncate() {
+        let row = ComposeLs.formatTableRow(name: "very-long-project-name", status: "ok", nameWidth: 4)
+        #expect(row == "very-long-project-name  ok")
+    }
+
+    @Test("formatTableRow handles unicode names without crashing or miscounting")
+    func formatTableRowUnicodeName() {
+        // The original `%s` format would have crashed on this. UTF-8 byte count
+        // is larger than `count` (Character count), but we use `count` for
+        // padding so visual width is approximate but never crashes.
+        let row = ComposeLs.formatTableRow(name: "café", status: "running(1)", nameWidth: 8)
+        #expect(row.hasPrefix("café"))
+        #expect(row.contains("  running(1)"))
+    }
+
+    @Test("formatTableRow with name equal to nameWidth has no padding")
+    func formatTableRowExactWidth() {
+        let row = ComposeLs.formatTableRow(name: "abcd", status: "x", nameWidth: 4)
+        #expect(row == "abcd  x")
+    }
+
+    @Test("formatTableRow tolerates negative effective padding")
+    func formatTableRowNegativePadding() {
+        // nameWidth < name.count → max(0, ...) prevents a String(repeating:) crash.
+        let row = ComposeLs.formatTableRow(name: "abcdef", status: "x", nameWidth: 0)
+        #expect(row == "abcdef  x")
+    }
+
     // MARK: - Command parsing
 
     @Test("ComposeLs parses with no arguments")

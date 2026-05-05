@@ -85,114 +85,13 @@ extension ComposeUp {
                 args.append(contentsOf: ["--memory", mem])
             }
 
-            // --memory-swappiness
-            if svc.mem_swappiness != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.mem_swappiness",
-                    "Note: 'mem_swappiness' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --memory-swap
-            if svc.memswap_limit != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.memswap_limit",
-                    "Note: 'memswap_limit' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --pids-limit
-            if svc.pids_limit != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.pids_limit",
-                    "Note: 'pids_limit' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --shm-size
-            if let shm = svc.shm_size {
-                args.append(contentsOf: ["--shm-size", shm])
-            }
-
-            // --oom-kill-disable (flag only, emitted when true)
-            if svc.oom_kill_disable == true {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.oom_kill_disable",
-                    "Note: 'oom_kill_disable' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --oom-score-adj
-            if svc.oom_score_adj != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.oom_score_adj",
-                    "Note: 'oom_score_adj' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-shares
-            if svc.cpu_shares != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_shares",
-                    "Note: 'cpu_shares' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpuset-cpus
-            if svc.cpuset != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpuset",
-                    "Note: 'cpuset' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-period
-            if svc.cpu_period != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_period",
-                    "Note: 'cpu_period' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-quota
-            if svc.cpu_quota != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_quota",
-                    "Note: 'cpu_quota' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-rt-period
-            if svc.cpu_rt_period != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_rt_period",
-                    "Note: 'cpu_rt_period' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-rt-runtime
-            if svc.cpu_rt_runtime != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_rt_runtime",
-                    "Note: 'cpu_rt_runtime' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-count
-            if svc.cpu_count != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_count",
-                    "Note: 'cpu_count' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // --cpu-percent
-            if svc.cpu_percent != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.cpu_percent",
-                    "Note: 'cpu_percent' is parsed but not supported by Apple container; ignored."
-                )
-            }
+            // Trivially-unsupported runtime fields (mem/cpu/oom/pids/shm/gpus/blkio):
+            // each is a presence-only check that emits the same warn-once shape.
+            // Centralized in `warnUnsupportedContainerRuntimeFields` so this
+            // builder stays focused on argv emission. Bespoke comparisons
+            // (cpu/memory reservation-vs-limit handling above) intentionally
+            // remain inline because they pick a message based on values.
+            warnUnsupportedContainerRuntimeFields(svc)
 
             // --ulimit NAME=SOFT:HARD (or NAME=VALUE when soft == hard)
             if let ulimits = svc.ulimits {
@@ -203,22 +102,6 @@ extension ComposeUp {
                         args.append(contentsOf: ["--ulimit", "\(name)=\(ulimit.soft):\(ulimit.hard)"])
                     }
                 }
-            }
-
-            // --gpus
-            if svc.gpus != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.gpus",
-                    "Note: 'gpus' is parsed but not supported by Apple container; ignored."
-                )
-            }
-
-            // blkio_config
-            if svc.blkio_config != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.blkio_config",
-                    "Note: 'blkio_config' is parsed but not supported by Apple container; ignored."
-                )
             }
 
             return args
