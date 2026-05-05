@@ -1,0 +1,8 @@
+{
+  "branch": "enhacement/final-features",
+  "commit": "fa46f6a2798efafdac266d3de169a0a2ae9535f4",
+  "short": "fa46f6a",
+  "target": "fa46f6a",
+  "message": "Fix SIGSEGV in `compose ls` when projects exist (CHAOS-1422)",
+  "published_at": "2026-05-05T13:44:20.821177+00:00"
+}
