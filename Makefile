@@ -6,7 +6,7 @@ swift_product = container-compose
 release_bin  = .build/release/$(swift_product)
 
 # Default target: a release build.
-.PHONY: all build release debug test build-tests coverage clean install uninstall help
+.PHONY: all build release debug test test-json build-tests coverage clean install uninstall help
 
 all: build
 
@@ -32,6 +32,22 @@ build-tests:
 test:
 	swift test
 
+# Run the static suite under swift-testing's event stream and emit a structured
+# report. Useful for agent-driven test reading or CI parsing. Defaults to
+# fast-feedback path: skipping the dynamic Apple-container target (use
+# `make test` for the full run including dynamics).
+#
+# NOTE: --parallel intentionally NOT used. The static suite contains tests
+# (ResourceArgsTests, LifecycleArgsTests, GpusBlkioTests) that `dup2` global
+# STDOUT_FILENO to a Pipe to capture printed warnings; under --parallel they
+# race on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
+#
+# Exit code mirrors the report: 0 = all passed, 1 = any failed, 2 = no events.
+test-json:
+	rm -f .build/test-events.jsonl
+	-swift test --skip Container-Compose-DynamicTests --experimental-event-stream-output .build/test-events.jsonl
+	swift run test-report .build/test-events.jsonl --format json
+
 # Regenerate coverage.json from the inline JSON in coverage.html.
 coverage:
 	bash scripts/regen-coverage.sh
@@ -52,6 +68,7 @@ help:
 	@echo "  debug             Debug build of $(binary_name)"
 	@echo "  build-tests       Compile tests without running (CI-equivalent)"
 	@echo "  test              Run all tests (dynamic ones self-skip without Apple container)"
+	@echo "  test-json         Run static tests + emit structured JSON report (skips dynamic; for agents/CI)"
 	@echo "  coverage          Regenerate coverage.json from coverage.html"
 	@echo "  clean             Remove .build/"
 	@echo "  install           Build + install to \$$(bindir) (default $(bindir))"

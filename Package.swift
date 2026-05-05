@@ -117,5 +117,32 @@ let package = Package(
                 "TestHelpers"
             ]
         ),
+
+        // CHAOS-XXXX: structured test output for agent consumption.
+        // Library — Codable types, reader, aggregator, formatters.
+        .target(
+            name: "TestReport",
+            path: "Sources/TestReport"
+        ),
+
+        // CLI wrapper around TestReport. Consumed via `make test-json` and
+        // `swift run test-report ...`.
+        .executableTarget(
+            name: "test-report",
+            dependencies: [
+                "TestReport",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            path: "Sources/TestReportCLI"
+        ),
+
+        .testTarget(
+            name: "TestReportTests",
+            dependencies: ["TestReport"],
+            path: "Tests/TestReportTests",
+            resources: [
+                .copy("Fixtures"),
+            ]
+        ),
     ]
 )
