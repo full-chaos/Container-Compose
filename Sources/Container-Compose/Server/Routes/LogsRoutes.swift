@@ -96,16 +96,30 @@ public enum LogsRoutes {
         return Int(raw)
     }
 
+    // ISO8601DateFormatter is expensive to construct; Apple documents that it
+    // is thread-safe for parsing once configured, so we share one instance per
+    // format across requests. Annotated nonisolated(unsafe) because the type is
+    // not Sendable: this is sound here (immutable `let`, no mutation post-init,
+    // vendor-guaranteed parse safety) — distinct from the prior
+    // `nonisolated(unsafe) static var emittedKeys` race in
+    // Compose+UnsupportedWarnings.swift, which mutated a Set under contention.
+    nonisolated(unsafe) private static let fractionalISOFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    nonisolated(unsafe) private static let internetISOFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
     private static func parseDate(_ raw: Substring?) -> Date? {
         guard let raw, !raw.isEmpty else { return nil }
         let value = String(raw)
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = fractional.date(from: value) { return date }
-
-        let internet = ISO8601DateFormatter()
-        internet.formatOptions = [.withInternetDateTime]
-        return internet.date(from: value)
+        if let date = fractionalISOFormatter.date(from: value) { return date }
+        return internetISOFormatter.date(from: value)
     }
 }
 
