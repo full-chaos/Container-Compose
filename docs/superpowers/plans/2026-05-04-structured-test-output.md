@@ -1621,12 +1621,20 @@ to:
 
 After the existing `test:` target block, add:
 ```make
-# Run the suite under swift-testing's event stream and emit a structured
-# report. Useful for agent-driven test reading or CI parsing.
+# Run the static suite under swift-testing's event stream and emit a structured
+# report. Useful for agent-driven test reading or CI parsing. Defaults to
+# fast-feedback path: skipping the dynamic Apple-container target (use
+# `make test` for the full run including dynamics).
+#
+# NOTE: --parallel intentionally NOT used. The static suite contains tests
+# (ResourceArgsTests, LifecycleArgsTests, GpusBlkioTests) that `dup2` global
+# STDOUT_FILENO to a Pipe to capture printed warnings; under --parallel they
+# race on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
+#
 # Exit code mirrors the report: 0 = all passed, 1 = any failed, 2 = no events.
 test-json:
 	rm -f .build/test-events.jsonl
-	-swift test --experimental-event-stream-output .build/test-events.jsonl
+	-swift test --skip Container-Compose-DynamicTests --experimental-event-stream-output .build/test-events.jsonl
 	swift run test-report .build/test-events.jsonl --format json
 ```
 
@@ -1681,10 +1689,10 @@ poison the next report."
 
 ## Task 14: Final verification + push
 
-- [ ] **Step 1: Full test run on the worktree**
+- [ ] **Step 1: Fast-feedback test run on the worktree**
 
-Run: `swift test`
-Expected: clean run, 0 unexpected failures. Dynamic tests self-skip if Apple `container` runtime isn't installed — this is fine.
+Run: `swift test --skip Container-Compose-DynamicTests`
+Expected: clean run, 0 unexpected failures. The dynamic test target is skipped by name — that's intentional for this verification; full-suite coverage lives in CI. (`--parallel` would be nice for speed, but is incompatible with the codebase's stdout-capture tests — see the test-json Makefile note.)
 
 - [ ] **Step 2: End-to-end agent-style consumption check**
 
