@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1424-pr3-lifecycle",
+  "commit": "a629de672983a73e80235c25f2864dc7ff516875",
+  "short": "a629de6",
+  "target": "a629de6",
+  "message": "test: split CHAOS-1424 PR3 lifecycle tests into separate file",
+  "published_at": "2026-05-05T21:16:25.535674+00:00"
+}
