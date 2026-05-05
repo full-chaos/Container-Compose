@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "69afc98d86678a42537426f395e159b29d6fa609",
-  "short": "69afc98",
+  "commit": "8248fcea14fe5022f4d791f68df29885a6d2a771",
+  "short": "8248fce",
   "target": "current",
-  "message": "chore(ci): bump GitHub Actions to Node 24-targeting versions (CHAOS-1412) (#114)",
-  "published_at": "2026-05-05T19:55:16.182351+00:00"
+  "message": "feat(runtime): CHAOS-1424 PR1 \u2014 Phase 2 lifecycle scaffolding + verified SDK signatures (#115)",
+  "published_at": "2026-05-05T20:19:48.376158+00:00"
 }
