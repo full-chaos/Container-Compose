@@ -542,6 +542,52 @@ public struct APIServiceSummary: Codable, Sendable, Hashable {
     }
 }
 
+// MARK: - POST /projects/{name}  (Compose YAML ingestion — CHAOS-1426)
+
+/// Response body for `POST /projects/{name}` (compose YAML ingest).
+///
+/// Wire shape mirrors the rest of the project family — `name`, a count of
+/// declared services, the ingestion timestamp, and an `outcome` field that
+/// distinguishes a fresh ingestion (201 Created) from an idempotent re-upload
+/// of byte-identical YAML (200 OK).
+public struct APIProjectIngestResponse: Codable, Sendable, Hashable {
+    public let name: String
+    public let serviceCount: Int
+    public let services: [String]
+    public let ingestedAt: Date
+    /// `"created"` for new ingestion (201 status); `"unchanged"` for idempotent
+    /// re-upload of identical content (200 status).
+    public let outcome: String
+
+    public init(name: String, serviceCount: Int, services: [String], ingestedAt: Date, outcome: String) {
+        self.name = name
+        self.serviceCount = serviceCount
+        self.services = services
+        self.ingestedAt = ingestedAt
+        self.outcome = outcome
+    }
+}
+
+/// Detailed response body for `GET /projects/{name}` when the project has
+/// been ingested via `POST /projects/{name}`. Includes the parsed service list
+/// so clients can reflect the daemon-side compose state without re-parsing
+/// their local YAML.
+public struct APIProjectDetail: Codable, Sendable, Hashable {
+    public let name: String
+    public let source: String
+    public let serviceCount: Int
+    public let services: [String]
+    public let ingestedAt: Date?
+
+    public init(name: String, source: String, serviceCount: Int, services: [String], ingestedAt: Date?) {
+        self.name = name
+        self.source = source
+        self.serviceCount = serviceCount
+        self.services = services
+        self.ingestedAt = ingestedAt
+    }
+}
+
 // MARK: - Error envelope (CHAOS-1357)
 
 /// Unified error envelope for all 4xx/5xx responses.

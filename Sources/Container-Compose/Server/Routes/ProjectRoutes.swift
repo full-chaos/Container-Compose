@@ -35,6 +35,45 @@ public enum ProjectRoutes {
             return summarizeProjects(containers)
         }
 
+        // GET /projects/{name} — CHAOS-1426. Returns the ingested compose
+        // representation when present; otherwise synthesizes from container ids.
+        // 404 only when neither the registry nor the synthesized view knows
+        // the project.
+        router.get("/projects/:name") { request, context -> Response in
+            let name = try context.parameters.require("name")
+
+            if let entry = await RuntimeEnvironment.projectRegistry.get(name: name) {
+                let detail = APIProjectDetail(
+                    name: entry.name,
+                    source: "ingested",
+                    serviceCount: entry.services.count,
+                    services: entry.services,
+                    ingestedAt: entry.ingestedAt
+                )
+                return try EditedResponse(response: detail).response(from: request, context: context)
+            }
+
+            let runtime = RuntimeEnvironment.current
+            let containers = try await runtime.list(
+                filters: RuntimeListFilters(status: nil, namePrefix: "\(name)-")
+            )
+            guard !containers.isEmpty else {
+                return try EditedResponse(
+                    status: .notFound,
+                    response: APIErrorEnvelope.legacy(.notFound, message: "No such project: \(name)", requestId: context.id.description)
+                ).response(from: request, context: context)
+            }
+            let services = Set(containers.map { extractServiceName(from: $0.id, project: name) }).sorted()
+            let detail = APIProjectDetail(
+                name: name,
+                source: "synthesized",
+                serviceCount: services.count,
+                services: services,
+                ingestedAt: nil
+            )
+            return try EditedResponse(response: detail).response(from: request, context: context)
+        }
+
         router.get("/projects/:name/services") { request, context -> Response in
             let name = try context.parameters.require("name")
             let runtime = RuntimeEnvironment.current
