@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1428-openapi-sdks",
+  "commit": "5da879fcc3047184f53595ca297d131db6475637",
+  "short": "5da879f",
+  "target": "5da879f",
+  "message": "Generate OpenAPI SDKs in CI",
+  "published_at": "2026-05-05T23:18:32.688316+00:00"
+}
