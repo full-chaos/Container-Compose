@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1429/bridge-build-wiring",
+  "commit": "0a49be4b5a0b7849fca6377537317ba5d68d611d",
+  "short": "0a49be4",
+  "target": "0a49be4",
+  "message": "fix(runtime): CHAOS-1429 review \u2014 bridge build emits all compose build directives (Codex finding 2)",
+  "published_at": "2026-05-06T12:00:48.764897+00:00"
+}
