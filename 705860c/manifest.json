@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1429/bridge-build-wiring",
+  "commit": "705860c6d63f62fb1b3290500fe536c4daaa7fa1",
+  "short": "705860c",
+  "target": "705860c",
+  "message": "feat(runtime): CHAOS-1429 \u2014 wire bridge build() through to BuildCommand",
+  "published_at": "2026-05-06T11:29:17.119804+00:00"
+}
