@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "099c204278018ef47881b98d232f61f2eeb3a5a8",
-  "short": "099c204",
+  "commit": "a9622a39f141142d10fffb7a68ed64eb449b3285",
+  "short": "a9622a3",
   "target": "current",
-  "message": "Update for linear (#127)",
-  "published_at": "2026-05-06T18:04:40.383122+00:00"
+  "message": "refactor(compose): CHAOS-1436 Phase A \u2014 extract volume migration (#128)",
+  "published_at": "2026-05-06T19:17:33.520619+00:00"
 }
