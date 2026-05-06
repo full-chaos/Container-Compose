@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1429/bridge-build-wiring",
+  "commit": "02ad0c9e2d8e28e8fd5f1e6908183bd7c0261b4a",
+  "short": "02ad0c9",
+  "target": "02ad0c9",
+  "message": "fix(testing): CHAOS-1433 \u2014 RecordingRunner.stubThrow matches production .swiftAPI throw semantics (#124)",
+  "published_at": "2026-05-06T12:07:07.658241+00:00"
+}
