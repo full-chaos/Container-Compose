@@ -31,7 +31,7 @@ import Yams
 /// without starting them. Mirrors `compose up` but replaces `container run` with
 /// `container create`. If Apple `container` does not support the `create` sub-command
 /// a warning is printed and no containers are created.
-public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -66,43 +66,11 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
     @OptionGroup
     var logging: Flags.Logging
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
         return resolvedPath(for: envFile, relativeTo: cwdURL)
-    }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
     }
 
     private var fileManager: FileManager { FileManager.default }
@@ -110,9 +78,7 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
     private var environmentVariables: [String: String] = [:]
 
     public mutating func run() async throws {
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
         // Validate the compose file for semantic correctness before any side
         // effects (network/volume creation, container provisioning) are attempted.
@@ -124,36 +90,13 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             print("Info: Docker Compose file version: \(version)")
         }
 
-        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
-        let resolvedName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
-        )
+        let resolvedName = resolveProjectName(for: dockerCompose)
         projectName = resolvedName
-        if let cliName = projectFlags.projectName, !cliName.isEmpty {
-            print("Info: Using project name from --project-name flag: \(cliName)")
-        } else if dockerCompose.name != nil {
-            print("Info: Docker Compose project name: \(resolvedName)")
-        } else {
-            print("Info: Using directory name as project name: \(resolvedName)")
-        }
-
-        var resolvedServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
-            guard let service else { return nil }
-            return (name, service)
-        }
-
-        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        resolvedServices = Service.filterByProfiles(resolvedServices, activeProfiles: activeProfiles)
-
-        resolvedServices = try Service.topoSortConfiguredServices(resolvedServices)
-
-        if !self.services.isEmpty {
-            resolvedServices = resolvedServices.filter { serviceName, service in
-                self.services.contains(serviceName) || self.services.contains(where: { service.dependedBy.contains($0) })
-            }
-        }
+        let resolvedServices = try filterServices(
+            dockerCompose,
+            profilesArg: profile,
+            servicesArg: services
+        )
 
         if RuntimeExecutionMode.isRemote {
             try await remoteCreate(resolvedServices)
