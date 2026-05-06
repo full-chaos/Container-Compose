@@ -203,85 +203,6 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
         }
     }
 
-    private func buildService(_ buildConfig: Build, for service: Service, serviceName: String) async throws -> String {
-        var inlineTempURL: URL? = nil
-        defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
-
-        let imageToRun = ComposeUp.qualifyImageReference(service.image ?? "\(serviceName):latest")
-        let imageList = try await ContainerClientEnvironment.current.imageList()
-        if !rebuild, imageList.contains(where: { $0.description.reference == imageToRun || $0.description.reference.components(separatedBy: "/").last == imageToRun }) {
-            return imageToRun
-        }
-
-        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
-
-        for (key, value) in buildConfig.args ?? [:] {
-            commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
-        }
-
-        if let inlineContent = buildConfig.dockerfile_inline {
-            if buildConfig.dockerfile != nil {
-                print("Warning: Both 'dockerfile' and 'dockerfile_inline' are set for service '\(serviceName)'. 'dockerfile_inline' takes priority.")
-            }
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".Dockerfile")
-            try inlineContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            inlineTempURL = tempURL
-            commands.append(contentsOf: ["--file", tempURL.path])
-        } else {
-            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path])
-        }
-
-        if noCache {
-            commands.append("--no-cache")
-        }
-
-        if let target = buildConfig.target {
-            commands.append(contentsOf: ["--target", target])
-        }
-
-        warnUnsupportedContainerBuildFields(buildConfig, serviceName: serviceName)
-        for (key, value) in buildConfig.labels ?? [:] {
-            commands.append(contentsOf: ["--label", "\(key)=\(value)"])
-        }
-        for secretId in buildConfig.secrets ?? [] {
-            commands.append(contentsOf: ["--secret", "id=\(secretId)"])
-        }
-
-        if let buildPlatforms = buildConfig.platforms, !buildPlatforms.isEmpty {
-            if buildPlatforms.count > 1 {
-                print("Warning: Service '\(serviceName)' declares \(buildPlatforms.count) build platforms. Only the first will be used.")
-            }
-            let split = buildPlatforms[0].split(separator: "/")
-            let os = String(split.first ?? "linux")
-            let arch = String(split.count >= 2 ? split.last! : "arm64")
-            commands.append(contentsOf: ["--os", os, "--arch", arch])
-        } else {
-            let split = service.platform?.split(separator: "/")
-            let os = String(split?.first ?? "linux")
-            let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
-            commands.append(contentsOf: ["--os", os, "--arch", arch])
-        }
-
-        commands.append(contentsOf: ["--tag", imageToRun])
-
-        let cpuCount = Int64(service.deploy?.resources?.limits?.cpus ?? "2") ?? 2
-        let memoryLimit = service.deploy?.resources?.limits?.memory ?? "2048MB"
-        commands.append(contentsOf: ["--cpus", "\(cpuCount)", "--memory", memoryLimit])
-
-        let buildArgv = commands + logging.passThroughCommands()
-        print("\n----------------------------------------")
-        print("Building image for service: \(serviceName) (Tag: \(imageToRun))")
-        _ = try await RunnerEnvironment.current.run(
-            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: buildArgv, cwd: nil),
-            onStdout: nil,
-            onStderr: nil
-        )
-        print("Image build for \(serviceName) completed.")
-        print("----------------------------------------")
-
-        return imageToRun
-    }
-
     // MARK: - Network / Volume helpers (mirrors ComposeUp)
 
     private func createVolumeHardLink(name volumeName: String, config volumeConfig: Volume) async {
@@ -332,7 +253,15 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
         var imageToRun: String
 
         if let buildConfig = service.build {
-            imageToRun = try await buildService(buildConfig, for: service, serviceName: serviceName)
+            imageToRun = try await buildService(
+                buildConfig,
+                for: service,
+                serviceName: serviceName,
+                environmentVariables: environmentVariables,
+                rebuild: rebuild,
+                noCache: noCache,
+                passThroughCommands: logging.passThroughCommands()
+            )
         } else if let img = service.image {
             let qualifiedImage = ComposeUp.qualifyImageReference(img)
             let effectivePolicy = pull ? "always" : service.pull_policy

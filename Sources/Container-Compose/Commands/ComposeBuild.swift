@@ -119,7 +119,15 @@ public struct ComposeBuild: AsyncParsableCommand, ComposeCommand, @unchecked Sen
 
         print("Building services")
         for (serviceName, service) in servicesToBuild {
-            try await buildService(service.build!, for: service, serviceName: serviceName, projectName: projectName, environmentVariables: environmentVariables)
+            _ = try await buildService(
+                service.build!,
+                for: service,
+                serviceName: serviceName,
+                environmentVariables: environmentVariables,
+                rebuild: true,
+                noCache: noCache,
+                passThroughCommands: logging.passThroughCommands()
+            )
         }
         print("Build complete")
     }
@@ -155,93 +163,4 @@ public struct ComposeBuild: AsyncParsableCommand, ComposeCommand, @unchecked Sen
         }
     }
 
-    private func buildService(
-        _ buildConfig: Build,
-        for service: Service,
-        serviceName: String,
-        projectName: String,
-        environmentVariables: [String: String]
-    ) async throws {
-        // Temp file for dockerfile_inline (cleaned up via defer).
-        var inlineTempURL: URL? = nil
-        defer { inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
-
-        let imageTag = ComposeUp.qualifyImageReference(service.image ?? "\(serviceName):latest")
-
-        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
-
-        for (key, value) in buildConfig.args ?? [:] {
-            commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
-        }
-
-        // Add Dockerfile path — dockerfile_inline wins over dockerfile when both are set.
-        if let inlineContent = buildConfig.dockerfile_inline {
-            if buildConfig.dockerfile != nil {
-                print("Warning: Both 'dockerfile' and 'dockerfile_inline' are set for service '\(serviceName)'. 'dockerfile_inline' takes priority.")
-            }
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".Dockerfile")
-            try inlineContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            inlineTempURL = tempURL
-            commands.append(contentsOf: ["--file", tempURL.path])
-        } else {
-            commands.append(contentsOf: [
-                "--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path,
-            ])
-        }
-
-        commands.append(contentsOf: ["--tag", imageTag])
-
-        if noCache {
-            commands.append("--no-cache")
-        }
-
-        // Add build target stage
-        if let target = buildConfig.target {
-            commands.append(contentsOf: ["--target", target])
-        }
-
-        warnUnsupportedContainerBuildFields(buildConfig, serviceName: serviceName)
-
-        // Add labels
-        for (key, value) in buildConfig.labels ?? [:] {
-            commands.append(contentsOf: ["--label", "\(key)=\(value)"])
-        }
-
-        // Add secrets
-        for secretId in buildConfig.secrets ?? [] {
-            commands.append(contentsOf: ["--secret", "id=\(secretId)"])
-        }
-
-        // Add platform — build.platforms overrides service.platform; only first is used.
-        if let buildPlatforms = buildConfig.platforms, !buildPlatforms.isEmpty {
-            if buildPlatforms.count > 1 {
-                print("Warning: Service '\(serviceName)' declares \(buildPlatforms.count) build platforms. Only the first ('\(buildPlatforms[0])') will be used.")
-            }
-            let firstPlatform = buildPlatforms[0]
-            let split = firstPlatform.split(separator: "/")
-            let os = String(split.first ?? "linux")
-            let arch = String(split.count >= 2 ? split.last! : "arm64")
-            commands.append(contentsOf: ["--os", os, "--arch", arch])
-        } else {
-            let split = service.platform?.split(separator: "/")
-            let os = String(split?.first ?? "linux")
-            let arch = String(((split ?? []).count >= 1 ? split?.last : nil) ?? "arm64")
-            commands.append(contentsOf: ["--os", os, "--arch", arch])
-        }
-
-        let cpuCount = Int64(service.deploy?.resources?.limits?.cpus ?? "2") ?? 2
-        let memoryLimit = service.deploy?.resources?.limits?.memory ?? "2048MB"
-        commands.append(contentsOf: ["--cpus", "\(cpuCount)", "--memory", memoryLimit])
-
-        print("\n----------------------------------------")
-        print("Building \(serviceName) -> \(imageTag)")
-        let buildArgv = commands + logging.passThroughCommands()
-        _ = try await RunnerEnvironment.current.run(
-            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: buildArgv, cwd: nil),
-            onStdout: nil,
-            onStderr: nil
-        )
-        print("Built \(serviceName) successfully.")
-        print("----------------------------------------")
-    }
 }
