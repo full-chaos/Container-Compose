@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1430/docker-compose-from-yaml",
+  "commit": "546a673e6ce44b619a041c935b9d2da7707316dd",
+  "short": "546a673",
+  "target": "546a673",
+  "message": "chore(compose): CHAOS-1430 \u2014 add DockerCompose.from(yaml:) entry point",
+  "published_at": "2026-05-06T11:09:14.075909+00:00"
+}
