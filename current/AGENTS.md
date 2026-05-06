@@ -27,6 +27,80 @@ The project is **not** a Docker / Docker Compose wrapper. It directly
 interprets the Compose schema and translates a (large) subset to
 `container run` / `container build` / `container network create` invocations.
 
+### Linear Issues and Project Commands
+
+```bash
+# output json for issues to parse faster, pipe to JQ.
+linear issues list --project 'Container Compose' --output json
+```
+
+### Good to know
+
+```bash
+# Get all urgent issues and extract just identifiers
+linear issues list --priority 1 --output json | jq -r '.[].identifier'
+
+# Find all issues in a project
+linear issues list --team ENG --output json | \
+  jq '.[] | select(.projectName == "Q1 Release")'
+
+# Count issues by state
+linear issues list --team ENG --output json | \
+  jq 'group_by(.state) | map({state: .[0].state, count: length})'
+
+# Get all unassigned high-priority issues
+linear issues list --priority 2 --output json | \
+  jq '.[] | select(.assignee == null) | {identifier, title, state}'
+
+# Export cycle velocity data to CSV
+linear cycles analyze --team ENG --output json | \
+  jq -r '.cycles[] | [.number, .completedPoints, .plannedPoints] | @csv'
+
+# Find all issues created in the last 7 days
+linear issues list --team ENG --output json | \
+  jq --arg date "$(date -u -v-7d +%Y-%m-%d)" \
+  '.[] | select(.createdAt >= $date) | {identifier, title, createdAt}'
+
+# Bulk update: Get all backlog items for processing
+BACKLOG_IDS=$(linear search --state Backlog --team ENG --output json | jq -r '.[].identifier')
+for id in $BACKLOG_IDS; do
+  echo "Processing $id..."
+  # Add your automation here
+done
+
+# Generate weekly status report
+cat << 'EOF' > weekly-report.sh
+#!/bin/bash
+TEAM="ENG"
+echo "=== Weekly Status Report ==="
+echo ""
+echo "High Priority In Progress:"
+linear issues list --team $TEAM --priority 1 --state "In Progress" --output json | \
+  jq -r '.[] | "  - \(.identifier): \(.title) (@\(.assignee // "unassigned"))"'
+echo ""
+echo "Blocked Issues:"
+linear search --has-blockers --team $TEAM --output json | \
+  jq -r '.[] | "  - \(.identifier): \(.title)"'
+EOF
+chmod +x weekly-report.sh
+```
+
+```bash
+# Monitor high-priority issues every 30 seconds
+watch -n 30 "linear issues list --priority 1 --output json | jq '.[] | {id: .identifier, title: .title, state: .state}'"
+```
+
+```bash
+# Export single issue and its dependencies
+linear tasks export CEN-123 ./my-tasks/
+
+# Export directly to Claude Code session
+linear tasks export CEN-123 ~/.claude/tasks/a5721284-f64e-4705-8983-b7d6c4e032aa/
+
+# Preview without writing files
+linear tasks export CEN-123 ./my-tasks/ --dry-run
+```
+
 ---
 
 ## 2. Repository Map

@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "1952cd76486ae73158bfb91d55993545b74c305f",
-  "short": "1952cd7",
+  "commit": "099c204278018ef47881b98d232f61f2eeb3a5a8",
+  "short": "099c204",
   "target": "current",
-  "message": "refactor(compose): introduce ComposeCommand protocol \u2014 20 commands, -715 LOC (CHAOS-1435) (#126)",
-  "published_at": "2026-05-06T18:01:34.360792+00:00"
+  "message": "Update for linear (#127)",
+  "published_at": "2026-05-06T18:04:40.383122+00:00"
 }
