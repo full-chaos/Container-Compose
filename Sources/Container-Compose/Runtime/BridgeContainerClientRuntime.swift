@@ -588,18 +588,20 @@ extension BridgeContainerClientRuntime {
                         kind: .started
                     ))
 
-                    // 3. Build argv matching Application.BuildCommand.parse(_:) expectations.
-                    // Convention mirrors ComposeBuild.buildService — context path first,
-                    // then options. See Sources/Container-Compose/Commands/ComposeBuild.swift.
-                    let imageTag = spec.imageTag ?? ComposeUp.qualifyImageReference("\(spec.service):latest")
-                    var argv: [String] = [context.contextPath]
-                    argv.append(contentsOf: ["--file", context.dockerfile ?? "Dockerfile"])
-                    argv.append(contentsOf: ["--tag", imageTag])
-                    if spec.noCache { argv.append("--no-cache") }
-
+                    // 3. Build argv mirroring `ComposeBuild.buildService` field-by-field
+                    //    (Sources/Container-Compose/Commands/ComposeBuild.swift). The
+                    //    bridge cannot resolve `${VAR}` env-var references in args
+                    //    (no `.env` source on the daemon side) and cannot resolve
+                    //    relative paths against a project directory the daemon
+                    //    doesn't track — both pass through verbatim. Beyond those
+                    //    two daemon-environment differences, every directive that
+                    //    the CLI emits is reproduced here.
+                    var perSpecInlineTempURL: URL?
                     do {
+                        let prepared = try Self.makeBuildArgv(spec: spec, context: context)
+                        perSpecInlineTempURL = prepared.inlineTempURL
                         _ = try await RunnerEnvironment.current.run(
-                            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: argv, cwd: nil),
+                            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: prepared.argv, cwd: nil),
                             onStdout: nil,
                             onStderr: nil
                         )
@@ -616,11 +618,124 @@ extension BridgeContainerClientRuntime {
                             message: error.localizedDescription
                         ))
                     }
+
+                    // Per-spec cleanup of any dockerfile_inline tempfile.
+                    if let url = perSpecInlineTempURL {
+                        try? FileManager.default.removeItem(at: url)
+                    }
                 }
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// Construct the full `Application.BuildCommand` argv for a single spec,
+    /// mirroring `ComposeBuild.buildService` field-by-field. Pure function
+    /// suitable for direct unit testing — the only side effect is writing the
+    /// `dockerfile_inline` tempfile (the URL is returned via `inlineTempURL`
+    /// so callers can clean it up after the build completes).
+    ///
+    /// CHAOS-1429 review (Codex finding 2): the prior bridge argv only emitted
+    /// context/dockerfile/tag/no-cache, silently dropping every other compose
+    /// `build:` directive. This helper closes the gap.
+    ///
+    /// **Daemon-environment differences vs. the CLI builder:**
+    /// - `--build-arg` values pass through verbatim. CLI runs them through
+    ///   `resolveVariable(_:with:)` against `.env` + system env; the daemon
+    ///   has no equivalent source. Future ticket: env injection at ingest.
+    /// - Relative paths in `contextPath` and `dockerfile` resolve against the
+    ///   daemon's process cwd, not a per-project directory. CLI uses
+    ///   `effectiveProjectDirectory` because the user runs commands from
+    ///   their checkout. Daemon-API consumers should pass absolute paths or
+    ///   ensure the daemon's cwd matches their build context root.
+    /// - No logging passthrough (`logging.passThroughCommands()`) — the
+    ///   bridge has no CLI logging context to forward.
+    /// - No `warnUnsupportedContainerBuildFields` console emission — bridge
+    ///   builds run inside the daemon process, which has no user-facing
+    ///   console; callers wanting parity would need to forward warnings as
+    ///   structured events (separate concern).
+    /// Output of `makeBuildArgv`. `inlineTempURL` is non-nil when
+    /// `context.dockerfileInline` was written to a temp file; the caller is
+    /// responsible for cleanup after `BuildCommand` finishes.
+    internal struct BuildArgvPlan {
+        let argv: [String]
+        let inlineTempURL: URL?
+    }
+
+    internal static func makeBuildArgv(
+        spec: RuntimeBuildSpec,
+        context: BuildContext
+    ) throws -> BuildArgvPlan {
+        // Image tag resolution mirrors CLI: explicit > service.image > "<svc>:latest",
+        // then qualified through ComposeUp.qualifyImageReference.
+        let imageTag: String
+        if let pinned = spec.imageTag {
+            imageTag = pinned
+        } else {
+            let raw = context.serviceImage ?? "\(spec.service):latest"
+            imageTag = ComposeUp.qualifyImageReference(raw)
+        }
+
+        var argv: [String] = [context.contextPath]
+        var inlineTempURL: URL?
+
+        // --build-arg (insertion order non-deterministic across `[String:String]`
+        // iteration — same as the CLI builder). Bridge does NOT run env-var
+        // substitution; values pass through verbatim.
+        for (key, value) in (context.args ?? [:]) {
+            argv.append(contentsOf: ["--build-arg", "\(key)=\(value)"])
+        }
+
+        // --file: dockerfile_inline wins over dockerfile when both are set
+        // (parity with `ComposeBuild.buildService`, which prints a warning
+        // for the same condition).
+        if let inlineContent = context.dockerfileInline {
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString + ".Dockerfile")
+            try inlineContent.write(to: tempURL, atomically: true, encoding: .utf8)
+            inlineTempURL = tempURL
+            argv.append(contentsOf: ["--file", tempURL.path])
+        } else {
+            argv.append(contentsOf: ["--file", context.dockerfile ?? "Dockerfile"])
+        }
+
+        argv.append(contentsOf: ["--tag", imageTag])
+
+        if spec.noCache { argv.append("--no-cache") }
+
+        if let target = context.target {
+            argv.append(contentsOf: ["--target", target])
+        }
+
+        for (key, value) in (context.labels ?? [:]) {
+            argv.append(contentsOf: ["--label", "\(key)=\(value)"])
+        }
+
+        for secretId in (context.secrets ?? []) {
+            argv.append(contentsOf: ["--secret", "id=\(secretId)"])
+        }
+
+        // --os / --arch resolution mirrors CLI: build.platforms[0] >
+        // service.platform > defaults (linux/arm64).
+        let chosenPlatform = context.platforms?.first ?? context.servicePlatform
+        let platformParts = chosenPlatform?.split(separator: "/")
+        let os = String(platformParts?.first ?? "linux")
+        let arch: String
+        if let parts = platformParts, parts.count >= 2 {
+            arch = String(parts.last!)
+        } else {
+            arch = "arm64"
+        }
+        argv.append(contentsOf: ["--os", os, "--arch", arch])
+
+        // --cpus / --memory always emitted with CLI-parity defaults (2 cpu,
+        // 2048MB) when limits are absent.
+        let cpuCount = Int64(context.cpus ?? "2") ?? 2
+        let memoryLimit = context.memory ?? "2048MB"
+        argv.append(contentsOf: ["--cpus", "\(cpuCount)", "--memory", memoryLimit])
+
+        return BuildArgvPlan(argv: argv, inlineTempURL: inlineTempURL)
     }
 }
 

@@ -334,6 +334,281 @@ struct BridgeContainerClientRuntimeBuildTests {
     }
 }
 
+// MARK: - makeBuildArgv field-by-field (CHAOS-1429 review)
+
+/// Closes Codex review finding #2: bridge build argv must mirror
+/// `ComposeBuild.buildService` field-by-field, not just emit context +
+/// dockerfile + tag + no-cache. Direct unit tests against the pure
+/// `makeBuildArgv` helper so each compose `build:` directive has explicit
+/// coverage.
+@Suite("BridgeContainerClientRuntime.makeBuildArgv — CHAOS-1429 review")
+struct MakeBuildArgvTests {
+
+    private static let bareSpec = RuntimeBuildSpec(service: "web")
+    private static let bareContext = BuildContext(contextPath: "./web", dockerfile: nil)
+
+    // MARK: - Baseline
+
+    @Test("baseline: context, default dockerfile, qualified tag, default platform/cpus/memory")
+    func baselineEmission() throws {
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(
+            spec: Self.bareSpec,
+            context: Self.bareContext
+        )
+        let argv = plan.argv
+
+        #expect(argv.first == "./web", "context path is positional first arg")
+        #expect(argv.contains("Dockerfile"), "default dockerfile when none specified")
+        #expect(argv.contains("--os"))
+        #expect(argv.contains("linux"))
+        #expect(argv.contains("--arch"))
+        #expect(argv.contains("arm64"))
+        #expect(argv.contains("--cpus"))
+        #expect(argv.contains("2"))
+        #expect(argv.contains("--memory"))
+        #expect(argv.contains("2048MB"))
+        #expect(plan.inlineTempURL == nil, "no tempfile for non-inline path")
+    }
+
+    // MARK: - Single-field expansions
+
+    @Test("--build-arg emitted per (key, value) pair, verbatim (no env resolution)")
+    func buildArgsEmitted() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            args: ["FOO": "bar", "BAZ": "${UNRESOLVED}"]
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(
+            spec: Self.bareSpec,
+            context: context
+        )
+
+        // --build-arg key=value occurs for each entry; iteration order varies.
+        #expect(plan.argv.contains("--build-arg"))
+        #expect(plan.argv.contains("FOO=bar"))
+        // Verbatim — bridge does NOT resolve `${UNRESOLVED}`. CLI does this
+        // via resolveVariable; bridge defers it.
+        #expect(plan.argv.contains("BAZ=${UNRESOLVED}"))
+    }
+
+    @Test("--target emitted when build.target is set")
+    func targetEmitted() throws {
+        let context = BuildContext(contextPath: "./web", dockerfile: nil, target: "production")
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--target" && $0.1 == "production" }))
+    }
+
+    @Test("--label emitted per entry")
+    func labelsEmitted() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            labels: ["maintainer": "alice@example.com", "version": "1.0"]
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        #expect(plan.argv.filter { $0 == "--label" }.count == 2)
+        #expect(plan.argv.contains("maintainer=alice@example.com"))
+        #expect(plan.argv.contains("version=1.0"))
+    }
+
+    @Test("--secret id=<id> emitted per entry")
+    func secretsEmitted() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            secrets: ["db-password", "api-key"]
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        #expect(plan.argv.filter { $0 == "--secret" }.count == 2)
+        #expect(plan.argv.contains("id=db-password"))
+        #expect(plan.argv.contains("id=api-key"))
+    }
+
+    // MARK: - Platform resolution
+
+    @Test("build.platforms[0] is preferred over service.platform")
+    func buildPlatformsWinsOverServicePlatform() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            platforms: ["linux/amd64"],
+            servicePlatform: "linux/arm64"
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--os" && $0.1 == "linux" }))
+        #expect(pairs.contains(where: { $0.0 == "--arch" && $0.1 == "amd64" }))
+    }
+
+    @Test("first build.platforms entry wins when multiple are declared")
+    func firstBuildPlatformWinsOverRest() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            platforms: ["linux/amd64", "linux/arm64"]
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--arch" && $0.1 == "amd64" }))
+        // Second entry must NOT leak into argv as another --arch.
+        #expect(plan.argv.filter { $0 == "--arch" }.count == 1)
+    }
+
+    @Test("service.platform fallback when build.platforms empty/nil")
+    func servicePlatformFallback() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            servicePlatform: "linux/amd64"
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--arch" && $0.1 == "amd64" }))
+    }
+
+    // MARK: - Resource limits
+
+    @Test("custom cpus/memory override defaults")
+    func cpusMemoryOverride() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            cpus: "4",
+            memory: "4096MB"
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--cpus" && $0.1 == "4" }))
+        #expect(pairs.contains(where: { $0.0 == "--memory" && $0.1 == "4096MB" }))
+    }
+
+    @Test("invalid cpus string falls back to default 2 (matches CLI)")
+    func cpusInvalidFallback() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            cpus: "not-a-number"
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--cpus" && $0.1 == "2" }))
+    }
+
+    // MARK: - dockerfile_inline
+
+    @Test("dockerfile_inline writes to tempfile and uses --file <tempfile>")
+    func dockerfileInlineWritesTempfile() throws {
+        let inlineContent = "FROM alpine:3\nRUN echo hello\n"
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            dockerfileInline: inlineContent
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+
+        guard let tempURL = plan.inlineTempURL else {
+            Issue.record("expected non-nil inlineTempURL for dockerfile_inline path")
+            return
+        }
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        // The argv contains --file <tempURL.path>, NOT a literal "Dockerfile".
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--file" && $0.1 == tempURL.path }))
+
+        // Tempfile contents match.
+        let written = try String(contentsOf: tempURL, encoding: .utf8)
+        #expect(written == inlineContent)
+    }
+
+    @Test("dockerfile_inline wins over dockerfile when both are set")
+    func dockerfileInlinePrecedence() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: "Dockerfile.dev",
+            dockerfileInline: "FROM alpine:3\n"
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        defer { plan.inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
+
+        // Dockerfile.dev should NOT appear — inline path wins.
+        #expect(!plan.argv.contains("Dockerfile.dev"))
+        #expect(plan.inlineTempURL != nil)
+    }
+
+    // MARK: - Image tag resolution
+
+    @Test("imageTag pinned in spec bypasses serviceImage and qualifyImageReference")
+    func pinnedImageTagBypassesQualification() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            serviceImage: "alpine:custom"
+        )
+        let spec = RuntimeBuildSpec(service: "web", imageTag: "registry.example.com/web:explicit")
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: spec, context: context)
+
+        let pairs = zip(plan.argv, plan.argv.dropFirst())
+        #expect(pairs.contains(where: { $0.0 == "--tag" && $0.1 == "registry.example.com/web:explicit" }))
+    }
+
+    @Test("serviceImage preferred over <service>:latest default when imageTag nil")
+    func serviceImagePreferredOverDefault() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: nil,
+            serviceImage: "myorg/myimage:v2"
+        )
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
+        // The qualified form goes through ComposeUp.qualifyImageReference; we
+        // only assert that the source string was "myorg/myimage:v2", not the
+        // qualified result, since qualification is opaque to this layer.
+        let tagIndex = plan.argv.firstIndex(of: "--tag")!
+        let tagValue = plan.argv[plan.argv.index(after: tagIndex)]
+        #expect(tagValue.contains("myorg/myimage") || tagValue.contains("myimage:v2"))
+    }
+
+    // MARK: - Combined sanity check
+
+    @Test("all directives populated emits every expected flag")
+    func fullyPopulatedDirective() throws {
+        let context = BuildContext(
+            contextPath: "./web",
+            dockerfile: "Dockerfile.prod",
+            args: ["VERSION": "1.0"],
+            target: "runtime",
+            labels: ["app": "web"],
+            secrets: ["db-pass"],
+            platforms: ["linux/amd64"],
+            servicePlatform: nil,
+            cpus: "4",
+            memory: "8192MB",
+            serviceImage: nil
+        )
+        let spec = RuntimeBuildSpec(service: "web", noCache: true)
+        let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: spec, context: context)
+
+        let argv = plan.argv
+        #expect(argv.first == "./web")
+        #expect(argv.contains("--build-arg"))
+        #expect(argv.contains("VERSION=1.0"))
+        #expect(argv.contains("Dockerfile.prod"))
+        #expect(argv.contains("--no-cache"))
+        #expect(argv.contains("--target"))
+        #expect(argv.contains("runtime"))
+        #expect(argv.contains("--label"))
+        #expect(argv.contains("app=web"))
+        #expect(argv.contains("--secret"))
+        #expect(argv.contains("id=db-pass"))
+        #expect(argv.contains("amd64"))
+        #expect(argv.contains("--cpus"))
+        #expect(argv.contains("4"))
+        #expect(argv.contains("8192MB"))
+    }
+}
+
 // MARK: - Build target resolution (CHAOS-1429 review)
 
 /// Closes Codex review finding #1: `buildStream` must consult `ProjectRegistry`
