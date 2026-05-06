@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1436-configservice-decompose",
+  "commit": "7d66a76085db86bfdf5156971c528a3675d323bd",
+  "short": "7d66a76",
+  "target": "7d66a76",
+  "message": "refactor(compose): CHAOS-1436 Phase D \u2014 decompose configService",
+  "published_at": "2026-05-06T21:46:51.800264+00:00"
+}
