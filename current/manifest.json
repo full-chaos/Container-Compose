@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9bfe227f0817e8951bd421d2ca36a3a973b9d5c5",
-  "short": "9bfe227",
+  "commit": "f137f433dfa0686ade61def835aaa62d1ef33335",
+  "short": "f137f43",
   "target": "current",
-  "message": "refactor(compose): CHAOS-1436 Phase C \u2014 consolidate remote helpers (#132)",
-  "published_at": "2026-05-06T22:10:28.205458+00:00"
+  "message": "refactor: CHAOS-1434 Pri 6 \u2014 split APISchemas.swift / RuntimeTypes.swift by domain (#133)",
+  "published_at": "2026-05-06T22:11:07.303478+00:00"
 }
