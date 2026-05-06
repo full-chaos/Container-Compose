@@ -123,33 +123,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             print("'top.models' Detected, But Not Supported")
         }
 
-        // Get services to use. Keep service-name filtering below after scale
-        // expansion to preserve ComposeUp's existing scaled-service semantics.
-        var services = try filterServices(
-            dockerCompose,
-            profilesArg: profile,
-            servicesArg: []
-        )
-
-        // Phase 3F — expand services with scale > 1 into N named replicas
-        var expanded: [(serviceName: String, service: Service)] = []
-        for (name, svc) in services {
-            if let scale = svc.scale, scale > 1 {
-                for i in 1...scale {
-                    expanded.append((serviceName: "\(name)-\(i)", service: svc))
-                }
-            } else {
-                expanded.append((name, svc))
-            }
-        }
-        services = expanded
-
-        // Filter for specified services
-        if !self.services.isEmpty {
-            services = services.filter({ serviceName, service in
-                self.services.contains(where: { $0 == serviceName }) || self.services.contains(where: { service.dependedBy.contains($0) })
-            })
-        }
+        let services = try selectServices(from: dockerCompose)
 
         if RuntimeExecutionMode.isRemote {
             try await remoteUp(services, from: dockerCompose)
@@ -191,6 +165,37 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         if !detach {
             await waitForever()
         }
+    }
+
+    /// Resolves the runnable service set: profile/service filter, scale-N
+    /// expansion (Phase 3F — `service-1`…`service-N` replicas), then narrow to
+    /// any explicit service names passed on the CLI plus their dependents.
+    private func selectServices(from dockerCompose: DockerCompose) throws -> [(serviceName: String, service: Service)] {
+        var services = try filterServices(
+            dockerCompose,
+            profilesArg: profile,
+            servicesArg: []
+        )
+
+        var expanded: [(serviceName: String, service: Service)] = []
+        for (name, svc) in services {
+            if let scale = svc.scale, scale > 1 {
+                for i in 1...scale {
+                    expanded.append((serviceName: "\(name)-\(i)", service: svc))
+                }
+            } else {
+                expanded.append((name, svc))
+            }
+        }
+        services = expanded
+
+        if !self.services.isEmpty {
+            services = services.filter({ serviceName, service in
+                self.services.contains(where: { $0 == serviceName }) || self.services.contains(where: { service.dependedBy.contains($0) })
+            })
+        }
+
+        return services
     }
 
     private func remoteUp(
@@ -245,7 +250,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 imageReference: Self.qualifyImageReference(image),
                 cpus: Int(service.cpus_top ?? 1),
                 hostname: service.hostname,
-                environment: remoteEnvironment(for: service, baseEnvironment: environmentVariables),
+                environment: remoteEnvironment(for: service),
                 command: service.command ?? [],
                 workingDirectory: service.working_dir,
                 publishedPorts: remotePublishedPorts(for: service),
@@ -259,6 +264,34 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             _ = try await runtime.create(id: containerName, configuration: config)
             try await runtime.start(id: containerName)
             print("Started remote container: \(containerName)")
+        }
+    }
+
+    private func remoteEnvironment(for service: Service) -> [String] {
+        var merged = environmentVariables
+        for (key, value) in service.environment ?? [:] {
+            merged[key] = value
+        }
+        return merged.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+    }
+
+    private func remotePublishedPorts(for service: Service) -> [RuntimePublishedPort] {
+        (service.ports ?? []).compactMap { raw in
+            let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
+            guard parts.count >= 2 else { return nil }
+            let hostPart = String(parts[parts.count - 2])
+            let containerPart = String(parts[parts.count - 1])
+            guard
+                let hostPort = UInt16(hostPart),
+                let containerPort = UInt16(containerPart.split(separator: "/").first ?? "")
+            else { return nil }
+            let proto = containerPart.hasSuffix("/udp") ? RuntimePortProtocol.udp : .tcp
+            return RuntimePublishedPort(
+                hostAddress: "0.0.0.0",
+                hostPort: hostPort,
+                containerPort: containerPort,
+                proto: proto
+            )
         }
     }
 
@@ -475,31 +508,11 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     private mutating func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
-        // Phase 1.4 — depends_on object-form gate. Topo-sort already orders
-        // dependencies before dependents, but for `condition: service_healthy`
-        // and `condition: service_completed_successfully` we must wait until
-        // each dependency reaches the declared state before starting this
-        // service. List-form depends_on (implicit `condition: service_started`)
-        // is also honored here; the wait is a no-op once the dep is running.
-        if let dependencies = service.dependsOn?.entries, !dependencies.isEmpty {
-            for (depName, entry) in dependencies {
-                do {
-                    try await waitForCondition(depName, condition: entry.condition)
-                } catch {
-                    if entry.required {
-                        throw error
-                    }
-                    print(
-                        "Warning: optional dependency '\(depName)' for service " +
-                        "'\(serviceName)' did not satisfy condition " +
-                        "'\(entry.condition.rawValue)': \(error.localizedDescription)"
-                    )
-                }
-            }
-        }
+        try await waitForServiceDependencies(service, serviceName: serviceName)
 
         // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
         warnUnsupportedContainerParityFields(service)
+
         if let models = service.models, !models.isEmpty, !didWarnServiceModelsUnsupported {
             print("'service.models' Detected, But Not Supported")
             didWarnServiceModelsUnsupported = true
@@ -508,52 +521,17 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             print("'service.provider' Detected, But Not Supported")
             didWarnServiceProviderUnsupported = true
         }
+
+        // Provider-only services (no image, no build) are gated out: the
+        // unsupported-warning has been emitted above and there's nothing to run.
         if service.provider != nil, service.image == nil, service.build == nil {
             return
         }
 
-        var imageToRun: String
+        let imageToRun = try await resolveServiceImage(service, serviceName: serviceName)
 
-        var runCommandArgs: [String] = []
+        printDeployDiagnostic(service: service, serviceName: serviceName)
 
-        // Handle 'build' configuration
-        if let buildConfig = service.build {
-            imageToRun = try await buildService(
-                buildConfig,
-                for: service,
-                serviceName: serviceName,
-                environmentVariables: environmentVariables,
-                rebuild: rebuild,
-                noCache: noCache
-            )
-        } else if let img = service.image {
-            let qualifiedImage = Self.qualifyImageReference(img)
-            // Use specified image if no build config
-            // Pull image if necessary
-            try await pullImage(
-                image: qualifiedImage,
-                policy: service.pull_policy,
-                platform: service.platform,
-                loggingArguments: logging.passThroughCommands()
-            )
-            imageToRun = qualifiedImage
-        } else {
-            // Should not happen due to Service init validation, but as a fallback
-            throw ComposeError.imageNotFound(serviceName)
-        }
-        
-        // 'deploy' is parsed but mostly orchestrator-only — emit the same
-        // diagnostic the inline implementation used to. Resource limits from
-        // deploy.resources.limits are still applied via ResourceArgs below.
-        if service.deploy != nil {
-            print("Note: The 'deploy' configuration for service '\(serviceName)' was parsed successfully.")
-            print(
-                "However, this 'container-compose' tool does not currently support 'deploy' functionality (e.g., replicas, resources, update strategies) as it is primarily for orchestration platforms like Docker Swarm or Kubernetes, not direct 'container run' commands."
-            )
-            print("The service will be run as a single container based on other configurations.")
-        }
-
-        // Determine container name (used in builder context and elsewhere).
         let containerName: String
         if let explicitContainerName = service.container_name {
             containerName = explicitContainerName
@@ -561,6 +539,90 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         } else {
             containerName = "\(projectName)-\(serviceName)"
         }
+
+        let runCommandArgs = try await assembleRunArgs(
+            service: service,
+            serviceName: serviceName,
+            containerName: containerName,
+            imageToRun: imageToRun,
+            projectName: projectName,
+            from: dockerCompose
+        )
+
+        printNetworksDiagnostic(service: service, serviceName: serviceName)
+
+        launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
+
+        do {
+            try await waitUntilServiceIsRunning(serviceName, explicitContainerName: service.container_name)
+            try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
+        } catch {
+            print(error)
+        }
+    }
+
+    /// Phase 1.4 — depends_on object-form gate. Topo-sort already orders
+    /// dependencies before dependents, but for `condition: service_healthy` and
+    /// `condition: service_completed_successfully` we must wait until each
+    /// dependency reaches the declared state before starting this service.
+    /// List-form depends_on (implicit `condition: service_started`) is also
+    /// honored here; the wait is a no-op once the dep is running.
+    private func waitForServiceDependencies(_ service: Service, serviceName: String) async throws {
+        guard let dependencies = service.dependsOn?.entries, !dependencies.isEmpty else { return }
+        for (depName, entry) in dependencies {
+            do {
+                try await waitForCondition(depName, condition: entry.condition)
+            } catch {
+                if entry.required {
+                    throw error
+                }
+                print(
+                    "Warning: optional dependency '\(depName)' for service " +
+                    "'\(serviceName)' did not satisfy condition " +
+                    "'\(entry.condition.rawValue)': \(error.localizedDescription)"
+                )
+            }
+        }
+    }
+
+    /// Resolves the image tag for a service: builds it if `build:` is set,
+    /// pulls it if only `image:` is set, throws if neither is configured.
+    private mutating func resolveServiceImage(_ service: Service, serviceName: String) async throws -> String {
+        if let buildConfig = service.build {
+            return try await buildService(
+                buildConfig,
+                for: service,
+                serviceName: serviceName,
+                environmentVariables: environmentVariables,
+                rebuild: rebuild,
+                noCache: noCache
+            )
+        }
+        if let img = service.image {
+            let qualifiedImage = Self.qualifyImageReference(img)
+            try await pullImage(
+                image: qualifiedImage,
+                policy: service.pull_policy,
+                platform: service.platform,
+                loggingArguments: logging.passThroughCommands()
+            )
+            return qualifiedImage
+        }
+        // Should not happen due to Service init validation, but as a fallback.
+        throw ComposeError.imageNotFound(serviceName)
+    }
+
+    /// Assembles the full `container run` argv: volumes, merged env, the
+    /// per-concern Compose+Args*.swift builders, and the image+entrypoint tail.
+    private mutating func assembleRunArgs(
+        service: Service,
+        serviceName: String,
+        containerName: String,
+        imageToRun: String,
+        projectName: String,
+        from dockerCompose: DockerCompose
+    ) async throws -> [String] {
+        var runCommandArgs: [String] = []
 
         // Volume mounts: still inline because configVolume(_:) is async and
         // mutates the filesystem (creates missing host dirs). Phase 2D will
@@ -572,25 +634,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             }
         }
 
-        // Build the merged env: .env files → service env_file paths → service
-        // environment map → ${VAR} substitution → service-name → IP rewrite.
-        var combinedEnv = mergeServiceEnvironment(
-            baseline: environmentVariables,
-            serviceEnvFile: service.env_file,
-            serviceEnvironment: service.environment,
-            projectDirectory: effectiveProjectDirectory
-        )
-
-        combinedEnv = combinedEnv.mapValues({ value in
-            guard value.contains("${") else { return value }
-            let variableName = String(value.replacingOccurrences(of: "${", with: "").dropLast())
-            return combinedEnv[variableName] ?? value
-        })
-
-        combinedEnv = combinedEnv.mapValues({ value in
-            containerIps[value] ?? value
-        })
-
+        let combinedEnv = mergeAndExpandServiceEnv(service)
         for (key, value) in combinedEnv {
             runCommandArgs.append(contentsOf: ["-e", "\(key)=\(value)"])
         }
@@ -616,8 +660,55 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         runCommandArgs.append(contentsOf: LabelsArgs.build(ctx))
         runCommandArgs.append(contentsOf: ConfigsSecretsArgs.build(ctx))
 
-        // Networks diagnostic — kept inline because it's purely informational
-        // and references composeFilename in its message.
+        // Emit `--entrypoint <first>` (a pre-image flag) + image + remaining
+        // entrypoint args + command, so the runtime parses entrypoint/command
+        // exactly as the compose spec requires. See `imageAndEntrypointTail`.
+        runCommandArgs.append(contentsOf: Self.imageAndEntrypointTail(
+            image: imageToRun,
+            entrypoint: service.entrypoint,
+            command: service.command
+        ))
+
+        return runCommandArgs
+    }
+
+    /// Builds the merged env: .env files → service env_file paths → service
+    /// environment map → ${VAR} substitution → service-name → IP rewrite.
+    private func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
+        var combinedEnv = mergeServiceEnvironment(
+            baseline: environmentVariables,
+            serviceEnvFile: service.env_file,
+            serviceEnvironment: service.environment,
+            projectDirectory: effectiveProjectDirectory
+        )
+
+        combinedEnv = combinedEnv.mapValues({ value in
+            guard value.contains("${") else { return value }
+            let variableName = String(value.replacingOccurrences(of: "${", with: "").dropLast())
+            return combinedEnv[variableName] ?? value
+        })
+
+        combinedEnv = combinedEnv.mapValues({ value in
+            containerIps[value] ?? value
+        })
+
+        return combinedEnv
+    }
+
+    /// `deploy` is parsed but mostly orchestrator-only; emit the same
+    /// diagnostic the inline implementation used to. Resource limits from
+    /// `deploy.resources.limits` are still applied via `ResourceArgs`.
+    private func printDeployDiagnostic(service: Service, serviceName: String) {
+        guard service.deploy != nil else { return }
+        print("Note: The 'deploy' configuration for service '\(serviceName)' was parsed successfully.")
+        print(
+            "However, this 'container-compose' tool does not currently support 'deploy' functionality (e.g., replicas, resources, update strategies) as it is primarily for orchestration platforms like Docker Swarm or Kubernetes, not direct 'container run' commands."
+        )
+        print("The service will be run as a single container based on other configurations.")
+    }
+
+    /// Networks diagnostic — purely informational, references composeFilename.
+    private func printNetworksDiagnostic(service: Service, serviceName: String) {
         if let serviceNetworks = service.networks {
             print(
                 "Info: Service '\(serviceName)' is configured to connect to networks: \(serviceNetworks.names.joined(separator: ", ")) ascertained from networks attribute in \(composeFilename ?? "compose file")."
@@ -628,16 +719,12 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         } else {
             print("Note: Service '\(serviceName)' is not explicitly connected to any networks. It will likely use the default bridge network.")
         }
+    }
 
-        // Emit `--entrypoint <first>` (a pre-image flag) + image + remaining
-        // entrypoint args + command, so the runtime parses entrypoint/command
-        // exactly as the compose spec requires. See `imageAndEntrypointTail`.
-        runCommandArgs.append(contentsOf: Self.imageAndEntrypointTail(
-            image: imageToRun,
-            entrypoint: service.entrypoint,
-            command: service.command
-        ))
-
+    /// Picks a console color for the service and dispatches the streaming
+    /// `container run` Task. The Task is fire-and-forget; readiness/IP are
+    /// polled by the caller via `waitUntilServiceIsRunning`.
+    private mutating func launchService(serviceName: String, runCommandArgs: [String]) {
         var serviceColor: NamedColor = Self.availableContainerConsoleColors.randomElement()!
 
         if Array(Set(containerConsoleColors.values)).sorted(by: { $0.rawValue < $1.rawValue }) != Self.availableContainerConsoleColors.sorted(by: { $0.rawValue < $1.rawValue }) {
@@ -672,13 +759,6 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 onStdout: handleOutput,
                 onStderr: handleOutput
             )
-        }
-
-        do {
-            try await waitUntilServiceIsRunning(serviceName, explicitContainerName: service.container_name)
-            try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
-        } catch {
-            print(error)
         }
     }
 
@@ -751,6 +831,56 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
 
         return runCommandArgs
+    }
+}
+
+// MARK: Argv tail (image + entrypoint/command)
+extension ComposeUp {
+
+    /// Builds the trailing portion of a `container run` argv: the
+    /// `--entrypoint` flag (if any), the image, and any positional args.
+    ///
+    /// `container run` (like `docker run`) accepts at most one
+    /// `--entrypoint <BIN>` flag *before* the image, with any extra
+    /// arguments to that entrypoint passed positionally *after* the image.
+    /// Compose, however, models `entrypoint` as `[a, b, c]` — a full argv.
+    /// We therefore split: the first token becomes the `--entrypoint` value
+    /// (pre-image), the remaining tokens become positional args (post-image),
+    /// followed by `command` if any.
+    ///
+    /// Resulting shapes:
+    /// - `entrypoint: [a, b, c]`, `command: [d, e]` → `[--entrypoint, a, <image>, b, c, d, e]`
+    /// - `entrypoint: [/app/foo.sh]`, no command   → `[--entrypoint, /app/foo.sh, <image>]`
+    /// - no entrypoint, `command: [d, e]`          → `[<image>, d, e]`
+    /// - neither                                    → `[<image>]`
+    static func imageAndEntrypointTail(
+        image: String,
+        entrypoint: [String]?,
+        command: [String]?
+    ) -> [String] {
+        var tail: [String] = []
+        var positional: [String] = []
+
+        if let entrypoint, let first = entrypoint.first {
+            tail.append("--entrypoint")
+            tail.append(first)
+            // Remaining entrypoint tokens are positional args to the entrypoint
+            // and must appear *after* the image.
+            positional.append(contentsOf: entrypoint.dropFirst())
+        }
+
+        tail.append(image)
+        tail.append(contentsOf: positional)
+
+        // `command` is only honored when no `entrypoint` is present *or* as
+        // additional args after a multi-token entrypoint. The compose spec
+        // says command is appended after entrypoint args, so we always
+        // append it when set.
+        if let command {
+            tail.append(contentsOf: command)
+        }
+
+        return tail
     }
 }
 
