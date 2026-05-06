@@ -162,9 +162,12 @@ public enum RemoteRuntimeFlagParser {
 
 public struct RemoteRuntime: Runtime, Sendable {
     private let configuration: RemoteRuntimeConfiguration
+    // Lazily-initialized shared client; OS reclaims on process exit (CLI lifecycle).
+    private let storage: Storage
 
     public init(configuration: RemoteRuntimeConfiguration) {
         self.configuration = configuration
+        self.storage = Storage()
     }
 
     public func version() async throws -> RuntimeVersion {
@@ -410,14 +413,7 @@ public struct RemoteRuntime: Runtime, Sendable {
         query: [String: String]? = nil,
         body: Encodable? = nil
     ) async throws -> T {
-        let (client, eventLoopGroup) = try makeClient()
-        defer {
-            Task {
-                try? await client.shutdown()
-                DispatchQueue.global().async { try? eventLoopGroup.syncShutdownGracefully() }
-            }
-        }
-
+        let client = try storage.getOrCreate(makeTLS: tlsConfiguration)
         let request = try makeRequest(method: method, path: path, query: query, body: body)
         let response = try await client.execute(request, timeout: .seconds(30))
         let bodyBuffer = try await response.body.collect(upTo: 10 * 1024 * 1024)
@@ -432,17 +428,12 @@ public struct RemoteRuntime: Runtime, Sendable {
         query: [String: String]? = nil,
         body: Encodable? = nil
     ) async throws -> Void {
-        let (client, eventLoopGroup) = try makeClient()
-        defer {
-            Task {
-                try? await client.shutdown()
-                DispatchQueue.global().async { try? eventLoopGroup.syncShutdownGracefully() }
-            }
-        }
-
+        let client = try storage.getOrCreate(makeTLS: tlsConfiguration)
         let request = try makeRequest(method: method, path: path, query: query, body: body)
         let response = try await client.execute(request, timeout: .seconds(30))
-        try validate(response.status.code, body: nil)
+        let bodyBuffer = try await response.body.collect(upTo: 4096)
+        let data = Data(bodyBuffer.readableBytesView)
+        try validate(response.status.code, body: data)
     }
 
     private func requestNDJSON(
@@ -451,17 +442,17 @@ public struct RemoteRuntime: Runtime, Sendable {
         query: [String: String]? = nil,
         body: Encodable? = nil
     ) async throws -> [Data] {
-        let (client, eventLoopGroup) = try makeClient()
-        defer {
-            Task {
-                try? await client.shutdown()
-                DispatchQueue.global().async { try? eventLoopGroup.syncShutdownGracefully() }
-            }
-        }
-
+        let client = try storage.getOrCreate(makeTLS: tlsConfiguration)
         let request = try makeRequest(method: method, path: path, query: query, body: body)
         let response = try await client.execute(request, timeout: .seconds(30))
-        try validate(response.status.code, body: nil)
+
+        let code = response.status.code
+        guard code == 200 || code == 201 || code == 204 else {
+            let bodyBuffer = try await response.body.collect(upTo: 4096)
+            let data = Data(bodyBuffer.readableBytesView)
+            try validate(code, body: data)
+            return []
+        }
 
         var lines: [Data] = []
         var remainder = Data()
@@ -531,11 +522,22 @@ public struct RemoteRuntime: Runtime, Sendable {
         }
     }
 
-    private func makeClient() throws -> (HTTPClient, MultiThreadedEventLoopGroup) {
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
-        let config = HTTPClient.Configuration(tlsConfiguration: try tlsConfiguration())
-        let client = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup), configuration: config)
-        return (client, eventLoopGroup)
+    private final class Storage: @unchecked Sendable {
+        private let lock = NSLock()
+        private var client: HTTPClient?
+        private var eventLoopGroup: MultiThreadedEventLoopGroup?
+
+        func getOrCreate(makeTLS: () throws -> TLSConfiguration?) throws -> HTTPClient {
+            lock.lock()
+            defer { lock.unlock() }
+            if let existing = client { return existing }
+            let elg = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            let config = HTTPClient.Configuration(tlsConfiguration: try makeTLS())
+            let c = HTTPClient(eventLoopGroupProvider: .shared(elg), configuration: config)
+            eventLoopGroup = elg
+            client = c
+            return c
+        }
     }
 
     private func tlsConfiguration() throws -> TLSConfiguration? {
