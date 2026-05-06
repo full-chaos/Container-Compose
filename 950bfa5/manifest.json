@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1435-compose-command-protocol",
+  "commit": "950bfa531b762dbc4774d1c42bdab3eb9f6ad770",
+  "short": "950bfa5",
+  "target": "950bfa5",
+  "message": "refactor(compose): migrate ComposeEvents to ComposeCommand protocol (CHAOS-1435)",
+  "published_at": "2026-05-06T17:52:11.612694+00:00"
+}
