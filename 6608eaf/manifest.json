@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1436-remote-helpers",
+  "commit": "6608eaf7c6f2c8c04be296ca4ef31b2124a3e4aa",
+  "short": "6608eaf",
+  "target": "6608eaf",
+  "message": "refactor(compose): CHAOS-1436 Phase C \u2014 consolidate remote helpers",
+  "published_at": "2026-05-06T21:47:12.513751+00:00"
+}
