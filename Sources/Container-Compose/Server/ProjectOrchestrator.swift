@@ -15,7 +15,6 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import Yams
 
 // MARK: - ProjectOrchestrator
 
@@ -109,7 +108,7 @@ public struct ProjectOrchestrator: Sendable {
 
         let document: DockerCompose
         do {
-            document = try YAMLDecoder().decode(DockerCompose.self, from: yamlString)
+            document = try DockerCompose.from(yaml: yamlString)
         } catch let error as DecodingError {
             throw OrchestratorError.malformedComposeYAML(decodingErrorSummary(error))
         } catch {

@@ -144,6 +144,58 @@ public struct DockerCompose: Codable {
     }
 }
 
+// MARK: - In-memory parsing
+extension DockerCompose {
+    /// Decodes a `DockerCompose` document directly from a UTF-8 YAML string.
+    ///
+    /// This is the canonical entry point for callers that already have YAML in
+    /// memory (e.g., HTTP request bodies, test fixtures). It is a thin adapter
+    /// over `YAMLDecoder` — it decodes only the bytes you supply and returns
+    /// the raw parsed document.
+    ///
+    /// **Normalization divergence vs. `loadAndMerge(mainPath:)`**
+    ///
+    /// `loadAndMerge(mainPath:)` performs filesystem-aware normalization passes
+    /// after decoding: it resolves `include:` directives (merging referenced
+    /// files depth-first), expands `extends:` cross-file references, and
+    /// substitutes `.env` variable values. None of those passes can run here
+    /// because there is no filesystem context — the returned document is the
+    /// raw decoded form.
+    ///
+    /// Concretely:
+    /// - `include:` entries in the decoded document are **present but unresolved**.
+    ///   Callers that need full merge semantics must use `loadAndMerge(mainPath:)`
+    ///   or perform their own resolution passes.
+    /// - `extends:` references inside service definitions are present as-decoded;
+    ///   no cross-file extension is applied.
+    /// - Variable placeholders (e.g., `${PORT}`) are **not** substituted.
+    ///
+    /// - Parameter yaml: UTF-8 YAML content of a compose document.
+    /// - Throws: `DecodingError` if the YAML is malformed or structurally invalid.
+    public static func from(yaml: String) throws -> DockerCompose {
+        return try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+    }
+
+    /// Decodes a `DockerCompose` document from raw UTF-8 YAML bytes.
+    ///
+    /// Convenience overload that converts `data` to a `String` before decoding.
+    /// Returns `nil` if `data` is not valid UTF-8.
+    ///
+    /// See ``from(yaml:)-string`` for full documentation, including the
+    /// **normalization divergence** vs. `loadAndMerge(mainPath:)`.
+    ///
+    /// - Parameter yaml: Raw bytes of a UTF-8-encoded compose YAML document.
+    /// - Throws: `DecodingError` if the YAML is malformed or structurally invalid.
+    ///           Throws `CocoaError(.fileReadInapplicableStringEncoding)` if the
+    ///           data is not valid UTF-8.
+    public static func from(yaml: Data) throws -> DockerCompose {
+        guard let yamlString = String(data: yaml, encoding: .utf8) else {
+            throw CocoaError(.fileReadInapplicableStringEncoding)
+        }
+        return try from(yaml: yamlString)
+    }
+}
+
 // MARK: - Multi-file merge
 extension DockerCompose {
     /// Loads a compose file at `mainPath`, resolves its `include:` entries
