@@ -26,7 +26,7 @@ import ContainerizationExtras
 import Foundation
 import Yams
 
-public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposePull: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -63,39 +63,7 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
 
     // MARK: - Computed paths
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
@@ -105,41 +73,15 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
     // MARK: - run
 
     public mutating func run() async throws {
+        let dockerCompose = try loadAndResolve()
+
         if RuntimeExecutionMode.isRemote {
-            let projectName = resolveProjectName(
-                cliOverride: projectFlags.projectName,
-                composeName: nil,
-                projectDirectory: effectiveProjectDirectory
-            )
+            let projectName = resolveProjectName(for: dockerCompose)
             try await remotePull(projectName: projectName)
             return
         }
 
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
-
-        // Gather all services
-        var allServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
-            guard let service else { return nil }
-            return (name, service)
-        }
-
-        // Filter by active profiles
-        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        allServices = Service.filterByProfiles(allServices, activeProfiles: activeProfiles)
-        allServices = try Service.topoSortConfiguredServices(allServices)
-
-        // Filter by requested service names
-        if !services.isEmpty {
-            allServices = allServices.filter { serviceName, service in
-                if services.contains(serviceName) { return true }
-                if includeDeps && services.contains(where: { service.dependedBy.contains($0) }) {
-                    return true
-                }
-                return false
-            }
-        }
+        let allServices = try selectedServices(in: dockerCompose)
 
         print("Pulling images...")
         var failedPulls: [(name: String, error: Error)] = []
@@ -183,6 +125,32 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
                 print("  - \(failed.name): \(failed.error.localizedDescription)")
             }
         }
+    }
+
+    private func selectedServices(in dockerCompose: DockerCompose) throws -> [(serviceName: String, service: Service)] {
+        guard !includeDeps else {
+            return try filterServices(dockerCompose, profilesArg: profile, servicesArg: services)
+        }
+
+        // Gather all services
+        var allServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
+            guard let service else { return nil }
+            return (name, service)
+        }
+
+        // Filter by active profiles
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        allServices = Service.filterByProfiles(allServices, activeProfiles: activeProfiles)
+        allServices = try Service.topoSortConfiguredServices(allServices)
+
+        // Filter by requested service names
+        if !services.isEmpty {
+            allServices = allServices.filter { serviceName, _ in
+                services.contains(serviceName)
+            }
+        }
+
+        return allServices
     }
 
     private func remotePull(projectName: String) async throws {

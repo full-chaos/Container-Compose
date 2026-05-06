@@ -25,7 +25,7 @@ import ContainerCommands
 import Foundation
 import Yams
 
-public struct ComposeConfig: AsyncParsableCommand {
+public struct ComposeConfig: AsyncParsableCommand, ComposeCommand {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -62,47 +62,13 @@ public struct ComposeConfig: AsyncParsableCommand {
 
     // MARK: - Helpers
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     // MARK: - run()
 
     public mutating func run() async throws {
         // Step 1: Load + merge include entries + resolve extends.
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
         // Step 2: Env-interpolation.
         // TODO: Implement full in-model env-variable substitution so that

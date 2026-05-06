@@ -24,7 +24,7 @@ import ContainerAPIClient
 import Foundation
 import Yams
 
-public struct ComposeRm: AsyncParsableCommand {
+public struct ComposeRm: AsyncParsableCommand, ComposeCommand {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -73,74 +73,16 @@ public struct ComposeRm: AsyncParsableCommand {
     // conventional name used by other commands.
     var composeFilename: String? { file }
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let file {
-            return resolvedPath(for: file, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     public mutating func run() async throws {
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
-
-        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
-        let projectName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
+        let dockerCompose = try loadAndResolve()
+        let projectName = resolveProjectName(for: dockerCompose)
+        let resolvedServices = try filterServices(
+            dockerCompose,
+            profilesArg: profile,
+            servicesArg: services
         )
-        if let cliName = projectFlags.projectName, !cliName.isEmpty {
-            print("Info: Using project name from --project-name flag: \(cliName)")
-        } else if dockerCompose.name != nil {
-            print("Info: Docker Compose project name: \(projectName)")
-        } else {
-            print("Info: Using directory name as project name: \(projectName)")
-        }
-
-        var resolvedServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
-            guard let service else { return nil }
-            return (name, service)
-        }
-
-        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        resolvedServices = Service.filterByProfiles(resolvedServices, activeProfiles: activeProfiles)
-
-        resolvedServices = try Service.topoSortConfiguredServices(resolvedServices)
-
-        if !self.services.isEmpty {
-            resolvedServices = resolvedServices.filter { serviceName, service in
-                self.services.contains(serviceName) || self.services.contains(where: { service.dependedBy.contains($0) })
-            }
-        }
 
         // Remove in reverse topo-sort order (dependents before dependencies).
         try await removeServices(resolvedServices.reversed(), projectName: projectName)

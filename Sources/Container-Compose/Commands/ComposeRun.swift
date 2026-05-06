@@ -26,7 +26,7 @@ import ContainerizationExtras
 import Foundation
 import Yams
 
-public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -78,39 +78,7 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
 
     // MARK: - Computed helpers
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
@@ -121,19 +89,13 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
 
     public mutating func run() async throws {
         // 1. Load and merge compose file
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
         // 2. Load environment variables from .env file
         let environmentVariables = loadEnvFile(path: envFilePath)
 
         // 3. Determine project name (CLI flag > compose `name:` > directory basename).
-        let projectName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
-        )
+        let projectName = resolveProjectName(for: dockerCompose)
 
         // 4. Filter by active profiles
         var allServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in

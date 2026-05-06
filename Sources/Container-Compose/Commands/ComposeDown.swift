@@ -26,7 +26,7 @@ import ContainerAPIClient
 import Foundation
 import Yams
 
-public struct ComposeDown: AsyncParsableCommand {
+public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -52,91 +52,23 @@ public struct ComposeDown: AsyncParsableCommand {
     @OptionGroup
     var projectFlags: ProjectFlags
 
-    private var cwd: String { hostCwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
+    var cwd: String { hostCwd ?? FileManager.default.currentDirectoryPath }
 
     @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")
     var composeFilename: String?
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var cwdURL: URL {
-        URL(fileURLWithPath: cwd)
-    }
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if fileManager.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
 
     private var fileManager: FileManager { FileManager.default }
     private var projectName: String?
 
     public mutating func run() async throws {
-
-        // Decode (and recursively merge includes) into the DockerCompose struct.
-        let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
-
-        // Determine project name for container naming.
-        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
-        let resolvedName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
-        )
+        let dockerCompose = try loadAndResolve()
+        let resolvedName = resolveProjectName(for: dockerCompose)
         projectName = resolvedName
-        if let cliName = projectFlags.projectName, !cliName.isEmpty {
-            print("Info: Using project name from --project-name flag: \(cliName)")
-        } else if let name = dockerCompose.name {
-            print("Info: Docker Compose project name parsed as: \(name)")
-            print(
-                "Note: The 'name' field currently only affects container naming (e.g., '\(name)-serviceName'). Full project-level isolation for other resources (networks, implicit volumes) is not implemented by this tool."
-            )
-        } else {
-            print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(resolvedName)")
-        }
-
-        var services: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap({ serviceName, service in
-            guard let service else { return nil }
-            return (serviceName, service)
-        })
-
-        // Filter by active profiles before topo-sort.
-        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        services = Service.filterByProfiles(services, activeProfiles: activeProfiles)
-
-        services = try Service.topoSortConfiguredServices(services)
-
-        // Filter for specified services
-        if !self.services.isEmpty {
-            services = services.filter({ serviceName, service in
-                self.services.contains(where: { $0 == serviceName }) || self.services.contains(where: { service.dependedBy.contains($0) })
-            })
-        }
+        let services = try Array(filterServices(
+            dockerCompose,
+            profilesArg: profile,
+            servicesArg: services
+        ).reversed())
 
         // When `-v` is passed, also remove containers — apple/container blocks
         // volume removal while a container (even stopped) still references the

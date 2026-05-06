@@ -28,7 +28,7 @@ import ContainerizationExtras
 import Foundation
 import Yams
 
-public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposeBuild: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -60,40 +60,7 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     @OptionGroup
     var logging: Flags.Logging
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
-
-    /// Project root for outside-container relative-path resolution
-    /// (build context, env-file, volume bind sources). Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
@@ -113,25 +80,17 @@ public struct ComposeBuild: AsyncParsableCommand, @unchecked Sendable {
     }
 
     public mutating func run() async throws {
+        let dockerCompose = try loadAndResolve()
+
         if RuntimeExecutionMode.isRemote {
-            let projectName = resolveProjectName(
-                cliOverride: projectFlags.projectName,
-                composeName: nil,
-                projectDirectory: effectiveProjectDirectory
-            )
+            let projectName = resolveProjectName(for: dockerCompose)
             try await remoteBuild(projectName: projectName)
             return
         }
 
-        // Decode (and recursively merge includes) into the DockerCompose struct.
-        let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath)
         let environmentVariables = loadEnvFile(path: envFilePath)
 
-        let projectName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
-        )
+        let projectName = resolveProjectName(for: dockerCompose)
 
         // Build the candidate list first (every service visible to this invocation),
         // then narrow down to those with a `build:` block. The candidate count is
