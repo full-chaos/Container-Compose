@@ -1,0 +1,8 @@
+{
+  "branch": "gh-readonly-queue/main/pr-130-b4ad9522ee4ad72695e42369d566c7327cb25314",
+  "commit": "27b2d981f1013819bbc28838b90371326d3cd149",
+  "short": "27b2d98",
+  "target": "27b2d98",
+  "message": "refactor(compose): CHAOS-1434 Pri 5 \u2014 finish warnings migration (16 sites) (#130)",
+  "published_at": "2026-05-06T21:54:05.256459+00:00"
+}
