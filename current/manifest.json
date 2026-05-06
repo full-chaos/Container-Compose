@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "a9622a39f141142d10fffb7a68ed64eb449b3285",
-  "short": "a9622a3",
+  "commit": "b4ad9522ee4ad72695e42369d566c7327cb25314",
+  "short": "b4ad952",
   "target": "current",
-  "message": "refactor(compose): CHAOS-1436 Phase A \u2014 extract volume migration (#128)",
-  "published_at": "2026-05-06T19:17:33.520619+00:00"
+  "message": "refactor(compose): CHAOS-1436 Phase B \u2014 unify buildService (#129)",
+  "published_at": "2026-05-06T20:53:47.578600+00:00"
 }
