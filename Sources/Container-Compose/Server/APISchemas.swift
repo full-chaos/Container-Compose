@@ -1060,3 +1060,88 @@ public struct APIWaitResponse: Codable, Sendable, Hashable {
         self.exitedAt = exitedAt
     }
 }
+
+// MARK: - Runtime command schemas (CHAOS-1427)
+
+public struct APIExecRequest: Codable, Sendable, Hashable {
+    public let command: [String]
+    public let detach: Bool?
+    public let interactive: Bool?
+    public let tty: Bool?
+    public let environment: [String]?
+    public let user: String?
+    public let workingDirectory: String?
+
+    public init(
+        command: [String],
+        detach: Bool? = nil,
+        interactive: Bool? = nil,
+        tty: Bool? = nil,
+        environment: [String]? = nil,
+        user: String? = nil,
+        workingDirectory: String? = nil
+    ) {
+        self.command = command
+        self.detach = detach
+        self.interactive = interactive
+        self.tty = tty
+        self.environment = environment
+        self.user = user
+        self.workingDirectory = workingDirectory
+    }
+
+    public var runtimeOptions: RuntimeExecOptions {
+        RuntimeExecOptions(
+            detach: detach ?? false,
+            interactive: interactive ?? true,
+            tty: tty ?? true,
+            environment: environment ?? [],
+            user: user,
+            workingDirectory: workingDirectory
+        )
+    }
+}
+
+public struct APIExecResponse: Codable, Sendable, Hashable {
+    public let stdout: [String]
+    public let stderr: [String]
+    public let exitCode: Int32
+
+    public init(stdout: [String], stderr: [String], exitCode: Int32) {
+        self.stdout = stdout
+        self.stderr = stderr
+        self.exitCode = exitCode
+    }
+}
+
+public struct APIProcessListResponse: Codable, Sendable, Hashable {
+    public let containerId: String
+    public let output: [String]
+
+    public init(containerId: String, output: [String]) {
+        self.containerId = containerId
+        self.output = output
+    }
+}
+
+public struct APIImagePushRequest: Codable, Sendable, Hashable {
+    public let image: String
+
+    public init(image: String) {
+        self.image = image
+    }
+}
+
+public struct APIImagePushResponse: Codable, Sendable, Hashable {
+    public let image: String
+    public let stdout: [String]
+    public let stderr: [String]
+    public let exitCode: Int32
+
+    public init(image: String, stdout: [String], stderr: [String], exitCode: Int32) {
+        self.image = image
+        self.stdout = stdout
+        self.stderr = stderr
+        self.exitCode = exitCode
+    }
+}

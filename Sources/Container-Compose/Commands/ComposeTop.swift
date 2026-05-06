@@ -133,10 +133,22 @@ public struct ComposeTop: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // 5. List running project containers matching the selected services
-        let provider = ContainerClientEnvironment.current
-        let allContainers = try await provider.list(filters: .all)
         let targets = targetDescriptors(projectName: projectName, services: serviceList)
 
+        if RuntimeExecutionMode.isRemote {
+            let allContainers = try await RuntimeEnvironment.current.list(filters: .all)
+            let projectContainers = allContainers.compactMap { container -> (containerName: String, serviceName: String, color: NamedColor)? in
+                guard container.status == .running else { return nil }
+                let containerName = container.id
+                guard let target = matchingTarget(for: containerName, targets: targets) else { return nil }
+                return (containerName, target.serviceName, target.color)
+            }
+            try await streamRemoteProcessLists(projectContainers)
+            return
+        }
+
+        let provider = ContainerClientEnvironment.current
+        let allContainers = try await provider.list(filters: .all)
         let projectContainers = allContainers.compactMap { container -> (containerName: String, serviceName: String, color: NamedColor)? in
             guard container.status == .running else { return nil }
             let containerName = container.configuration.id
@@ -155,6 +167,21 @@ public struct ComposeTop: AsyncParsableCommand, @unchecked Sendable {
                 containerName: container.containerName,
                 serviceColor: container.color
             )
+        }
+    }
+
+    private func streamRemoteProcessLists(
+        _ containers: [(containerName: String, serviceName: String, color: NamedColor)]
+    ) async throws {
+        if containers.isEmpty {
+            print("No running containers found.")
+            return
+        }
+        for container in containers {
+            let result = try await RuntimeEnvironment.current.processes(id: container.containerName)
+            for line in result.output {
+                print("\(container.containerName) | \(line)".applyingColor(container.color))
+            }
         }
     }
 

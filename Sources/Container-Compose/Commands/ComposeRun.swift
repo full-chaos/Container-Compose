@@ -148,6 +148,11 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             throw ValidationError("Service '\(serviceName)' not found in compose file.")
         }
 
+        if RuntimeExecutionMode.isRemote {
+            try await remoteRun(service, projectName: projectName)
+            return
+        }
+
         // 6. Generate a unique one-off container name
         let containerName: String
         if let nameOverride = name {
@@ -337,6 +342,100 @@ public struct ComposeRun: AsyncParsableCommand, @unchecked Sendable {
             onStdout: nil,
             onStderr: nil
         )
+    }
+
+    private func remoteRun(_ service: Service, projectName: String) async throws {
+        let runtime = RuntimeEnvironment.current
+
+        guard volumes.isEmpty else {
+            throw RuntimeError.notSupported(operation: "compose run --volume", conformer: "RemoteRuntime")
+        }
+        guard service.entrypoint == nil || !command.isEmpty else {
+            throw RuntimeError.notSupported(operation: "remote compose run with service entrypoint", conformer: "RemoteRuntime")
+        }
+        guard !(detach && rm) else {
+            throw RuntimeError.notSupported(operation: "compose run --detach --rm", conformer: "RemoteRuntime")
+        }
+
+        let containerName: String
+        if let nameOverride = name {
+            containerName = nameOverride
+        } else {
+            let uuidPrefix = String(UUID().uuidString.prefix(8).lowercased())
+            containerName = "\(projectName)-\(serviceName)-run-\(uuidPrefix)"
+        }
+
+        guard let image = service.image else {
+            if service.build != nil {
+                throw RuntimeError.notSupported(operation: "remote compose run for build-only service '\(serviceName)'", conformer: "RemoteRuntime")
+            }
+            throw ComposeError.imageNotFound(serviceName)
+        }
+
+        var combinedEnv = mergeServiceEnvironment(
+            baseline: loadEnvFile(path: envFilePath),
+            serviceEnvFile: service.env_file,
+            serviceEnvironment: service.environment,
+            projectDirectory: effectiveProjectDirectory
+        )
+        for envVar in environment {
+            let parts = envVar.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            if parts.count == 2 {
+                combinedEnv[String(parts[0])] = String(parts[1])
+            }
+        }
+
+        let runtimeCommand = command.isEmpty ? (service.command ?? []) : command
+        let ports = servicePorts ? remotePublishedPorts(for: service) : []
+        let config = RuntimeCreateConfiguration(
+            imageReference: ComposeUp.qualifyImageReference(image),
+            cpus: Int(service.cpus_top ?? 1),
+            hostname: service.hostname,
+            environment: combinedEnv.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" },
+            command: runtimeCommand,
+            workingDirectory: service.working_dir,
+            publishedPorts: ports,
+            capabilities: RuntimeCapabilities(add: service.cap_add ?? [], drop: service.cap_drop ?? []),
+            securityOpt: service.security_opt,
+            readOnly: service.read_only,
+            user: user ?? service.user,
+            groupAdd: service.group_add,
+            privileged: service.privileged
+        )
+
+        if (try? await runtime.get(id: containerName)) != nil {
+            try await runtime.remove(id: containerName, force: true)
+        }
+
+        _ = try await runtime.create(id: containerName, configuration: config)
+        try await runtime.start(id: containerName)
+        print("Started remote one-off container: \(containerName)")
+
+        if !detach {
+            _ = try await runtime.wait(id: containerName, timeoutSeconds: 30)
+            if rm {
+                try await runtime.remove(id: containerName, force: true)
+            }
+        }
+    }
+
+    private func remotePublishedPorts(for service: Service) -> [RuntimePublishedPort] {
+        (service.ports ?? []).compactMap { raw in
+            let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
+            guard parts.count >= 2 else { return nil }
+            let hostPart = String(parts[parts.count - 2])
+            let containerPart = String(parts[parts.count - 1])
+            guard
+                let hostPort = UInt16(hostPart),
+                let containerPort = UInt16(containerPart.split(separator: "/").first ?? "")
+            else { return nil }
+            return RuntimePublishedPort(
+                hostAddress: "0.0.0.0",
+                hostPort: hostPort,
+                containerPort: containerPort,
+                proto: containerPart.hasSuffix("/udp") ? .udp : .tcp
+            )
+        }
     }
 
 }

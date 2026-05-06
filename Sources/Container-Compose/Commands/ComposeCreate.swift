@@ -155,6 +155,11 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             }
         }
 
+        if RuntimeExecutionMode.isRemote {
+            try await remoteCreate(resolvedServices)
+            return
+        }
+
         // Process top-level networks
         if let networks = dockerCompose.networks {
             print("\n--- Processing Networks ---")
@@ -180,6 +185,79 @@ public struct ComposeCreate: AsyncParsableCommand, @unchecked Sendable {
             try await createService(service, serviceName: serviceName, from: dockerCompose)
         }
         print("--- Containers Created ---\n")
+    }
+
+    private func remoteCreate(_ services: [(serviceName: String, service: Service)]) async throws {
+        guard let projectName else { return }
+        let runtime = RuntimeEnvironment.current
+
+        print("\n--- Creating Remote Containers ---")
+        for (serviceName, service) in services {
+            let containerName = effectiveContainerName(
+                projectName: projectName,
+                serviceName: serviceName,
+                explicit: service.container_name
+            )
+
+            if (try? await runtime.get(id: containerName)) != nil {
+                print("Info: Remote container '\(containerName)' already exists, skipping.")
+                continue
+            }
+
+            guard let image = service.image else {
+                if service.build != nil {
+                    throw RuntimeError.notSupported(operation: "remote compose create for build-only service '\(serviceName)'", conformer: "RemoteRuntime")
+                }
+                throw ComposeError.imageNotFound(serviceName)
+            }
+
+            let config = RuntimeCreateConfiguration(
+                imageReference: ComposeUp.qualifyImageReference(image),
+                cpus: Int(service.cpus_top ?? 1),
+                hostname: service.hostname,
+                environment: remoteEnvironment(for: service),
+                command: service.command ?? [],
+                workingDirectory: service.working_dir,
+                publishedPorts: remotePublishedPorts(for: service),
+                capabilities: RuntimeCapabilities(add: service.cap_add ?? [], drop: service.cap_drop ?? []),
+                securityOpt: service.security_opt,
+                readOnly: service.read_only,
+                user: service.user,
+                groupAdd: service.group_add,
+                privileged: service.privileged
+            )
+            _ = try await runtime.create(id: containerName, configuration: config)
+            print("Created remote container: \(containerName)")
+        }
+        print("--- Remote Containers Created ---\n")
+    }
+
+    private func remoteEnvironment(for service: Service) -> [String] {
+        var merged = environmentVariables
+        for (key, value) in service.environment ?? [:] {
+            merged[key] = value
+        }
+        return merged.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+    }
+
+    private func remotePublishedPorts(for service: Service) -> [RuntimePublishedPort] {
+        (service.ports ?? []).compactMap { raw in
+            let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
+            guard parts.count >= 2 else { return nil }
+            let hostPart = String(parts[parts.count - 2])
+            let containerPart = String(parts[parts.count - 1])
+            let containerPortPart = String(containerPart.split(separator: "/").first ?? "")
+            guard
+                let hostPort = UInt16(hostPart),
+                let containerPort = UInt16(containerPortPart)
+            else { return nil }
+            return RuntimePublishedPort(
+                hostAddress: "0.0.0.0",
+                hostPort: hostPort,
+                containerPort: containerPort,
+                proto: containerPart.hasSuffix("/udp") ? .udp : .tcp
+            )
+        }
     }
 
     private func buildService(_ buildConfig: Build, for service: Service, serviceName: String) async throws -> String {

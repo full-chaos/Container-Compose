@@ -130,6 +130,33 @@ public struct ComposeKill: AsyncParsableCommand {
     }
 
     func killServices(_ services: some Sequence<(serviceName: String, service: Service)>, projectName: String) async throws {
+        if RuntimeExecutionMode.isRemote {
+            let runtime = RuntimeEnvironment.current
+            let parsedSignal = parseSignal(signal)
+
+            for (serviceName, service) in services {
+                let containerName = effectiveContainerName(
+                    projectName: projectName,
+                    serviceName: serviceName,
+                    explicit: service.container_name
+                )
+
+                guard let container = try? await runtime.get(id: containerName) else {
+                    print("Warning: Container '\(containerName)' not found, skipping.")
+                    continue
+                }
+
+                print("Killing container: \(containerName) (signal: \(signal))")
+                do {
+                    try await runtime.kill(id: container.id, signal: parsedSignal)
+                    print("Successfully killed container: \(containerName)")
+                } catch {
+                    print("Error killing container '\(containerName)': \(error)")
+                }
+            }
+            return
+        }
+
         for (serviceName, service) in services {
             let containerName = effectiveContainerName(
                 projectName: projectName,
@@ -173,6 +200,18 @@ public struct ComposeKill: AsyncParsableCommand {
             } catch {
                 print("Error killing container '\(containerName)': \(error)")
             }
+        }
+    }
+
+    private func parseSignal(_ value: String) -> Int32 {
+        if let direct = Int32(value) {
+            return direct
+        }
+        switch value.uppercased() {
+        case "SIGTERM": return 15
+        case "SIGKILL": return 9
+        case "SIGINT": return 2
+        default: return 9
         }
     }
 }

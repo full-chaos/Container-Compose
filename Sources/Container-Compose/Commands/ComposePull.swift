@@ -105,6 +105,16 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
     // MARK: - run
 
     public mutating func run() async throws {
+        if RuntimeExecutionMode.isRemote {
+            let projectName = resolveProjectName(
+                cliOverride: projectFlags.projectName,
+                composeName: nil,
+                projectDirectory: effectiveProjectDirectory
+            )
+            try await remotePull(projectName: projectName)
+            return
+        }
+
         let dockerCompose = try DockerCompose
             .loadAndMerge(mainPath: composePath)
             .resolvingExtends()
@@ -172,6 +182,34 @@ public struct ComposePull: AsyncParsableCommand, @unchecked Sendable {
             for failed in failedPulls {
                 print("  - \(failed.name): \(failed.error.localizedDescription)")
             }
+        }
+    }
+
+    private func remotePull(projectName: String) async throws {
+        guard policy == nil || policy == "always" || policy == "missing" else {
+            throw RuntimeError.notSupported(operation: "compose pull --policy \(policy ?? "")", conformer: "RemoteRuntime")
+        }
+        guard let remoteRuntime = RuntimeEnvironment.current as? RemoteRuntime else {
+            throw RuntimeError.notSupported(operation: "compose pull", conformer: "RemoteRuntime")
+        }
+
+        let stream = try await remoteRuntime.pullProject(
+            name: projectName,
+            services: services,
+            ignoreFailures: ignorePullFailures
+        )
+
+        var errors: [String] = []
+        for await frame in stream {
+            let detail = frame.message ?? frame.type
+            print("[\(frame.service)] \(frame.image): \(detail)")
+            if frame.type == "error" {
+                errors.append(detail)
+            }
+        }
+
+        if let first = errors.first, !ignorePullFailures {
+            throw RuntimeError.backendFailure(message: first)
         }
     }
 

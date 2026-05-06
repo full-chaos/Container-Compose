@@ -97,9 +97,20 @@ public struct ComposeEvents: AsyncParsableCommand {
             projectDirectory: effectiveProjectDirectory
         )
         let targetNames = targetContainerNames(in: dockerCompose, projectName: projectName)
-        let provider = ContainerClientEnvironment.current
         let encoder = JSONEncoder()
         let formatter = ISO8601DateFormatter()
+
+        if RuntimeExecutionMode.isRemote {
+            let stream = try await RuntimeEnvironment.current.events()
+            for await event in stream {
+                guard let fields = runtimeEventFields(event) else { continue }
+                guard matchesProject(containerId: fields.id, projectName: projectName, targetNames: targetNames) else { continue }
+                emitRuntimeEvent(id: fields.id, action: fields.action, timestamp: fields.timestamp, encoder: encoder, formatter: formatter)
+            }
+            return
+        }
+
+        let provider = ContainerClientEnvironment.current
         var lastTimestamp: Date? = nil
 
         while true {
@@ -158,6 +169,34 @@ public struct ComposeEvents: AsyncParsableCommand {
             print(line)
         } else {
             print("\(timestamp) container \(event.action.rawValue) \(event.containerId)")
+        }
+    }
+
+    private func emitRuntimeEvent(id: String, action: String, timestamp: Date, encoder: JSONEncoder, formatter: ISO8601DateFormatter) {
+        let timestampString = formatter.string(from: timestamp)
+        if json {
+            let jsonEvent = JSONEvent(timestamp: timestampString, type: "container", action: action, id: id)
+            guard let data = try? encoder.encode(jsonEvent), let line = String(data: data, encoding: .utf8) else { return }
+            print(line)
+        } else {
+            print("\(timestampString) container \(action) \(id)")
+        }
+    }
+
+    private func runtimeEventFields(_ event: RuntimeContainerEvent) -> (id: String, action: String, timestamp: Date)? {
+        switch event {
+        case .created(let id, let at):
+            return (id, "created", at)
+        case .started(let id, let at):
+            return (id, "started", at)
+        case .stopped(let id, _, let at):
+            return (id, "stopped", at)
+        case .killed(let id, _, let at):
+            return (id, "killed", at)
+        case .oomKilled(let id, let at):
+            return (id, "oomKilled", at)
+        case .removed(let id, let at):
+            return (id, "removed", at)
         }
     }
 }

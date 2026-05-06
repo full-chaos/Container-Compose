@@ -126,6 +126,31 @@ public struct ComposeStop: AsyncParsableCommand {
     }
 
     func stopServices(_ services: some Sequence<(serviceName: String, service: Service)>, projectName: String) async throws {
+        if RuntimeExecutionMode.isRemote {
+            let runtime = RuntimeEnvironment.current
+            for (serviceName, service) in services {
+                let containerName = effectiveContainerName(
+                    projectName: projectName,
+                    serviceName: serviceName,
+                    explicit: service.container_name
+                )
+
+                guard let container = try? await runtime.get(id: containerName) else {
+                    print("Warning: Container '\(containerName)' not found, skipping.")
+                    continue
+                }
+
+                print("Stopping container: \(containerName)")
+                do {
+                    try await runtime.stop(id: container.id, options: .default)
+                    print("Successfully stopped container: \(containerName)")
+                } catch {
+                    print("Error stopping container '\(containerName)': \(error)")
+                }
+            }
+            return
+        }
+
         for (serviceName, service) in services {
             let containerName = effectiveContainerName(
                 projectName: projectName,

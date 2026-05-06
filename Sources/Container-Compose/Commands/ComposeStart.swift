@@ -129,6 +129,36 @@ public struct ComposeStart: AsyncParsableCommand {
     // We shell out to `container start --detach <name>` instead, which is
     // the same mechanism the container CLI uses internally.
     func startServices(_ services: [(serviceName: String, service: Service)], projectName: String) async throws {
+        if RuntimeExecutionMode.isRemote {
+            let runtime = RuntimeEnvironment.current
+            for (serviceName, service) in services {
+                let containerName = effectiveContainerName(
+                    projectName: projectName,
+                    serviceName: serviceName,
+                    explicit: service.container_name
+                )
+
+                guard let container = try? await runtime.get(id: containerName) else {
+                    print("Warning: Container '\(containerName)' not found, skipping.")
+                    continue
+                }
+
+                if container.status == .running {
+                    print("Info: Container '\(containerName)' is already running, skipping.")
+                    continue
+                }
+
+                print("Starting container: \(containerName)")
+                do {
+                    try await runtime.start(id: container.id)
+                    print("Successfully started container: \(containerName)")
+                } catch {
+                    print("Error starting container '\(containerName)': \(error)")
+                }
+            }
+            return
+        }
+
         for (serviceName, service) in services {
             let containerName = effectiveContainerName(
                 projectName: projectName,

@@ -143,6 +143,17 @@ public protocol Runtime: Sendable {
         specs: [RuntimeBuildSpec]
     ) async throws -> AsyncStream<RuntimeBuildEvent>
 
+    // MARK: - Commands
+
+    /// Execute a command inside a running container and return captured output.
+    func exec(id: String, command: [String], options: RuntimeExecOptions) async throws -> RuntimeExecResult
+
+    /// Return a process-list snapshot for a running container.
+    func processes(id: String) async throws -> RuntimeProcessList
+
+    /// Push an image reference from the runtime host to its configured registry.
+    func pushImage(reference: String) async throws -> RuntimeImagePushResult
+
     // MARK: - Resource CRUD (CHAOS-1353)
 
     // MARK: Networks
@@ -185,6 +196,27 @@ public protocol Runtime: Sendable {
     /// Remove a secret by name. Conformers throw `RuntimeError.notFound(id:)`
     /// if no secret with that name exists.
     func removeSecret(name: String) async throws
+}
+
+public extension Runtime {
+    func pull(
+        specs: [RuntimePullSpec],
+        ignoreFailures: Bool
+    ) async throws -> AsyncStream<RuntimePullEvent> {
+        throw RuntimeError.notSupported(
+            operation: "pull",
+            conformer: String(describing: Self.self)
+        )
+    }
+
+    func build(
+        specs: [RuntimeBuildSpec]
+    ) async throws -> AsyncStream<RuntimeBuildEvent> {
+        throw RuntimeError.notSupported(
+            operation: "build",
+            conformer: String(describing: Self.self)
+        )
+    }
 }
 
 // MARK: - RuntimeError
@@ -241,6 +273,20 @@ public enum RuntimeError: Error, Sendable, Equatable {
     /// — Phase 2 surfaces this when `LinuxContainer` cannot be instantiated
     /// because the `Kernel` value is unobtainable.
     case kernelUnavailable(reason: String)
+}
+
+extension Runtime {
+    public func exec(id: String, command: [String], options: RuntimeExecOptions) async throws -> RuntimeExecResult {
+        throw RuntimeError.notSupported(operation: "exec", conformer: String(describing: Self.self))
+    }
+
+    public func processes(id: String) async throws -> RuntimeProcessList {
+        throw RuntimeError.notSupported(operation: "processes", conformer: String(describing: Self.self))
+    }
+
+    public func pushImage(reference: String) async throws -> RuntimeImagePushResult {
+        throw RuntimeError.notSupported(operation: "pushImage", conformer: String(describing: Self.self))
+    }
 }
 
 extension RuntimeError: LocalizedError {

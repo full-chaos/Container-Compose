@@ -78,6 +78,11 @@ public func snapshotPath(_ path: String) -> PathSnapshot {
 
 /// An actor that owns polling state and drives the watch loop.
 actor WatchLoop {
+    struct RemoteContext: Sendable {
+        let projectName: String
+        let explicitContainerNames: [String: String]
+    }
+
     /// Current snapshots keyed by watched path.
     var snapshots: [String: PathSnapshot] = [:]
 
@@ -109,6 +114,7 @@ actor WatchLoop {
         pollInterval: TimeInterval = 2,
         dryRun: Bool,
         cwd: String,
+        remoteContext: RemoteContext? = nil,
         maxPolls: Int? = nil
     ) async {
         // Initialise snapshots.
@@ -133,7 +139,7 @@ actor WatchLoop {
 
                 print("[watch] \(serviceName): change detected at '\(rule.path)' → action: \(rule.action.rawValue)")
 
-                await handleAction(rule.action, serviceName: serviceName, rule: rule, dryRun: dryRun, cwd: cwd)
+                await handleAction(rule.action, serviceName: serviceName, rule: rule, dryRun: dryRun, cwd: cwd, remoteContext: remoteContext)
             }
         }
     }
@@ -145,6 +151,7 @@ actor WatchLoop {
         rules: [(serviceName: String, rule: WatchRule)],
         dryRun: Bool,
         cwd: String,
+        remoteContext: RemoteContext? = nil,
         watcher: any FSWatcher = FSWatcherEnvironment.current
     ) async {
         let paths = Array(Set(rules.map { $0.rule.path })).sorted()
@@ -162,7 +169,7 @@ actor WatchLoop {
             let matches = matchingRules(for: event, in: rules)
             for (serviceName, rule) in matches {
                 print("[watch] \(serviceName): change detected at '\(rule.path)' → action: \(rule.action.rawValue)")
-                await handleAction(rule.action, serviceName: serviceName, rule: rule, dryRun: dryRun, cwd: cwd)
+                await handleAction(rule.action, serviceName: serviceName, rule: rule, dryRun: dryRun, cwd: cwd, remoteContext: remoteContext)
             }
         }
     }
@@ -174,8 +181,14 @@ actor WatchLoop {
         serviceName: String,
         rule: WatchRule,
         dryRun: Bool,
-        cwd: String
+        cwd: String,
+        remoteContext: RemoteContext?
     ) async {
+        if let remoteContext {
+            await handleRemoteAction(action, serviceName: serviceName, rule: rule, dryRun: dryRun, context: remoteContext)
+            return
+        }
+
         switch action {
         case .rebuild:
             if dryRun {
@@ -233,6 +246,94 @@ actor WatchLoop {
             } else {
                 print("[watch] restarting \(serviceName)…")
                 await runWatchShell(["container-compose", "restart", serviceName], cwd: cwd)
+            }
+        }
+    }
+
+    private func handleRemoteAction(
+        _ action: WatchAction,
+        serviceName: String,
+        rule: WatchRule,
+        dryRun: Bool,
+        context: RemoteContext
+    ) async {
+        let explicitName = context.explicitContainerNames[serviceName]
+        let containerName = effectiveContainerName(
+            projectName: context.projectName,
+            serviceName: serviceName,
+            explicit: explicitName
+        )
+
+        switch action {
+        case .rebuild:
+            if dryRun {
+                print("[dry-run] would remotely build and restart \(serviceName)")
+                return
+            }
+            guard let remote = RuntimeEnvironment.current as? RemoteRuntime else {
+                print("[watch] remote rebuild requires RemoteRuntime")
+                return
+            }
+            do {
+                let frames = try await remote.buildProject(name: context.projectName, services: [serviceName], noCache: false, pull: false)
+                for await frame in frames {
+                    print("[watch] \(frame.service): \(frame.line)")
+                }
+                try? await RuntimeEnvironment.current.stop(id: containerName, options: .default)
+                try await RuntimeEnvironment.current.start(id: containerName)
+            } catch {
+                print("[watch] remote rebuild error: \(error)")
+            }
+
+        case .restart, .syncRestart:
+            if dryRun {
+                print("[dry-run] would remotely restart \(serviceName)")
+                return
+            }
+            if action == .syncRestart {
+                print("[watch] Note: remote sync+restart cannot sync files; only restart will be attempted.")
+            }
+            do {
+                try? await RuntimeEnvironment.current.stop(id: containerName, options: .default)
+                try await RuntimeEnvironment.current.start(id: containerName)
+            } catch {
+                print("[watch] remote restart error: \(error)")
+            }
+
+        case .sync:
+            if dryRun {
+                print("[dry-run] would sync '\(rule.path)' -> container:\(rule.target ?? "<no target>") for \(serviceName)")
+            } else {
+                print("[watch] Note: remote sync requires a file-copy API and is not supported yet.")
+            }
+
+        case .syncExec:
+            if dryRun {
+                let cmd = rule.exec?.command?.joined(separator: " ") ?? "<no command>"
+                print("[dry-run] would remotely exec '\(cmd)' in \(serviceName)")
+                return
+            }
+            guard let execCmd = rule.exec?.command, !execCmd.isEmpty else { return }
+            do {
+                let result = try await RuntimeEnvironment.current.exec(
+                    id: containerName,
+                    command: execCmd,
+                    options: RuntimeExecOptions(
+                        detach: false,
+                        interactive: false,
+                        tty: false,
+                        user: rule.exec?.user,
+                        workingDirectory: rule.exec?.workingDir
+                    )
+                )
+                for line in result.stdout {
+                    print("[watch] \(serviceName): \(line)")
+                }
+                for line in result.stderr {
+                    fputs("[watch] \(serviceName): \(line)\n", stderr)
+                }
+            } catch {
+                print("[watch] remote exec error: \(error)")
             }
         }
     }
@@ -404,10 +505,24 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
         }
 
         let loop = WatchLoop()
+        let remoteContext = RuntimeExecutionMode.isRemote
+            ? WatchLoop.RemoteContext(
+                projectName: resolveProjectName(
+                    cliOverride: projectFlags.projectName,
+                    composeName: dockerCompose.name,
+                    projectDirectory: effectiveProjectDirectory
+                ),
+                explicitContainerNames: Dictionary(
+                    uniqueKeysWithValues: resolvedServices.compactMap { serviceName, service in
+                        service.container_name.map { (serviceName, $0) }
+                    }
+                )
+            )
+            : nil
         if polling {
-            await loop.runPolling(rules: resolvedRules, dryRun: dryRun, cwd: cwd)
+            await loop.runPolling(rules: resolvedRules, dryRun: dryRun, cwd: cwd, remoteContext: remoteContext)
         } else {
-            await loop.runFSEvents(rules: resolvedRules, dryRun: dryRun, cwd: cwd)
+            await loop.runFSEvents(rules: resolvedRules, dryRun: dryRun, cwd: cwd, remoteContext: remoteContext)
         }
     }
 }

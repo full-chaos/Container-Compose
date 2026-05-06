@@ -159,6 +159,20 @@ public struct ComposePush: AsyncParsableCommand, @unchecked Sendable {
             print("Pushing image for service '\(serviceName)': \(qualifiedImageName)")
         }
 
+        if RuntimeExecutionMode.isRemote {
+            let result = try await RuntimeEnvironment.current.pushImage(reference: qualifiedImageName)
+            for line in result.stdout where !quiet {
+                print(line)
+            }
+            for line in result.stderr {
+                fputs("\(line)\n", stderr)
+            }
+            guard result.exitCode == 0 else {
+                throw RuntimeError.backendFailure(message: "remote image push exited with status \(result.exitCode)")
+            }
+            return
+        }
+
         let pushArgv = ["container", "image", "push", qualifiedImageName] + logging.passThroughCommands()
         let result = try await RunnerEnvironment.current.run(
             RunRequest(kind: .awaitOnly, argv: pushArgv, cwd: cwd),

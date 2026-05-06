@@ -147,6 +147,53 @@ public struct ComposeRm: AsyncParsableCommand {
     }
 
     func removeServices(_ services: some Sequence<(serviceName: String, service: Service)>, projectName: String) async throws {
+        if RuntimeExecutionMode.isRemote {
+            let runtime = RuntimeEnvironment.current
+
+            for (serviceName, service) in services {
+                let containerName = effectiveContainerName(
+                    projectName: projectName,
+                    serviceName: serviceName,
+                    explicit: service.container_name
+                )
+
+                guard let container = try? await runtime.get(id: containerName) else {
+                    print("Warning: Container '\(containerName)' not found, skipping.")
+                    continue
+                }
+
+                let isRunning = container.status == .running
+
+                if isRunning && !force {
+                    print("Warning: Container '\(containerName)' is running. Use --force to remove running containers. Skipping.")
+                    continue
+                }
+
+                if isRunning && force && stop {
+                    print("Stopping container before removal: \(containerName)")
+                    do {
+                        try await runtime.stop(id: container.id, options: .default)
+                        print("Successfully stopped container: \(containerName)")
+                    } catch {
+                        print("Error stopping container '\(containerName)': \(error)")
+                    }
+                }
+
+                if removeVolumes {
+                    print("Note: Anonymous volume removal for '\(containerName)' is not fully supported by the remote runtime. Skipping volume removal.")
+                }
+
+                print("Removing container: \(containerName)")
+                do {
+                    try await runtime.remove(id: container.id, force: force && !stop && isRunning)
+                    print("Successfully removed container: \(containerName)")
+                } catch {
+                    print("Error removing container '\(containerName)': \(error)")
+                }
+            }
+            return
+        }
+
         let provider = ContainerClientEnvironment.current
 
         for (serviceName, service) in services {

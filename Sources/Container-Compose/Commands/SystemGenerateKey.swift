@@ -45,6 +45,8 @@ public struct SystemGenerateKey: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
+        try RuntimeModeSupport.requireLocalOnly(operation: "system generate-key")
+
         let url = SystemKeyCommands.resolveAuthFile(authFile)
         let store = try await FileAuthStore(path: url)
 

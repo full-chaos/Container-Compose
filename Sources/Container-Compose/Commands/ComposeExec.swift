@@ -173,6 +173,31 @@ public struct ComposeExec: AsyncParsableCommand, @unchecked Sendable {
         execArgs.append(containerName)
         execArgs.append(contentsOf: command)
 
+        if RuntimeExecutionMode.isRemote {
+            let result = try await RuntimeEnvironment.current.exec(
+                id: containerName,
+                command: command,
+                options: RuntimeExecOptions(
+                    detach: detach,
+                    interactive: interactive,
+                    tty: tty,
+                    environment: environment,
+                    user: user,
+                    workingDirectory: workdir
+                )
+            )
+            for line in result.stdout {
+                print(line)
+            }
+            for line in result.stderr {
+                fputs("\(line)\n", stderr)
+            }
+            guard result.exitCode == 0 else {
+                throw RuntimeError.backendFailure(message: "remote exec exited with status \(result.exitCode)")
+            }
+            return
+        }
+
         // 6. Shell out to `container exec`
         print("Executing in container '\(containerName)': \(command.joined(separator: " "))")
 

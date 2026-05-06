@@ -68,6 +68,8 @@ public struct SystemGenerateCert: AsyncParsableCommand {
     public init() {}
 
     public func run() async throws {
+        try RuntimeModeSupport.requireLocalOnly(operation: "system generate-cert")
+
         let expandedDir = (outDir as NSString).expandingTildeInPath
         let certPath = (expandedDir as NSString).appendingPathComponent("cert.pem")
         let keyPath  = (expandedDir as NSString).appendingPathComponent("key.pem")
