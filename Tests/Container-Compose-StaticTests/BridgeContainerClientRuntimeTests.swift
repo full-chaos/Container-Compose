@@ -334,6 +334,115 @@ struct BridgeContainerClientRuntimeBuildTests {
     }
 }
 
+// MARK: - Build target resolution (CHAOS-1429 review)
+
+/// Closes Codex review finding #1: `buildStream` must consult `ProjectRegistry`
+/// when no explicit `services` are given and no containers exist yet —
+/// otherwise the canonical "ingest then build" daemon-API flow always reports
+/// "No services to build" because a freshly ingested project has zero
+/// containers running.
+@Suite("ProjectOrchestrator.buildStream service-name resolution — CHAOS-1429 review")
+struct BuildStreamServiceResolutionTests {
+
+    private static let twoBuildServicesYAML = """
+    services:
+      web:
+        build: ./web
+      db:
+        build: ./db
+    """
+
+    private func ingest(yaml: String, as projectName: String) async throws -> ProjectRegistry {
+        let reg = ProjectRegistry()
+        _ = try await ProjectOrchestrator.ingest(
+            projectName: projectName,
+            yaml: Data(yaml.utf8),
+            registry: reg
+        )
+        return reg
+    }
+
+    @Test("buildStream falls back to ProjectRegistry when no explicit services and no containers")
+    func registryFallbackUsedWhenContainersAbsent() async throws {
+        let registry = try await ingest(yaml: Self.twoBuildServicesYAML, as: "myapp")
+        let runtime = MockRuntime()  // empty container list
+        await runtime.injectBuildOutcome(service: "web", outcome: .successful)
+        await runtime.injectBuildOutcome(service: "db", outcome: .successful)
+
+        var seenServices: Set<String> = []
+        var sawErrorFrame = false
+        await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            let stream = ProjectOrchestrator.buildStream(
+                project: "myapp",
+                services: nil,
+                noCache: false,
+                pull: false,
+                runtime: runtime
+            )
+            for await frame in stream {
+                seenServices.insert(frame.service)
+                if frame.type == "error" && frame.line.contains("No services to build") {
+                    sawErrorFrame = true
+                }
+            }
+        }
+
+        #expect(!sawErrorFrame, "registry fallback must avoid 'No services to build' for ingested projects")
+        #expect(seenServices.contains("web"), "web should be derived from registry entry")
+        #expect(seenServices.contains("db"), "db should be derived from registry entry")
+    }
+
+    @Test("buildStream prefers explicit services over registry")
+    func explicitServicesWinOverRegistry() async throws {
+        let registry = try await ingest(yaml: Self.twoBuildServicesYAML, as: "myapp")
+        let runtime = MockRuntime()
+        await runtime.injectBuildOutcome(service: "web", outcome: .successful)
+
+        var seenServices: Set<String> = []
+        await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            let stream = ProjectOrchestrator.buildStream(
+                project: "myapp",
+                services: ["web"],
+                noCache: false,
+                pull: false,
+                runtime: runtime
+            )
+            for await frame in stream {
+                seenServices.insert(frame.service)
+            }
+        }
+
+        // Explicit `services: ["web"]` must win — db should NOT be built even
+        // though the registry has it.
+        #expect(seenServices.contains("web"))
+        #expect(!seenServices.contains("db"), "db must not be built when services=[\"web\"]")
+    }
+
+    @Test("buildStream still emits 'No services to build' when registry is empty AND no containers")
+    func emptyRegistryAndContainersStillEmits() async throws {
+        let registry = ProjectRegistry()  // empty registry — project never ingested
+        let runtime = MockRuntime()       // no containers
+
+        var sawErrorFrame = false
+        await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            let stream = ProjectOrchestrator.buildStream(
+                project: "ghost",
+                services: nil,
+                noCache: false,
+                pull: false,
+                runtime: runtime
+            )
+            for await frame in stream {
+                if frame.type == "error" && frame.line.contains("No services to build") {
+                    sawErrorFrame = true
+                }
+            }
+        }
+
+        #expect(sawErrorFrame, "fallback should still report 'No services to build' when both sources are empty")
+    }
+}
+
 private actor BridgeStatisticsProvider: ContainerClientProvider {
     let statsError: ContainerizationError
 

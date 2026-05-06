@@ -480,9 +480,21 @@ public struct ProjectOrchestrator: Sendable {
                     filters: RuntimeListFilters(status: nil, namePrefix: "\(project)-")
                 )
 
+                // Service-name resolution priority (CHAOS-1429 review fix):
+                //   1. Explicit `services` parameter (build a subset).
+                //   2. Ingested ProjectRegistry entry — the canonical
+                //      "I uploaded the project, now build it" flow. Has to win
+                //      over runtime containers because freshly ingested
+                //      projects have zero containers but every reason to build.
+                //   3. Synthesized from runtime containers — pre-1426 fallback,
+                //      kept so projects driven entirely via `compose up` (no
+                //      ingest) continue to build in place.
+                let registryEntry = await RuntimeEnvironment.projectRegistry.get(name: project)
                 let serviceNames: [String]
                 if let services, !services.isEmpty {
                     serviceNames = services
+                } else if let registryEntry {
+                    serviceNames = registryEntry.services
                 } else if let containers = allContainers {
                     let names = Set(containers.map { extractServiceName(from: $0.id, project: project) })
                     serviceNames = names.sorted()
