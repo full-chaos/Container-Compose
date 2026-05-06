@@ -163,15 +163,15 @@ container in `.created` state. Call `start(id:)` separately to run it.
 
 **Errors:**
 - `RuntimeError.alreadyExists(id:)` if a container with this id is already
-  registered (`AppleContainerizationRuntime`).
-- `RuntimeError.notSupported(operation: "create", conformer: "BridgeContainerClientRuntime")`
-  — the Bridge conformer cannot translate `RuntimeCreateConfiguration` to the
-  XPC create call (Leak #13 in
-  [`docs/plans/runtime-abstraction-leaks.md`](../plans/runtime-abstraction-leaks.md)).
+  registered.
+- `RuntimeError.backendFailure(message:)` for bridge/XPC failures during image
+  fetch, kernel resolution, configuration creation, or daemon create.
 
-**Note for Bridge users:** Use `compose up` (which calls `container run` via
-`RunCommandRunner`) instead of the REST API's `POST /containers/create` when
-the Bridge backend is active.
+**Bridge behavior:** `BridgeContainerClientRuntime` delegates to
+`ContainerClientProvider.create(id:configuration:)`. The production provider
+uses apple/container's `Utility.containerConfigFromFlags(...)` helper before
+calling `ContainerClient.create(...)`, so `POST /containers/create` no longer
+returns a bridge-only 501 for normal create requests.
 
 ---
 
@@ -477,13 +477,13 @@ Key items relevant to protocol users:
 
 | Leak | Description | Impact |
 | :--- | :--- | :--- |
-| #4 | Bridge throws `.notSupported` for `create`, `wait`, `logs` (in some cases), `events`, `statistics` write-paths | REST API returns 501 for these on Bridge |
+| #4 | Bridge throws `.notSupported` for `wait`, `listNetworks`, and secret CRUD | REST API returns 501 for these on Bridge |
 | #6 | Bridge aggregates all network stats into one synthetic `"eth0"` entry | Per-interface stats unavailable on Bridge |
 | #7 | `AppleContainerizationRuntime.statistics` returns empty snapshot | All CPU/memory fields are `nil` on native backend |
 | #9 | Both conformers throw `.notSupported` for `createNetwork`/`removeNetwork` | POST /networks → 501 always |
 | #11 | Both conformers throw `.notSupported` for all secret CRUD | POST /secrets → 501 always |
 | #12 | Bridge `start(id:)` wraps container-not-found as `backendFailure` | Route returns 500 instead of 404 for missing containers |
-| #13 | Bridge `create(id:)` always throws `.notSupported` | POST /containers/create → 501 on Bridge |
+| #13 | Resolved: Bridge `create(id:)` delegates through `ContainerClientProvider.create` | POST /containers/create reaches the XPC create path on Bridge |
 | #14 | Neither conformer implements `Runtime.build/pull`; project build/pull routes emit "not supported" frames | POST /projects/{name}/build never triggers real build |
 
 ---

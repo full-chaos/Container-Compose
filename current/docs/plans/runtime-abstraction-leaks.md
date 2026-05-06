@@ -49,9 +49,10 @@ macOS 26 native runtime path.
 
 - **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift:77`, `:99`, `:106`, `:122`, `:129`, `:143`, `:150`, `:157`
 - **Nature:** `RuntimeError.notSupported` is thrown for bridge-only gaps:
-  `listNetworks`, `create`, `start`, `kill`, `wait`, `logs`, `events`, and
-  `statistics`. These are conformance gaps in the bridge adapter, not protocol
-  gaps; `MockRuntime` implements the full surface in memory.
+  `listNetworks`, `wait`, and secret CRUD. Earlier Phase 1 bridge gaps for
+  `create`, `start`, `kill`, `logs`, `events`, and `statistics` now delegate
+  through `ContainerClientProvider`. Remaining gaps are adapter limitations,
+  not protocol gaps; `MockRuntime` implements the full surface in memory.
 - **Proposed fix:** Incrementally shrink this list as commands migrate from
   apple/container CLI/XPC paths to a native runtime. Keep `notSupported` visible
   so API routes can return explicit 501/adapter-gap responses instead of
@@ -154,12 +155,11 @@ macOS 26 native runtime path.
 
 ## Leaks discovered during Phase 6 / CHAOS-1352 (POST /containers/create)
 
-### 13. BridgeContainerClientRuntime.create throws .notSupported — Bridge cannot translate RuntimeCreateConfiguration to XPC create call
+### 13. ✅ RESOLVED — BridgeContainerClientRuntime.create no longer throws .notSupported
 
-- **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `create(id:configuration:)` updated in CHAOS-1352
-- **Nature:** `ContainerClient.create(configuration:options:kernel:)` (the apple/container XPC API) requires three arguments that are not part of `RuntimeCreateConfiguration`: (1) a `ContainerConfiguration` with a fully specified `ImageDescription` and `ProcessConfiguration`, (2) a `Kernel` struct representing the system Linux kernel binary (fetched via `ClientKernel.getDefaultKernel(for:)`), and (3) a `ContainerCreateOptions`. The `RuntimeCreateConfiguration` exposes only the higher-level fields (image reference string, cpu count, memory, env, cmd, etc.) that `AppleContainerizationRuntime` maps directly. Bridging these two shapes requires non-trivial XPC round-trips (kernel lookup, image resolution) with additional error surface not covered by the current test harness. Throwing `.notSupported` is the honest outcome — the route returns HTTP 501 to callers using the Bridge backend.
-- **Adherence to "avoid Leak #12 pattern":** The Bridge `create()` does NOT wrap upstream errors as `backendFailure`. It throws `.notSupported` before making any upstream call. The route handler maps `.notSupported` → 501 directly, not via the error-conflation path documented in Leak #12.
-- **Proposed fix:** When Phase 2 wires `AppleContainerizationRuntime` lifecycle fully (real `ContainerManager.create(...)` / `LinuxContainer.start()` calls), the Bridge conformer can be updated in parallel if `ContainerClientProvider` gains a `create(id:image:resources:process:)` method that abstracts the kernel-lookup and `ContainerConfiguration` construction. Until then, users of the Bridge backend should drive container creation via `compose up`.
+- **Location:** `Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift` — `create(id:configuration:)`; `Sources/Container-Compose/Runtime/ContainerClientProvider.swift` — `create(id:configuration:)`
+- **Resolution:** Fixed in CHAOS-1365. `BridgeContainerClientRuntime.create()` delegates to `ContainerClientProvider.create(id:configuration:)`. The production provider reuses apple/container's `Utility.containerConfigFromFlags(...)` helper to fetch/unpack the image, resolve the default kernel via `ClientKernel`, map process/resource/publish/capability fields, call `ContainerClient.create(configuration:options:kernel:initImage:)`, then read back the created snapshot.
+- **Remaining caveat:** The bridge path still depends on the apple/container XPC daemon and image/kernel resolution side effects. Upstream create failures are mapped through `RuntimeErrorMapper`, so duplicate containers can surface as `alreadyExists` and other XPC failures surface as `backendFailure` rather than a route-level 501.
 
 ## Leaks discovered during Phase 7 / CHAOS-1360 (project lifecycle endpoints)
 

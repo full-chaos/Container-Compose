@@ -197,7 +197,6 @@ your compose file produces a console warning but does not cause failure:
 - `shm_size:`, `pids_limit:`, `mem_swappiness:`, `memswap_limit:`
 - `cpu_shares:`, `cpuset:`, `cpu_period:`, `cpu_quota:`
 - `oom_kill_disable:`, `oom_score_adj:`
-- `blkio_config:`, `device_read_bps:`, `device_write_bps:`
 
 These are all Tier 0 or Tier 3 items in
 [`docs/feature-parity.md`](../feature-parity.md). The fields are decoded and
@@ -206,13 +205,19 @@ a warning is printed; the container starts without the constraint.
 **Action:** Remove these fields from your compose file to suppress the warnings.
 The container will start but without the resource constraint applied.
 
+`blkio_config:` is a guarded fork feature: Container-Compose emits
+`--blkio-weight`, `--blkio-weight-device`, and the per-device bandwidth / IOPS
+flags only when the installed `container run` / `container create` supports
+them. Older or upstream-only runtimes still warn-skip the field.
+
 ### Healthcheck: declaration vs. enforcement
 
 `healthcheck:` is fully decoded and the `depends_on: condition: service_healthy`
 flow reads health status via the fork's `ContainerSnapshot.health` extension
-(CHAOS-1319). However, `container run` has no `--health-cmd` equivalent in
-upstream `apple/container`, so the healthcheck subprocess loop is not executed
-by the runtime itself.
+(CHAOS-1319). Container-Compose emits `--health-cmd` / `--health-*` only when
+the installed `full-chaos/container` fork advertises those flags. Older
+runtimes are warn-skipped, so the healthcheck subprocess loop is not executed
+by the runtime itself in that environment.
 
 **Practical impact:** If your depends_on chain relies on health checks passing,
 you may see the dependent service start before the upstream service is truly
@@ -509,7 +514,7 @@ status in Container-Compose. For the full matrix, see
 | `depends_on:` | Supported | `service_healthy`, `service_completed_successfully` supported |
 | `networks:` | Supported | `driver: bridge` → `container-network-vmnet`; `driver_opts`, IPAM blocked |
 | `configs:`, `secrets:` (file) | Supported | `external: true` not supported |
-| `healthcheck:` | Partial | Decoded; not executed by runtime; `depends_on` reads health status |
+| `healthcheck:` | Partial | Decoded; emitted only when the installed fork supports `--health-cmd` / `--health-*`; `depends_on` reads health status |
 | `restart:` | Partial | Fork-only; will become warn-skip when fork is retired |
 | `logging:` | Warn-skipped | External log drivers not supported |
 | `security_opt:`, `userns_mode:` | Warn-skipped | `apple/container` has no equivalent |
@@ -517,7 +522,7 @@ status in Container-Compose. For the full matrix, see
 | `ipc:`, `pid:`, `uts:` | Warn-skipped | Linux namespace modes |
 | `shm_size:`, `pids_limit:` | Warn-skipped | cgroup features not exposed |
 | `cpu_shares:`, `cpuset:`, etc. | Warn-skipped | Fine-grained CPU controls not exposed |
-| `blkio_config:` | Warn-skipped | Block I/O cgroup controls |
+| `blkio_config:` | Partial | Emitted only when the installed fork supports `--blkio-*` / `--device-*-*` |
 | `deploy.replicas`, `deploy.placement` | Skipped | Swarm-only fields |
 | `service.links`, `volumes_from:` | Skipped | Deprecated by compose-spec |
 

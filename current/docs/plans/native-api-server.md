@@ -138,7 +138,7 @@ Name resolution: body `name` wins over `?name=` query alias; UUID fallback when 
 Backend notes:
 - `AppleContainerizationRuntime.create()` — registry-backed (fully functional in Phase 1 skeleton; Phase 2 wires real VM launch).
 - `MockRuntime.create()` — stateful actor implementation; used for all static tests.
-- `BridgeContainerClientRuntime.create()` — throws `.notSupported`; documented as Leak #13. The XPC API requires a `Kernel` binary reference not available from `RuntimeCreateConfiguration`; clients using the Bridge should use `compose up` instead.
+- `BridgeContainerClientRuntime.create()` — delegates to `ContainerClientProvider.create(id:configuration:)` (CHAOS-1365). The production provider reuses apple/container's `Utility.containerConfigFromFlags(...)` helper to resolve the image, kernel, process, resources, publish ports, and capabilities before calling `ContainerClient.create(...)`.
 
 ### Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 4 (CHAOS-1358)
 
