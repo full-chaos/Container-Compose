@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1436-volume-migration",
+  "commit": "997ebe336ee6bf1b60a91fb76eca8ee4c48c0306",
+  "short": "997ebe3",
+  "target": "997ebe3",
+  "message": "refactor(compose): CHAOS-1436 Phase A \u2014 extract volume migration",
+  "published_at": "2026-05-06T19:06:33.739081+00:00"
+}
