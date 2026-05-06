@@ -25,7 +25,7 @@ import ContainerAPIClient
 import ContainerizationExtras
 import Foundation
 
-public struct ComposePush: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposePush: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -60,53 +60,12 @@ public struct ComposePush: AsyncParsableCommand, @unchecked Sendable {
     @OptionGroup
     var logging: Flags.Logging
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     public mutating func run() async throws {
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
-        var candidateServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
-            guard let service else { return nil }
-            return (name, service)
-        }
-
-        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        candidateServices = Service.filterByProfiles(candidateServices, activeProfiles: activeProfiles)
-        candidateServices = try Service.topoSortConfiguredServices(candidateServices)
-
-        if !services.isEmpty {
-            candidateServices = candidateServices.filter { serviceName, service in
-                if services.contains(serviceName) { return true }
-                if includeDeps && services.contains(where: { service.dependedBy.contains($0) }) {
-                    return true
-                }
-                return false
-            }
-        }
+        let candidateServices = try selectedServices(in: dockerCompose)
 
         if !quiet {
             print("Pushing images...")
@@ -150,6 +109,29 @@ public struct ComposePush: AsyncParsableCommand, @unchecked Sendable {
                 }
             }
         }
+    }
+
+    private func selectedServices(in dockerCompose: DockerCompose) throws -> [(serviceName: String, service: Service)] {
+        guard !includeDeps else {
+            return try filterServices(dockerCompose, profilesArg: profile, servicesArg: services)
+        }
+
+        var candidateServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, service in
+            guard let service else { return nil }
+            return (name, service)
+        }
+
+        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
+        candidateServices = Service.filterByProfiles(candidateServices, activeProfiles: activeProfiles)
+        candidateServices = try Service.topoSortConfiguredServices(candidateServices)
+
+        if !services.isEmpty {
+            candidateServices = candidateServices.filter { serviceName, _ in
+                services.contains(serviceName)
+            }
+        }
+
+        return candidateServices
     }
 
     private func pushImage(_ imageName: String, serviceName: String) async throws {
