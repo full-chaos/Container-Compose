@@ -33,7 +33,7 @@ struct GpusBlkioTests {
         return try YAMLDecoder().decode(DockerCompose.self, from: yaml)
     }
 
-    private func ctx(_ service: Service) throws -> ComposeUp.ArgsContext {
+    private func ctx(_ service: Service, supportsBlkioFlags: Bool = false) throws -> ComposeUp.ArgsContext {
         ComposeUp.ArgsContext(
             service: service,
             serviceName: "svc",
@@ -42,12 +42,13 @@ struct GpusBlkioTests {
             detach: true,
             environmentVariables: [:],
             dockerCompose: try minimalDockerCompose(),
-            composeFilename: nil
+            composeFilename: nil,
+            supportsBlkioFlags: supportsBlkioFlags
         )
     }
 
-    private func args(_ service: Service) throws -> [String] {
-        ComposeUp.ResourceArgs.build(try ctx(service))
+    private func args(_ service: Service, supportsBlkioFlags: Bool = false) throws -> [String] {
+        ComposeUp.ResourceArgs.build(try ctx(service, supportsBlkioFlags: supportsBlkioFlags))
     }
 
     private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
@@ -250,12 +251,30 @@ struct GpusBlkioTests {
         try expectWarnSkipped(svc, flags: ["--blkio-weight"], field: "blkio_config")
     }
 
+    @Test("blkio_config weight emits --blkio-weight when supported")
+    func blkioWeightEmitsWhenSupported() throws {
+        let blkio = BlkioConfig(weight: 300)
+        let svc = Service(image: "alpine", blkio_config: blkio)
+        let result = try args(svc, supportsBlkioFlags: true)
+        #expect(result.contains("--blkio-weight"))
+        #expect(result.contains("300"))
+    }
+
     @Test("blkio_config weight_device emits no --blkio-weight-device")
     func blkioWeightDeviceFlag() throws {
         let blkio = BlkioConfig(weight_device: [BlkioWeightDevice(path: "/dev/sda", weight: 400)])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
         #expect(!result.contains("--blkio-weight-device"))
+    }
+
+    @Test("blkio_config weight_device emits --blkio-weight-device when supported")
+    func blkioWeightDeviceEmitsWhenSupported() throws {
+        let blkio = BlkioConfig(weight_device: [BlkioWeightDevice(path: "/dev/sda", weight: 400)])
+        let svc = Service(image: "alpine", blkio_config: blkio)
+        let result = try args(svc, supportsBlkioFlags: true)
+        #expect(result.contains("--blkio-weight-device"))
+        #expect(result.contains("/dev/sda:400"))
     }
 
     @Test("blkio_config device_read_bps emits no --device-read-bps")
@@ -266,12 +285,30 @@ struct GpusBlkioTests {
         #expect(!result.contains("--device-read-bps"))
     }
 
+    @Test("blkio_config device_read_bps emits --device-read-bps when supported")
+    func blkioReadBpsEmitsWhenSupported() throws {
+        let blkio = BlkioConfig(device_read_bps: [BlkioRateDevice(path: "/dev/sda", rate: "12mb")])
+        let svc = Service(image: "alpine", blkio_config: blkio)
+        let result = try args(svc, supportsBlkioFlags: true)
+        #expect(result.contains("--device-read-bps"))
+        #expect(result.contains("/dev/sda:12mb"))
+    }
+
     @Test("blkio_config device_write_bps emits no --device-write-bps")
     func blkioWriteBpsFlag() throws {
         let blkio = BlkioConfig(device_write_bps: [BlkioRateDevice(path: "/dev/sdb", rate: "8mb")])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
         #expect(!result.contains("--device-write-bps"))
+    }
+
+    @Test("blkio_config device_write_bps emits --device-write-bps when supported")
+    func blkioWriteBpsEmitsWhenSupported() throws {
+        let blkio = BlkioConfig(device_write_bps: [BlkioRateDevice(path: "/dev/sdb", rate: "8mb")])
+        let svc = Service(image: "alpine", blkio_config: blkio)
+        let result = try args(svc, supportsBlkioFlags: true)
+        #expect(result.contains("--device-write-bps"))
+        #expect(result.contains("/dev/sdb:8mb"))
     }
 
     @Test("blkio_config device_read_iops emits no --device-read-iops")
@@ -282,12 +319,30 @@ struct GpusBlkioTests {
         #expect(!result.contains("--device-read-iops"))
     }
 
+    @Test("blkio_config device_read_iops emits --device-read-iops when supported")
+    func blkioReadIopsEmitsWhenSupported() throws {
+        let blkio = BlkioConfig(device_read_iops: [BlkioIopsDevice(path: "/dev/sda", rate: 120)])
+        let svc = Service(image: "alpine", blkio_config: blkio)
+        let result = try args(svc, supportsBlkioFlags: true)
+        #expect(result.contains("--device-read-iops"))
+        #expect(result.contains("/dev/sda:120"))
+    }
+
     @Test("blkio_config device_write_iops emits no --device-write-iops")
     func blkioWriteIopsFlag() throws {
         let blkio = BlkioConfig(device_write_iops: [BlkioIopsDevice(path: "/dev/sda", rate: 100)])
         let svc = Service(image: "alpine", blkio_config: blkio)
         let result = try args(svc)
         #expect(!result.contains("--device-write-iops"))
+    }
+
+    @Test("blkio_config device_write_iops emits --device-write-iops when supported")
+    func blkioWriteIopsEmitsWhenSupported() throws {
+        let blkio = BlkioConfig(device_write_iops: [BlkioIopsDevice(path: "/dev/sda", rate: 100)])
+        let svc = Service(image: "alpine", blkio_config: blkio)
+        let result = try args(svc, supportsBlkioFlags: true)
+        #expect(result.contains("--device-write-iops"))
+        #expect(result.contains("/dev/sda:100"))
     }
 
     @Test("nil blkio_config emits no blkio flags")

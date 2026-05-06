@@ -36,5 +36,32 @@ extension ComposeUp {
         let environmentVariables: [String: String]
         let dockerCompose: DockerCompose
         let composeFilename: String?
+
+        let supportsHealthcheckFlags: Bool
+        let supportsBlkioFlags: Bool
+
+        init(
+            service: Service,
+            serviceName: String,
+            projectName: String,
+            containerName: String,
+            detach: Bool,
+            environmentVariables: [String: String],
+            dockerCompose: DockerCompose,
+            composeFilename: String?,
+            supportsHealthcheckFlags: Bool = true,
+            supportsBlkioFlags: Bool = false
+        ) {
+            self.service = service
+            self.serviceName = serviceName
+            self.projectName = projectName
+            self.containerName = containerName
+            self.detach = detach
+            self.environmentVariables = environmentVariables
+            self.dockerCompose = dockerCompose
+            self.composeFilename = composeFilename
+            self.supportsHealthcheckFlags = supportsHealthcheckFlags
+            self.supportsBlkioFlags = supportsBlkioFlags
+        }
     }
 }

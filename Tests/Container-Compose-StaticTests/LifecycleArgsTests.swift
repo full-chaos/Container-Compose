@@ -51,7 +51,11 @@ struct LifecycleArgsTests {
     }
 
     /// Build a minimal ArgsContext for LifecycleArgs.build calls.
-    private func makeContext(service: Service, detach: Bool = false) -> ComposeUp.ArgsContext {
+    private func makeContext(
+        service: Service,
+        detach: Bool = false,
+        supportsHealthcheckFlags: Bool = true
+    ) -> ComposeUp.ArgsContext {
         ComposeUp.ArgsContext(
             service: service,
             serviceName: "svc",
@@ -60,11 +64,15 @@ struct LifecycleArgsTests {
             detach: detach,
             environmentVariables: [:],
             dockerCompose: makeDockerCompose(),
-            composeFilename: nil
+            composeFilename: nil,
+            supportsHealthcheckFlags: supportsHealthcheckFlags
         )
     }
 
-    private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
+    private func capturedArgs(
+        _ service: Service,
+        supportsHealthcheckFlags: Bool = true
+    ) throws -> (output: String, args: [String]) {
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
@@ -73,7 +81,10 @@ struct LifecycleArgsTests {
             throw CaptureError.dupFailed
         }
 
-        let result = ComposeUp.LifecycleArgs.build(makeContext(service: service))
+        let result = ComposeUp.LifecycleArgs.build(makeContext(
+            service: service,
+            supportsHealthcheckFlags: supportsHealthcheckFlags
+        ))
         fflush(stdout)
         restoreStandardOutput(original: original, pipe: pipe)
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -249,6 +260,100 @@ struct LifecycleArgsTests {
         let svc = Service(image: "alpine")
         let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
         #expect(!args.contains("--restart"))
+    }
+
+    // MARK: - healthcheck
+
+    @Test("healthcheck CMD-SHELL emits fork health flags")
+    func healthcheckCmdShellEmitsFlags() {
+        let healthcheck = Healthcheck(
+            test: ["CMD-SHELL", "redis-cli ping"],
+            start_period: "40s",
+            interval: "5s",
+            retries: 3,
+            timeout: "2s",
+            start_interval: "1s"
+        )
+        let svc = Service(image: "redis:7-alpine", healthcheck: healthcheck)
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+
+        #expect(args.contains("--health-cmd"))
+        if let idx = args.firstIndex(of: "--health-cmd") {
+            #expect(args[args.index(after: idx)] == "redis-cli ping")
+        }
+        #expect(args.contains("--health-interval"))
+        if let idx = args.firstIndex(of: "--health-interval") {
+            #expect(args[args.index(after: idx)] == "5")
+        }
+        #expect(args.contains("--health-timeout"))
+        if let idx = args.firstIndex(of: "--health-timeout") {
+            #expect(args[args.index(after: idx)] == "2")
+        }
+        #expect(args.contains("--health-retries"))
+        if let idx = args.firstIndex(of: "--health-retries") {
+            #expect(args[args.index(after: idx)] == "3")
+        }
+        #expect(args.contains("--health-start-period"))
+        if let idx = args.firstIndex(of: "--health-start-period") {
+            #expect(args[args.index(after: idx)] == "40")
+        }
+        #expect(args.contains("--health-start-interval"))
+        if let idx = args.firstIndex(of: "--health-start-interval") {
+            #expect(args[args.index(after: idx)] == "1")
+        }
+    }
+
+    @Test("healthcheck CMD form is converted to a shell command for the fork CLI")
+    func healthcheckCmdFormShellQuotesArguments() {
+        let healthcheck = Healthcheck(test: ["CMD", "test", "-f", "/tmp/ready file"])
+        let svc = Service(image: "alpine", healthcheck: healthcheck)
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+
+        if let idx = args.firstIndex(of: "--health-cmd") {
+            #expect(args[args.index(after: idx)] == "test -f '/tmp/ready file'")
+        } else {
+            Issue.record("--health-cmd flag not found")
+        }
+    }
+
+    @Test("healthcheck disable emits --no-healthcheck")
+    func healthcheckDisableEmitsNoHealthcheck() {
+        let healthcheck = Healthcheck(test: ["CMD-SHELL", "redis-cli ping"], disable: true)
+        let svc = Service(image: "redis:7-alpine", healthcheck: healthcheck)
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+
+        #expect(args == ["--name", "proj-svc", "--no-healthcheck"])
+    }
+
+    @Test("healthcheck NONE emits --no-healthcheck")
+    func healthcheckNoneEmitsNoHealthcheck() {
+        let healthcheck = Healthcheck(test: ["NONE"])
+        let svc = Service(image: "alpine", healthcheck: healthcheck)
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+
+        #expect(args == ["--name", "proj-svc", "--no-healthcheck"])
+    }
+
+    @Test("healthcheck timing without test warns instead of emitting orphan runtime flags")
+    func healthcheckTimingWithoutTestWarns() throws {
+        let healthcheck = Healthcheck(interval: "5s", retries: 2)
+        let svc = Service(image: "alpine", healthcheck: healthcheck)
+        let captured = try capturedArgs(svc)
+
+        #expect(!captured.args.contains("--health-interval"))
+        #expect(!captured.args.contains("--health-retries"))
+        #expect(captured.output.contains("Note: healthcheck timing fields require 'healthcheck.test' before they can be passed to the runtime; ignored."))
+    }
+
+    @Test("healthcheck is warn-skipped when runtime flags are unavailable")
+    func healthcheckWarnSkippedWhenRuntimeUnsupported() throws {
+        let healthcheck = Healthcheck(test: ["CMD-SHELL", "redis-cli ping"])
+        let svc = Service(image: "redis:7-alpine", healthcheck: healthcheck)
+        let captured = try capturedArgs(svc, supportsHealthcheckFlags: false)
+
+        #expect(!captured.args.contains("--health-cmd"))
+        #expect(!captured.args.contains("--no-healthcheck"))
+        #expect(captured.output.contains("Note: 'service.healthcheck' is parsed but the installed container runtime does not support --health-cmd / --health-* flags yet; ignored."))
     }
 
     // MARK: - Regression: existing flags still emitted

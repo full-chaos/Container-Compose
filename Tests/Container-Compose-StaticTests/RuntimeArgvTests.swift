@@ -91,7 +91,7 @@ struct RuntimeArgvTests {
         try await recordedFirstArgv(
             timeout: timeout,
             runtime: runtime,
-            matching: { $0.starts(with: ["container", "run"]) },
+            matching: { $0.starts(with: ["container", "run"]) && !$0.contains("--help") },
             description: "container run",
             parse: parse
         )
@@ -261,6 +261,43 @@ struct RuntimeArgvTests {
         #expect(!argv.contains("--stop-timeout"), "Apple container run rejects --stop-timeout; full argv: \(argv)")
     }
 
+    @Test("run: healthcheck emits fork health CLI flags")
+    func run_emits_healthcheck_flags() async throws {
+        let yaml = """
+        services:
+          app:
+            image: alpine:latest
+            healthcheck:
+              test: ["CMD-SHELL", "test -f /tmp/ready"]
+              interval: 5s
+              timeout: 2s
+              retries: 4
+              start_period: 10s
+              start_interval: 1s
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let argv = try await recordedRunArgv {
+            try ComposeRun.parse(["-f", compose.path, "app"])
+        }
+
+        #expect(argv.contains("--health-cmd"), "expected health command in argv: \(argv)")
+        if let idx = argv.firstIndex(of: "--health-cmd") {
+            #expect(argv[argv.index(after: idx)] == "test -f /tmp/ready")
+        }
+        #expect(argv.contains("--health-interval"))
+        #expect(argv.contains("5"))
+        #expect(argv.contains("--health-timeout"))
+        #expect(argv.contains("2"))
+        #expect(argv.contains("--health-retries"))
+        #expect(argv.contains("4"))
+        #expect(argv.contains("--health-start-period"))
+        #expect(argv.contains("10"))
+        #expect(argv.contains("--health-start-interval"))
+        #expect(argv.contains("1"))
+    }
+
     // MARK: - Plan §8 #3 — `compose create` entrypoint placement (PR-4 regression)
 
     @Test("create: --entrypoint precedes image (regression for ComposeCreate §1 bug)")
@@ -291,6 +328,28 @@ struct RuntimeArgvTests {
         let imgIdx = try #require(argv.firstIndex(of: "docker.io/library/alpine:latest"))
         #expect(entryIdx < imgIdx, "--entrypoint must appear before the image")
         #expect(argv[entryIdx + 1] == "/app/entrypoint.sh")
+    }
+
+    @Test("create: disabled healthcheck emits --no-healthcheck")
+    func create_emits_no_healthcheck() async throws {
+        let yaml = """
+        services:
+          app:
+            image: alpine:latest
+            healthcheck:
+              disable: true
+        """
+        let (dir, compose) = try writeTempCompose(yaml)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let argv = try await recordedFirstArgv(
+            matching: { $0.starts(with: ["container", "create", "--name"]) },
+            description: "container create"
+        ) {
+            try ComposeCreate.parse(["-f", compose.path])
+        }
+
+        #expect(argv.contains("--no-healthcheck"), "expected disabled healthcheck flag in argv: \(argv)")
     }
 
     // MARK: - Plan §8 #4 — entrypoint head + tail + command

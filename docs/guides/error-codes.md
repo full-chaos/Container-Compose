@@ -149,9 +149,9 @@ backend. The `operation` field names the protocol method (e.g. `"create"`,
 `"BridgeContainerClientRuntime"`).
 
 **Common causes:**
-- Calling a REST API route that requires a lifecycle write (create, wait) while
+- Calling a REST API route that requires an unsupported lifecycle write (wait) while
   the Bridge backend is active — `BridgeContainerClientRuntime` throws
-  `.notSupported` for `create`, `wait`, `listNetworks`, and all secret CRUD
+  `.notSupported` for `wait`, `listNetworks`, and all secret CRUD
   operations.
 - Calling network CRUD routes (`POST /networks`, `DELETE /networks/{id}`)
   against either backend: neither `apple/container` XPC nor

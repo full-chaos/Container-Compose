@@ -80,7 +80,7 @@ Look for the `Health` section in the JSON output to see the log of recent checks
 
 Container-Compose decodes the `healthcheck` block from your compose file. Per [CHAOS-1319](https://linear.app/fullchaos/issue/CHAOS-1319), Container-Compose reads `ContainerSnapshot.health` from the `full-chaos/container` fork to enforce `depends_on: { redis: { condition: service_healthy } }` — meaning a *dependent* service can be made to wait until Redis reports `.healthy` before starting.
 
-> **Current limitation:** apple/container's `container run` does not yet expose `--health-cmd` / `--health-interval` / `--health-retries` CLI flags, so the test command itself is not executed by the runtime today. The healthcheck block is decoded and surfaced via `ContainerSnapshot.health` only when the runtime is otherwise able to determine health (e.g., via image-baked `HEALTHCHECK` directives). Wiring the explicit CLI form is tracked in [`docs/feature-parity.md`](../feature-parity.md) Tier 3. Until then, prefer images that bake their own `HEALTHCHECK` instruction (the official `redis:7-alpine` does NOT — file your own `Dockerfile FROM redis:7-alpine` if you need full enforcement today).
+> **Runtime requirement:** Container-Compose emits `--health-cmd` / `--health-*` only when the installed `full-chaos/container` fork advertises those flags. Older runtimes are warn-skipped, so the healthcheck block is decoded but the probe command itself is not executed; in that case `depends_on: condition: service_healthy` can only observe health reported by the image/runtime. Until CHAOS-1381 is in your installed fork, prefer images that bake their own `HEALTHCHECK` instruction (the official `redis:7-alpine` does NOT).
 
 ## Troubleshooting
 

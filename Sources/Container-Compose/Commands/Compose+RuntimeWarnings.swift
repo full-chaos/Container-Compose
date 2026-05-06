@@ -28,7 +28,7 @@ import Foundation
 /// load-bearing: they are dedup keys used by tests and by the warn-once
 /// machinery to ensure each unsupported field prints at most once per process.
 /// Message text is also asserted by tests — change either with care.
-func warnUnsupportedContainerRuntimeFields(_ svc: Service) {
+func warnUnsupportedContainerRuntimeFields(_ svc: Service, supportsBlkioFlags: Bool = false) {
     // --memory-swappiness
     if svc.mem_swappiness != nil {
         warnUnsupportedRuntimeFieldOnce(
@@ -152,7 +152,7 @@ func warnUnsupportedContainerRuntimeFields(_ svc: Service) {
     }
 
     // blkio_config
-    if svc.blkio_config != nil {
+    if svc.blkio_config != nil, !supportsBlkioFlags {
         warnUnsupportedRuntimeFieldOnce(
             "service.blkio_config",
             "Note: 'blkio_config' is parsed but not supported by Apple container; ignored."

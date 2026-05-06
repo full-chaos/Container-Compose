@@ -36,6 +36,7 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     /// One entry per method call. Filters are serialized via `String(describing:)`
     /// because `ContainerListFilters` doesn't conform to `Equatable`.
     public enum Entry: Sendable, Equatable {
+        case create(id: String, imageReference: String)
         case list(filters: String)
         case get(id: String)
         case stop(id: String)
@@ -44,6 +45,8 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         case events
         case networkGet(id: String)
         case imageList
+        case kill(id: String, signal: Int32)
+        case start(id: String)
     }
 
     public private(set) var entries: [Entry] = []
@@ -62,6 +65,36 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     }
 
     // MARK: - ContainerClientProvider
+
+    public func create(id: String, configuration: RuntimeCreateConfiguration) async throws -> ContainerSnapshot {
+        entries.append(.create(id: id, imageReference: configuration.imageReference))
+        let process = ProcessConfiguration(
+            executable: configuration.command.first ?? "/bin/sh",
+            arguments: Array(configuration.command.dropFirst()),
+            environment: configuration.environment,
+            workingDirectory: configuration.workingDirectory ?? "/"
+        )
+        var containerConfiguration = ContainerConfiguration(
+            id: id,
+            image: ImageDescription(
+                reference: configuration.imageReference,
+                descriptor: Descriptor(
+                    mediaType: "application/vnd.oci.image.index.v1+json",
+                    digest: "sha256:\(String(repeating: "0", count: 64))",
+                    size: 0
+                )
+            ),
+            process: process
+        )
+        containerConfiguration.publishedPorts = try configuration.publishedPorts.map { port in
+            try Parser.publishPort(Self.publishArg(for: port))
+        }
+        return ContainerSnapshot(
+            configuration: containerConfiguration,
+            status: .stopped,
+            networks: []
+        )
+    }
 
     public func list(filters: ContainerListFilters) async throws -> [ContainerSnapshot] {
         entries.append(.list(filters: String(describing: filters)))
@@ -163,13 +196,11 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     // MARK: - Lifecycle Provider Methods (CHAOS-1354)
 
     public func kill(id: String, signal: Int32) async throws {
-        // No-op recording stub. Real kill goes through ContainerClient XPC;
-        // static tests just verify the call was dispatched correctly.
+        entries.append(.kill(id: id, signal: signal))
     }
 
     public func start(id: String) async throws {
-        // No-op recording stub. Real start uses bootstrap + process.start()
-        // via ContainerClient XPC; static tests verify dispatch only.
+        entries.append(.start(id: id))
     }
 
     // MARK: - Test affordances
@@ -177,5 +208,12 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     /// Snapshot of recorded entries in time order.
     public func entriesSnapshot() async -> [Entry] {
         entries
+    }
+
+    private static func publishArg(for port: RuntimePublishedPort) -> String {
+        let hostPort = port.count > 1 ? "\(port.hostPort)-\(port.hostPort + port.count - 1)" : "\(port.hostPort)"
+        let containerPort = port.count > 1 ? "\(port.containerPort)-\(port.containerPort + port.count - 1)" : "\(port.containerPort)"
+        let proto = port.proto == .udp ? "/udp" : ""
+        return "\(port.hostAddress):\(hostPort):\(containerPort)\(proto)"
     }
 }

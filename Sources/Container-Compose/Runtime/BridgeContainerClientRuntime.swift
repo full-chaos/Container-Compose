@@ -21,13 +21,12 @@ import Foundation
 
 // MARK: - BridgeContainerClientRuntime
 
-/// `Runtime` conformer that delegates the read paths (`list`, `get`) to the
-/// existing `ContainerClientProvider` (which talks to apple/container's
-/// XPC daemon under the hood). Lifecycle / write paths
-/// (`create` / `start` / `stop` / `kill` / `wait` / `remove`) intentionally
-/// throw `RuntimeError.notSupported`: those continue to flow through
-/// `RunCommandRunner` until Phase 2/3 migrates each command to the native
-/// `AppleContainerizationRuntime`.
+/// `Runtime` conformer that delegates the read paths (`list`, `get`) and
+/// supported lifecycle writes (`create`, `start`, `stop`, `kill`, `remove`) to
+/// the existing `ContainerClientProvider` (which talks to apple/container's
+/// XPC daemon under the hood). Unsupported writes continue to throw
+/// `RuntimeError.notSupported` until Phase 2/3 migrates each command to the
+/// native `AppleContainerizationRuntime`.
 ///
 /// Why this conformer is the Phase 1 default
 /// (`RuntimeEnvironment.current` initial value):
@@ -93,30 +92,17 @@ public struct BridgeContainerClientRuntime: Runtime {
 
     // MARK: - Lifecycle
 
-    /// Create is intentionally not supported in the Bridge conformer.
-    ///
-    /// `ContainerClient.create(configuration:options:kernel:)` requires a
-    /// `Kernel` binary reference (fetched via `ClientKernel.getDefaultKernel`)
-    /// and a fully specified `ContainerConfiguration` (image descriptor,
-    /// `ProcessConfiguration`, mounts, etc.) — a much richer surface than
-    /// `RuntimeCreateConfiguration` exposes. Bridging these shapes requires
-    /// knowing the system kernel path at create-time, which is not available
-    /// in the REST API path without additional XPC calls and system state.
-    ///
-    /// The `AppleContainerizationRuntime` conformer fully implements `create()`
-    /// (registry-backed in Phase 1, real lifecycle in Phase 2). Clients using
-    /// the Bridge backend should use `compose up` (which calls `container run`
-    /// via `RunCommandRunner`) rather than the REST API's `POST /containers/create`.
-    ///
-    /// Documented in `docs/plans/runtime-abstraction-leaks.md` as Leak #13.
     public func create(
         id: String,
         configuration: RuntimeCreateConfiguration
     ) async throws -> RuntimeContainer {
-        throw RuntimeError.notSupported(
-            operation: "create",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        let provider = ContainerClientEnvironment.current
+        do {
+            let snapshot = try await provider.create(id: id, configuration: configuration)
+            return BridgeContainerClientRuntime.translate(snapshot: snapshot)
+        } catch {
+            throw mapUpstreamError(error, id: id, context: "create failed for '\(id)'")
+        }
     }
 
     // MARK: - Lifecycle Writes (CHAOS-1354)
@@ -815,12 +801,34 @@ extension BridgeContainerClientRuntime {
             argv.append(contentsOf: ["--plugin", spec.driver])
         }
 
-        // CHAOS-1409 IPAM passthrough.
+        if spec.isInternal {
+            argv.append("--internal")
+        }
+
+        if spec.attachable {
+            argv.append("--attachable")
+        }
+
+        if spec.enableIPv6 {
+            argv.append("--ipv6")
+        }
+
+        for (key, value) in spec.driverOptions.sorted(by: { $0.key < $1.key }) {
+            argv.append(contentsOf: ["--driver-opt", "\(key)=\(value)"])
+        }
+
+        // CHAOS-1409 / CHAOS-1334 IPAM passthrough.
         if let subnet = spec.subnet {
             argv.append(contentsOf: ["--subnet", subnet])
         }
         if let gateway = spec.gateway {
             argv.append(contentsOf: ["--gateway", gateway])
+        }
+        if let ipRange = spec.ipRange {
+            argv.append(contentsOf: ["--ip-range", ipRange])
+        }
+        for (key, value) in spec.auxAddresses.sorted(by: { $0.key < $1.key }) {
+            argv.append(contentsOf: ["--aux-address", "\(key)=\(value)"])
         }
 
         // Labels

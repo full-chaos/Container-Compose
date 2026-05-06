@@ -67,14 +67,20 @@ public struct RuntimeNetwork: Sendable, Hashable, Codable {
 // MARK: - RuntimeCreateNetworkSpec (CHAOS-1353)
 
 /// Spec used to create a new network via `Runtime.createNetwork(spec:)`.
-/// Subnet and gateway are optional; if omitted the backend assigns them
-/// automatically. Advanced IPAM (subnet pools, multiple subnets) is out of
-/// scope per the CHAOS-1353 ticket boundary.
+/// IPAM and driver metadata are optional; if omitted the backend assigns
+/// defaults. The shape intentionally mirrors the subset of network-create flags
+/// exposed by the full-chaos/container fork for compose-spec parity.
 public struct RuntimeCreateNetworkSpec: Sendable, Equatable {
     public let name: String
     public let driver: String
     public let subnet: String?
     public let gateway: String?
+    public let ipRange: String?
+    public let auxAddresses: [String: String]
+    public let driverOptions: [String: String]
+    public let attachable: Bool
+    public let enableIPv6: Bool
+    public let isInternal: Bool
     public let labels: [String: String]
 
     public init(
@@ -82,12 +88,24 @@ public struct RuntimeCreateNetworkSpec: Sendable, Equatable {
         driver: String = "bridge",
         subnet: String? = nil,
         gateway: String? = nil,
+        ipRange: String? = nil,
+        auxAddresses: [String: String] = [:],
+        driverOptions: [String: String] = [:],
+        attachable: Bool = false,
+        enableIPv6: Bool = false,
+        isInternal: Bool = false,
         labels: [String: String] = [:]
     ) {
         self.name = name
         self.driver = driver
         self.subnet = subnet
         self.gateway = gateway
+        self.ipRange = ipRange
+        self.auxAddresses = auxAddresses
+        self.driverOptions = driverOptions
+        self.attachable = attachable
+        self.enableIPv6 = enableIPv6
+        self.isInternal = isInternal
         self.labels = labels
     }
 }
