@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "3fd1ada6164f274fb1ea2486aff07163aff87867",
-  "short": "3fd1ada",
+  "commit": "3c736495085b6a59b9e333228cf2337cbc8c3cd0",
+  "short": "3c73649",
   "target": "current",
-  "message": "CHAOS-1427: Wire remote daemon runtime (#121)",
-  "published_at": "2026-05-06T00:45:31.000777+00:00"
+  "message": "chore(compose): CHAOS-1430 \u2014 add DockerCompose.from(yaml:) entry point (#122)",
+  "published_at": "2026-05-06T11:22:12.815304+00:00"
 }
