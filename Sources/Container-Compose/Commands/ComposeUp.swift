@@ -245,7 +245,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 imageReference: Self.qualifyImageReference(image),
                 cpus: Int(service.cpus_top ?? 1),
                 hostname: service.hostname,
-                environment: remoteEnvironment(for: service),
+                environment: remoteEnvironment(for: service, baseEnvironment: environmentVariables),
                 command: service.command ?? [],
                 workingDirectory: service.working_dir,
                 publishedPorts: remotePublishedPorts(for: service),
@@ -259,34 +259,6 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             _ = try await runtime.create(id: containerName, configuration: config)
             try await runtime.start(id: containerName)
             print("Started remote container: \(containerName)")
-        }
-    }
-
-    private func remoteEnvironment(for service: Service) -> [String] {
-        var merged = environmentVariables
-        for (key, value) in service.environment ?? [:] {
-            merged[key] = value
-        }
-        return merged.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
-    }
-
-    private func remotePublishedPorts(for service: Service) -> [RuntimePublishedPort] {
-        (service.ports ?? []).compactMap { raw in
-            let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
-            guard parts.count >= 2 else { return nil }
-            let hostPart = String(parts[parts.count - 2])
-            let containerPart = String(parts[parts.count - 1])
-            guard
-                let hostPort = UInt16(hostPart),
-                let containerPort = UInt16(containerPart.split(separator: "/").first ?? "")
-            else { return nil }
-            let proto = containerPart.hasSuffix("/udp") ? RuntimePortProtocol.udp : .tcp
-            return RuntimePublishedPort(
-                hostAddress: "0.0.0.0",
-                hostPort: hostPort,
-                containerPort: containerPort,
-                proto: proto
-            )
         }
     }
 
@@ -779,56 +751,6 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
 
         return runCommandArgs
-    }
-}
-
-// MARK: Argv tail (image + entrypoint/command)
-extension ComposeUp {
-
-    /// Builds the trailing portion of a `container run` argv: the
-    /// `--entrypoint` flag (if any), the image, and any positional args.
-    ///
-    /// `container run` (like `docker run`) accepts at most one
-    /// `--entrypoint <BIN>` flag *before* the image, with any extra
-    /// arguments to that entrypoint passed positionally *after* the image.
-    /// Compose, however, models `entrypoint` as `[a, b, c]` — a full argv.
-    /// We therefore split: the first token becomes the `--entrypoint` value
-    /// (pre-image), the remaining tokens become positional args (post-image),
-    /// followed by `command` if any.
-    ///
-    /// Resulting shapes:
-    /// - `entrypoint: [a, b, c]`, `command: [d, e]` → `[--entrypoint, a, <image>, b, c, d, e]`
-    /// - `entrypoint: [/app/foo.sh]`, no command   → `[--entrypoint, /app/foo.sh, <image>]`
-    /// - no entrypoint, `command: [d, e]`          → `[<image>, d, e]`
-    /// - neither                                    → `[<image>]`
-    static func imageAndEntrypointTail(
-        image: String,
-        entrypoint: [String]?,
-        command: [String]?
-    ) -> [String] {
-        var tail: [String] = []
-        var positional: [String] = []
-
-        if let entrypoint, let first = entrypoint.first {
-            tail.append("--entrypoint")
-            tail.append(first)
-            // Remaining entrypoint tokens are positional args to the entrypoint
-            // and must appear *after* the image.
-            positional.append(contentsOf: entrypoint.dropFirst())
-        }
-
-        tail.append(image)
-        tail.append(contentsOf: positional)
-
-        // `command` is only honored when no `entrypoint` is present *or* as
-        // additional args after a multi-token entrypoint. The compose spec
-        // says command is appended after entrypoint args, so we always
-        // append it when set.
-        if let command {
-            tail.append(contentsOf: command)
-        }
-
-        return tail
     }
 }
 
