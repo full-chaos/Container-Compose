@@ -28,7 +28,7 @@ import Yams
 
 // MARK: - ComposeEvents
 
-public struct ComposeEvents: AsyncParsableCommand {
+public struct ComposeEvents: AsyncParsableCommand, ComposeCommand {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -54,48 +54,12 @@ public struct ComposeEvents: AsyncParsableCommand {
     @OptionGroup
     var logging: Flags.Logging
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     public mutating func run() async throws {
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
-        let projectName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
-        )
+        let projectName = resolveProjectName(for: dockerCompose)
         let targetNames = targetContainerNames(in: dockerCompose, projectName: projectName)
         let encoder = JSONEncoder()
         let formatter = ISO8601DateFormatter()
