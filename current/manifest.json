@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "45cc7a9704974a33b054fd638e6814e9af5b5965",
-  "short": "45cc7a9",
+  "commit": "1952cd76486ae73158bfb91d55993545b74c305f",
+  "short": "1952cd7",
   "target": "current",
-  "message": "CHAOS-1429: Wire BridgeContainerClientRuntime.build() to consume build-context (#123)",
-  "published_at": "2026-05-06T12:26:47.614394+00:00"
+  "message": "refactor(compose): introduce ComposeCommand protocol \u2014 20 commands, -715 LOC (CHAOS-1435) (#126)",
+  "published_at": "2026-05-06T18:01:34.360792+00:00"
 }
