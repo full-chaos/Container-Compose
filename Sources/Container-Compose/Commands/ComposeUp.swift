@@ -30,7 +30,7 @@ import Foundation
 @preconcurrency import Rainbow
 import Yams
 
-public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -48,32 +48,6 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
     @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")
     var composeFilename: String?
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var cwdURL: URL {
-        URL(fileURLWithPath: cwd)
-    }
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if fileManager.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
@@ -98,18 +72,7 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
     @OptionGroup
     var logging: Flags.Logging
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root used for outside-container relative-path resolution
-    /// (build context, env-file, volume bind sources). Honors
-    /// `--project-directory` and falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     private var fileManager: FileManager { FileManager.default }
     var projectName: String?
@@ -140,11 +103,8 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
 
     public mutating func run() async throws {
         // Decode + recursively merge includes (Phase 3E) and resolve extends
-        // (Phase 3F) before anything else touches the model. loadAndMerge
-        // throws IncludeError.fileNotFound if the main file is missing.
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        // (Phase 3F) before anything else touches the model.
+        let dockerCompose = try loadAndResolve()
 
         // Validate the compose file for semantic correctness before any side
         // effects (network/volume creation, container starts) are attempted.
@@ -160,39 +120,20 @@ public struct ComposeUp: AsyncParsableCommand, @unchecked Sendable {
         }
 
         // Determine project name for container naming.
-        // Precedence: --project-name CLI flag > compose file `name:` > directory basename.
-        let resolvedName = resolveProjectName(
-            cliOverride: projectFlags.projectName,
-            composeName: dockerCompose.name,
-            projectDirectory: effectiveProjectDirectory
-        )
+        let resolvedName = resolveProjectName(for: dockerCompose)
         projectName = resolvedName
-        if let cliName = projectFlags.projectName, !cliName.isEmpty {
-            print("Info: Using project name from --project-name flag: \(cliName)")
-        } else if let name = dockerCompose.name {
-            print("Info: Docker Compose project name parsed as: \(name)")
-            print(
-                "Note: The 'name' field currently only affects container naming (e.g., '\(name)-serviceName'). Full project-level isolation for other resources (networks, implicit volumes) is not implemented by this tool."
-            )
-        } else {
-            print("Info: No 'name' field found in docker-compose.yml. Using directory name as project name: \(resolvedName)")
-        }
 
         if let models = dockerCompose.models, !models.isEmpty {
             print("'top.models' Detected, But Not Supported")
         }
 
-        // Get Services to use
-        var services: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap({ serviceName, service in
-            guard let service else { return nil }
-            return (serviceName, service)
-        })
-
-        // Filter by active profiles before topo-sort.
-        let activeProfiles = Service.resolveActiveProfiles(cliProfiles: profile)
-        services = Service.filterByProfiles(services, activeProfiles: activeProfiles)
-
-        services = try Service.topoSortConfiguredServices(services)
+        // Get services to use. Keep service-name filtering below after scale
+        // expansion to preserve ComposeUp's existing scaled-service semantics.
+        var services = try filterServices(
+            dockerCompose,
+            profilesArg: profile,
+            servicesArg: []
+        )
 
         // Phase 3F — expand services with scale > 1 into N named replicas
         var expanded: [(serviceName: String, service: Service)] = []
