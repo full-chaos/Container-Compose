@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1434-pri5-warnings-migration",
+  "commit": "89ed17749d75391e4faaab9b3269e023deba7229",
+  "short": "89ed177",
+  "target": "89ed177",
+  "message": "refactor(compose): CHAOS-1434 Pri 5 \u2014 finish warnings migration (16 sites)",
+  "published_at": "2026-05-06T21:07:10.348111+00:00"
+}
