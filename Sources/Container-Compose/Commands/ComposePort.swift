@@ -24,7 +24,7 @@ import ContainerCommands
 import ContainerAPIClient
 import Foundation
 
-public struct ComposePort: AsyncParsableCommand {
+public struct ComposePort: AsyncParsableCommand, ComposeCommand {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -53,32 +53,10 @@ public struct ComposePort: AsyncParsableCommand {
     @OptionGroup
     var logging: Flags.Logging
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     public mutating func run() async throws {
-        let dockerCompose = try DockerCompose.loadAndMerge(mainPath: composePath).resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
         do {
             let publishedPort = try Self.resolvePublishedPort(
