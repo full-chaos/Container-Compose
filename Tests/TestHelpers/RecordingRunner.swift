@@ -64,9 +64,12 @@ public actor RecordingRunner: RunCommandRunner {
     /// Stubbed probe answers keyed by full argv equality.
     private var probeStubs: [[String]: Bool] = [:]
 
-    /// Stubbed exit codes for `.swiftAPI(name:)` requests, keyed by name.
-    /// Default (no stub) is `0` (success).
-    private var swiftAPIStubs: [String: Int32] = [:]
+    /// Stubbed errors thrown for matching `.swiftAPI(name:)` requests, keyed by
+    /// name. Mirrors `ProductionRunner.dispatchSwiftAPI` semantics: in-process
+    /// upstream calls (`Application.ImagePull`, `Application.BuildCommand`,
+    /// `Application.NetworkCreate`) signal failure by **throwing**, not by
+    /// returning a non-zero exit code. Tests stub via `stubThrow(swiftAPIName:error:)`.
+    private var swiftAPIThrows: [String: any Error] = [:]
 
     public init() {}
 
@@ -93,11 +96,18 @@ public actor RecordingRunner: RunCommandRunner {
         probeStubs[argv] = available
     }
 
-    /// Set the exit code for a `.swiftAPI(name:)` call. Default (no stub) is
-    /// `0` (success). Use this to simulate "what does ComposeUp do when
-    /// ImagePull throws?" scenarios.
-    public func stub(swiftAPIName: String, exitCode: Int32) {
-        swiftAPIStubs[swiftAPIName] = exitCode
+    /// Make subsequent `.swiftAPI(name:)` calls for `swiftAPIName` throw the
+    /// given error. Mirrors `ProductionRunner.dispatchSwiftAPI` — failure of
+    /// an in-process upstream call (e.g. `Application.ImagePull.parse(argv).run()`)
+    /// throws rather than returning a non-zero exit. Use this to drive `.failed`
+    /// arms in callers like `BridgeContainerClientRuntime.pull` / `.build`.
+    ///
+    /// CHAOS-1433: replaces the previous `stub(swiftAPIName:exitCode:)` API,
+    /// which was deceptive — production never returned non-zero exits for
+    /// `.swiftAPI`, so callers' `do/catch` blocks could not be exercised by
+    /// stubbed exit codes alone.
+    public func stubThrow(swiftAPIName: String, error: any Error) {
+        swiftAPIThrows[swiftAPIName] = error
     }
 
     // MARK: - RunCommandRunner
@@ -129,10 +139,13 @@ public actor RecordingRunner: RunCommandRunner {
             let exit = exitStubs.last(where: { request.argv.starts(with: $0.prefix) })?.exit ?? 0
             return RunResult(exitCode: exit, probeAvailable: false)
         case .swiftAPI(let name):
-            // Default: record + return success. Tests bind a `.swiftAPI` stub
-            // via `stub(swiftAPIName:exitCode:)` to inject failures.
-            let exit = swiftAPIStubs[name] ?? 0
-            return RunResult(exitCode: exit, probeAvailable: false)
+            // CHAOS-1433: failure for `.swiftAPI` is signalled by **throwing**,
+            // matching `ProductionRunner.dispatchSwiftAPI`. Tests inject via
+            // `stubThrow(swiftAPIName:error:)`. Absence of a stub → success.
+            if let stubbedError = swiftAPIThrows[name] {
+                throw stubbedError
+            }
+            return RunResult(exitCode: 0, probeAvailable: false)
         }
     }
 
