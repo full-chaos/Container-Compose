@@ -13,6 +13,7 @@ Container-Compose is a Swift CLI that brings Docker Compose support to [Apple Co
 - [**Compose-Spec Coverage**](../coverage.html) — Live matrix of which compose-spec fields are implemented (canonical source of truth).
 - [**Feature Parity Inventory**](./feature-parity.md) — Tiered split of gaps: silent-failure bugs, wireable now, fork-patch path, upstream FR, won't-do.
 - [**Upstream / Fork Status**](./upstream-fork-status.md) — What we depend on from `full-chaos/container` and what's blocked on `apple/container`.
+- [**API Clients**](./cli/api-clients.md) — Generated SDK channels and install snippets for the daemon's OpenAPI surface.
 
 ## For contributors
 

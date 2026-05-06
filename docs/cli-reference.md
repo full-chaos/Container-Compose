@@ -71,6 +71,14 @@ Commands for managing the daemon and system state.
 | `system` | Manage the daemon and runtime state | [Reference](./cli/system.md) |
 | `version` | Display the version information | [Reference](./cli/version.md) |
 
+## API Clients
+
+Generated SDK publication channels for the daemon's OpenAPI surface.
+
+| Topic | Description | Detailed Reference |
+| :--- | :--- | :--- |
+| `api-clients` | SDK package names, install commands, and snapshot/release channels | [Reference](./cli/api-clients.md) |
+
 ## Exit Codes
 
 - `0`: Success
