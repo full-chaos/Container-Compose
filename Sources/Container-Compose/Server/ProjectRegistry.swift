@@ -16,6 +16,93 @@
 
 import Foundation
 
+// MARK: - BuildContext
+
+/// Sendable snapshot of every compose `build:` directive field plus the
+/// adjacent service-level fields the CLI's `BuildCommand` argv builder
+/// consumes (`service.platform`, `service.image`, `service.deploy.resources`).
+///
+/// Deliberately **does not** reference `Build` or `Service` (non-Sendable
+/// Codable structs) — only Sendable scalar fields cross the actor boundary.
+/// `ComposeBuild.buildService` reads from `Build`/`Service` directly in the
+/// CLI codepath; the bridge codepath, which lives behind a daemon API and
+/// hence an actor boundary, reads from this struct instead.
+///
+/// CHAOS-1429 review (Codex finding 2): originally only the context path and
+/// dockerfile path were carried, which silently dropped `args`, `target`,
+/// `labels`, `secrets`, `dockerfile_inline`, `platforms`, and resource limits
+/// when the daemon-API build path executed — bridge builds reported "completed"
+/// while producing materially wrong images. Expanding here closes that gap.
+public struct BuildContext: Sendable, Equatable {
+    /// Path to the build context directory (relative or absolute, exactly as
+    /// written in the compose YAML `build.context` field). Bridge passes
+    /// through verbatim; relative paths resolve against the daemon's process
+    /// cwd because the daemon does not track per-project working directories.
+    public let contextPath: String
+    /// Path to the Dockerfile within the context. Nil → `Dockerfile` default.
+    public let dockerfile: String?
+    /// Inline Dockerfile content from `dockerfile_inline`. When present, the
+    /// caller writes this to a temporary file and uses `--file <tempfile>`,
+    /// matching `ComposeBuild.buildService` precedence (warning printed if
+    /// both `dockerfile` and `dockerfile_inline` are set).
+    public let dockerfileInline: String?
+    /// Build args. Values pass through verbatim — env-var substitution
+    /// (`${VAR}`) is **not** performed at the bridge layer because the daemon
+    /// has no `.env` source. CLI callers continue to resolve via
+    /// `resolveVariable(_:with:)` before reaching this struct.
+    public let args: [String: String]?
+    /// Multi-stage build target.
+    public let target: String?
+    /// Labels applied to the resulting image.
+    public let labels: [String: String]?
+    /// Secret IDs referenced during build (top-level `secrets:` definitions).
+    public let secrets: [String]?
+    /// Per-service build platforms; first entry wins, matching CLI behavior
+    /// (a warning is printed at the CLI for >1 platform — the bridge silently
+    /// uses the first because it lacks a user-facing console).
+    public let platforms: [String]?
+    /// `service.platform` fallback when `platforms` is empty/nil. Same
+    /// `os/arch` split treatment as `platforms[0]`.
+    public let servicePlatform: String?
+    /// `service.deploy.resources.limits.cpus` — emitted as `--cpus N` with a
+    /// CLI-parity default of `2` if nil.
+    public let cpus: String?
+    /// `service.deploy.resources.limits.memory` — emitted as `--memory M` with
+    /// a CLI-parity default of `2048MB` if nil.
+    public let memory: String?
+    /// `service.image` — when the caller hasn't pinned `imageTag`, this is
+    /// preferred over the `<service>:latest` default, matching CLI behavior.
+    public let serviceImage: String?
+
+    public init(
+        contextPath: String,
+        dockerfile: String?,
+        dockerfileInline: String? = nil,
+        args: [String: String]? = nil,
+        target: String? = nil,
+        labels: [String: String]? = nil,
+        secrets: [String]? = nil,
+        platforms: [String]? = nil,
+        servicePlatform: String? = nil,
+        cpus: String? = nil,
+        memory: String? = nil,
+        serviceImage: String? = nil
+    ) {
+        self.contextPath = contextPath
+        self.dockerfile = dockerfile
+        self.dockerfileInline = dockerfileInline
+        self.args = args
+        self.target = target
+        self.labels = labels
+        self.secrets = secrets
+        self.platforms = platforms
+        self.servicePlatform = servicePlatform
+        self.cpus = cpus
+        self.memory = memory
+        self.serviceImage = serviceImage
+    }
+}
+
 // MARK: - ProjectRegistry
 
 /// CHAOS-1426 — In-memory store of compose YAML documents ingested via
@@ -118,6 +205,43 @@ public actor ProjectRegistry {
 
     public func names() -> [String] {
         entries.keys.sorted()
+    }
+
+    /// Resolve build contexts for all services in the named project by
+    /// re-decoding the stored YAML on demand (cheap, idempotent).
+    ///
+    /// Returns `nil` when no project with `name` has been ingested.
+    /// Returns an empty dictionary when the project is registered but
+    /// none of its services declare a `build:` directive.
+    ///
+    /// `DockerCompose` is **not** stored on the entry (see design note in
+    /// `Entry`) so we decode from the raw YAML string each time via
+    /// `DockerCompose.from(yaml:)` (CHAOS-1430). The cost is acceptable:
+    /// this is called once per build invocation, not in a tight loop.
+    public func buildContexts(for name: String) async throws -> [String: BuildContext]? {
+        guard let entry = entries[name] else { return nil }
+        let document = try DockerCompose.from(yaml: entry.yaml)
+
+        var result: [String: BuildContext] = [:]
+        for (serviceName, maybeService) in document.services {
+            guard let service = maybeService, let build = service.build else { continue }
+            let limits = service.deploy?.resources?.limits
+            result[serviceName] = BuildContext(
+                contextPath: build.context,
+                dockerfile: build.dockerfile,
+                dockerfileInline: build.dockerfile_inline,
+                args: build.args,
+                target: build.target,
+                labels: build.labels,
+                secrets: build.secrets,
+                platforms: build.platforms,
+                servicePlatform: service.platform,
+                cpus: limits?.cpus,
+                memory: limits?.memory,
+                serviceImage: service.image
+            )
+        }
+        return result
     }
 
     /// Test affordance — clear all entries between unit tests so the
