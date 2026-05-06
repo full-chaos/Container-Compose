@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1434-pri6-schema-splits",
+  "commit": "193c854512a974821e3a8f8f7ad5803fc9976c17",
+  "short": "193c854",
+  "target": "193c854",
+  "message": "refactor: CHAOS-1434 Pri 6 \u2014 split APISchemas.swift / RuntimeTypes.swift by domain",
+  "published_at": "2026-05-06T21:49:18.785589+00:00"
+}
