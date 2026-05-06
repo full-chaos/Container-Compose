@@ -378,7 +378,7 @@ actor WatchLoop {
 
 // MARK: - ComposeWatch
 
-public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
+public struct ComposeWatch: AsyncParsableCommand, ComposeCommand, @unchecked Sendable {
     public init() {}
 
     public static let configuration: CommandConfiguration = .init(
@@ -415,46 +415,12 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
 
     // MARK: - Helpers
 
-    private var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
-
-    /// Project root for outside-container relative-path resolution. Honors
-    /// `--project-directory`, falls back to the compose file's directory.
-    private var effectiveProjectDirectory: String {
-        resolveProjectDirectory(
-            cliOverride: projectFlags.projectDirectory,
-            composeFilePath: composePath,
-            cwd: cwd
-        )
-    }
-
-    private var cwdURL: URL { URL(fileURLWithPath: cwd) }
-
-    private static let supportedComposeFilenames = [
-        "compose.yml",
-        "compose.yaml",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-    ]
-
-    private var composePath: String {
-        if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
-        }
-        for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
-            if FileManager.default.fileExists(atPath: candidate) {
-                return candidate
-            }
-        }
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
-    }
+    var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     // MARK: - Run
 
     public mutating func run() async throws {
-        let dockerCompose = try DockerCompose
-            .loadAndMerge(mainPath: composePath)
-            .resolvingExtends()
+        let dockerCompose = try loadAndResolve()
 
         var resolvedServices: [(serviceName: String, service: Service)] = dockerCompose.services.compactMap { name, svc in
             guard let svc else { return nil }
@@ -507,11 +473,7 @@ public struct ComposeWatch: AsyncParsableCommand, @unchecked Sendable {
         let loop = WatchLoop()
         let remoteContext = RuntimeExecutionMode.isRemote
             ? WatchLoop.RemoteContext(
-                projectName: resolveProjectName(
-                    cliOverride: projectFlags.projectName,
-                    composeName: dockerCompose.name,
-                    projectDirectory: effectiveProjectDirectory
-                ),
+                projectName: resolveProjectName(for: dockerCompose),
                 explicitContainerNames: Dictionary(
                     uniqueKeysWithValues: resolvedServices.compactMap { serviceName, service in
                         service.container_name.map { (serviceName, $0) }
