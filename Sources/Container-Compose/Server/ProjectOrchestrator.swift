@@ -501,17 +501,19 @@ public struct ProjectOrchestrator: Sendable {
                     return
                 }
 
-                // CHAOS-1425: delegate to Runtime.build(...). Today every
-                // conformer responds `notSupported` because the daemon does
-                // not yet receive compose-file context (Dockerfile path,
-                // build context dir) — that's CHAOS-1426. Translate each
-                // event back to APIProjectBuildFrame so the wire format
-                // stays unchanged for clients.
+                // CHAOS-1429: populate projectName so the bridge conformer
+                // can resolve build-context paths from ProjectRegistry.
+                // Previously every conformer returned `notSupported` because
+                // the daemon had no compose-file context — CHAOS-1426 fixed
+                // that by adding the project registry; CHAOS-1429 wires the
+                // bridge to use it. Translate each event back to
+                // APIProjectBuildFrame so the wire format stays unchanged.
                 let specs = serviceNames.map {
                     RuntimeBuildSpec(
                         service: $0,
                         noCache: noCache,
-                        pullBaseImages: pull
+                        pullBaseImages: pull,
+                        projectName: project
                     )
                 }
                 do {

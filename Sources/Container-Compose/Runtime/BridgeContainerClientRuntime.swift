@@ -528,24 +528,94 @@ extension BridgeContainerClientRuntime {
         }
     }
 
-    /// Build is not supported via the bridge: the daemon's container registry
-    /// does not track Dockerfile paths or build-context directories. Each
-    /// `RuntimeBuildSpec` is responded to with a `notSupported` event so the
-    /// route layer can attribute the limitation per-service. CHAOS-1426
-    /// (compose-file upload via daemon API) unlocks this path.
+    /// Build images for the given specs via `RunCommandRunner.swiftAPI(name: "BuildCommand")`.
+    ///
+    /// ## Context resolution
+    ///
+    /// Each spec may carry a `projectName` pointing at a project ingested via
+    /// `POST /projects/{name}` (CHAOS-1426). When present the bridge looks up
+    /// build-context paths from `RuntimeEnvironment.projectRegistry`. When the
+    /// spec already has `contextPath` set (CLI path, CHAOS-1427 territory) that
+    /// takes precedence. If neither is available the service emits `notSupported`.
+    ///
+    /// ## Event shape
+    ///
+    /// Coarse-grained — one `started` + one `completed` (or `failed`) per spec,
+    /// matching the `pull(...)` wire format from CHAOS-1425. Per-blob progress
+    /// is deferred to a future ticket (see CHAOS-1425 PR comment re: ProgressBar
+    /// writing directly to host stdout).
     public func build(
         specs: [RuntimeBuildSpec]
     ) async throws -> AsyncStream<RuntimeBuildEvent> {
-        AsyncStream { continuation in
+        // Snapshot of the ProjectRegistry task-local — captured before the
+        // AsyncStream closure so we can call it from the unstructured Task
+        // (task-locals propagate into Task {} blocks, not detached tasks).
+        let registry = RuntimeEnvironment.projectRegistry
+
+        return AsyncStream { continuation in
             let task = Task {
                 for spec in specs {
                     if Task.isCancelled { break }
+
+                    // 1. Resolve the context path: spec field wins, then registry lookup.
+                    let resolvedContext: BuildContext?
+                    if let explicitPath = spec.contextPath {
+                        // Caller already resolved paths (e.g., CLI codepath).
+                        resolvedContext = BuildContext(contextPath: explicitPath, dockerfile: spec.dockerfile)
+                    } else if let projectName = spec.projectName,
+                              let contexts = try? await registry.buildContexts(for: projectName),
+                              let ctx = contexts[spec.service] {
+                        resolvedContext = ctx
+                    } else {
+                        resolvedContext = nil
+                    }
+
+                    guard let context = resolvedContext else {
+                        // No context available — emit notSupported and continue.
+                        continuation.yield(RuntimeBuildEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            kind: .notSupported,
+                            message: "No build context available for service '\(spec.service)'. Ingest the project via POST /projects/{name} first."
+                        ))
+                        continue
+                    }
+
+                    // 2. Emit started.
                     continuation.yield(RuntimeBuildEvent(
                         timestamp: Date(),
                         service: spec.service,
-                        kind: .notSupported,
-                        message: "Build not supported via daemon API — use `container-compose build` CLI. Tracking: CHAOS-1426 (compose-file upload)."
+                        kind: .started
                     ))
+
+                    // 3. Build argv matching Application.BuildCommand.parse(_:) expectations.
+                    // Convention mirrors ComposeBuild.buildService — context path first,
+                    // then options. See Sources/Container-Compose/Commands/ComposeBuild.swift.
+                    let imageTag = spec.imageTag ?? ComposeUp.qualifyImageReference("\(spec.service):latest")
+                    var argv: [String] = [context.contextPath]
+                    argv.append(contentsOf: ["--file", context.dockerfile ?? "Dockerfile"])
+                    argv.append(contentsOf: ["--tag", imageTag])
+                    if spec.noCache { argv.append("--no-cache") }
+
+                    do {
+                        _ = try await RunnerEnvironment.current.run(
+                            RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: argv, cwd: nil),
+                            onStdout: nil,
+                            onStderr: nil
+                        )
+                        continuation.yield(RuntimeBuildEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            kind: .completed
+                        ))
+                    } catch {
+                        continuation.yield(RuntimeBuildEvent(
+                            timestamp: Date(),
+                            service: spec.service,
+                            kind: .failed,
+                            message: error.localizedDescription
+                        ))
+                    }
                 }
                 continuation.finish()
             }

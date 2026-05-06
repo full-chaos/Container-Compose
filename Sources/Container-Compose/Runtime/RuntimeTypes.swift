@@ -399,10 +399,11 @@ public struct RuntimePullEvent: Sendable, Hashable {
 
 /// Per-service input to `Runtime.build(specs:)`. The daemon's container
 /// registry does not track Dockerfile paths or build-context directories — a
-/// `BuildCommand` invocation needs both. Until CHAOS-1426 (compose-file upload
-/// via daemon API) lands, conformers throw `RuntimeError.notSupported(...)`
-/// from `build(...)` even when this spec is constructed; the route layer
-/// translates that to the existing "Build not supported via daemon API" frame.
+/// `BuildCommand` invocation needs both. CHAOS-1426 (compose-file upload via
+/// daemon API) unblocked the bridge conformer; callers populate `projectName`
+/// so the bridge can resolve build contexts from `ProjectRegistry`. When
+/// `projectName` is nil the bridge falls back to `contextPath`/`dockerfile`
+/// if those are already set, or emits `notSupported` per spec.
 public struct RuntimeBuildSpec: Sendable, Hashable {
     public let service: String
     public let imageTag: String?
@@ -410,6 +411,10 @@ public struct RuntimeBuildSpec: Sendable, Hashable {
     public let dockerfile: String?
     public let noCache: Bool
     public let pullBaseImages: Bool
+    /// The registered project name to look up build contexts from
+    /// `ProjectRegistry`. Populated by `ProjectOrchestrator.buildStream`;
+    /// nil when the caller already has `contextPath`/`dockerfile` resolved.
+    public let projectName: String?
 
     public init(
         service: String,
@@ -417,7 +422,8 @@ public struct RuntimeBuildSpec: Sendable, Hashable {
         contextPath: String? = nil,
         dockerfile: String? = nil,
         noCache: Bool = false,
-        pullBaseImages: Bool = false
+        pullBaseImages: Bool = false,
+        projectName: String? = nil
     ) {
         self.service = service
         self.imageTag = imageTag
@@ -425,6 +431,7 @@ public struct RuntimeBuildSpec: Sendable, Hashable {
         self.dockerfile = dockerfile
         self.noCache = noCache
         self.pullBaseImages = pullBaseImages
+        self.projectName = projectName
     }
 }
 

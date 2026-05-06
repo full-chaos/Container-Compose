@@ -136,6 +136,204 @@ struct BridgeContainerClientRuntimeTests {
     }
 }
 
+// MARK: - Bridge Build (CHAOS-1429)
+
+@Suite("BridgeContainerClientRuntime.build() — CHAOS-1429")
+struct BridgeContainerClientRuntimeBuildTests {
+
+    // MARK: - Helpers
+
+    /// YAML for a project with two services that both declare `build:` directives.
+    private static let twoBuildServicesYAML = """
+    services:
+      web:
+        build:
+          context: ./web
+          dockerfile: Dockerfile.web
+      worker:
+        build: ./worker
+    """
+
+    /// YAML for a project with only image-based services (no `build:` directives).
+    private static let imageOnlyYAML = """
+    services:
+      web:
+        image: nginx:1.27
+      db:
+        image: postgres:16
+    """
+
+    /// Ingest a project with the given YAML into a fresh registry using
+    /// `ProjectOrchestrator.ingest` (which owns YAML decoding), returning the
+    /// registry.  The caller binds it as a task-local via
+    /// `RuntimeEnvironment.$projectRegistry`.
+    private func ingest(yaml: String, as projectName: String) async throws -> ProjectRegistry {
+        let reg = ProjectRegistry()
+        _ = try await ProjectOrchestrator.ingest(
+            projectName: projectName,
+            yaml: Data(yaml.utf8),
+            registry: reg
+        )
+        return reg
+    }
+
+    // MARK: - Success path
+
+    @Test("build() emits started+completed for each service with a build context in the registry")
+    func buildSuccessEmitsStartedCompleted() async throws {
+        let registry = try await ingest(yaml: Self.twoBuildServicesYAML, as: "myapp")
+        let runner = RecordingRunner()
+
+        let bridge = BridgeContainerClientRuntime()
+        let specs = [
+            RuntimeBuildSpec(service: "web", projectName: "myapp"),
+            RuntimeBuildSpec(service: "worker", projectName: "myapp"),
+        ]
+
+        var events: [RuntimeBuildEvent] = []
+        try await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            try await RunnerEnvironment.$current.withValue(runner) {
+                let stream = try await bridge.build(specs: specs)
+                for await event in stream { events.append(event) }
+            }
+        }
+
+        // Expect started+completed for web and worker (order matches specs).
+        #expect(events.count == 4)
+        #expect(events[0].kind == .started);  #expect(events[0].service == "web")
+        #expect(events[1].kind == .completed); #expect(events[1].service == "web")
+        #expect(events[2].kind == .started);  #expect(events[2].service == "worker")
+        #expect(events[3].kind == .completed); #expect(events[3].service == "worker")
+
+        // Verify BuildCommand was invoked twice with the correct context paths.
+        let buildCalls = await runner.swiftAPIArgvs(named: "BuildCommand")
+        #expect(buildCalls.count == 2)
+
+        // web: context=./web, dockerfile=Dockerfile.web
+        #expect(buildCalls[0].first == "./web")
+        #expect(buildCalls[0].contains("Dockerfile.web"))
+
+        // worker: context=./worker, dockerfile=Dockerfile (default)
+        #expect(buildCalls[1].first == "./worker")
+        #expect(buildCalls[1].contains("Dockerfile"))
+    }
+
+    @Test("build() passes --no-cache when spec.noCache is true")
+    func buildPassesNoCacheFlag() async throws {
+        let registry = try await ingest(yaml: Self.twoBuildServicesYAML, as: "myapp")
+        let runner = RecordingRunner()
+        let bridge = BridgeContainerClientRuntime()
+
+        let specs = [RuntimeBuildSpec(service: "web", noCache: true, projectName: "myapp")]
+
+        try await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            try await RunnerEnvironment.$current.withValue(runner) {
+                let stream = try await bridge.build(specs: specs)
+                for await _ in stream {}
+            }
+        }
+
+        let buildCalls = await runner.swiftAPIArgvs(named: "BuildCommand")
+        #expect(buildCalls.first?.contains("--no-cache") == true)
+    }
+
+    // MARK: - No build context
+
+    @Test("build() emits notSupported when project has no build: directives")
+    func buildEmitsNotSupportedForImageOnlyProject() async throws {
+        let registry = try await ingest(yaml: Self.imageOnlyYAML, as: "imageonly")
+        let runner = RecordingRunner()
+        let bridge = BridgeContainerClientRuntime()
+
+        let specs = [
+            RuntimeBuildSpec(service: "web", projectName: "imageonly"),
+            RuntimeBuildSpec(service: "db", projectName: "imageonly"),
+        ]
+
+        var events: [RuntimeBuildEvent] = []
+        try await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            try await RunnerEnvironment.$current.withValue(runner) {
+                let stream = try await bridge.build(specs: specs)
+                for await event in stream { events.append(event) }
+            }
+        }
+
+        #expect(events.count == 2)
+        #expect(events.allSatisfy { $0.kind == .notSupported })
+        // No BuildCommand calls should be made.
+        let buildCalls = await runner.swiftAPIArgvs(named: "BuildCommand")
+        #expect(buildCalls.isEmpty)
+    }
+
+    @Test("build() emits notSupported when projectName is nil and contextPath is nil")
+    func buildEmitsNotSupportedWhenNoContextAvailable() async throws {
+        let runner = RecordingRunner()
+        let bridge = BridgeContainerClientRuntime()
+
+        // Spec with neither projectName nor contextPath.
+        let specs = [RuntimeBuildSpec(service: "web")]
+
+        var events: [RuntimeBuildEvent] = []
+        try await RunnerEnvironment.$current.withValue(runner) {
+            let stream = try await bridge.build(specs: specs)
+            for await event in stream { events.append(event) }
+        }
+
+        #expect(events.count == 1)
+        #expect(events[0].kind == .notSupported)
+        #expect(events[0].service == "web")
+    }
+
+    @Test("build() emits notSupported when project is not registered")
+    func buildEmitsNotSupportedForUnknownProject() async throws {
+        let registry = ProjectRegistry() // empty registry — project never ingested
+        let runner = RecordingRunner()
+        let bridge = BridgeContainerClientRuntime()
+
+        let specs = [RuntimeBuildSpec(service: "web", projectName: "ghost")]
+
+        var events: [RuntimeBuildEvent] = []
+        try await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            try await RunnerEnvironment.$current.withValue(runner) {
+                let stream = try await bridge.build(specs: specs)
+                for await event in stream { events.append(event) }
+            }
+        }
+
+        #expect(events.count == 1)
+        #expect(events[0].kind == .notSupported)
+    }
+
+    // MARK: - Spec with explicit contextPath (no registry needed)
+
+    @Test("build() uses spec.contextPath directly when set, bypassing registry")
+    func buildUsesExplicitContextPath() async throws {
+        let runner = RecordingRunner()
+        let bridge = BridgeContainerClientRuntime()
+
+        let specs = [
+            RuntimeBuildSpec(
+                service: "api",
+                contextPath: "/absolute/path/to/api",
+                dockerfile: "Dockerfile.api"
+            )
+        ]
+
+        var events: [RuntimeBuildEvent] = []
+        try await RunnerEnvironment.$current.withValue(runner) {
+            let stream = try await bridge.build(specs: specs)
+            for await event in stream { events.append(event) }
+        }
+
+        #expect(events.map(\.kind) == [.started, .completed])
+
+        let buildCalls = await runner.swiftAPIArgvs(named: "BuildCommand")
+        #expect(buildCalls.count == 1)
+        #expect(buildCalls[0].first == "/absolute/path/to/api")
+        #expect(buildCalls[0].contains("Dockerfile.api"))
+    }
+}
+
 private actor BridgeStatisticsProvider: ContainerClientProvider {
     let statsError: ContainerizationError
 

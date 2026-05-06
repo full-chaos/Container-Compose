@@ -16,6 +16,30 @@
 
 import Foundation
 
+// MARK: - BuildContext
+
+/// Sendable snapshot of a single service's build-context information,
+/// derived on demand from a stored compose YAML string.
+///
+/// Deliberately **does not** reference `Build` (the non-Sendable Codable
+/// struct) — only the two scalar paths cross the actor boundary. Other
+/// `Build` fields (args, labels, etc.) are consumed directly in the
+/// `ComposeBuild` command path and are not needed by the bridge's
+/// coarse-grained `started/completed/failed` stream.
+public struct BuildContext: Sendable, Equatable {
+    /// Path to the build context directory (relative or absolute,
+    /// exactly as written in the compose YAML `build.context` field).
+    public let contextPath: String
+    /// Optional path to the Dockerfile within the context, or nil if
+    /// the default (`Dockerfile`) should be used.
+    public let dockerfile: String?
+
+    public init(contextPath: String, dockerfile: String?) {
+        self.contextPath = contextPath
+        self.dockerfile = dockerfile
+    }
+}
+
 // MARK: - ProjectRegistry
 
 /// CHAOS-1426 — In-memory store of compose YAML documents ingested via
@@ -118,6 +142,32 @@ public actor ProjectRegistry {
 
     public func names() -> [String] {
         entries.keys.sorted()
+    }
+
+    /// Resolve build contexts for all services in the named project by
+    /// re-decoding the stored YAML on demand (cheap, idempotent).
+    ///
+    /// Returns `nil` when no project with `name` has been ingested.
+    /// Returns an empty dictionary when the project is registered but
+    /// none of its services declare a `build:` directive.
+    ///
+    /// `DockerCompose` is **not** stored on the entry (see design note in
+    /// `Entry`) so we decode from the raw YAML string each time via
+    /// `DockerCompose.from(yaml:)` (CHAOS-1430). The cost is acceptable:
+    /// this is called once per build invocation, not in a tight loop.
+    public func buildContexts(for name: String) async throws -> [String: BuildContext]? {
+        guard let entry = entries[name] else { return nil }
+        let document = try DockerCompose.from(yaml: entry.yaml)
+
+        var result: [String: BuildContext] = [:]
+        for (serviceName, maybeService) in document.services {
+            guard let build = maybeService?.build else { continue }
+            result[serviceName] = BuildContext(
+                contextPath: build.context,
+                dockerfile: build.dockerfile
+            )
+        }
+        return result
     }
 
     /// Test affordance — clear all entries between unit tests so the
