@@ -158,7 +158,7 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
                 imageReference: ComposeUp.qualifyImageReference(image),
                 cpus: Int(service.cpus_top ?? 1),
                 hostname: service.hostname,
-                environment: remoteEnvironment(for: service),
+                environment: remoteEnvironment(for: service, baseEnvironment: environmentVariables),
                 command: service.command ?? [],
                 workingDirectory: service.working_dir,
                 publishedPorts: remotePublishedPorts(for: service),
@@ -173,34 +173,6 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
             print("Created remote container: \(containerName)")
         }
         print("--- Remote Containers Created ---\n")
-    }
-
-    private func remoteEnvironment(for service: Service) -> [String] {
-        var merged = environmentVariables
-        for (key, value) in service.environment ?? [:] {
-            merged[key] = value
-        }
-        return merged.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
-    }
-
-    private func remotePublishedPorts(for service: Service) -> [RuntimePublishedPort] {
-        (service.ports ?? []).compactMap { raw in
-            let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
-            guard parts.count >= 2 else { return nil }
-            let hostPart = String(parts[parts.count - 2])
-            let containerPart = String(parts[parts.count - 1])
-            let containerPortPart = String(containerPart.split(separator: "/").first ?? "")
-            guard
-                let hostPort = UInt16(hostPart),
-                let containerPort = UInt16(containerPortPart)
-            else { return nil }
-            return RuntimePublishedPort(
-                hostAddress: "0.0.0.0",
-                hostPort: hostPort,
-                containerPort: containerPort,
-                proto: containerPart.hasSuffix("/udp") ? .udp : .tcp
-            )
-        }
     }
 
     // MARK: - Network / Volume helpers (mirrors ComposeUp)
@@ -442,61 +414,6 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
         }
 
         return runCommandArgs
-    }
-}
-
-// MARK: Argv tail (image + entrypoint/command)
-
-extension ComposeCreate {
-
-    /// Builds the trailing portion of a `container create` argv: the
-    /// `--entrypoint` flag (if any), the image, and any positional args.
-    ///
-    /// `container create` (like `container run` and `docker run` / `docker
-    /// create`) accepts at most one `--entrypoint <BIN>` flag *before* the
-    /// image, with any extra arguments to that entrypoint passed positionally
-    /// *after* the image. Compose models `entrypoint` as `[a, b, c]` — a full
-    /// argv. We therefore split: the first token becomes the `--entrypoint`
-    /// value (pre-image), the remaining tokens become positional args
-    /// (post-image), followed by `command` if any.
-    ///
-    /// `compose create` has no per-call CLI command override (unlike
-    /// `compose run`), so the signature mirrors `ComposeUp.imageAndEntrypointTail`
-    /// exactly. Kept as a parallel ComposeCreate-local helper rather than
-    /// reusing `ComposeUp.imageAndEntrypointTail` to keep each command's argv
-    /// logic readable in isolation and to avoid cross-file coupling — the
-    /// PR-3 ComposeRun helper made the same call.
-    ///
-    /// Resulting shapes:
-    /// - `entrypoint: [a, b, c]`, `command: [d, e]` → `[--entrypoint, a, <image>, b, c, d, e]`
-    /// - `entrypoint: [/app/foo.sh]`, no command   → `[--entrypoint, /app/foo.sh, <image>]`
-    /// - no entrypoint, `command: [d, e]`          → `[<image>, d, e]`
-    /// - neither                                    → `[<image>]`
-    static func imageAndEntrypointTail(
-        image: String,
-        entrypoint: [String]?,
-        command: [String]?
-    ) -> [String] {
-        var tail: [String] = []
-        var positional: [String] = []
-
-        if let entrypoint, let first = entrypoint.first {
-            tail.append("--entrypoint")
-            tail.append(first)
-            // Remaining entrypoint tokens are positional args to the entrypoint
-            // and must appear *after* the image.
-            positional.append(contentsOf: entrypoint.dropFirst())
-        }
-
-        tail.append(image)
-        tail.append(contentsOf: positional)
-
-        // `command` is appended after entrypoint args per the compose spec.
-        if let command {
-            tail.append(contentsOf: command)
-        }
-
-        return tail
     }
 }
 
