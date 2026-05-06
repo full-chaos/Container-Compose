@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1436-buildservice-extraction",
+  "commit": "7c81c55d0bd04b8a01dab45ed9f9f7c87f1aef1a",
+  "short": "7c81c55",
+  "target": "7c81c55",
+  "message": "refactor(compose): CHAOS-1436 Phase B \u2014 unify buildService",
+  "published_at": "2026-05-06T20:44:07.872557+00:00"
+}
