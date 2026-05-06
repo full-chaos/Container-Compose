@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1427-remote-runtime",
+  "commit": "a4d038c4bf71fec53e7483430a0d82921e9cfe2f",
+  "short": "a4d038c",
+  "target": "a4d038c",
+  "message": "fix(runtime): CHAOS-1427 PR #121 review \u2014 validate(body:) + shared HTTPClient",
+  "published_at": "2026-05-06T00:31:45.220299+00:00"
+}
