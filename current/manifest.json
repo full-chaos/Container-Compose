@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "df60d30fdeb0d101a38f1b415d6d9ef23dcd3f6d",
-  "short": "df60d30",
+  "commit": "765ccc1fecb8b7000306654d41cfbb7472688675",
+  "short": "765ccc1",
   "target": "current",
-  "message": "feat(runtime): CHAOS-1425 \u2014 wire Runtime.build/pull through to BuildCommand + ImagePull (Leak #14) (#118)",
-  "published_at": "2026-05-05T23:01:29.955774+00:00"
+  "message": "CHAOS-1428: Generate OpenAPI SDKs in CI (#120)",
+  "published_at": "2026-05-06T00:01:39.726183+00:00"
 }
