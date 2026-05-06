@@ -159,6 +159,13 @@ public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Senda
         runArgs.append(contentsOf: ["--name", containerName])
 
         // Build ArgsContext for the per-concern builders
+        let supportsHealthcheckFlags = service.healthcheck == nil
+            ? false
+            : await ComposeUp.LifecycleArgs.supportsHealthcheckFlags(for: "run")
+        let supportsBlkioFlags = service.blkio_config == nil
+            ? false
+            : await ComposeUp.ResourceArgs.supportsBlkioFlags(for: "run")
+
         let ctx = ComposeUp.ArgsContext(
             service: service,
             serviceName: serviceName,
@@ -167,7 +174,9 @@ public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Senda
             detach: detach,
             environmentVariables: environmentVariables,
             dockerCompose: dockerCompose,
-            composeFilename: composeFilename
+            composeFilename: composeFilename,
+            supportsHealthcheckFlags: supportsHealthcheckFlags,
+            supportsBlkioFlags: supportsBlkioFlags
         )
 
         // LifecycleArgs — but we already emitted -d and --name above, so we
@@ -188,6 +197,10 @@ public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Senda
         if let runtime = service.runtime {
             runArgs.append(contentsOf: ["--runtime", runtime])
         }
+        runArgs.append(contentsOf: ComposeUp.LifecycleArgs.healthcheckArgs(
+            for: service.healthcheck,
+            supportsHealthcheckFlags: supportsHealthcheckFlags
+        ))
         warnUnsupportedContainerLoggingFields(service)
 
         runArgs.append(contentsOf: ComposeUp.SecurityArgs.build(ctx))

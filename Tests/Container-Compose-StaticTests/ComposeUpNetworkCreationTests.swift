@@ -163,6 +163,86 @@ struct ComposeUpNetworkCreationTests {
         #expect(!argv.contains("--plugin"), "bridge driver must NOT emit --plugin; got argv: \(argv)")
     }
 
+    @Test("BridgeContainerClientRuntime.createNetwork emits CHAOS-1334 network parity flags")
+    func bridgeCreateNetworkEmitsNetworkParityFlags() async throws {
+        let bridge = BridgeContainerClientRuntime()
+        let runner = RecordingRunner()
+        let spec = RuntimeCreateNetworkSpec(
+            name: "rich-net",
+            driver: "bridge",
+            subnet: "10.1.0.0/16",
+            gateway: "10.1.0.1",
+            ipRange: "10.1.2.0/24",
+            auxAddresses: ["api": "10.1.0.10", "db": "10.1.0.11"],
+            driverOptions: ["mtu": "1400"],
+            attachable: true,
+            enableIPv6: true,
+            isInternal: true,
+            labels: ["env": "test"]
+        )
+
+        _ = try await RunnerEnvironment.$current.withValue(runner) {
+            try await bridge.createNetwork(spec: spec)
+        }
+
+        let recorded = await runner.recordedRequests()
+        let networkCreate = recorded.first { entry in
+            if case .swiftAPI(let name) = entry.request.kind { return name == "NetworkCreate" }
+            return false
+        }
+        let argv = networkCreate?.request.argv ?? []
+        func hasPair(_ flag: String, _ value: String) -> Bool {
+            zip(argv, argv.dropFirst()).contains { $0 == flag && $1 == value }
+        }
+
+        #expect(argv.contains("--internal"))
+        #expect(argv.contains("--attachable"))
+        #expect(argv.contains("--ipv6"))
+        #expect(hasPair("--driver-opt", "mtu=1400"))
+        #expect(hasPair("--subnet", "10.1.0.0/16"))
+        #expect(hasPair("--gateway", "10.1.0.1"))
+        #expect(hasPair("--ip-range", "10.1.2.0/24"))
+        #expect(hasPair("--aux-address", "api=10.1.0.10"))
+        #expect(hasPair("--aux-address", "db=10.1.0.11"))
+        #expect(hasPair("--label", "env=test"))
+    }
+
+    @Test("Compose network model maps to RuntimeCreateNetworkSpec parity fields")
+    func composeNetworkMapsToRuntimeNetworkSpec() {
+        let network = Network(
+            driver: "bridge",
+            driver_opts: ["mtu": "1400"],
+            attachable: true,
+            enable_ipv6: true,
+            isInternal: true,
+            labels: ["tier": "backend"],
+            ipam: Ipam(
+                config: [
+                    IpamConfig(
+                        subnet: "10.2.0.0/16",
+                        ip_range: "10.2.3.0/24",
+                        gateway: "10.2.0.1",
+                        aux_addresses: ["cache": "10.2.0.20"]
+                    )
+                ]
+            )
+        )
+
+        let spec = ComposeUp.runtimeNetworkSpec(name: "app-net", config: network)
+
+        #expect(spec.name == "app-net")
+        #expect(spec.driver == "bridge")
+        #expect(spec.subnet == "10.2.0.0/16")
+        #expect(spec.gateway == "10.2.0.1")
+        #expect(spec.ipRange == "10.2.3.0/24")
+        #expect(spec.auxAddresses == ["cache": "10.2.0.20"])
+        #expect(spec.driverOptions == ["mtu": "1400"])
+        #expect(spec.attachable)
+        #expect(spec.enableIPv6)
+        #expect(spec.isInternal)
+        #expect(spec.labels == ["tier": "backend"])
+    }
+
     // MARK: - setupNetwork routes through RuntimeEnvironment (call-site contract)
 
     /// Verifies that `setupNetwork` calls `RuntimeEnvironment.current.createNetwork`

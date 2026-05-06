@@ -85,13 +85,15 @@ extension ComposeUp {
                 args.append(contentsOf: ["--memory", mem])
             }
 
-            // Trivially-unsupported runtime fields (mem/cpu/oom/pids/shm/gpus/blkio):
+            // Trivially-unsupported runtime fields (mem/cpu/oom/pids/shm/gpus):
             // each is a presence-only check that emits the same warn-once shape.
             // Centralized in `warnUnsupportedContainerRuntimeFields` so this
             // builder stays focused on argv emission. Bespoke comparisons
             // (cpu/memory reservation-vs-limit handling above) intentionally
             // remain inline because they pick a message based on values.
-            warnUnsupportedContainerRuntimeFields(svc)
+            warnUnsupportedContainerRuntimeFields(svc, supportsBlkioFlags: ctx.supportsBlkioFlags)
+
+            args.append(contentsOf: blkioArgs(for: svc.blkio_config, supportsBlkioFlags: ctx.supportsBlkioFlags))
 
             // --ulimit NAME=SOFT:HARD (or NAME=VALUE when soft == hard)
             if let ulimits = svc.ulimits {
@@ -105,6 +107,54 @@ extension ComposeUp {
             }
 
             return args
+        }
+
+        static func blkioArgs(for blkio: BlkioConfig?, supportsBlkioFlags: Bool) -> [String] {
+            guard supportsBlkioFlags, let blkio else { return [] }
+
+            var args: [String] = []
+
+            if let weight = blkio.weight {
+                args.append(contentsOf: ["--blkio-weight", "\(weight)"])
+            }
+
+            for device in blkio.weight_device ?? [] {
+                args.append(contentsOf: ["--blkio-weight-device", "\(device.path):\(device.weight)"])
+            }
+
+            for device in blkio.device_read_bps ?? [] {
+                args.append(contentsOf: ["--device-read-bps", "\(device.path):\(device.rate)"])
+            }
+
+            for device in blkio.device_write_bps ?? [] {
+                args.append(contentsOf: ["--device-write-bps", "\(device.path):\(device.rate)"])
+            }
+
+            for device in blkio.device_read_iops ?? [] {
+                args.append(contentsOf: ["--device-read-iops", "\(device.path):\(device.rate)"])
+            }
+
+            for device in blkio.device_write_iops ?? [] {
+                args.append(contentsOf: ["--device-write-iops", "\(device.path):\(device.rate)"])
+            }
+
+            return args
+        }
+
+        static func supportsBlkioFlags(for command: String) async -> Bool {
+            let probe = Process()
+            probe.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            probe.arguments = ["container", command, "--blkio-weight", "500", "--help"]
+            probe.standardOutput = Pipe()
+            probe.standardError = Pipe()
+
+            do {
+                try probe.run()
+                probe.waitUntilExit()
+                return probe.terminationStatus == 0
+            } catch {
+                return false
+            }
         }
 
         private static func warnCpuReservationIgnored(limit: String, reservation: String?) {

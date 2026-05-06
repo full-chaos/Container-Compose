@@ -160,14 +160,14 @@ Creates a container from an image reference and configuration. Returns the fresh
   - `publishedPorts: [RuntimePublishedPort]`
 
 **Conformer behaviour:**
-- **Bridge** (`BridgeContainerClientRuntime.swift:112-119`): always throws `RuntimeError.notSupported(operation: "create", conformer: "BridgeContainerClientRuntime")`. The XPC create path requires a `Kernel` binary reference and a `ContainerConfiguration` shape not exposed by `RuntimeCreateConfiguration`. Documented as Leak #13.
+- **Bridge** (`BridgeContainerClientRuntime.swift`): delegates to `ContainerClientProvider.create(id:configuration:)`. The production provider maps `RuntimeCreateConfiguration` into apple/container's `Flags.Process`, `Flags.Management`, and `Flags.Resource`, then reuses `Utility.containerConfigFromFlags(...)` before calling `ContainerClient.create(...)`.
 - **Apple** (`AppleContainerizationRuntime.swift:110-129`): checks registry for duplicate, allocates `RuntimeContainerRecord` in `.created` state, registers it, initializes `LogRingBuffer` entries for stdout/stderr, emits `.created` event. No real `ContainerManager.create` call in Phase 1.
 - **Mock** (`MockRuntime.swift:101-120`): throws `alreadyExists` on duplicate, stores container in memory, publishes `.created` event.
 - **Recording** (`RecordingRuntime.swift:144-156`): records `.create(id:)`, returns a freshly constructed `.created` container.
 
 **Throws:**
-- `RuntimeError.alreadyExists(id:)` if a container with this id exists (Apple, Mock)
-- `RuntimeError.notSupported(operation: "create", conformer: "BridgeContainerClientRuntime")` (Bridge, always)
+- `RuntimeError.alreadyExists(id:)` if a container with this id exists
+- `RuntimeError.backendFailure(message:)` for bridge/XPC failures that are not duplicate or not-found semantics
 
 **Call sites:**
 - `Sources/Container-Compose/Server/Routes/ContainerCreateRoute.swift` — POST `/containers/create`
@@ -656,13 +656,13 @@ The canonical gap catalogue is `docs/plans/runtime-abstraction-leaks.md`. Key it
 
 | Leak # | Description | Protocol impact |
 | :---: | :--- | :--- |
-| #4 | Bridge: `create`, `wait` throw `.notSupported`; `logs` follow ignored; `events` OOM not emitted | REST routes return 501 for these paths on Bridge |
+| #4 | Bridge: `wait`, `listNetworks`, and secret CRUD throw `.notSupported`; `logs` follow ignored; `events` OOM not emitted | REST routes return 501 for the unsupported Bridge paths |
 | #6 | Bridge: all network stats aggregated into synthetic `"eth0"` | `statistics.networks` always has at most 1 entry on Bridge |
 | #7 | Apple: `statistics` returns empty snapshot | All `cpuUsageUsec`, `memoryUsageBytes` etc. are `nil` on Apple |
 | #9 | Both production conformers: `createNetwork`/`removeNetwork` throw `.notSupported` | POST/DELETE `/networks` always returns 501 |
 | #11 | Both production conformers: all secret CRUD throws `.notSupported` | POST/DELETE `/secrets` always returns 501 |
 | #12 | Bridge `get`: all XPC errors mapped to `notFound` | Bridge may return 404 when daemon is unresponsive (should be 500) |
-| #13 | Bridge `create`: always throws `.notSupported` | POST `/containers/create` returns 501 on Bridge |
+| #13 | Resolved: Bridge `create` delegates through `ContainerClientProvider.create` | POST `/containers/create` reaches the XPC create path on Bridge |
 
 ---
 

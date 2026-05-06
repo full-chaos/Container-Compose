@@ -194,27 +194,14 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
             return
         }
 
-        var networkCreateArgs: [String] = ["network", "create"]
-
-        if let labels = networkConfig?.labels, !labels.isEmpty {
-            for (labelKey, labelValue) in labels.sorted(by: { $0.key < $1.key }) {
-                networkCreateArgs.append(contentsOf: ["--label", "\(labelKey)=\(labelValue)"])
-            }
-        }
-
         print("Creating network: \(networkName) (actual: \(actualNetworkName))")
-        guard (try? await ContainerClientEnvironment.current.networkGet(id: actualNetworkName)) == nil else {
+        let spec = ComposeUp.runtimeNetworkSpec(name: actualNetworkName, config: networkConfig)
+        do {
+            _ = try await RuntimeEnvironment.current.createNetwork(spec: spec)
+            print("Network '\(networkName)' created")
+        } catch RuntimeError.alreadyExists {
             print("Network '\(networkName)' already exists")
-            return
         }
-
-        let networkCreateArgv = [actualNetworkName] + logging.passThroughCommands()
-        _ = try await RunnerEnvironment.current.run(
-            RunRequest(kind: .swiftAPI(name: "NetworkCreate"), argv: networkCreateArgv, cwd: nil),
-            onStdout: nil,
-            onStderr: nil
-        )
-        print("Network '\(networkName)' created")
     }
 
     // MARK: - Service creation
@@ -283,6 +270,13 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
         }
 
         // Reuse the per-concern arg builders from ComposeUp
+        let supportsHealthcheckFlags = service.healthcheck == nil
+            ? false
+            : await ComposeUp.LifecycleArgs.supportsHealthcheckFlags(for: "create")
+        let supportsBlkioFlags = service.blkio_config == nil
+            ? false
+            : await ComposeUp.ResourceArgs.supportsBlkioFlags(for: "create")
+
         let ctx = ComposeUp.ArgsContext(
             service: service,
             serviceName: serviceName,
@@ -291,7 +285,9 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
             detach: false,
             environmentVariables: environmentVariables,
             dockerCompose: dockerCompose,
-            composeFilename: composeFilename
+            composeFilename: composeFilename,
+            supportsHealthcheckFlags: supportsHealthcheckFlags,
+            supportsBlkioFlags: supportsBlkioFlags
         )
         createArgs.append(contentsOf: ComposeUp.LifecycleArgs.build(ctx))
         createArgs.append(contentsOf: ComposeUp.SecurityArgs.build(ctx))

@@ -257,7 +257,6 @@ Error: Runtime: image 'myorg/myapp:v1.2.3' not found
 | operation string | conformer | Reason |
 | :--- | :--- | :--- |
 | `"listNetworks"` | `BridgeContainerClientRuntime` | No network list API in XPC client |
-| `"create"` | `BridgeContainerClientRuntime` | XPC create requires kernel path not available in REST path (Leak #13) |
 | `"wait"` | `BridgeContainerClientRuntime` | No blocking wait in XPC client |
 | `"createNetwork"` | `BridgeContainerClientRuntime` | No network CRUD in XPC client (Leak #9) |
 | `"removeNetwork"` | `BridgeContainerClientRuntime` | No network CRUD in XPC client (Leak #9) |

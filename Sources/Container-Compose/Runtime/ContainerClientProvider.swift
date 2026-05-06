@@ -17,6 +17,7 @@
 import ContainerAPIClient
 import ContainerResource
 import Foundation
+import Logging
 
 // MARK: - ContainerClientProvider
 
@@ -39,6 +40,11 @@ import Foundation
 /// reaches the live runtime — even on hosts where Apple `container` is not
 /// installed.
 public protocol ContainerClientProvider: Sendable {
+    /// Mirrors `ContainerClient.create(configuration:options:kernel:initImage:)`
+    /// after constructing the upstream `ContainerConfiguration` shape from the
+    /// runtime-neutral create configuration.
+    func create(id: String, configuration: RuntimeCreateConfiguration) async throws -> ContainerSnapshot
+
     /// Mirrors `ContainerClient.list(filters:)`.
     func list(filters: ContainerListFilters) async throws -> [ContainerSnapshot]
 
@@ -101,6 +107,15 @@ public protocol ContainerClientProvider: Sendable {
     func start(id: String) async throws
 }
 
+public extension ContainerClientProvider {
+    func create(id: String, configuration: RuntimeCreateConfiguration) async throws -> ContainerSnapshot {
+        throw RuntimeError.notSupported(
+            operation: "create",
+            conformer: String(describing: Self.self)
+        )
+    }
+}
+
 // MARK: - ProductionContainerClientProvider
 
 /// The default binding used in production. Each method instantiates a fresh
@@ -109,6 +124,46 @@ public protocol ContainerClientProvider: Sendable {
 /// call), so behavior is unchanged.
 public struct ProductionContainerClientProvider: ContainerClientProvider {
     public init() {}
+
+    public func create(id: String, configuration: RuntimeCreateConfiguration) async throws -> ContainerSnapshot {
+        var process = Flags.Process()
+        process.env = configuration.environment
+        process.cwd = configuration.workingDirectory
+        process.user = configuration.user
+
+        var management = Flags.Management()
+        management.capAdd = configuration.capabilities?.add ?? []
+        management.capDrop = configuration.capabilities?.drop ?? []
+        management.name = id
+        management.publishPorts = configuration.publishedPorts.map(Self.publishArg)
+        management.readOnly = configuration.readOnly ?? false
+
+        var resource = Flags.Resource()
+        resource.cpus = Int64(configuration.cpus)
+        resource.memory = "\(configuration.memoryInBytes)"
+
+        let (containerConfig, kernel, initImage) = try await Utility.containerConfigFromFlags(
+            id: id,
+            image: configuration.imageReference,
+            arguments: configuration.command,
+            process: process,
+            management: management,
+            resource: resource,
+            registry: Flags.Registry(),
+            imageFetch: Flags.ImageFetch(),
+            progressUpdate: { _ in },
+            log: Logger(label: "container-compose.bridge-create")
+        )
+
+        let client = ContainerClient()
+        try await client.create(
+            configuration: containerConfig,
+            options: .default,
+            kernel: kernel,
+            initImage: initImage
+        )
+        return try await client.get(id: id)
+    }
 
     public func list(filters: ContainerListFilters) async throws -> [ContainerSnapshot] {
         try await ContainerClient().list(filters: filters)
@@ -168,6 +223,13 @@ public struct ProductionContainerClientProvider: ContainerClientProvider {
             dynamicEnv: [:]
         )
         try await process.start()
+    }
+
+    private static func publishArg(for port: RuntimePublishedPort) -> String {
+        let hostPort = port.count > 1 ? "\(port.hostPort)-\(port.hostPort + port.count - 1)" : "\(port.hostPort)"
+        let containerPort = port.count > 1 ? "\(port.containerPort)-\(port.containerPort + port.count - 1)" : "\(port.containerPort)"
+        let proto = port.proto == .udp ? "/udp" : ""
+        return "\(port.hostAddress):\(hostPort):\(containerPort)\(proto)"
     }
 }
 

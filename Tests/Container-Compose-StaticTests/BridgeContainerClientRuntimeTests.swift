@@ -48,22 +48,40 @@ struct BridgeContainerClientRuntimeTests {
         }
     }
 
-    @Test("create() throws notSupported (Phase 1 contract)")
-    func createIsUnsupported() async throws {
+    @Test("create() routes through the bound provider and returns created snapshot")
+    func createRoutesThroughProvider() async throws {
+        let recorder = RecordingContainerClientProvider()
         let bridge = BridgeContainerClientRuntime()
-        await #expect(throws: RuntimeError.self) {
-            _ = try await bridge.create(
-                id: "x",
-                configuration: RuntimeCreateConfiguration(imageReference: "alpine:3")
+        let container = try await ContainerClientEnvironment.$current.withValue(recorder) {
+            try await bridge.create(
+                id: "web",
+                configuration: RuntimeCreateConfiguration(
+                    imageReference: "alpine:3",
+                    command: ["/bin/echo", "hi"],
+                    publishedPorts: [
+                        RuntimePublishedPort(hostAddress: "127.0.0.1", hostPort: 8080, containerPort: 80, proto: .tcp)
+                    ]
+                )
             )
         }
+        #expect(container.id == "web")
+        #expect(container.imageReference == "alpine:3")
+        #expect(container.status == .stopped)
+        #expect(container.publishedPorts == [
+            RuntimePublishedPort(hostAddress: "127.0.0.1", hostPort: 8080, containerPort: 80, proto: .tcp)
+        ])
+        #expect(await recorder.entriesSnapshot() == [.create(id: "web", imageReference: "alpine:3")])
     }
 
-    @Test("start/kill/wait/statistics throw notSupported")
-    func writeAndStreamPathsAreUnsupported() async {
+    @Test("start/kill route through provider; wait remains notSupported")
+    func lifecycleWritesRouteThroughProvider() async throws {
+        let recorder = RecordingContainerClientProvider()
         let bridge = BridgeContainerClientRuntime()
-        await #expect(throws: RuntimeError.self) { try await bridge.start(id: "x") }
-        await #expect(throws: RuntimeError.self) { try await bridge.kill(id: "x", signal: 9) }
+        try await ContainerClientEnvironment.$current.withValue(recorder) {
+            try await bridge.start(id: "x")
+            try await bridge.kill(id: "x", signal: 9)
+        }
+        #expect(await recorder.entriesSnapshot() == [.start(id: "x"), .kill(id: "x", signal: 9)])
         await #expect(throws: RuntimeError.self) { _ = try await bridge.wait(id: "x", timeoutSeconds: 1) }
     }
 

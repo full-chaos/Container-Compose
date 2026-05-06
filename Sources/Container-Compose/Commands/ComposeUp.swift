@@ -208,14 +208,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         if let networks = dockerCompose.networks {
             for (networkName, networkConfig) in networks {
                 guard let networkConfig else { continue }
-                let ipamConfig = networkConfig.ipam?.config?.first
-                let spec = RuntimeCreateNetworkSpec(
-                    name: networkName,
-                    driver: networkConfig.driver ?? "bridge",
-                    subnet: ipamConfig?.subnet,
-                    gateway: ipamConfig?.gateway,
-                    labels: networkConfig.labels ?? [:]
-                )
+                let spec = ComposeUp.runtimeNetworkSpec(name: networkName, config: networkConfig)
                 _ = try? await runtime.createNetwork(spec: spec)
             }
         }
@@ -407,51 +400,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     // MARK: - Network creation helpers
 
-    /// Emit warnings for compose network fields that have no equivalent in
-    /// apple/container's network create API. Called before every `createNetwork`
-    /// invocation so the user knows which parts of their config are ignored.
+    /// Emit warnings for compose network fields that still have no equivalent
+    /// in the fork's network create API.
     private func warnUnsupportedNetworkFields(networkName: String, config networkConfig: Network?) {
-        // driver_opts: NetworkCreate has no --opt flag.
-        if let driverOpts = networkConfig?.driver_opts, !driverOpts.isEmpty {
+        if let configCount = networkConfig?.ipam?.config?.count, configCount > 1 {
             print(
-                "Warning: Network '\(networkName)' specifies driver_opts \(driverOpts) which are not supported by Apple container network create; ignoring."
+                "Warning: Network '\(networkName)' declares multiple ipam.config entries; only the first is passed to Apple container network create."
             )
-        }
-
-        // Attachable: not supported by Apple container network create.
-        if networkConfig?.attachable == true {
-            print(
-                "Warning: Network '\(networkName)' sets 'attachable: true' which is not supported by Apple container network create; ignoring."
-            )
-        }
-
-        // enable_ipv6: use --subnet-v6 flag if an IPv6 subnet is provided in IPAM config;
-        // a bare enable_ipv6 without a subnet is not directly actionable here.
-        if networkConfig?.enable_ipv6 == true {
-            print(
-                "Warning: Network '\(networkName)' sets 'enable_ipv6: true'. Provide an IPv6 subnet in ipam.config to pass --subnet-v6; bare flag not supported."
-            )
-        }
-
-        // IPAM config unsupported sub-fields.
-        if let ipamConfigs = networkConfig?.ipam?.config {
-            for ipamConfig in ipamConfigs {
-                if let ipRange = ipamConfig.ip_range, !ipRange.isEmpty {
-                    print(
-                        "Warning: Network '\(networkName)' ipam.config ip_range '\(ipRange)' is not supported by Apple container network create; ignoring."
-                    )
-                }
-                if let gateway = ipamConfig.gateway, !gateway.isEmpty {
-                    print(
-                        "Warning: Network '\(networkName)' ipam.config gateway '\(gateway)' is not supported by Apple container network create; ignoring."
-                    )
-                }
-                if let auxAddresses = ipamConfig.aux_addresses, !auxAddresses.isEmpty {
-                    print(
-                        "Warning: Network '\(networkName)' ipam.config aux_addresses are not supported by Apple container network create; ignoring."
-                    )
-                }
-            }
         }
 
         // IPAM driver/options.
@@ -467,6 +422,23 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
     }
 
+    internal static func runtimeNetworkSpec(name actualNetworkName: String, config networkConfig: Network?) -> RuntimeCreateNetworkSpec {
+        let ipamConfig = networkConfig?.ipam?.config?.first
+        return RuntimeCreateNetworkSpec(
+            name: actualNetworkName,
+            driver: networkConfig?.driver ?? "bridge",
+            subnet: ipamConfig?.subnet,
+            gateway: ipamConfig?.gateway,
+            ipRange: ipamConfig?.ip_range,
+            auxAddresses: ipamConfig?.aux_addresses ?? [:],
+            driverOptions: networkConfig?.driver_opts ?? [:],
+            attachable: networkConfig?.attachable ?? false,
+            enableIPv6: networkConfig?.enable_ipv6 ?? false,
+            isInternal: networkConfig?.isInternal ?? false,
+            labels: networkConfig?.labels ?? [:]
+        )
+    }
+
     private func setupNetwork(name networkName: String, config networkConfig: Network?) async throws {
         let actualNetworkName = networkConfig?.name ?? networkName  // Use explicit name or key as name
 
@@ -477,18 +449,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             // Emit warnings for unsupported compose fields before attempting creation.
             warnUnsupportedNetworkFields(networkName: networkName, config: networkConfig)
 
-            // Build a backend-neutral spec from the compose Network model.
-            // CHAOS-1408: network creation now routes through the Runtime abstraction
-            // rather than shelling out via RunnerEnvironment/RunCommandRunner.
-            // Subnet and gateway (IPAM) are intentionally excluded here — that is
-            // CHAOS-1409 territory and those fields are being added to
-            // RuntimeCreateNetworkSpec there in parallel.
-            let driver = networkConfig?.driver ?? "bridge"
-            let spec = RuntimeCreateNetworkSpec(
-                name: actualNetworkName,
-                driver: driver,
-                labels: networkConfig?.labels ?? [:]
-            )
+            let spec = ComposeUp.runtimeNetworkSpec(name: actualNetworkName, config: networkConfig)
 
             print("Creating network: \(networkName) (Actual name: \(actualNetworkName))")
 
@@ -642,6 +603,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         // Hand off the rest of the argv to the per-concern builders. They are
         // intentionally pure; ordering across concerns doesn't matter to
         // `container run` so we group by domain rather than by --flag.
+        let supportsHealthcheckFlags = service.healthcheck == nil
+            ? false
+            : await LifecycleArgs.supportsHealthcheckFlags(for: "run")
+        let supportsBlkioFlags = service.blkio_config == nil
+            ? false
+            : await ResourceArgs.supportsBlkioFlags(for: "run")
+
         let ctx = ArgsContext(
             service: service,
             serviceName: serviceName,
@@ -650,7 +618,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             detach: detach,
             environmentVariables: environmentVariables,
             dockerCompose: dockerCompose,
-            composeFilename: composeFilename
+            composeFilename: composeFilename,
+            supportsHealthcheckFlags: supportsHealthcheckFlags,
+            supportsBlkioFlags: supportsBlkioFlags
         )
         runCommandArgs.append(contentsOf: LifecycleArgs.build(ctx))
         runCommandArgs.append(contentsOf: SecurityArgs.build(ctx))

@@ -55,11 +55,101 @@ extension ComposeUp {
                 args.append(contentsOf: ["--restart", restart])
             }
 
+            args.append(contentsOf: healthcheckArgs(
+                for: ctx.service.healthcheck,
+                supportsHealthcheckFlags: ctx.supportsHealthcheckFlags
+            ))
+
             // logging: parsed, but Apple container does not expose
             // --log-driver / --log-opt on `container run`.
             warnUnsupportedContainerLoggingFields(ctx.service)
 
             return args
+        }
+
+        static func healthcheckArgs(for healthcheck: Healthcheck?, supportsHealthcheckFlags: Bool = true) -> [String] {
+            guard let healthcheck else { return [] }
+
+            guard supportsHealthcheckFlags else {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.healthcheck.runtime-flags",
+                    "Note: 'service.healthcheck' is parsed but the installed container runtime does not support --health-cmd / --health-* flags yet; ignored."
+                )
+                return []
+            }
+
+            if healthcheck.disable == true || healthcheck.test?.first == "NONE" {
+                return ["--no-healthcheck"]
+            }
+
+            guard let test = healthcheck.test, let command = healthcheckCommand(from: test) else {
+                warnUnsupportedRuntimeFieldOnce(
+                    "service.healthcheck.no-test",
+                    "Note: healthcheck timing fields require 'healthcheck.test' before they can be passed to the runtime; ignored."
+                )
+                return []
+            }
+
+            var args = ["--health-cmd", command]
+
+            if let interval = healthcheck.interval, let seconds = parseGoDuration(interval) {
+                args.append(contentsOf: ["--health-interval", String(seconds)])
+            }
+            if let timeout = healthcheck.timeout, let seconds = parseGoDuration(timeout) {
+                args.append(contentsOf: ["--health-timeout", String(seconds)])
+            }
+            if let retries = healthcheck.retries {
+                args.append(contentsOf: ["--health-retries", String(retries)])
+            }
+            if let startPeriod = healthcheck.start_period, let seconds = parseGoDuration(startPeriod) {
+                args.append(contentsOf: ["--health-start-period", String(seconds)])
+            }
+            if let startInterval = healthcheck.start_interval, let seconds = parseGoDuration(startInterval) {
+                args.append(contentsOf: ["--health-start-interval", String(seconds)])
+            }
+
+            return args
+        }
+
+        private static func healthcheckCommand(from test: [String]) -> String? {
+            guard let kind = test.first else { return nil }
+            let arguments = test.dropFirst()
+            guard !arguments.isEmpty else { return nil }
+
+            switch kind {
+            case "CMD-SHELL":
+                return arguments.joined(separator: " ")
+            case "CMD":
+                return arguments.map(shellQuote).joined(separator: " ")
+            default:
+                return test.map(shellQuote).joined(separator: " ")
+            }
+        }
+
+        private static func shellQuote(_ value: String) -> String {
+            guard !value.isEmpty else { return "''" }
+            let safeCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@%+=:,./-")
+            if value.unicodeScalars.allSatisfy({ safeCharacters.contains($0) }) {
+                return value
+            }
+            return "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        }
+
+        static func supportsHealthcheckFlags(for command: String) async -> Bool {
+            let request = RunRequest(
+                kind: .probe,
+                argv: ["container", command, "--health-cmd", "true", "--help"]
+            )
+            do {
+                let result = try await RunnerEnvironment.current.run(
+                    request,
+                    onStdout: nil,
+                    onStderr: nil
+                )
+                return result.probeAvailable
+            } catch {
+                return false
+            }
         }
 
         /// Parses a Go duration string (e.g. "30s", "1m", "1m30s") or a raw
