@@ -201,3 +201,112 @@ func warnUnsupportedContainerLifecycleStopFields(_ svc: Service) {
         )
     }
 }
+
+/// Emits warn-once notices for service `logging` fields. Apple container's
+/// `container run` does not expose `--log-driver` / `--log-opt`, so any
+/// configuration under `service.logging` is parsed and skipped. Called from
+/// both `LifecycleArgs` (standard `up` path) and `ComposeRun` (the `compose
+/// run` one-off path). Warn-once dedup means calling from both sites is safe.
+func warnUnsupportedContainerLoggingFields(_ svc: Service) {
+    guard let logging = svc.logging else { return }
+
+    if logging.driver != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.logging.driver",
+            "Note: 'logging.driver' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if let options = logging.options, !options.isEmpty {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.logging.options",
+            "Note: 'logging.options' is parsed but not supported by Apple container; ignored."
+        )
+    }
+}
+
+/// Emits warn-once notices for parity-only service fields decoded by the
+/// compose schema for compatibility but not honored by Apple container's
+/// `container run` argv. Each field is a presence-only check that emits the
+/// same warn-once shape; previously the block lived inline at the top of
+/// `ComposeUp.configService` (CHAOS-1303 / CHAOS-1421). Centralized so
+/// `configService` stays focused on orchestration. Warn-once dedup means
+/// the helper can be called from any service-iteration site.
+func warnUnsupportedContainerParityFields(_ svc: Service) {
+    if svc.cgroup_parent != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.cgroup_parent",
+            "Note: 'cgroup_parent' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if svc.credential_spec != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.credential_spec",
+            "Note: 'credential_spec' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if svc.isolation != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.isolation",
+            "Note: 'isolation' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if let labelFile = svc.label_file, !labelFile.isEmpty {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.label_file",
+            "Note: 'label_file' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if let postStart = svc.post_start, !postStart.isEmpty {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.post_start",
+            "Note: 'post_start' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if let preStop = svc.pre_stop, !preStop.isEmpty {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.pre_stop",
+            "Note: 'pre_stop' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if svc.pull_refresh_after != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.pull_refresh_after",
+            "Note: 'pull_refresh_after' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if svc.use_api_socket != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.use_api_socket",
+            "Note: 'use_api_socket' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if let annotations = svc.annotations, !annotations.isEmpty {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.annotations",
+            "Note: 'annotations' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if svc.attach != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.attach",
+            "Note: 'attach' is parsed but not supported by Apple container; ignored."
+        )
+    }
+
+    if svc.cgroup != nil {
+        warnUnsupportedRuntimeFieldOnce(
+            "service.cgroup",
+            "Note: 'cgroup' is parsed but not supported by Apple container; ignored."
+        )
+    }
+}
