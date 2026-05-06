@@ -718,6 +718,139 @@ struct BuildStreamServiceResolutionTests {
     }
 }
 
+// MARK: - Bridge Failure Paths (CHAOS-1433)
+
+/// Drives the `.failed` event arm of `BridgeContainerClientRuntime.pull` and
+/// `.build` via `RecordingRunner.stubThrow`. Before CHAOS-1433 these arms
+/// were structurally unreachable from tests because the previous stub API
+/// returned non-zero exits (which production never produces for `.swiftAPI`).
+@Suite(".swiftAPI failure event arms — CHAOS-1433")
+struct BridgeContainerClientRuntimeFailureTests {
+
+    /// Sendable error used to drive the throwing branch of `RecordingRunner`.
+    /// `localizedDescription` falls back to `String(describing:)` for `Error`
+    /// types without explicit `LocalizedError` conformance, so the message
+    /// surfaces in `RuntimeBuildEvent.message` / `RuntimePullEvent.message`.
+    private struct StubError: Error, CustomStringConvertible {
+        let description: String
+    }
+
+    private func ingestSingleBuildProject(name: String) async throws -> ProjectRegistry {
+        let yaml = """
+        services:
+          web:
+            build: ./web
+        """
+        let reg = ProjectRegistry()
+        _ = try await ProjectOrchestrator.ingest(
+            projectName: name,
+            yaml: Data(yaml.utf8),
+            registry: reg
+        )
+        return reg
+    }
+
+    @Test("build() emits .failed when BuildCommand throws")
+    func buildEmitsFailedWhenBuildCommandThrows() async throws {
+        let registry = try await ingestSingleBuildProject(name: "myapp")
+        let runner = RecordingRunner()
+        await runner.stubThrow(
+            swiftAPIName: "BuildCommand",
+            error: StubError(description: "build kaboom")
+        )
+
+        let bridge = BridgeContainerClientRuntime()
+        let specs = [RuntimeBuildSpec(service: "web", projectName: "myapp")]
+
+        var events: [RuntimeBuildEvent] = []
+        try await RuntimeEnvironment.$projectRegistry.withValue(registry) {
+            try await RunnerEnvironment.$current.withValue(runner) {
+                let stream = try await bridge.build(specs: specs)
+                for await event in stream { events.append(event) }
+            }
+        }
+
+        #expect(events.map(\.kind) == [.started, .failed])
+        #expect(events.last?.service == "web")
+        #expect(events.last?.message != nil, "expected non-nil failure message")
+    }
+
+    @Test("pull() emits .failed when ImagePull throws")
+    func pullEmitsFailedWhenImagePullThrows() async throws {
+        let runner = RecordingRunner()
+        await runner.stubThrow(
+            swiftAPIName: "ImagePull",
+            error: StubError(description: "pull kaboom")
+        )
+
+        let bridge = BridgeContainerClientRuntime()
+        let specs = [RuntimePullSpec(service: "web", imageReference: "missing:latest")]
+
+        var events: [RuntimePullEvent] = []
+        try await RunnerEnvironment.$current.withValue(runner) {
+            let stream = try await bridge.pull(specs: specs, ignoreFailures: false)
+            for await event in stream { events.append(event) }
+        }
+
+        #expect(events.map(\.kind) == [.started, .failed])
+        #expect(events.last?.service == "web")
+        #expect(events.last?.message != nil)
+    }
+
+    @Test("pull() with ignoreFailures=true continues past .failed across multiple specs")
+    func pullContinuesPastFailureWhenIgnoreFailuresTrue() async throws {
+        let runner = RecordingRunner()
+        await runner.stubThrow(
+            swiftAPIName: "ImagePull",
+            error: StubError(description: "broken")
+        )
+
+        let bridge = BridgeContainerClientRuntime()
+        let specs = [
+            RuntimePullSpec(service: "web", imageReference: "broken-a:latest"),
+            RuntimePullSpec(service: "db", imageReference: "broken-b:latest"),
+        ]
+
+        var events: [RuntimePullEvent] = []
+        try await RunnerEnvironment.$current.withValue(runner) {
+            let stream = try await bridge.pull(specs: specs, ignoreFailures: true)
+            for await event in stream { events.append(event) }
+        }
+
+        // Both services attempted: started + failed for each.
+        #expect(events.count == 4)
+        #expect(events.filter { $0.kind == .started }.count == 2)
+        #expect(events.filter { $0.kind == .failed }.count == 2)
+    }
+
+    @Test("pull() with ignoreFailures=false stops after first .failed")
+    func pullStopsAfterFirstFailureWhenIgnoreFailuresFalse() async throws {
+        let runner = RecordingRunner()
+        await runner.stubThrow(
+            swiftAPIName: "ImagePull",
+            error: StubError(description: "broken")
+        )
+
+        let bridge = BridgeContainerClientRuntime()
+        let specs = [
+            RuntimePullSpec(service: "first", imageReference: "broken-a:latest"),
+            RuntimePullSpec(service: "second", imageReference: "broken-b:latest"),
+        ]
+
+        var events: [RuntimePullEvent] = []
+        try await RunnerEnvironment.$current.withValue(runner) {
+            let stream = try await bridge.pull(specs: specs, ignoreFailures: false)
+            for await event in stream { events.append(event) }
+        }
+
+        // Only the first spec gets started + failed; loop breaks before "second".
+        #expect(events.count == 2)
+        #expect(events[0].service == "first")
+        #expect(events[1].service == "first")
+        #expect(events[1].kind == .failed)
+    }
+}
+
 private actor BridgeStatisticsProvider: ContainerClientProvider {
     let statsError: ContainerizationError
 
