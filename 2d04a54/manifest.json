@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1433/recordingrunner-throw-semantics",
+  "commit": "2d04a54861133a0d0103cfdbe4b50538f7e76a8f",
+  "short": "2d04a54",
+  "target": "2d04a54",
+  "message": "fix(testing): CHAOS-1433 \u2014 RecordingRunner.stubThrow matches production .swiftAPI throw semantics",
+  "published_at": "2026-05-06T12:04:44.039250+00:00"
+}
