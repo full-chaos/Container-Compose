@@ -188,20 +188,7 @@ public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Senda
         if let runtime = service.runtime {
             runArgs.append(contentsOf: ["--runtime", runtime])
         }
-        if let loggingConfig = service.logging {
-            if loggingConfig.driver != nil {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.logging.driver",
-                    "Note: 'logging.driver' is parsed but not supported by Apple container; ignored."
-                )
-            }
-            if let options = loggingConfig.options, !options.isEmpty {
-                warnUnsupportedRuntimeFieldOnce(
-                    "service.logging.options",
-                    "Note: 'logging.options' is parsed but not supported by Apple container; ignored."
-                )
-            }
-        }
+        warnUnsupportedContainerLoggingFields(service)
 
         runArgs.append(contentsOf: ComposeUp.SecurityArgs.build(ctx))
         runArgs.append(contentsOf: ComposeUp.ResourceArgs.build(ctx))

@@ -527,72 +527,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
 
         // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
-        if service.cgroup_parent != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.cgroup_parent",
-                "Note: 'cgroup_parent' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.credential_spec != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.credential_spec",
-                "Note: 'credential_spec' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.isolation != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.isolation",
-                "Note: 'isolation' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if let labelFile = service.label_file, !labelFile.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.label_file",
-                "Note: 'label_file' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if let postStart = service.post_start, !postStart.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.post_start",
-                "Note: 'post_start' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if let preStop = service.pre_stop, !preStop.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.pre_stop",
-                "Note: 'pre_stop' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.pull_refresh_after != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.pull_refresh_after",
-                "Note: 'pull_refresh_after' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.use_api_socket != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.use_api_socket",
-                "Note: 'use_api_socket' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if let annotations = service.annotations, !annotations.isEmpty {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.annotations",
-                "Note: 'annotations' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.attach != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.attach",
-                "Note: 'attach' is parsed but not supported by Apple container; ignored."
-            )
-        }
-        if service.cgroup != nil {
-            warnUnsupportedRuntimeFieldOnce(
-                "service.cgroup",
-                "Note: 'cgroup' is parsed but not supported by Apple container; ignored."
-            )
-        }
+        warnUnsupportedContainerParityFields(service)
         if let models = service.models, !models.isEmpty, !didWarnServiceModelsUnsupported {
             print("'service.models' Detected, But Not Supported")
             didWarnServiceModelsUnsupported = true

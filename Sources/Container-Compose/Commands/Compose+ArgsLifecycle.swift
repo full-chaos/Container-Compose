@@ -57,20 +57,7 @@ extension ComposeUp {
 
             // logging: parsed, but Apple container does not expose
             // --log-driver / --log-opt on `container run`.
-            if let logging = ctx.service.logging {
-                if logging.driver != nil {
-                    warnUnsupportedRuntimeFieldOnce(
-                        "service.logging.driver",
-                        "Note: 'logging.driver' is parsed but not supported by Apple container; ignored."
-                    )
-                }
-                if let options = logging.options, !options.isEmpty {
-                    warnUnsupportedRuntimeFieldOnce(
-                        "service.logging.options",
-                        "Note: 'logging.options' is parsed but not supported by Apple container; ignored."
-                    )
-                }
-            }
+            warnUnsupportedContainerLoggingFields(ctx.service)
 
             return args
         }
