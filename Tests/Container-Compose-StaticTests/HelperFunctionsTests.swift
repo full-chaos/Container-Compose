@@ -130,4 +130,48 @@ struct HelperFunctionsTests {
         #expect(resolved == "myproj-web")
     }
 
+    // MARK: - formatPublishedPorts (CHAOS-1440)
+
+    @Test("formatPublishedPorts: empty input returns empty string")
+    func testFormatPublishedPortsEmpty() throws {
+        #expect(formatPublishedPorts([]) == "")
+    }
+
+    @Test("formatPublishedPorts: single port renders host:host->container/proto")
+    func testFormatPublishedPortsSingle() throws {
+        let ports = [
+            RuntimePublishedPort(
+                hostAddress: "0.0.0.0",
+                hostPort: 8080,
+                containerPort: 80,
+                proto: .tcp
+            )
+        ]
+        #expect(formatPublishedPorts(ports) == "0.0.0.0:8080->80/tcp")
+    }
+
+    @Test("formatPublishedPorts: multi-port joins with comma-space")
+    func testFormatPublishedPortsMulti() throws {
+        let ports = [
+            RuntimePublishedPort(hostAddress: "0.0.0.0", hostPort: 8080, containerPort: 80, proto: .tcp),
+            RuntimePublishedPort(hostAddress: "127.0.0.1", hostPort: 8443, containerPort: 443, proto: .tcp),
+        ]
+        #expect(
+            formatPublishedPorts(ports) ==
+            "0.0.0.0:8080->80/tcp, 127.0.0.1:8443->443/tcp"
+        )
+    }
+
+    @Test("formatPublishedPorts: mixed tcp + udp protocols are honored")
+    func testFormatPublishedPortsMixedProto() throws {
+        let ports = [
+            RuntimePublishedPort(hostAddress: "0.0.0.0", hostPort: 53, containerPort: 53, proto: .tcp),
+            RuntimePublishedPort(hostAddress: "0.0.0.0", hostPort: 53, containerPort: 53, proto: .udp),
+        ]
+        #expect(
+            formatPublishedPorts(ports) ==
+            "0.0.0.0:53->53/tcp, 0.0.0.0:53->53/udp"
+        )
+    }
+
 }

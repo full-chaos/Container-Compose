@@ -29,17 +29,20 @@ public struct ComposePort: AsyncParsableCommand, ComposeCommand {
 
     public static let configuration: CommandConfiguration = .init(
         commandName: "port",
-        abstract: "Print the public port for a service's private port"
+        abstract: "Print published ports for the running containers of this project"
     )
 
-    @Argument(help: "Service name")
-    var service: String
+    @Argument(help: "Service name (optional — when omitted with --all or no extra arg, list every running service)")
+    var service: String?
 
-    @Argument(help: "Private container port")
-    var privatePort: Int
+    @Argument(help: "Private container port (optional — when omitted, list mode is used)")
+    var privatePort: Int?
 
-    @Option(name: .long, help: "Port protocol (tcp or udp)")
+    @Option(name: .long, help: "Port protocol (tcp or udp). Only meaningful when resolving a private port.")
     var `protocol`: ComposePortProtocol = .tcp
+
+    @Flag(name: [.customShort("a"), .customLong("all")], help: "List published ports for every running service in this project.")
+    var all: Bool = false
 
     @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")
     var composeFilename: String?
@@ -56,19 +59,83 @@ public struct ComposePort: AsyncParsableCommand, ComposeCommand {
     var cwd: String { process.cwd ?? FileManager.default.currentDirectoryPath }
 
     public mutating func run() async throws {
+        // Mutual exclusion: `--all` plus a positional `<private-port>` doesn't
+        // mean anything — `--all` is listing-only. Match the matrix in
+        // CHAOS-1440 and fail before we touch the runtime.
+        if all && privatePort != nil {
+            fputs("Error: --all and <private-port> are mutually exclusive\n", stderr)
+            throw ExitCode.failure
+        }
+
         let dockerCompose = try loadAndResolve()
 
-        do {
-            let publishedPort = try Self.resolvePublishedPort(
-                in: dockerCompose,
-                serviceName: service,
-                privatePort: privatePort,
-                protocol: `protocol`
-            )
-            print(publishedPort)
-        } catch {
-            fputs("\(error)\n", stderr)
+        // Resolver mode: <service> + <private-port> stays exactly as before.
+        // This is the legacy `docker compose port` behavior — the YAML file is
+        // the source of truth and the runtime is not consulted.
+        if let privatePort {
+            guard let serviceName = service else {
+                // ArgumentParser already enforces this for the legacy form
+                // because `service` is the first positional, but defend in
+                // depth in case argv parsing rules ever change.
+                fputs("Error: <service> is required when resolving <private-port>\n", stderr)
+                throw ExitCode.failure
+            }
+
+            do {
+                let publishedPort = try Self.resolvePublishedPort(
+                    in: dockerCompose,
+                    serviceName: serviceName,
+                    privatePort: privatePort,
+                    protocol: `protocol`
+                )
+                print(publishedPort)
+            } catch {
+                fputs("\(error)\n", stderr)
+                throw ExitCode.failure
+            }
+            return
+        }
+
+        // Listing mode (CHAOS-1440): runtime is the source of truth. We still
+        // load the compose file because the project name lives there, and so
+        // the empty-project error message can name the project the user asked
+        // about.
+        let projectName = resolveProjectName(for: dockerCompose)
+        let runtime = RuntimeEnvironment.current
+
+        let serviceFilter: [String]?
+        if let service {
+            serviceFilter = [service]
+        } else {
+            serviceFilter = nil
+        }
+
+        let entries = try await ProjectListing.list(
+            runtime: runtime,
+            projectName: projectName,
+            serviceFilter: serviceFilter,
+            includeStopped: false
+        )
+
+        if entries.isEmpty {
+            if let service {
+                fputs("Error: \(service) is not running\n", stderr)
+            } else {
+                fputs("Error: no containers running for project \(projectName)\n", stderr)
+            }
             throw ExitCode.failure
+        }
+
+        // Format: NAME column padded to max width, two-space gap, then PORTS.
+        // PORTS is the same `host:hostPort->containerPort/proto, ...` format
+        // that `ps` emits via `formatPublishedPorts`.
+        let nameWidth = max(4, entries.map { $0.container.id.count }.max() ?? 4)
+        let header = padded("NAME", nameWidth) + "  " + "PORTS"
+        print(header)
+        for entry in entries {
+            let name = padded(entry.container.id, nameWidth)
+            let ports = formatPublishedPorts(entry.container.publishedPorts)
+            print("\(name)  \(ports)")
         }
     }
 
@@ -99,6 +166,12 @@ public struct ComposePort: AsyncParsableCommand, ComposeCommand {
     private static func isBareContainerPort(_ portSpec: String) -> Bool {
         let portBody = portSpec.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
         return !portBody.contains(":")
+    }
+
+    // MARK: - Formatting helpers
+
+    private func padded(_ value: String, _ width: Int) -> String {
+        value.padding(toLength: max(value.count, width), withPad: " ", startingAt: 0)
     }
 }
 

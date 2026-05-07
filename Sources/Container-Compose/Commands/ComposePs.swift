@@ -81,57 +81,51 @@ public struct ComposePs: AsyncParsableCommand, ComposeCommand {
             serviceList = serviceList.filter { services.contains($0.serviceName) }
         }
 
-        // Determine the set of container names we care about.
-        let targetNames: Set<String> = Set(serviceList.map { serviceName, service in
-            effectiveContainerName(projectName: projectName, serviceName: serviceName, explicit: service.container_name)
+        // Container ids that bypass the `<project>-<service>` convention
+        // because the user set an explicit `container_name:` on the service.
+        // `ProjectListing` will surface those alongside the prefix-matched
+        // ones so we keep the long-standing `ps` behavior.
+        let overrideIds: Set<String> = Set(serviceList.compactMap { _, service -> String? in
+            guard let explicit = service.container_name, !explicit.isEmpty else { return nil }
+            return explicit
         })
 
-        // CHAOS-1346 Phase 1: read through the new `Runtime` abstraction
-        // (`docs/plans/native-api-server.md`). Default conformer is
-        // `BridgeContainerClientRuntime`, which delegates to
-        // `ContainerClientProvider.list(filters: .all)` — so behavior is
-        // byte-identical to the pre-Phase-1 path. This is the proof-of-life
-        // wiring point that proves the abstraction.
+        // CHAOS-1346 Phase 1 + CHAOS-1440: read through the `Runtime`
+        // abstraction (`docs/plans/native-api-server.md`) via the shared
+        // `ProjectListing` helper so `ps` and `port` agree on what "live in
+        // this project" means. Default conformer is `BridgeContainerClientRuntime`,
+        // which delegates to `ContainerClientProvider.list(filters: .all)` —
+        // behavior is byte-identical to the pre-Phase-1 path.
         let runtime = RuntimeEnvironment.current
-        let allContainers = try await runtime.list(filters: .all)
-
-        // Keep only containers that belong to this project.
-        // When --all is false, exclude stopped containers.
-        let projectContainers = allContainers.filter { container in
-            let belongsToProject = targetNames.contains(container.id)
-                || container.id.hasPrefix("\(projectName)-")
-            let statusOk = all || container.status == .running
-            return belongsToProject && statusOk
-        }
+        let entries = try await ProjectListing.list(
+            runtime: runtime,
+            projectName: projectName,
+            serviceFilter: services.isEmpty ? nil : services,
+            includeStopped: all,
+            additionalIds: overrideIds
+        )
 
         if quiet {
-            for container in projectContainers {
-                print(container.id)
+            for entry in entries {
+                print(entry.container.id)
             }
             return
         }
 
         // Print formatted table.
-        let nameWidth = max(4, projectContainers.map { $0.id.count }.max() ?? 4)
-        let imageWidth = max(5, projectContainers.map { $0.imageReference.count }.max() ?? 5)
-        let statusWidth = max(6, projectContainers.map { $0.status.rawValue.count }.max() ?? 6)
+        let nameWidth = max(4, entries.map { $0.container.id.count }.max() ?? 4)
+        let imageWidth = max(5, entries.map { $0.container.imageReference.count }.max() ?? 5)
+        let statusWidth = max(6, entries.map { $0.container.status.rawValue.count }.max() ?? 6)
 
         let header = padded("NAME", nameWidth) + "  " + padded("IMAGE", imageWidth) + "  " + padded("STATUS", statusWidth) + "  " + "PORTS"
         print(header)
 
-        for container in projectContainers {
+        for entry in entries {
+            let container = entry.container
             let name = padded(container.id, nameWidth)
             let image = padded(container.imageReference, imageWidth)
             let status = padded(container.status.rawValue, statusWidth)
-            let publishedPorts = container.publishedPorts
-            let ports: String
-            if publishedPorts.isEmpty {
-                ports = ""
-            } else {
-                ports = publishedPorts.map { port in
-                    "\(port.hostAddress):\(port.hostPort)->\(port.containerPort)/\(port.proto.rawValue)"
-                }.joined(separator: ", ")
-            }
+            let ports = formatPublishedPorts(container.publishedPorts)
             print("\(name)  \(image)  \(status)  \(ports)")
         }
     }

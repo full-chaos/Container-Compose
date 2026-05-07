@@ -26,6 +26,7 @@ struct ComposePortParsingTests {
         let cmd = try ComposePort.parse(["web", "80"])
         #expect(cmd.service == "web")
         #expect(cmd.privatePort == 80)
+        #expect(cmd.all == false)
     }
 
     @Test("--protocol defaults to tcp")
@@ -40,11 +41,66 @@ struct ComposePortParsingTests {
         #expect(cmd.`protocol` == .udp)
     }
 
-    @Test("missing required arguments throw")
-    func missingRequiredArgumentsThrow() {
-        #expect(throws: (any Error).self) {
-            _ = try ComposePort.parse([])
-        }
+    // CHAOS-1440: zero positional args is now legal — listing mode.
+    @Test("no arguments parse to listing mode (CHAOS-1440)")
+    func noArgsParse() throws {
+        let cmd = try ComposePort.parse([])
+        #expect(cmd.service == nil)
+        #expect(cmd.privatePort == nil)
+        #expect(cmd.all == false)
+    }
+
+    @Test("--all parses with no positionals")
+    func allLongFlagParses() throws {
+        let cmd = try ComposePort.parse(["--all"])
+        #expect(cmd.all == true)
+        #expect(cmd.service == nil)
+        #expect(cmd.privatePort == nil)
+    }
+
+    @Test("-a parses with no positionals")
+    func allShortFlagParses() throws {
+        let cmd = try ComposePort.parse(["-a"])
+        #expect(cmd.all == true)
+        #expect(cmd.service == nil)
+        #expect(cmd.privatePort == nil)
+    }
+
+    @Test("only <service> positional parses with privatePort nil")
+    func serviceOnlyParses() throws {
+        let cmd = try ComposePort.parse(["redis"])
+        #expect(cmd.service == "redis")
+        #expect(cmd.privatePort == nil)
+        #expect(cmd.all == false)
+    }
+
+    @Test("two positional arguments still parse to today's resolver behavior")
+    func twoPositionalsStillParse() throws {
+        let cmd = try ComposePort.parse(["redis", "6379"])
+        #expect(cmd.service == "redis")
+        #expect(cmd.privatePort == 6379)
+        #expect(cmd.all == false)
+    }
+
+    @Test("two positionals + --protocol udp parse together")
+    func twoPositionalsWithUDPParse() throws {
+        let cmd = try ComposePort.parse(["redis", "6379", "--protocol", "udp"])
+        #expect(cmd.service == "redis")
+        #expect(cmd.privatePort == 6379)
+        #expect(cmd.`protocol` == .udp)
+    }
+
+    // `port -a 6379` — argv-parser sees a single positional. Because the
+    // first positional binds to `service`, "6379" lands there as a string
+    // and `privatePort` remains nil. The `--all` + non-nil-privatePort
+    // mutex therefore does NOT trip at parse time; it only trips when both
+    // positionals are present. This documents the parser-level behavior.
+    @Test("port -a <number>: number binds to service, privatePort stays nil")
+    func dashAWithSingleNumberPositional() throws {
+        let cmd = try ComposePort.parse(["-a", "6379"])
+        #expect(cmd.all == true)
+        #expect(cmd.service == "6379")
+        #expect(cmd.privatePort == nil)
     }
 
     @Test("resolves host port from host-to-private tcp binding")

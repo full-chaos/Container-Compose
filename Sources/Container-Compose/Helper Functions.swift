@@ -556,6 +556,18 @@ public func isNamedVolumeSource(_ source: String) -> Bool {
     return !source.contains("/") && !source.starts(with: ".")
 }
 
+/// Format a list of published ports into the `host:hostPort->containerPort/proto, ...`
+/// string used by `compose ps` and `compose port` output.
+///
+/// Empty input returns the empty string. Multiple ports are joined by `", "`.
+/// Output shape is the source of truth for both subcommands so that they
+/// agree byte-for-byte (CHAOS-1440).
+public func formatPublishedPorts(_ ports: [RuntimePublishedPort]) -> String {
+    ports.map { port in
+        "\(port.hostAddress):\(port.hostPort)->\(port.containerPort)/\(port.proto.rawValue)"
+    }.joined(separator: ", ")
+}
+
 /// Converts Docker Compose port specification into a container run -p format.
 /// Handles various formats: "PORT", "HOST:PORT", "IP:HOST:PORT", and optional protocol.
 /// - Parameter portSpec: The port specification string from docker-compose.yml.
