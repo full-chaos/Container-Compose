@@ -26,10 +26,10 @@ which are partially supported, and which are warn-skipped.
 
 | Status | Count | % |
 | :--- | ---: | ---: |
-| Implemented | 119 | 60.4% |
-| Partial | 60 | 30.5% |
-| Missing | 18 | 9.1% |
-| **Total** | **197** | **100%** |
+| Implemented | 122 | 61.3% |
+| Partial | 61 | 30.7% |
+| Missing | 16 | 8.0% |
+| **Total** | **199** | **100%** |
 
 The summary refreshes whenever `coverage.html` is regenerated; see
 [`scripts/regen-coverage.sh`](https://github.com/full-chaos/container-compose/blob/main/scripts/regen-coverage.sh)

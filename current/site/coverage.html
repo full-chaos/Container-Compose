@@ -286,13 +286,13 @@
           "condition: service_healthy",
           "ok",
           "yes",
-          "Honored at the gate; checks container.health == .healthy via fork-patched full-chaos/container (CHAOS-1319, ContainerSnapshot.health field). Falls back to .running if no healthcheck is configured. Upstream apple/container does not yet expose health on snapshots."
+          "**Requires fork#dev:** Honored at the gate; checks container.health == .healthy via full-chaos/container#dev (CHAOS-1319, ContainerSnapshot.health field). Falls back to .running if no healthcheck is configured. Upstream apple/container does not yet expose health on snapshots."
         ],
         [
           "condition: service_completed_successfully",
           "ok",
           "yes",
-          "Honored at the gate; verifies snapshot.lastExitCode == 0 via fork-patched full-chaos/container (CHAOS-1320). Throws ComposeWaitError.nonZeroExitCode on non-zero exit. Falls back to .stopped-only on upstream apple/container (which does not expose lastExitCode)."
+          "**Requires fork#dev:** Honored at the gate; verifies snapshot.lastExitCode == 0 via full-chaos/container#dev (CHAOS-1320). Throws ComposeWaitError.nonZeroExitCode on non-zero exit. Falls back to .stopped-only on upstream apple/container, which does not expose lastExitCode."
         ],
         [
           "required (bool, default true)",
@@ -304,9 +304,15 @@
           "restart (bool|string)",
           "ok",
           "yes",
-          "Parsed on DependsOnEntry. Restart policy now emitted as --restart flag via fork-patched container run support."
+          "**Requires fork#dev:** Parsed on DependsOnEntry. Restart policy emits --restart via full-chaos/container#dev run support (CHAOS-1321). Upstream apple/container does not yet expose --restart."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 6,
+        "partial": 1,
+        "miss": 0
+      },
+      "total": 7
     },
     {
       "id": "top",
@@ -341,7 +347,7 @@
           "volumes",
           "ok",
           "yes",
-          "Implemented via runtime volume CRUD (CHAOS-1368, PR #85). Local-driver volumes use `container volume create` registry; `container run -v <name>:<path>` resolves named volumes via apple/container's `Parser.volume(...)`. driver_opts and labels propagate to runtime. Legacy hardlink-dir data migrated on first use without deletion (block-image source paths skip migration with a marker — CHAOS-1418, PR #104). Non-`local` drivers warn-and-skip with a clearer fallback notice."
+          "Implemented via runtime volume CRUD (CHAOS-1368, PR #85). Local-driver volumes use `container volume create` registry; `container run -v <name>:<path>` resolves named volumes via apple/container's `Parser.volume(...)`. driver_opts and labels propagate to runtime. Legacy hardlink-dir data migrated on first use without deletion (block-image source paths skip migration with a marker \u2014 CHAOS-1418, PR #104). Non-`local` drivers warn-and-skip with a clearer fallback notice."
         ],
         [
           "secrets",
@@ -379,7 +385,13 @@
           "yes",
           "Helper Functions.swift `resolveVariable` handles ${VAR}, ${VAR:-default}, ${VAR-default}, ${VAR:?error}, ${VAR?error}, $$ literal-dollar escape (CHAOS-1411, PR #108), and nested ${OUTER_${INNER}} references bounded at 4 levels (CHAOS-1420 / Phase 2 F2, PR #108)."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 10,
+        "partial": 1,
+        "miss": 0
+      },
+      "total": 11
     },
     {
       "id": "service",
@@ -442,9 +454,9 @@
         ],
         [
           "healthcheck",
-          "partial",
+          "ok",
           "yes",
-          "Parsed (test/interval/timeout/retries/start_period). Not enforced \u2014 startup never waits on healthy state."
+          "Healthcheck struct decodes test/interval/timeout/retries/start_period/start_interval/disable; LifecycleArgs emits --health-cmd / --health-* or --no-healthcheck when the runtime capability probe succeeds. Used end-to-end by dev-health services."
         ],
         [
           "hostname",
@@ -480,7 +492,7 @@
           "restart",
           "ok",
           "yes",
-          "Decoded and applied; emits --restart flag via fork-patched full-chaos/container (CHAOS-1321). Upstream apple/container does not yet have --restart — would be a Tier 0 silent failure if fork is dropped. Upstream FR tracked in CHAOS-1385."
+          "**Requires fork#dev:** Decoded and applied; emits --restart via full-chaos/container#dev (CHAOS-1321). Upstream apple/container does not yet have --restart; upstream FR tracked in CHAOS-1385."
         ],
         [
           "stdin_open",
@@ -526,21 +538,21 @@
         ],
         [
           "networks",
-          "partial",
+          "ok",
           "yes",
-          "ServiceNetworks supports list and object forms with aliases, ipv4_address, ipv6_address, mac_address, priority; service-level aliases are parsed but ignored at runtime with a warning because Apple container does not support --alias."
+          "ServiceNetworks supports list and object forms; NetworkingArgs emits --network per attached network. Named top-level networks are used end-to-end by dev-health. Aliases/static IP/mac fields remain parsed with targeted warnings where apple/container has no run flag."
         ],
         [
           "annotations",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — labels variant; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 labels variant; no apple/container equivalent."
         ],
         [
           "attach",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Docker attach mode; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Docker attach mode; no apple/container equivalent."
         ],
         [
           "blkio_config",
@@ -564,13 +576,13 @@
           "cgroup",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Linux cgroup config; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Linux cgroup config; no apple/container equivalent."
         ],
         [
           "cgroup_parent",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Linux cgroup config; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Linux cgroup config; no apple/container equivalent."
         ],
         [
           "cpu_count",
@@ -630,7 +642,7 @@
           "credential_spec",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Windows-only; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Windows-only; no apple/container equivalent."
         ],
         [
           "develop",
@@ -642,7 +654,7 @@
           "device_cgroup_rules",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Linux cgroup rules; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Linux cgroup rules; no apple/container equivalent."
         ],
         [
           "devices",
@@ -726,13 +738,13 @@
           "isolation",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Windows-only; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Windows-only; no apple/container equivalent."
         ],
         [
           "label_file",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — file-based labels; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 file-based labels; no apple/container equivalent."
         ],
         [
           "labels",
@@ -822,13 +834,13 @@
           "post_start",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — lifecycle hook; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 lifecycle hook; no apple/container equivalent."
         ],
         [
           "pre_stop",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — lifecycle hook; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 lifecycle hook; no apple/container equivalent."
         ],
         [
           "profiles",
@@ -852,7 +864,7 @@
           "pull_refresh_after",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — pull-policy timing; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 pull-policy timing; no apple/container equivalent."
         ],
         [
           "runtime",
@@ -894,7 +906,7 @@
           "storage_opt",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Linux storage opts; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Linux storage opts; no apple/container equivalent."
         ],
         [
           "sysctls",
@@ -918,7 +930,7 @@
           "use_api_socket",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — Docker API socket forwarding; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 Docker API socket forwarding; no apple/container equivalent."
         ],
         [
           "userns_mode",
@@ -936,13 +948,13 @@
           "volumes_from",
           "miss",
           "yes",
-          "Decoded; warn-and-skip — deprecated; no apple/container equivalent."
+          "Decoded; warn-and-skip \u2014 deprecated; no apple/container equivalent."
         ],
         [
           "volumes (named-volume short form)",
           "ok",
           "yes",
-          "Compose `service.volumes: [name:/path]` (no slash in source) routed through `RuntimeVolumeClient` (CHAOS-1368, PR #85). apple/container's `Parser.volume(...)` resolves bare-name sources via the volume registry — Phase 0 source audit GREEN. Legacy `~/.containers/Volumes/<project>/<name>/` data migrated on first use without deletion."
+          "Compose `service.volumes: [name:/path]` (no slash in source) routed through `RuntimeVolumeClient` (CHAOS-1368, PR #85). apple/container's `Parser.volume(...)` resolves bare-name sources via the volume registry \u2014 Phase 0 source audit GREEN. Legacy `~/.containers/Volumes/<project>/<name>/` data migrated on first use without deletion."
         ],
         [
           "networks.<n>.ipv4_address",
@@ -956,7 +968,13 @@
           "yes",
           "Decoded on ServiceNetworkConfig; emits --ip6, but upstream apple/container does not accept this flag (silent failure if set). Tier 0 cleanup tracked in CHAOS-1374."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 41,
+        "partial": 38,
+        "miss": 16
+      },
+      "total": 95
     },
     {
       "id": "build",
@@ -990,7 +1008,7 @@
           "entitlements",
           "partial",
           "yes",
-          "Decoded; warn-and-skip at build time — Application.BuildCommand has no --allow flag equivalent."
+          "Decoded; warn-and-skip at build time \u2014 Application.BuildCommand has no --allow flag equivalent."
         ],
         [
           "cache_from",
@@ -1012,9 +1030,9 @@
         ],
         [
           "network",
-          "ok",
+          "partial",
           "yes",
-          "buildService emits --network."
+          "Decoded; warn-and-skip at build time because Apple container build does not accept a build-scoped --network flag."
         ],
         [
           "secrets",
@@ -1042,9 +1060,9 @@
         ],
         [
           "shm_size",
-          "ok",
+          "partial",
           "yes",
-          "ResourceArgs emits --shm-size."
+          "Decoded; warn-and-skip at build time because Apple container build does not accept build.shm_size. Service-level shm_size is tracked separately."
         ],
         [
           "no_cache (--no-cache flag)",
@@ -1052,7 +1070,13 @@
           "yes",
           "Honored via CLI flag, not the build.no_cache key."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 9,
+        "partial": 6,
+        "miss": 0
+      },
+      "total": 15
     },
     {
       "id": "healthcheck",
@@ -1060,47 +1084,53 @@
       "rows": [
         [
           "test (CMD / CMD-SHELL / NONE / string)",
-          "partial",
+          "ok",
           "yes",
-          "Decoded; not enforced before dependents start."
+          "LifecycleArgs emits --health-cmd from CMD/CMD-SHELL/string forms, supports NONE via --no-healthcheck, and service_healthy gates can observe runtime health."
         ],
         [
           "interval",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only."
+          "LifecycleArgs emits --health-interval after Go-duration parsing when healthcheck.test is present."
         ],
         [
           "timeout",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only."
+          "LifecycleArgs emits --health-timeout after Go-duration parsing when healthcheck.test is present."
         ],
         [
           "retries",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only."
+          "LifecycleArgs emits --health-retries when healthcheck.test is present."
         ],
         [
           "start_period",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only."
+          "LifecycleArgs emits --health-start-period after Go-duration parsing when healthcheck.test is present."
         ],
         [
           "start_interval",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only; enforcement gated on ContainerSnapshot health surface."
+          "LifecycleArgs emits --health-start-interval after Go-duration parsing when supported by the installed runtime."
         ],
         [
           "disable",
-          "partial",
+          "ok",
           "yes",
-          "Decoded only; enforcement gated on ContainerSnapshot health surface."
+          "LifecycleArgs emits --no-healthcheck when disable is true or test is NONE."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 7,
+        "partial": 0,
+        "miss": 0
+      },
+      "total": 7
     },
     {
       "id": "deploy",
@@ -1184,7 +1214,13 @@
           "yes",
           "Decoded only; Swarm-only field with no single-host runtime equivalent."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 3,
+        "partial": 10,
+        "miss": 0
+      },
+      "total": 13
     },
     {
       "id": "network",
@@ -1210,21 +1246,21 @@
         ],
         [
           "driver_opts",
-          "partial",
+          "ok",
           "yes",
-          "Parsed; warned-and-ignored."
+          "**Requires fork#dev:** RuntimeCreateNetworkSpec forwards driver_opts as --driver-opt KEY=VALUE through full-chaos/container#dev network create support (CHAOS-1334)."
         ],
         [
           "attachable",
-          "partial",
+          "ok",
           "yes",
-          "Parsed; warned-and-ignored."
+          "**Requires fork#dev:** RuntimeCreateNetworkSpec forwards attachable as --attachable through full-chaos/container#dev network create support (CHAOS-1334)."
         ],
         [
           "enable_ipv6",
-          "partial",
+          "ok",
           "yes",
-          "Parsed; warned-and-ignored."
+          "**Requires fork#dev:** RuntimeCreateNetworkSpec forwards enable_ipv6 as --ipv6 through full-chaos/container#dev network create support (CHAOS-1334)."
         ],
         [
           "internal",
@@ -1240,11 +1276,17 @@
         ],
         [
           "ipam",
-          "partial",
+          "ok",
           "yes",
-          "Phase 5B Ipam struct. Sub-fields: config[].subnet → --subnet/--subnet-v6 (ok, supported by apple/container NetworkCreate); config[].gateway → --gateway via Runtime.createNetwork (ok, CHAOS-1408 PR #107 + CHAOS-1409 PR #105 round-trip); config[].ip_range / aux_addresses → warn-skip (no apple/container equivalent, tracked under CHAOS-1334); ipam.driver / ipam.options → warn-skip (no apple/container equivalent)."
+          "**Requires fork#dev:** RuntimeCreateNetworkSpec forwards ipam.config subnet/gateway/ip_range/aux_addresses through full-chaos/container#dev network create support (CHAOS-1334). Only the first ipam.config entry is used; ipam.driver/options remain warned-and-ignored."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 9,
+        "partial": 0,
+        "miss": 0
+      },
+      "total": 9
     },
     {
       "id": "volume",
@@ -1280,7 +1322,13 @@
           "yes",
           "Parsed and propagated to `container volume create --label KEY=VALUE` for top-level `local`-driver volumes via runtime CRUD (CHAOS-1368 / CHAOS-1335, PR #85). For service.labels, LabelsArgs emits --label."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 4,
+        "partial": 1,
+        "miss": 0
+      },
+      "total": 5
     },
     {
       "id": "secret",
@@ -1334,7 +1382,13 @@
           "yes",
           "`golang` templates render host-side before bind-mounting; `file` stays raw and unknown drivers warn + mount raw source."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 5,
+        "partial": 3,
+        "miss": 0
+      },
+      "total": 8
     },
     {
       "id": "config",
@@ -1382,7 +1436,13 @@
           "yes",
           "`golang` templates render host-side before bind-mounting; `file` stays raw and unknown drivers warn + mount raw source."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 6,
+        "partial": 1,
+        "miss": 0
+      },
+      "total": 7
     },
     {
       "id": "cli",
@@ -1429,7 +1489,7 @@
           "compose logs",
           "ok",
           "yes",
-          "Streams logs via ContainerClient.logs(id:options:) with prefixed colored output. Supports --since (ISO8601 and relative durations) and --timestamps via fork-patched full-chaos/container (CHAOS-1322, ContainerLogOptions)."
+          "**Requires fork#dev:** Streams logs via ContainerClient.logs(id:options:) with prefixed colored output. Supports --since and --timestamps via full-chaos/container#dev ContainerLogOptions (CHAOS-1322)."
         ],
         [
           "compose ps",
@@ -1441,13 +1501,13 @@
           "compose run",
           "ok",
           "yes",
-          "Spawns one-off container with overrides; ports skipped unless --service-ports. Standard -e/-u/-w/-d short flags via fork-patched full-chaos/container (CHAOS-1324, Flags.ProcessBase)."
+          "**Requires fork#dev:** Spawns one-off containers with overrides; ports skipped unless --service-ports. Standard -e/-u/-w/-d short flags depend on full-chaos/container#dev Flags.ProcessBase (CHAOS-1324)."
         ],
         [
           "compose exec",
           "ok",
           "yes",
-          "Runs a command inside an existing project container. Standard -e/-u/-w/-d short flags via fork-patched full-chaos/container (CHAOS-1324, Flags.ProcessBase)."
+          "**Requires fork#dev:** Runs a command inside an existing project container. Standard -e/-u/-w/-d short flags depend on full-chaos/container#dev Flags.ProcessBase (CHAOS-1324)."
         ],
         [
           "compose start",
@@ -1507,7 +1567,7 @@
           "compose events",
           "ok",
           "yes",
-          "Uses native ContainerClient.events() API via fork-patched full-chaos/container (CHAOS-1323). Polls events endpoint every 1s, filters by project/service, outputs plain or --json."
+          "**Requires fork#dev:** Uses native ContainerClient.events() API from full-chaos/container#dev (CHAOS-1323), filters by project/service, and outputs plain or --json."
         ],
         [
           "compose ls",
@@ -1521,9 +1581,21 @@
           "yes",
           "ComposeWatch is a polling-based file monitor honoring develop.watch[]. FSEvents upgrade is a follow-up improvement, not a missing feature."
         ]
-      ]
+      ],
+      "counts": {
+        "ok": 22,
+        "partial": 0,
+        "miss": 0
+      },
+      "total": 22
     }
-  ]
+  ],
+  "counts": {
+    "ok": 122,
+    "partial": 61,
+    "miss": 16
+  },
+  "total": 199
 }
 </script>
 
