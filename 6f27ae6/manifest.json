@@ -1,0 +1,8 @@
+{
+  "branch": "fix/CHAOS-build-dockerfile-relative-to-context",
+  "commit": "6f27ae62343adb214762cdbfe34d64e0ec38bc36",
+  "short": "6f27ae6",
+  "target": "6f27ae6",
+  "message": "fix(compose): resolve build dockerfile relative to context, not compose dir",
+  "published_at": "2026-05-07T14:38:13.863281+00:00"
+}
