@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-resolvedpath-isdir",
+  "commit": "a0addd69de411b57e94fdcb85799c35e552a6ea5",
+  "short": "a0addd6",
+  "target": "a0addd6",
+  "message": "fix: CHAOS-1443 force baseURL to directory in resolvedPath",
+  "published_at": "2026-05-07T12:00:40.338792+00:00"
+}
