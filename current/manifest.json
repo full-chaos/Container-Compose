@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c467e1e5c405b47b8e32fa0ca674b9654efcd51a",
-  "short": "c467e1e",
+  "commit": "153011b96e4823962f8d3d82bee32790e237e868",
+  "short": "153011b",
   "target": "current",
-  "message": "fix(compose): CHAOS-1438 support file binds + remove silent mkdir of missing sources (#137)",
-  "published_at": "2026-05-07T12:16:08.539474+00:00"
+  "message": "fix(compose): CHAOS-1439 + CHAOS-1441 use execv for compose exec/run -it (#139)",
+  "published_at": "2026-05-07T12:19:21.551179+00:00"
 }
