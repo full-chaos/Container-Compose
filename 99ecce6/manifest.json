@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1445-down-networks",
+  "commit": "99ecce67b773abe5aab1849adc677c8e880aaef1",
+  "short": "99ecce6",
+  "target": "99ecce6",
+  "message": "fix(compose): CHAOS-1445 down removes containers + networks per docker-compose semantics",
+  "published_at": "2026-05-07T14:41:19.357016+00:00"
+}
