@@ -169,8 +169,16 @@ public struct ComposeExec: AsyncParsableCommand, ComposeCommand, @unchecked Send
         // `ProductionRunner` falls back to `print` / `fputs(_:stderr)` when
         // the stdout/stderr closures are nil (see plan §10 Q5), preserving
         // the deleted `shellExec`'s direct-stdio semantics.
+        // CHAOS-1439: dispatch interactive (`-i -t`) shell-outs through the
+        // dedicated `.streamingInteractive` runner kind so the child
+        // inherits the parent's TTY directly. The previous unconditional
+        // `.streaming` path used `Pipe()` + `LineBuffer` which broke prompt
+        // rendering (no trailing newline = invisible) and detached the
+        // child from the controlling-TTY foreground process group
+        // (Ctrl-C did not kill the child).
+        let useInteractive = interactive && tty
         let request = RunRequest(
-            kind: .streaming,
+            kind: useInteractive ? .streamingInteractive : .streaming,
             argv: ["container", "exec"] + execArgs,
             cwd: cwd
         )

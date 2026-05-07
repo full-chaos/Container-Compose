@@ -135,7 +135,7 @@ public actor RecordingRunner: RunCommandRunner {
         case .probe:
             let ok = probeStubs[request.argv] ?? true
             return RunResult(exitCode: ok ? 0 : 1, probeAvailable: ok)
-        case .streaming, .awaitOnly:
+        case .streaming, .streamingInteractive, .awaitOnly:
             let exit = exitStubs.last(where: { request.argv.starts(with: $0.prefix) })?.exit ?? 0
             return RunResult(exitCode: exit, probeAvailable: false)
         case .swiftAPI(let name):

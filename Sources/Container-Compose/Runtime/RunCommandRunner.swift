@@ -16,6 +16,7 @@
 
 import Foundation
 import ContainerCommands
+import Darwin
 
 // MARK: - RunRequest
 
@@ -34,6 +35,20 @@ public struct RunRequest: Sendable, Equatable {
         /// recorder binding stashes the closures so it can replay stubbed
         /// stdout chunks if a test wants to.
         case streaming
+        /// Like `.streaming`, but the child process inherits the parent's
+        /// stdin/stdout/stderr `FileHandle`s directly — no `Pipe()` wrapper,
+        /// no `LineBuffer`. Required for interactive shells
+        /// (`compose exec`, `compose run -it`) so the child detects a real
+        /// terminal, renders its prompt, and TTY-foreground signals
+        /// (Ctrl-C / Ctrl-\) reach the child via the kernel-level process-
+        /// group dispatch.
+        ///
+        /// `onStdout`/`onStderr` closures are IGNORED for this kind — the
+        /// parent's terminal *is* the output sink. `RecordingRunner` records
+        /// the argv but does not replay any stubbed stdout chunks.
+        ///
+        /// CHAOS-1439 / CHAOS-1441.
+        case streamingInteractive
         /// Process is awaited to completion; stdout/stderr go to the parent
         /// process's stdio (or are silently dropped, depending on the
         /// existing helper's contract — `shellCreate`, `shellKill`,
@@ -144,6 +159,7 @@ public enum RunnerEnvironment {
     @TaskLocal public static var current: any RunCommandRunner = ProductionRunner()
 }
 
+
 // MARK: - ProductionRunner
 
 /// The concrete `RunCommandRunner` used in production.
@@ -203,6 +219,13 @@ public struct ProductionRunner: RunCommandRunner {
                 cwd: request.cwd,
                 onStdout: onStdout,
                 onStderr: onStderr
+            )
+            return RunResult(exitCode: exit, probeAvailable: false)
+
+        case .streamingInteractive:
+            let exit = try await spawnInteractive(
+                argv: request.argv,
+                cwd: request.cwd
             )
             return RunResult(exitCode: exit, probeAvailable: false)
 
@@ -419,6 +442,77 @@ public struct ProductionRunner: RunCommandRunner {
                 continuation.resume(throwing: error)
             }
         }
+    }
+
+    /// CHAOS-1439 / CHAOS-1441: dispatch interactive workloads (`compose
+    /// exec`, `compose run -it`) by REPLACING the current process image
+    /// via `execv`, instead of spawning a child via Foundation `Process`.
+    ///
+    /// Why execv instead of Foundation `Process`:
+    ///
+    /// Foundation `Process` on macOS uses `posix_spawn` and (regardless of
+    /// whether `standardInput/Output/Error` are explicitly assigned or
+    /// left nil) does enough fd plumbing that the child loses TTY input
+    /// passthrough. Empirically: `container exec -i -t <id> sh` renders
+    /// its prompt but never receives keystrokes from the parent's pty.
+    /// Inheriting via `posix_spawn_file_actions_adddup2(stdin, fileno...)`
+    /// or leaving the file actions empty both fail the same way.
+    ///
+    /// `execv` replaces this process image entirely. The new image
+    /// (`container exec ...`) keeps the original PID, controlling TTY,
+    /// process group, and TTY foreground-PG ownership. There is no Swift
+    /// parent left to mediate stdio or signals — the OS handles them
+    /// natively, exactly as if the user had typed `container exec ...`
+    /// directly into their shell. This is what `docker compose exec` and
+    /// `kubectl exec` do under the hood for the same reason.
+    ///
+    /// On success this function never returns (process is replaced).
+    /// On failure (`execv` returns -1) it throws `RuntimeError.backendFailure`.
+    /// The async signature is preserved for protocol conformance; the
+    /// continuation chain is irrelevant after a successful exec because the
+    /// Swift runtime is no longer running in this process image.
+    private func spawnInteractive(argv: [String], cwd: String?) async throws -> Int32 {
+        let resolvedBin = try Self.resolveBinary(forArgv: argv)
+
+        // Apply the requested cwd before exec. Failure is a hard error —
+        // we cannot fall back to a regular spawn because the caller asked
+        // for interactive (TTY) semantics that require execv.
+        if let cwd, !FileManager.default.changeCurrentDirectoryPath(cwd) {
+            throw RuntimeError.backendFailure(
+                message: "compose exec: failed to chdir to '\(cwd)' before interactive exec"
+            )
+        }
+
+        // Inject the same PATH override the other spawn paths use, so the
+        // exec'd process and any sub-processes it spawns see the resolver's
+        // hardened path.
+        setenv("PATH", BinaryResolver.resolutionPath, 1)
+
+        // Flush our own stdio buffers so any prints from the caller
+        // (e.g. ComposeExec's "Executing in container '...': sh" line)
+        // reach the terminal BEFORE we replace the process image.
+        fflush(stdout)
+        fflush(stderr)
+
+        // Build a NULL-terminated C argv. argv[0] keeps the textual
+        // program name ("container") so tools that sniff /proc/self/comm
+        // or `ps` see the expected name; the resolved absolute path is
+        // passed separately to execv.
+        var cArgv: [UnsafeMutablePointer<CChar>?] = argv.map { strdup($0) }
+        cArgv.append(nil)
+        defer { cArgv.compactMap { $0 }.forEach { free($0) } }
+
+        cArgv.withUnsafeMutableBufferPointer { ptr in
+            // execv replaces the current process image. On success it does
+            // not return; on failure it returns -1 and sets errno.
+            _ = execv(resolvedBin.path, ptr.baseAddress)
+        }
+
+        // Reached only on execv failure.
+        let err = errno
+        throw RuntimeError.backendFailure(
+            message: "compose exec: execv failed for '\(resolvedBin.path)': \(String(cString: strerror(err))) (errno \(err))"
+        )
     }
 
     /// Mirrors `ComposeCreate.shellCreate` minus the inline NSError-on-non-zero
