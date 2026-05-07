@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "eeecb51e56d07a42b1817c56eb5831b8306c1b14",
-  "short": "eeecb51",
+  "commit": "ee53149d2180446bfeeb78a4bc7b20cde008914f",
+  "short": "ee53149",
   "target": "current",
-  "message": "docs: render docs/ as MkDocs Material site, embed coverage, document fork#dev (#145)",
-  "published_at": "2026-05-07T16:32:03.465622+00:00"
+  "message": "ci(gh-pages): redirect root to current/site/, move version listing to /versions/ (#146)",
+  "published_at": "2026-05-07T16:42:00.613271+00:00"
 }
