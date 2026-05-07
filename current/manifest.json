@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "6632ff25200a3a8627eb4dd161ec03572e3ab06e",
-  "short": "6632ff2",
+  "commit": "41a67f849d382d969095195e1a7c57821981c73b",
+  "short": "41a67f8",
   "target": "current",
-  "message": "feat(compose): CHAOS-1440 port command \u2014 runtime listing + ProjectListing helper (#140)",
-  "published_at": "2026-05-07T13:26:12.748620+00:00"
+  "message": "fix(compose): resolve build dockerfile relative to context, not compose dir (#142)",
+  "published_at": "2026-05-07T14:42:29.286215+00:00"
 }
