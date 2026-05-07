@@ -18,19 +18,23 @@ group with no per-command flags relevant to this audit).
 Total `@Flag` / `@Option` declarations on the audited commands (excluding
 `@OptionGroup` reuse): see per-command tables below.
 
-Total shorts added: **4**
+Total shorts added: **3**
 
 | Cmd      | Added short(s)        |
 | -------- | --------------------- |
 | `ps`     | `-a`/`--all`          |
 | `run`    | `-d`/`--detach`       |
 | `events` | `-j`/`--json`         |
-| `logs`   | `-t`/`--timestamps`   |
 
 Conflicts documented (no short added, see per-command tables for rationale):
 
 - `logs --file` cannot take `-f` (taken by `--follow`); already long-only.
 - `rm --file` cannot take `-f` (taken by `--force`); already long-only.
+- `logs --timestamps` cannot take `-t` — `Flags.Process` already claims `-t/--tty`
+  via `@OptionGroup` and aliasing the short would collide ("Multiple Option or
+  Flag arguments are named -t"). docker-compose itself maps `-t` to
+  `--timestamps`, but the upstream `Flags.Process` group is shared and out of
+  scope (see CHAOS-1444 prompt). Left long-only.
 - `logs --no-color` has no docker-compose short; left alone.
 - `logs --tail`, `--since` have no widely-recognised docker-compose shorts; left alone.
 
@@ -127,7 +131,7 @@ Documented here so future audits don't flag the divergence.
 | --follow          | `-f`          | `-f`                 | keep              |
 | --tail            | (none)        | `-n` (sometimes)     | none — `-n` is not consistently part of `docker compose logs`; conservative skip |
 | --since           | (none)        | (none in DC)         | none              |
-| **--timestamps**  | **(none)**    | **`-t`**             | **ADD `-t`**      |
+| --timestamps      | (none)        | `-t`                 | none — `Flags.Process` (shared `@OptionGroup`) already claims `-t/--tty`; can't add without altering an upstream-owned group |
 | --no-color        | (none)        | (none)               | none              |
 | --file            | (none)        | (global)             | none — `-f` is taken by `--follow`; keep long-only |
 

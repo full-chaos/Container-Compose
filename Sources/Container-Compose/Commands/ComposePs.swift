@@ -42,7 +42,7 @@ public struct ComposePs: AsyncParsableCommand, ComposeCommand {
     @Flag(name: [.customShort("q"), .customLong("quiet")], help: "Only display container IDs")
     var quiet: Bool = false
 
-    @Flag(name: .long, help: "Include stopped containers")
+    @Flag(name: [.customShort("a"), .customLong("all")], help: "Include stopped containers")
     var all: Bool = false
 
     @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")

@@ -39,7 +39,7 @@ public struct ComposeEvents: AsyncParsableCommand, ComposeCommand {
     @Argument(help: "Filter events to specific services")
     var services: [String] = []
 
-    @Flag(name: [.long], help: "Emit events as newline-delimited JSON")
+    @Flag(name: [.customShort("j"), .customLong("json")], help: "Emit events as newline-delimited JSON")
     var json: Bool = false
 
     @Option(name: [.customShort("f"), .customLong("file")], help: "The path to your Docker Compose file")

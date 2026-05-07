@@ -40,7 +40,7 @@ public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Senda
     @Argument(parsing: .captureForPassthrough, help: "Command to run (overrides service command)")
     var command: [String] = []
 
-    @Flag(name: [.customLong("detach")], help: "Run container in the background")
+    @Flag(name: [.customShort("d"), .customLong("detach")], help: "Run container in the background")
     var detach: Bool = false
 
     @Flag(name: [.long], help: "Remove container after exit")
