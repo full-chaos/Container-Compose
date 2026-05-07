@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "41a67f849d382d969095195e1a7c57821981c73b",
-  "short": "41a67f8",
+  "commit": "d30ebd33c029c85d30043429aab7ba480075109c",
+  "short": "d30ebd3",
   "target": "current",
-  "message": "fix(compose): resolve build dockerfile relative to context, not compose dir (#142)",
-  "published_at": "2026-05-07T14:42:29.286215+00:00"
+  "message": "fix(compose): CHAOS-1445 down removes containers + networks per docker-compose semantics (#143)",
+  "published_at": "2026-05-07T14:43:38.859048+00:00"
 }
