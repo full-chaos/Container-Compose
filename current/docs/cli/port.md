@@ -9,7 +9,7 @@ Print the public port for a service's private port.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose port [global-options] [options] service privatePort
 ```
 
@@ -33,7 +33,7 @@ container-compose port [global-options] [options] service privatePort
 
 Find out which host port is mapped to the `web` service's port `80`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose port web 80
 ```
 
@@ -41,7 +41,7 @@ container-compose port web 80
 
 Find the host mapping for a UDP port.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose port dns 53 --protocol udp
 ```
 

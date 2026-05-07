@@ -1,0 +1,3077 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/plans/native-api-server/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Native API Server for container-compose - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#native-api-server-for-container-compose" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Native API Server for container-compose
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../feature-parity/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../feature-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#strategic-positioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Strategic positioning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#locked-decisions-phase-0-priors-2026-04-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      Locked decisions (Phase 0 priors — 2026-04-30)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#locked-decisions-chaos-1349-2026-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      Locked decisions (CHAOS-1349 — 2026-05-01)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Locked decisions (CHAOS-1349 — 2026-05-01)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-5-daemon-lifecycle-manual-system-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #5 — Daemon lifecycle: Manual + system status
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-2-http-server-library-hummingbird-2x" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #2 — HTTP server library: Hummingbird 2.x
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-4-unix-socket-location-container-composeapisock" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #4 — Unix socket location: ~/.container-compose/api.sock
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#locked-decisions-chaos-1347-2026-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      Locked decisions (CHAOS-1347 — 2026-05-01)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Locked decisions (CHAOS-1347 — 2026-05-01)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-6-api-schema-language-hand-written-codable-per-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #6 — API schema language: Hand-written Codable per endpoint
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-7-stream-encoding-ndjson-over-chunked-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #7 — Stream encoding: NDJSON over chunked HTTP
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-8-logs-frame-format-ndjson-stream-timestamp-line-not-dockers-8-byte-multiplexed-header" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #8 — Logs frame format: NDJSON {stream, timestamp, line}, not Docker's 8-byte multiplexed header
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-9-post-containerscreate-shipped-in-chaos-1352-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #9 — POST /containers/create shipped in CHAOS-1352 (v2)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-10-stats-stream-backend-501-not-implemented-in-v1-wired-in-phase-4-chaos-1358" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 4 (CHAOS-1358)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-2-lifecycle-blueprint" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 lifecycle blueprint
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2 lifecycle blueprint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#process-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Process model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#socket-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      Socket lifecycle
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signal-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Signal handling
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cross-process-lock-contention" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cross-process lock contention
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-status-subcommand-ux" class="md-nav__link">
+    <span class="md-ellipsis">
+      system status subcommand UX
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#known-cosmetic-quirk" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known cosmetic quirk
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verification gates
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#execution-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Execution sketch
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Execution sketch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-feasibility-spike-done-2026-04-30" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 — feasibility spike — DONE (2026-04-30)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-runtime-abstraction-applecontainerizationruntime-done-chaos-1346-2026-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — runtime abstraction + AppleContainerizationRuntime — DONE (CHAOS-1346, 2026-05-01)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-20-daemon-lifecycle-skeleton-chaos-1349-this-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2.0 — daemon lifecycle skeleton — CHAOS-1349 (this PR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-container-rest-api-server-chaos-1347" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — Container REST API server — CHAOS-1347
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2 — Container REST API server — CHAOS-1347">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-2a-read-only-routes-foundation-this-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2.A — read-only routes + foundation (this PR)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2b-streaming-routes-shipped-chaos-1350-this-pr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2.B — streaming routes — SHIPPED (CHAOS-1350, this PR)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2x-launchd-launchagent-shipped-chaos-1355" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2.x — launchd LaunchAgent — SHIPPED (CHAOS-1355)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-runtime-portability-proof-chaos-1348" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — runtime portability proof — CHAOS-1348
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-shipped-chaos-1354" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 5 — SHIPPED (CHAOS-1354)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implications-for-the-existing-chaos-1340-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implications for the existing CHAOS-1340 family
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Open questions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      What this is NOT
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What this is NOT">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-8-shipped-chaos-1353" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 8 — SHIPPED (CHAOS-1353)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-7-shipped-chaos-1360" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 7 — SHIPPED (CHAOS-1360)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 7 — SHIPPED (CHAOS-1360)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-11-sync-vs-async-for-project-lifecycle-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #11 — Sync vs Async for project lifecycle endpoints
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-12-compose-file-source-for-project-lifecycle-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #12 — Compose-file source for project lifecycle endpoints
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-13-orchestration-layer-for-project-lifecycle-option-b-projectorchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #13 — Orchestration layer for project lifecycle (Option B: ProjectOrchestrator)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-11-shipped-chaos-1357" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 11 — SHIPPED (CHAOS-1357)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 11 — SHIPPED (CHAOS-1357)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-17-error-shape-envelope-vs-per-route-custom-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #17 — Error shape: envelope vs per-route custom types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-18-prometheus-bootstrap-singleton-per-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #18 — Prometheus bootstrap: singleton per process
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#locked-decisions-chaos-1359-2026-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      Locked decisions (CHAOS-1359 — 2026-05-01)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Locked decisions (CHAOS-1359 — 2026-05-01)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-14-tcptls-transport-flag-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #14 — TCP/TLS transport flag spec
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-10-shipped-chaos-1356" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 10 — SHIPPED (CHAOS-1356)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 10 — SHIPPED (CHAOS-1356)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#decision-15-auth-credential-format-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #15 — Auth credential format &amp; storage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decision-16-mtls-bearer-composition" class="md-nav__link">
+    <span class="md-ellipsis">
+      Decision #16 — mTLS + bearer composition
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/plans/native-api-server.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="native-api-server-for-container-compose">Native API Server for container-compose<a class="headerlink" href="#native-api-server-for-container-compose" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Status:</strong> decisions locked 2026-04-30 (Phase 0 priors). Five additional
+decisions locked 2026-05-01 by CHAOS-1349 (daemon lifecycle, HTTP library,
+socket location). Phase 1 (CHAOS-1346) shipped 2026-05-01.
+<strong>Phase 9 (CHAOS-1359): TCP transport + TLS — SHIPPED 2026-05-01.</strong>
+<strong>Phase 10 (CHAOS-1356): daemon auth + mTLS — SHIPPED 2026-05-01.</strong>
+<strong>Date:</strong> 2026-04-30 (initial), 2026-05-01 (CHAOS-1349 lock-in)
+<strong>Supersedes:</strong> the Docker-API-bridge framing in <code>docs/plans/socktainer-pivot-summary.md</code>. That document recommended adopting Socktainer; this one proposes building a native server inside container-compose instead.
+<strong>Related Linear:</strong> CHAOS-1340 (epic), CHAOS-1345 (architecture PRD), CHAOS-1346 (Phase 1 — shipped), CHAOS-1347 (Phase 2 — HTTP server skeleton), CHAOS-1348 (Phase 3 — MockRuntime), CHAOS-1349 (this lock-in PR), CHAOS-1356 (Phase 10 — auth/mTLS — shipped), CHAOS-1359 (Phase 9 — TCP/TLS — shipped).
+<strong>Related upstream:</strong> apple/container#1476 (closed by maintainer; redirected to Socktainer; that redirect was rejected here on UX-positioning grounds).</p>
+</blockquote>
+<h2 id="strategic-positioning">Strategic positioning<a class="headerlink" href="#strategic-positioning" title="Permanent link">&para;</a></h2>
+<p><code>container-compose</code> is moving <strong>away from Docker as a UX commitment</strong>. It is a Compose-spec orchestrator backed by Apple's containerization libraries — not a Docker drop-in. The API server reflects this: the canonical surface is ours.</p>
+<p>Concretely, we do <strong>not</strong>:</p>
+<ul>
+<li>pursue Docker Engine API parity</li>
+<li>ship a Docker REST "adapter" or shim — there is no separate Docker-shaped surface</li>
+<li>recommend <code>DOCKER_HOST=...; docker ps</code> workflows to users</li>
+<li>treat Socktainer (or any Docker-compat layer) as the primary path</li>
+<li>depend on apple/container's CLI/XPC daemon if we can avoid it</li>
+</ul>
+<p>We <strong>do</strong>:</p>
+<ul>
+<li>talk to <code>apple/containerization</code> (the Swift package) directly, bypassing apple/container's CLI/daemon layer</li>
+<li>expose a single <strong>Container REST API</strong> designed for the container-compose ecosystem — REST-shaped, container-domain, similar in shape to Docker's surface where the underlying concepts overlap, but explicitly not bound to Docker's contract</li>
+<li>keep the runtime backend abstracted so we can swap apple/containerization for something else later</li>
+</ul>
+<p>Ecosystem tools that can talk to our API work; tools that hardcode Docker-only assumptions are the user's problem to reconfigure or replace.</p>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>container-compose CLI / orchestrator process
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── Compose-spec parser + translator
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── Service supervisor (restart, health, dep ordering — userland orchestration)
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── Container REST API server                                 ← Phase 2 (CHAOS-1347)
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│     - One surface, ours
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│     - Container-domain endpoints (containers, networks, events, logs)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│     - Compose-aware where the domain demands it (services, projects)
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│     - Hummingbird 2.x over Unix domain socket (Phase 2.0 stub: /_ping only)
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>└── Runtime abstraction protocol                              ← Phase 1 (CHAOS-1346, shipped)
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    └── AppleContainerizationRuntime (only conformer at v1)
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        └── apple/containerization Swift package (direct calls)
+</span></code></pre></div>
+<p>The boundary above the runtime protocol is what gives us portability later. The single-API design is what stops Docker semantics from sneaking in via "we'll just add one more shim endpoint."</p>
+<h2 id="locked-decisions-phase-0-priors-2026-04-30">Locked decisions (Phase 0 priors — 2026-04-30)<a class="headerlink" href="#locked-decisions-phase-0-priors-2026-04-30" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Alternatives</th>
+<th>Why this decision matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>API transport: <strong>HTTP-over-Unix-socket</strong> as primary; HTTP-over-TCP opt-in via flag</td>
+<td>gRPC; raw TCP; HTTP/2 only</td>
+<td>Unix socket is the lowest-friction integration for native consumers in the same compose stack. TCP opt-in handles cross-host or container-internal use. gRPC has stricter contracts but loses ecosystem reach.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Daemon model: <strong>Long-running <code>container-compose serve</code></strong></td>
+<td>Per-<code>up</code> lifecycle; leader-elect-from-CLI</td>
+<td>Long-running daemon survives across compose-up/down cycles and gives ecosystem tools a stable endpoint. Per-project is hermetic but breaks cross-project tooling. Leader-elect is clever but a debugging nightmare.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>API shape: <strong>Container-domain endpoints first, with Compose-aware extensions where the domain demands it</strong></td>
+<td>Pure container primitives with project labels; pure Compose primitives</td>
+<td>Container-domain endpoints give ecosystem tools a recognizable shape; Compose extensions reflect our actual abstractions where containers-alone are insufficient. Pure-container (Socktainer's path) leaks Docker's mental model; pure-Compose makes integration unnecessarily different from familiar shapes.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Backend abstraction: <strong>Define <code>protocol Runtime</code> boundary at v1</strong>, even with one conformer</td>
+<td>Monolithic v1, retrofit later</td>
+<td>Cheap now (one indirection layer + minimal API surface). Expensive later (every call site must change). Designing for portability is the freedom you asked for.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="locked-decisions-chaos-1349-2026-05-01">Locked decisions (CHAOS-1349 — 2026-05-01)<a class="headerlink" href="#locked-decisions-chaos-1349-2026-05-01" title="Permanent link">&para;</a></h2>
+<p>These three decisions were originally Open Questions #2, #4, #5 in the previous draft. They are upstream of Phase 2 (CHAOS-1347) — pinning them down before Phase 2 implementation prevents redesigning under pressure.</p>
+<h3 id="decision-5-daemon-lifecycle-manual-system-status">Decision #5 — Daemon lifecycle: <strong>Manual + <code>system status</code></strong><a class="headerlink" href="#decision-5-daemon-lifecycle-manual-system-status" title="Permanent link">&para;</a></h3>
+<p><strong>Chosen model:</strong> Users start the daemon explicitly with <code>container-compose serve</code>. A new <code>container-compose system status</code> subcommand reports daemon liveness so users get a friendly pointer when the daemon is down. A LaunchAgent plist for Homebrew installations is a deferred follow-up (Phase 2.x), not in v1.</p>
+<p><strong>Rationale:</strong></p>
+<ol>
+<li><strong>Fastest unblock for Phase 2.</strong> The HTTP server work (CHAOS-1347) needs a stable lifecycle contract. Manual is the smallest contract — bind socket, handle SIGTERM, unlink — and matches every other long-running CLI in this codebase's mental model (<code>git daemon</code>, <code>redis-server</code>, <code>etcd</code>). Auto-spawn / launchd add hidden lifecycle paths that would need their own tests + docs and slow Phase 2 down.</li>
+<li><strong>Best dev iteration during Phase 2.</strong> Phase 2 will involve hundreds of "start daemon, hit endpoint, kill daemon, fix code, restart" cycles. Manual restart is a single keystroke (<code>Ctrl-C</code> then up-arrow); <code>launchctl unload &amp;&amp; launchctl load</code> is not.</li>
+<li><strong>Avoids the auto-spawn footguns.</strong> The spike report (<code>docs/plans/native-api-spike-report.md</code> §3.5) documents the "no retrospective attach" constraint: when the daemon restarts, log streaming is lost for pre-existing containers. Auto-spawn-from-<code>up</code> makes this worse — silent forks on every <code>up</code> invocation can leave orphan VMs after a crashed <code>up</code>, with no clear owner for cleanup. Manual keeps the user in the loop.</li>
+<li><strong>Doesn't preclude launchd later.</strong> Once Phase 2 ships and the API stabilizes, adding a <code>Resources/com.full-chaos.container-compose.plist</code> LaunchAgent for Homebrew installs is a small additive PR. Manual users keep working unchanged.</li>
+<li><strong>Matches the project's positioning.</strong> <code>container-compose</code> is positioned AWAY from Docker. <code>dockerd</code> auto-starts via launchd from the Docker Desktop installer; mirroring that UX undermines the "we are not Docker" stance. <code>git daemon</code> requires explicit start; that's the right reference.</li>
+</ol>
+<p><strong>Alternatives considered (ticket CHAOS-1349 listed four; condensed rationale):</strong></p>
+<ul>
+<li><strong>Auto-spawn from <code>up</code></strong> — rejected: lifecycle ambiguity (who reaps on <code>down</code>?), debug pain (daemon stdout vanishes), zombie risk if double-fork is wrong, makes the "no retrospective attach" constraint substantially worse.</li>
+<li><strong>launchd LaunchAgent only</strong> — deferred (not rejected): native macOS, survives reboot, auto-restart on crash; but slower dev iteration during Phase 2 and <code>make install</code> users still need a manual path. Will be added as a follow-up once Phase 2 stabilizes the API.</li>
+<li><strong>launchd socket activation</strong> — rejected for v1: zero-RAM-when-idle is genuinely nice but the implementation complexity (handling pre-bound socket from <code>launch_activate_socket()</code>) and debug difficulty ("daemon died and I can't tell why") aren't worth it before we know the API surface stabilizes. May revisit if profiling shows idle-RAM is a real problem.</li>
+<li><strong>Hybrid (launchd for brew, manual for source)</strong> — deferred: ~3-4× the implementation cost and dual lifecycle test surfaces, for benefit that's ≤1 follow-up PR away once we ship Manual.</li>
+</ul>
+<h3 id="decision-2-http-server-library-hummingbird-2x">Decision #2 — HTTP server library: <strong>Hummingbird 2.x</strong><a class="headerlink" href="#decision-2-http-server-library-hummingbird-2x" title="Permanent link">&para;</a></h3>
+<p><strong>Choice:</strong> <code>hummingbird-project/hummingbird</code> ≥ 2.0.0 (currently 2.22.0).</p>
+<p><strong>Rationale:</strong></p>
+<ul>
+<li>Apple-Swift-shop tone (Apache 2.0, swift-nio under the hood, async-first), light dependency footprint, and <code>Application</code> natively conforms to <code>swift-service-lifecycle</code>'s <code>Service</code> protocol — which gives us signal-safe graceful shutdown for free.</li>
+<li>Native <code>BindAddress.unixDomainSocket(path:)</code> support — no custom NIO bootstrap wiring required.</li>
+<li><code>Router</code> DSL is Swift 6 strict-concurrency clean (<code>Sendable</code> from the start).</li>
+<li>Heavy transitive overlap with the swift-nio stack already pulled in by <code>apple/containerization</code> (Phase 1 dep); marginal new dep cost.</li>
+<li>Vapor has a deeper ORM/templates surface we don't need; raw swift-nio costs us hand-rolling HTTP framing, route parsing, and shutdown wiring that Hummingbird gives us free.</li>
+</ul>
+<h3 id="decision-4-unix-socket-location-container-composeapisock">Decision #4 — Unix socket location: <strong><code>~/.container-compose/api.sock</code></strong><a class="headerlink" href="#decision-4-unix-socket-location-container-composeapisock" title="Permanent link">&para;</a></h3>
+<p><strong>Choice:</strong> Per-user XDG-style path under the same directory the Phase 1 registry already uses (<code>~/.container-compose/registry.json</code>).</p>
+<p><strong>Rationale:</strong></p>
+<ul>
+<li>Hermetic to the user — no privilege escalation, no <code>sudo</code> for socket cleanup, no collision when multiple users share a host.</li>
+<li>Keeps related state (<code>registry.json</code>, <code>api.sock</code>, future <code>*.lock</code> files) in one directory — easier debugging, easier <code>rm -rf</code> reset for support cases.</li>
+<li><code>/var/run/container-compose.sock</code> is the Docker-familiar location but undermines the "AWAY from Docker" positioning and forces sudo for socket cleanup. <code>/tmp</code> is too ephemeral.</li>
+<li>Path is overrideable via <code>--socket</code> flag on <code>serve</code> + <code>system status</code> for advanced users.</li>
+</ul>
+<h2 id="locked-decisions-chaos-1347-2026-05-01">Locked decisions (CHAOS-1347 — 2026-05-01)<a class="headerlink" href="#locked-decisions-chaos-1347-2026-05-01" title="Permanent link">&para;</a></h2>
+<h3 id="decision-6-api-schema-language-hand-written-codable-per-endpoint">Decision #6 — API schema language: Hand-written <code>Codable</code> per endpoint<a class="headerlink" href="#decision-6-api-schema-language-hand-written-codable-per-endpoint" title="Permanent link">&para;</a></h3>
+<p><strong>Choice:</strong> Hand-written Swift <code>Codable</code> structs in <code>Sources/Container-Compose/Server/APISchemas.swift</code>. No OpenAPI generation in v1.</p>
+<p><strong>Rationale:</strong> 9 endpoints worth of schemas is small enough to keep in one source-of-truth file. OpenAPI generation (apple/swift-openapi-generator) adds a build-step + a YAML/JSON authoring surface for marginal benefit at this scale. The "stay AWAY from Docker" stance argues against borrowing Docker's swagger; hand-written Codable owned by us avoids accidentally inheriting Docker's contract via shared schemas. If the schema count grows past ~25 or external clients need an OpenAPI doc, revisit.</p>
+<h3 id="decision-7-stream-encoding-ndjson-over-chunked-http">Decision #7 — Stream encoding: NDJSON over chunked HTTP<a class="headerlink" href="#decision-7-stream-encoding-ndjson-over-chunked-http" title="Permanent link">&para;</a></h3>
+<p><strong>Choice:</strong> All streaming endpoints (<code>/events</code>, <code>/containers/{id}/logs</code>, <code>/containers/{id}/stats</code>) emit newline-delimited JSON over HTTP chunked transfer encoding. Content-Type <code>application/x-ndjson</code>. NOT Server-Sent Events.</p>
+<p><strong>Rationale:</strong> Hummingbird 2.x has first-class support for <code>ResponseBody(asyncSequence:)</code> which auto-sets <code>Transfer-Encoding: chunked</code> when no content-length. NDJSON is curl-friendly (<code>curl --no-buffer</code>) and matches Docker's /events + /stats wire format closely enough that ecosystem tooling is familiar. SSE adds <code>data:</code> prefix overhead and <code>\n\n</code> framing for no benefit on the daemon side. Backpressure is automatic via NIO's channel writability — slow clients pause the upstream AsyncStream naturally.</p>
+<h3 id="decision-8-logs-frame-format-ndjson-stream-timestamp-line-not-dockers-8-byte-multiplexed-header">Decision #8 — Logs frame format: NDJSON <code>{stream, timestamp, line}</code>, not Docker's 8-byte multiplexed header<a class="headerlink" href="#decision-8-logs-frame-format-ndjson-stream-timestamp-line-not-dockers-8-byte-multiplexed-header" title="Permanent link">&para;</a></h3>
+<p><strong>Choice:</strong> Each log frame is one JSON object per line: <code>{"stream":"stdout","timestamp":"2026-05-01T18:30:00Z","line":"hello"}</code>. Not Docker's 8-byte header (1 byte stream + 3 bytes padding + 4 bytes length + payload).</p>
+<p><strong>Rationale:</strong> Docker's multiplex format is bandwidth-efficient and parseable, but it's notoriously painful for <code>curl</code> users and browser-based observability tools. Our positioning is "ecosystem-friendly", not "Docker bandwidth-equivalent". Per the architecture stance, we are NOT a Docker shim — frame format is ours to choose. Cost: ~30 bytes per frame overhead vs Docker's 8. Acceptable for typical log volumes; if a high-throughput consumer needs the Docker shape, that's a v2 add.</p>
+<h3 id="decision-9-post-containerscreate-shipped-in-chaos-1352-v2">Decision #9 — POST /containers/create shipped in CHAOS-1352 (v2)<a class="headerlink" href="#decision-9-post-containerscreate-shipped-in-chaos-1352-v2" title="Permanent link">&para;</a></h3>
+<p><strong>Choice (v1):</strong> <code>POST /containers/create</code> was reserved as a documented schema in <code>APISchemas.swift</code> but no route handler in v1.</p>
+<p><strong>Choice (v2 — CHAOS-1352, shipped):</strong> The route is now fully wired. <code>POST /containers/create</code> accepts <code>APICreateContainerRequest</code> (image, name, cpus, memoryBytes, hostname, env, cmd, workingDir, publishedPorts), calls <code>Runtime.create(id:configuration:)</code>, and returns 201 with <code>APICreateContainerResponse{id, warnings}</code>.</p>
+<p>Field scope decisions:
+- <code>labels</code>, <code>networks</code>, <code>volumes</code> intentionally omitted from the request body. Labels are not yet on <code>RuntimeContainer</code>; networks and volumes are managed separately via the CHAOS-1353 resource CRUD endpoints. Adding these fields without a corresponding runtime surface would be dead wire.
+- <code>publishedPorts</code> added to <code>APICreateContainerRequest</code> and bridged through <code>RuntimeCreateConfiguration</code>. Port mappings are part of the minimum viable create surface for real container workflows.</p>
+<p>Name resolution: body <code>name</code> wins over <code>?name=</code> query alias; UUID fallback when neither is present.</p>
+<p>Backend notes:
+- <code>AppleContainerizationRuntime.create()</code> — registry-backed (fully functional in Phase 1 skeleton; Phase 2 wires real VM launch).
+- <code>MockRuntime.create()</code> — stateful actor implementation; used for all static tests.
+- <code>BridgeContainerClientRuntime.create()</code> — delegates to <code>ContainerClientProvider.create(id:configuration:)</code> (CHAOS-1365). The production provider reuses apple/container's <code>Utility.containerConfigFromFlags(...)</code> helper to resolve the image, kernel, process, resources, publish ports, and capabilities before calling <code>ContainerClient.create(...)</code>.</p>
+<h3 id="decision-10-stats-stream-backend-501-not-implemented-in-v1-wired-in-phase-4-chaos-1358">Decision #10 — Stats stream backend: 501 Not Implemented in v1, wired in Phase 4 (CHAOS-1358)<a class="headerlink" href="#decision-10-stats-stream-backend-501-not-implemented-in-v1-wired-in-phase-4-chaos-1358" title="Permanent link">&para;</a></h3>
+<p><strong>Choice (v1):</strong> <code>GET /containers/{id}/stats</code> route ships as a documented endpoint that returns HTTP 501 Not Implemented in v1. The route's polling-loop handler skeleton is in place; only the upstream <code>Runtime.statistics(for:)</code> implementations are stubbed.</p>
+<p><strong>Rationale (v1):</strong> Both Runtime conformers stub <code>statistics()</code> today (<code>AppleContainerizationRuntime</code> returns empty, <code>BridgeContainerClientRuntime</code> throws notSupported). Wiring real stats requires either (a) the apple/containerization VM-stats path (Phase 3 territory — vsock per call), or (b) a fork-patch to apple/container's CLI to expose stats — neither is in CHAOS-1347's scope. 501 with a documented <code>Phase: stats backend</code> deferral header signals to ecosystem tools that the route exists but isn't ready, vs returning 404 (which suggests the route doesn't exist). Logs and events streams DO ship in PR-B with real Bridge wiring (Tier 2 fork patches CHAOS-1322 + CHAOS-1323 already shipped per AGENTS.md).</p>
+<p><strong>Phase 4 — CHAOS-1358 (shipped 2026-05-01):</strong> The 501 stub is replaced with a real NDJSON polling loop in <code>StatsRoutes</code>. Both runtime conformers now wire real data:</p>
+<ul>
+<li><strong>BridgeContainerClientRuntime:</strong> delegates to <code>ContainerClient.stats(id:)</code> via the <code>ContainerClientProvider.stats(id:)</code> method added in this PR. <code>ContainerStats</code> (from <code>ContainerResource</code>) maps directly to <code>RuntimeStatistics</code>. Network stats are aggregated into a single <code>eth0</code> entry (per-interface breakdown not available via <code>ContainerStats</code>); OOM kill count is unavailable. Documented in <code>docs/plans/runtime-abstraction-leaks.md</code> as Leak #6.</li>
+<li><strong>AppleContainerizationRuntime:</strong> returns an empty (but structurally valid) snapshot — all CPU/memory fields are <code>nil</code>. Real vsock stats require a live <code>LinuxContainer</code> instance held per container, which is not wired until the full Phase 2 lifecycle (<code>ContainerManager.create</code> / <code>LinuxContainer.start</code>) lands. Documented in <code>docs/plans/runtime-abstraction-leaks.md</code> as Leak #7. The route produces valid NDJSON frames rather than a 501 error, with null data fields visible to clients.</li>
+</ul>
+<p><strong>Interval clamping decision:</strong> <code>?interval=Ns</code> query parameter clamps values to <code>[500ms, 60s]</code> silently rather than returning 400. Out-of-range values from automation clients that hard-code large intervals (e.g. <code>120s</code>) would otherwise block the route response. Clamping gives a working result; clients can detect the actual cadence from frame timestamps if needed.</p>
+<p><strong>One-shot mode:</strong> <code>?stream=false</code> returns a single JSON object (<code>Content-Type: application/json</code>) instead of NDJSON. Useful for scripted spot-checks without streaming.</p>
+<h2 id="phase-2-lifecycle-blueprint">Phase 2 lifecycle blueprint<a class="headerlink" href="#phase-2-lifecycle-blueprint" title="Permanent link">&para;</a></h2>
+<p>This section is the contract CHAOS-1347 implements against. Every line below is a load-bearing requirement — changing these without updating CHAOS-1349 is a contract break.</p>
+<h3 id="process-model">Process model<a class="headerlink" href="#process-model" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Foreground only. <code>container-compose serve</code> runs in the user's terminal until SIGTERM/SIGINT. No double-fork, no <code>setsid</code>, no stdio detach. Users who want background can use <code>&amp;</code>, <code>nohup</code>, <code>tmux</code>, or wait for the launchd follow-up.</li>
+<li>Single registry, single socket, single process. Idempotence detection (see below) prevents accidental double-bind.</li>
+<li>Process exits 0 on clean shutdown; non-zero only on errors.</li>
+</ul>
+<h3 id="socket-lifecycle">Socket lifecycle<a class="headerlink" href="#socket-lifecycle" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Pre-bind check (idempotence):</strong> Before binding, attempt to connect to the socket path. If the connection succeeds, print <code>container-compose daemon already running on &lt;path&gt;</code> and exit 0. (Hits the "second <code>serve</code> call detects existing socket" success criterion.)</li>
+<li><strong>Stale socket cleanup:</strong> If the path exists on disk but <code>connect()</code> refuses (likely a leftover from a crashed daemon), unlink the file before binding. Logged at info level so the user knows we cleaned up.</li>
+<li><strong>Bind:</strong> <code>Hummingbird.Application</code> with <code>address: .unixDomainSocket(path: socketPath)</code>.</li>
+<li><strong>Shutdown:</strong> <code>swift-service-lifecycle</code> <code>ServiceGroup</code> triggers graceful shutdown on SIGTERM/SIGINT. A sibling <code>SocketCleanupService</code> <code>withGracefulShutdownHandler { ... } onGracefulShutdown: { unlink socket; flush registry }</code> runs the unlink + registry flush AFTER Hummingbird has drained in-flight requests.</li>
+<li><strong>Permission:</strong> Socket file mode is the default (umask-controlled, typically 0755). No explicit chmod in v1 (single-user assumption).</li>
+</ol>
+<h3 id="signal-handling">Signal handling<a class="headerlink" href="#signal-handling" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SIGTERM</code></td>
+<td>Graceful shutdown (drain requests → unlink socket → flush registry → exit 0)</td>
+</tr>
+<tr>
+<td><code>SIGINT</code></td>
+<td>Same as SIGTERM (Ctrl-C in foreground = graceful shutdown)</td>
+</tr>
+<tr>
+<td><code>SIGHUP</code></td>
+<td>Ignored in v1. (Conventional re-read-config doesn't apply yet — no config to re-read.)</td>
+</tr>
+<tr>
+<td><code>SIGKILL</code></td>
+<td>Cannot be intercepted; user accepts that socket file may be left behind (next <code>serve</code> cleans up via stale-socket detection)</td>
+</tr>
+</tbody>
+</table>
+<p>All handled via <code>ServiceGroup(configuration: .init(gracefulShutdownSignals: [.sigterm, .sigint], ...))</code>. We deliberately do NOT install our own <code>signal()</code> handlers — service-lifecycle owns this.</p>
+<h3 id="cross-process-lock-contention">Cross-process lock contention<a class="headerlink" href="#cross-process-lock-contention" title="Permanent link">&para;</a></h3>
+<p>Phase 1 already serialized <code>registry.json</code> writes via <code>flock(2)</code> on a sidecar <code>~/.container-compose/registry.json.lock</code> file. The daemon's writes go through the same <code>ContainerRegistry</code> actor, so the property holds: <strong>concurrent CLI invocations + the running daemon cannot corrupt <code>registry.json</code></strong>. The only new property to verify in Phase 2 is that the daemon DOESN'T add a second lock layer that deadlocks against the existing one.</p>
+<p>CHAOS-1349 ships a contention test: spawn N concurrent <code>container-compose ps</code> invocations against a running daemon, assert all complete and <code>registry.json</code> decodes cleanly afterward.</p>
+<h3 id="system-status-subcommand-ux"><code>system status</code> subcommand UX<a class="headerlink" href="#system-status-subcommand-ux" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>$ container-compose system status
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Daemon:    not running
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Socket:    /Users/chris/.container-compose/api.sock (no file)
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>Registry:  /Users/chris/.container-compose/registry.json (3 containers)
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>To start the daemon: container-compose serve
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>$ container-compose system status
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Daemon:    running (responded to /_ping in 2ms)
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>Socket:    /Users/chris/.container-compose/api.sock
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Registry:  /Users/chris/.container-compose/registry.json (3 containers)
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>Server:    container-compose 0.11.0
+</span></code></pre></div>
+<p>Exit code: 0 if daemon is running, 1 if not running (so shell scripts can <code>if container-compose system status; then ...; fi</code>).</p>
+<h3 id="known-cosmetic-quirk">Known cosmetic quirk<a class="headerlink" href="#known-cosmetic-quirk" title="Permanent link">&para;</a></h3>
+<p>After a client connects + disconnects, Hummingbird's underlying NIO channel-teardown emits a non-fatal <code>[HummingbirdCore] Waiting on child channel: NIOFcntlFailedError()</code> log entry on macOS. Functional impact is zero — graceful shutdown still completes, the socket file is still unlinked, the registry is preserved. The non-zero exit code that previously surfaced is suppressed via <code>successTerminationBehavior: .gracefullyShutdownGroup</code> and <code>failureTerminationBehavior: .gracefullyShutdownGroup</code> on the Hummingbird <code>Service</code> registration. CHAOS-1347 may revisit this when the route surface grows; for v1 it is documented as a known wart.</p>
+<h3 id="verification-gates">Verification gates<a class="headerlink" href="#verification-gates" title="Permanent link">&para;</a></h3>
+<p>CHAOS-1349 ships:</p>
+<ul>
+<li>Architecture doc rewrite (this section).</li>
+<li><code>container-compose serve</code> subcommand with <code>/_ping</code> route returning 200 OK + JSON.</li>
+<li><code>container-compose system status</code> subcommand.</li>
+<li>Socket lifecycle (bind, idempotence, stale-socket cleanup, graceful shutdown).</li>
+<li>Cross-process lock contention test (concurrent CLIs vs daemon).</li>
+<li>README section documenting the manual <code>serve</code> ceremony.</li>
+</ul>
+<p>CHAOS-1347 (Phase 2) plugs the rest of the routes (<code>/version</code>, <code>/info</code>, <code>/containers</code>, <code>/containers/{id}</code>, <code>/networks</code>, <code>/events</code>, <code>/containers/{id}/logs</code>, <code>/containers/{id}/stats</code>, <code>/projects</code>, <code>/projects/{name}/services</code>) into this skeleton.</p>
+<h2 id="execution-sketch">Execution sketch<a class="headerlink" href="#execution-sketch" title="Permanent link">&para;</a></h2>
+<h3 id="phase-0-feasibility-spike-done-2026-04-30">Phase 0 — feasibility spike — <strong>DONE (2026-04-30)</strong><a class="headerlink" href="#phase-0-feasibility-spike-done-2026-04-30" title="Permanent link">&para;</a></h3>
+<p>Output: <code>docs/plans/native-api-spike-report.md</code>. Verdict: viable.</p>
+<h3 id="phase-1-runtime-abstraction-applecontainerizationruntime-done-chaos-1346-2026-05-01">Phase 1 — runtime abstraction + AppleContainerizationRuntime — <strong>DONE (CHAOS-1346, 2026-05-01)</strong><a class="headerlink" href="#phase-1-runtime-abstraction-applecontainerizationruntime-done-chaos-1346-2026-05-01" title="Permanent link">&para;</a></h3>
+<p>Shipped: <code>protocol Runtime</code>, <code>AppleContainerizationRuntime</code> (gated on <code>@available(macOS 26.0, *)</code>), <code>BridgeContainerClientRuntime</code> (default conformer), <code>ContainerRegistry</code> actor with <code>flock(2)</code> cross-process safety, <code>LogRingBuffer</code>, end-to-end wiring of <code>compose ps</code> through <code>Runtime.list</code>.</p>
+<h3 id="phase-20-daemon-lifecycle-skeleton-chaos-1349-this-pr">Phase 2.0 — daemon lifecycle skeleton — <strong>CHAOS-1349 (this PR)</strong><a class="headerlink" href="#phase-20-daemon-lifecycle-skeleton-chaos-1349-this-pr" title="Permanent link">&para;</a></h3>
+<p>Ship the <code>serve</code> + <code>system status</code> subcommands with the <code>/_ping</code> route as a stub, no other routes. Socket lifecycle, signal handling, idempotence, registry-flush-on-shutdown all production-grade. Phase 2 plugs routes INTO this skeleton.</p>
+<h3 id="phase-2-container-rest-api-server-chaos-1347">Phase 2 — Container REST API server — <strong>CHAOS-1347</strong><a class="headerlink" href="#phase-2-container-rest-api-server-chaos-1347" title="Permanent link">&para;</a></h3>
+<p>Plug routes into the Phase 2.0 skeleton: <code>/version</code>, <code>/info</code>, <code>/containers</code> (list/inspect/create), <code>/networks</code>, <code>/events</code> (subscribe), <code>/containers/{id}/logs</code> (follow), <code>/containers/{id}/stats</code> (poll/stream), <code>/projects</code>, <code>/projects/{name}/services</code>. API version string identifies as <code>container-compose v0.X.Y</code> — never mimics Docker.</p>
+<h4 id="phase-2a-read-only-routes-foundation-this-pr">Phase 2.A — read-only routes + foundation (this PR)<a class="headerlink" href="#phase-2a-read-only-routes-foundation-this-pr" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Schemas: <code>Sources/Container-Compose/Server/APISchemas.swift</code> — all 9 endpoint families, hand-written Codable.</li>
+<li>Runtime extensions: <code>Runtime.version()</code>, <code>Runtime.listNetworks()</code>, <code>RuntimeListFilters.status</code> + <code>.namePrefix</code> fields.</li>
+<li>Routes: <code>/version</code>, <code>/info</code>, <code>/containers</code>, <code>/containers/{id}</code>, <code>/networks</code>, <code>/projects</code>, <code>/projects/{name}/services</code>. All read-only, all backed by Bridge or Apple runtime as configured.</li>
+<li>501 stubs for the stream routes (<code>/events</code>, <code>/logs</code>, <code>/stats</code>) — endpoint exists, returns documented 501 Not Implemented.</li>
+</ul>
+<h4 id="phase-2b-streaming-routes-shipped-chaos-1350-this-pr">Phase 2.B — streaming routes — <strong>SHIPPED (CHAOS-1350, this PR)</strong><a class="headerlink" href="#phase-2b-streaming-routes-shipped-chaos-1350-this-pr" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>/events</code>: ships NDJSON streaming and <code>BridgeContainerClientRuntime.events()</code> wiring through <code>ContainerClientProvider.events()</code> / CHAOS-1323. The bridge polls the provider's buffered event snapshot at the established 1s cadence and emits only newly observed events.</li>
+<li><code>/containers/{id}/logs</code>: ships NDJSON streaming and <code>BridgeContainerClientRuntime.logs()</code> wiring through <code>ContainerClientProvider.logs(id:options:)</code> / CHAOS-1322, including route-level <code>follow</code>, <code>tail</code>, <code>since</code>, and <code>timestamps</code> query parsing.</li>
+<li><code>/containers/{id}/stats</code>: reserves the path with an explicit 501 + <code>X-ContainerCompose-Deferral: stats-backend</code>; backend remains deferred until Phase 3 wires <code>Runtime.statistics(for:)</code> to the real apple/containerization VM-stats vsock path.</li>
+</ul>
+<h3 id="phase-2x-launchd-launchagent-shipped-chaos-1355">Phase 2.x — launchd LaunchAgent — <strong>SHIPPED (CHAOS-1355)</strong><a class="headerlink" href="#phase-2x-launchd-launchagent-shipped-chaos-1355" title="Permanent link">&para;</a></h3>
+<p><code>Resources/com.full-chaos.container-compose.plist</code> is now included in the repo
+and copied into the Homebrew formula's <code>Resources</code> prefix at install time.</p>
+<p>Key choices:
+- <strong><code>HOMEBREW_HOME_PLACEHOLDER</code></strong> substitution: launchd does not expand <code>~</code> in
+  plist values, so the formula's <code>def install</code> block replaces the placeholder
+  string with <code>ENV["HOME"]</code> before writing the final plist.
+- <strong><code>HOMEBREW_PREFIX_PLACEHOLDER</code></strong> in <code>ProgramArguments</code>: replaced with
+  <code>HOMEBREW_PREFIX</code> so the binary path resolves correctly regardless of where
+  Homebrew is installed (e.g., <code>/opt/homebrew</code> on Apple Silicon,
+  <code>/usr/local</code> on Intel).
+- <strong><code>--launchd</code> flag</strong> added to <code>serve</code>'s <code>ProgramArguments</code>: enables
+  ISO-8601 timestamped, structured log lines in the log file — easier to
+  correlate with system logs. Flag is a no-op when not set (backward-compatible).
+- <strong><code>RunAtLoad: true</code>, <code>KeepAlive: true</code></strong>: daemon starts at login and is
+  restarted by launchd if it exits unexpectedly.
+- <strong>Log paths</strong>: <code>~/Library/Logs/container-compose/serve.log</code> and <code>serve.err</code>
+  (standard macOS per-user log location; created automatically by launchd).</p>
+<p>Homebrew formula update needed (see PR body for the exact <code>def install</code> block).
+The tap update is a separate PR against <code>full-chaos/homebrew-tap</code>.</p>
+<h3 id="phase-3-runtime-portability-proof-chaos-1348">Phase 3 — runtime portability proof — <strong>CHAOS-1348</strong><a class="headerlink" href="#phase-3-runtime-portability-proof-chaos-1348" title="Permanent link">&para;</a></h3>
+<p>Shipped in-memory <code>MockRuntime</code> as a second <code>Runtime</code> conformer for static tests. Unlike <code>RecordingRuntime</code> (call recorder only), <code>MockRuntime</code> maintains container state, emits lifecycle events, replays/follows log frames, and returns synthetic statistics. This validates the boundary against a non-apple/container backend and lets route/protocol tests prove behavior without requiring a virtualization entitlement.</p>
+<p>Deferred: the static test target still contains quarantined backend smoke tests for <code>AppleContainerizationRuntime</code> while the native skeleton is landing. The leak inventory and follow-up disposition live in <code>docs/plans/runtime-abstraction-leaks.md</code>.</p>
+<h3 id="phase-5-shipped-chaos-1354">Phase 5 — SHIPPED (CHAOS-1354)<a class="headerlink" href="#phase-5-shipped-chaos-1354" title="Permanent link">&para;</a></h3>
+<p>Container lifecycle write endpoints — five new routes plus the optional <code>wait</code> nice-to-have:</p>
+<ul>
+<li><code>POST /containers/{id}/start</code> — calls <code>Runtime.start(id:)</code>. Returns 204 on success, 404 not-found, 409 invalid-state.</li>
+<li><code>POST /containers/{id}/stop</code> — calls <code>Runtime.stop(id:options:)</code>. Optional JSON body <code>{signal,timeoutSeconds}</code> with defaults from <code>RuntimeStopOptions.default</code>.</li>
+<li><code>POST /containers/{id}/restart</code> — composite stop + start. Stop ignores <code>invalidState</code> so a stopped container restarts cleanly; returns 204 once running.</li>
+<li><code>POST /containers/{id}/kill</code> — calls <code>Runtime.kill(id:signal:)</code>. Optional JSON body <code>{signal}</code>, default 9 (SIGKILL).</li>
+<li><code>DELETE /containers/{id}</code> — calls <code>Runtime.remove(id:force:)</code>. Query param <code>?force=true|false</code> (default false).</li>
+<li><code>POST /containers/{id}/wait</code> — calls <code>Runtime.wait(id:timeoutSeconds:)</code>. Returns <code>{exitCode,exitedAt}</code> on success, 408 on timeout.</li>
+</ul>
+<p><strong>Bridge runtime expansion:</strong> <code>BridgeContainerClientRuntime.start()</code> and <code>.kill()</code> are now real implementations (no longer <code>notSupported</code>). <code>start</code> delegates to <code>ContainerClientProvider.start(id:)</code> which calls <code>ContainerClient.bootstrap(id:stdio:[nil,nil,nil]) + process.start()</code>. <code>kill</code> delegates to <code>ContainerClientProvider.kill(id:signal:)</code> which calls <code>ContainerClient.kill(id:signal:)</code> directly.</p>
+<p><strong>ContainerClientProvider expansion:</strong> <code>start(id:)</code> and <code>kill(id:signal:)</code> added to the protocol + <code>ProductionContainerClientProvider</code> + <code>RecordingContainerClientProvider</code> (no-op stubs).</p>
+<p><strong>409 detection:</strong> routes catch <code>RuntimeError.invalidState(id:expected:actual:)</code> and map it to HTTP 409 Conflict with a descriptive message — no HTTP-layer state inspection needed.</p>
+<p><strong>Schemas added to <code>APISchemas.swift</code>:</strong> <code>APIStopRequest</code>, <code>APIKillRequest</code>, <code>APIWaitResponse</code> (under <code>// MARK: - Lifecycle Schemas (CHAOS-1354)</code>).</p>
+<p><strong>Tests:</strong> <code>LifecycleRoutesTests.swift</code> in <code>Container-Compose-StaticTests</code>, all using <code>MockRuntime</code> as the state machine — happy paths + 404 + 409 for every route.</p>
+<h2 id="implications-for-the-existing-chaos-1340-family">Implications for the existing CHAOS-1340 family<a class="headerlink" href="#implications-for-the-existing-chaos-1340-family" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Ticket</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHAOS-1340 (epic)</td>
+<td>In Progress — reframed 2026-04-30</td>
+</tr>
+<tr>
+<td>CHAOS-1341 (read-only MVP)</td>
+<td>Closed (canceled) — no separate Docker-shaped surface to MVP</td>
+</tr>
+<tr>
+<td>CHAOS-1342 (streaming)</td>
+<td>Closed (canceled) — streaming endpoints fold into Phase 2</td>
+</tr>
+<tr>
+<td>CHAOS-1343 (upstream advocacy)</td>
+<td>Closed (done) — issue filed, response received, no further action</td>
+</tr>
+<tr>
+<td>CHAOS-1345 (architecture PRD)</td>
+<td>Updated with the "stay AWAY from Docker" stance</td>
+</tr>
+<tr>
+<td>CHAOS-1346 (Phase 1: runtime abstraction)</td>
+<td>Done — PR #54 merged 2026-05-01</td>
+</tr>
+<tr>
+<td>CHAOS-1347 (Phase 2: REST server skeleton)</td>
+<td>Done — Phase 2.A read-only routes shipped in PR #56; Phase 2.B streaming routes shipped in CHAOS-1350</td>
+</tr>
+<tr>
+<td>CHAOS-1348 (Phase 3: MockRuntime)</td>
+<td>Done — <code>MockRuntime</code> portability proof shipped; abstraction leaks documented</td>
+</tr>
+<tr>
+<td>CHAOS-1349 (this lock-in)</td>
+<td>This PR</td>
+</tr>
+<tr>
+<td>CHAOS-1350 (Phase 2.B: streaming routes)</td>
+<td>Done — NDJSON events/logs shipped; stats route reserved with Phase 3 deferral</td>
+</tr>
+</tbody>
+</table>
+<h2 id="open-questions">Open questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
+<p>All Phase 0 + Phase 1 open questions are now resolved. Remaining items are deferred to the appropriate follow-up phase:</p>
+<ol>
+<li>~~<strong>API schema language.</strong>~~ RESOLVED: Hand-written <code>Codable</code> types (Decision #6).</li>
+<li>~~<strong>Stats polling cadence.</strong>~~ RESOLVED: Locked at 1s default per Decision #7's research; Phase 3 to revisit at scale.</li>
+<li><strong>TCP transport opt-in flag spec.</strong> Decision #1 reserved this; the actual flag (<code>--listen tcp://...</code>?) and TLS story is <strong>deferred to a future ticket</strong> (probably v2).</li>
+<li>~~<strong>launchd LaunchAgent shipping.</strong>~~ RESOLVED: Phase 2.x (CHAOS-1355) shipped <code>Resources/com.full-chaos.container-compose.plist</code> + <code>--launchd</code> flag. Homebrew tap update needed separately.</li>
+</ol>
+<h2 id="what-this-is-not">What this is NOT<a class="headerlink" href="#what-this-is-not" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Not a Docker daemon replacement.</strong> We do not aspire to be <code>dockerd</code>-compatible.</li>
+<li><strong>Not a Docker REST adapter or shim.</strong> There is one API surface — ours.</li>
+<li><strong>Not Socktainer.</strong> Socktainer's design centers Docker UX. This server centers container-compose UX.</li>
+<li><strong>Not a fork of apple/container.</strong> We bypass apple/container entirely; no fork patches against its CLI/daemon layer remain in scope. (<code>full-chaos/container</code> may still hold patches consumed during transition, but the long-term direction is no fork dependency.)</li>
+<li><strong>Not a multi-tenant API.</strong> Single-user, single-machine. Auth is daemon-access authentication only; per-route authorization is deferred.</li>
+<li><strong>Not auto-starting.</strong> The daemon starts only when the user explicitly runs <code>container-compose serve</code>. See Decision #5.</li>
+</ul>
+<h3 id="phase-8-shipped-chaos-1353">Phase 8 — SHIPPED (CHAOS-1353)<a class="headerlink" href="#phase-8-shipped-chaos-1353" title="Permanent link">&para;</a></h3>
+<p>Network/volume/secret CRUD endpoints. Shipped 2026-05-01.</p>
+<p><strong>Routes added:</strong>
+- <code>POST /networks</code> — create a network; body <code>{name, driver?, subnet?, gateway?, labels?}</code> → 201 <code>{id, name}</code>
+- <code>DELETE /networks/{id}</code> — remove by id → 204
+- <code>GET /volumes</code> — list volumes → 200 <code>{volumes: [...]}</code>
+- <code>POST /volumes</code> — create; body <code>{name, driver?, labels?}</code> → 201 <code>{name, driver, labels, createdAt}</code>
+- <code>DELETE /volumes/{name}</code> — remove by name → 204
+- <code>GET /secrets</code> — list secret metadata (no values) → 200 <code>[{name, labels, createdAt}]</code>
+- <code>POST /secrets</code> — create; body <code>{name, value, labels?}</code> → 201 <code>{name}</code> (value never echoed)
+- <code>DELETE /secrets/{name}</code> — remove by name → 204</p>
+<p><strong>Runtime protocol extensions added:</strong> <code>createNetwork(spec:)</code>, <code>removeNetwork(id:)</code>, <code>listVolumes()</code>, <code>createVolume(spec:)</code>, <code>removeVolume(name:)</code>, <code>listSecrets()</code>, <code>createSecret(spec:)</code>, <code>removeSecret(name:)</code>.</p>
+<p><strong>Runtime conformer status:</strong>
+- <code>MockRuntime</code> — full in-memory implementation for testing
+- <code>RecordingRuntime</code> — call recording + stubbed responses
+- <code>BridgeContainerClientRuntime</code> — all 8 methods throw <code>.notSupported</code> (no XPC surface for these operations; Leaks #9, #10, #11)
+- <code>AppleContainerizationRuntime</code> — all 8 methods throw <code>.notSupported</code> (no <code>apple/containerization</code> API for networks/volumes/secrets; Leaks #9, #10, #11)</p>
+<p><strong>Secret body shape decision:</strong> <code>POST /secrets</code> accepts <code>{name, value}</code> where <code>value</code> is an inline UTF-8 string. Clients reading a <code>secret.file:</code> Compose entry must read the file themselves; the daemon does not accept <code>filePath</code>. This matches Docker's contract without importing Docker's wire format.</p>
+<p><strong>New types added to RuntimeTypes.swift:</strong> <code>RuntimeVolume</code>, <code>RuntimeCreateVolumeSpec</code>, <code>RuntimeSecret</code>, <code>RuntimeCreateSecretSpec</code>, <code>RuntimeCreateNetworkSpec</code>.</p>
+<p><strong>New files:</strong>
+- <code>Sources/Container-Compose/Server/Routes/VolumeRoutes.swift</code>
+- <code>Sources/Container-Compose/Server/Routes/SecretRoutes.swift</code>
+- <code>Tests/.../NetworkWriteRoutesTests.swift</code>
+- <code>Tests/.../VolumeRoutesTests.swift</code>
+- <code>Tests/.../SecretRoutesTests.swift</code></p>
+<h3 id="phase-7-shipped-chaos-1360">Phase 7 — SHIPPED (CHAOS-1360)<a class="headerlink" href="#phase-7-shipped-chaos-1360" title="Permanent link">&para;</a></h3>
+<p>Compose-aware project lifecycle endpoints. Shipped 2026-05-01.</p>
+<p><strong>Routes added:</strong>
+- <code>POST /projects/{name}/up</code> — start all containers in a project → 200 <code>{project, services: [{service, containerId, status}]}</code>
+- <code>POST /projects/{name}/down</code> — stop and remove all project containers → 200 <code>{project, stopped: [...], removed: [...]}</code>
+- <code>POST /projects/{name}/restart</code> — restart project containers (optional <code>services</code> filter) → 200 <code>{project, restarted: [...]}</code>
+- <code>POST /projects/{name}/build</code> — NDJSON build progress stream → 200 <code>application/x-ndjson</code> frames <code>{service, line, timestamp, type}</code>
+- <code>POST /projects/{name}/pull</code> — NDJSON pull progress stream → 200 <code>application/x-ndjson</code> frames <code>{service, image, timestamp, type, message?}</code>
+- <code>POST /projects/{name}/services/{service}/scale</code> — set replica count → 200 <code>{project, service, replicas, containers: [...]}</code></p>
+<p><strong>Architecture decisions locked by CHAOS-1360:</strong></p>
+<h4 id="decision-11-sync-vs-async-for-project-lifecycle-endpoints">Decision #11 — Sync vs Async for project lifecycle endpoints<a class="headerlink" href="#decision-11-sync-vs-async-for-project-lifecycle-endpoints" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> Synchronous 200 OK for all six routes. <code>up</code>, <code>down</code>, <code>restart</code>, <code>scale</code> return once the runtime operations complete. <code>build</code> and <code>pull</code> use NDJSON streaming (the progress stream is the response body — no task ID needed).</p>
+<p><strong>Rationale:</strong> The ticket requirement "if you choose async, you must implement task tracking (polling endpoint)" made the async path significantly more complex. Synchronous avoids the <code>GET /tasks/{id}</code> dance. The NDJSON streaming model (already established by Decision #7 for logs/stats) handles the long-running-output concern for <code>build</code> and <code>pull</code> without fire-and-forget. <code>up</code> in the daemon context operates on the registry (no real image pull/build), so it's fast by design.</p>
+<h4 id="decision-12-compose-file-source-for-project-lifecycle-endpoints">Decision #12 — Compose-file source for project lifecycle endpoints<a class="headerlink" href="#decision-12-compose-file-source-for-project-lifecycle-endpoints" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> Registry model (pre-loaded). The API operates on containers already registered in the daemon's runtime (identified by <code>&lt;project&gt;-&lt;service&gt;</code> naming convention). No Compose YAML is parsed or uploaded in the request body.</p>
+<p><strong>Rationale:</strong> Compose YAML upload via API is explicitly out-of-scope per the CHAOS-1360 ticket boundary (separate ticket). The existing <code>GET /projects</code> model (synthesized from container-name prefix) provides a consistent, already-implemented foundation. Real project registries (which map project names to Compose file paths) are a natural Phase 9+ follow-up.</p>
+<h4 id="decision-13-orchestration-layer-for-project-lifecycle-option-b-projectorchestrator">Decision #13 — Orchestration layer for project lifecycle (Option B: ProjectOrchestrator)<a class="headerlink" href="#decision-13-orchestration-layer-for-project-lifecycle-option-b-projectorchestrator" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> Option B — a <code>ProjectOrchestrator</code> struct in <code>Sources/Container-Compose/Server/ProjectOrchestrator.swift</code>. Route handlers in <code>ProjectLifecycleRoutes</code> call <code>ProjectOrchestrator</code> static methods, which internally call <code>Runtime</code> protocol methods (<code>list</code>, <code>create</code>, <code>start</code>, <code>stop</code>, <code>remove</code>).</p>
+<p><strong>Rationale over Option A (extend Runtime protocol):</strong> The <code>Runtime</code> protocol would have grown substantially with project-lifecycle methods (<code>up</code>, <code>down</code>, <code>restart</code>, <code>scale</code>, <code>build</code>, <code>pull</code>), and every conformer (<code>MockRuntime</code>, <code>RecordingRuntime</code>, <code>BridgeContainerClientRuntime</code>, <code>AppleContainerizationRuntime</code>) would need stub implementations. The orchestration logic is too complex for protocol stubs.</p>
+<p><strong>Rationale over Option C (call CLI commands directly):</strong> Option C would bypass the <code>Runtime</code> abstraction layer — undoing CHAOS-1346's architecture. Routes calling <code>ComposeUp.run()</code> directly would create a tight coupling between the HTTP API and the CLI internals.</p>
+<p><strong>Implementation notes:</strong>
+- <code>ProjectOrchestrator</code> is a pure <code>Sendable</code> struct (no mutable state; all state in actor-isolated <code>Runtime</code>).
+- <code>up</code>: creates missing containers, starts <code>.created</code> ones, reports <code>.stopped</code>/<code>.running</code> ones as-is.
+- <code>down</code>: stops running containers, removes all. Uses <code>force: true</code> on <code>remove</code> to handle edge cases.
+- <code>restart</code>: stop (tolerates invalidState) then start each matched container.
+- <code>scale</code>: creates new replica containers (<code>&lt;service&gt;-N</code> suffix) or removes excess ones.
+- <code>build</code>/<code>pull</code>: emit synthetic NDJSON frames explaining that real build/pull requires the CLI runner seam. A future ticket can extend <code>Runtime</code> with <code>build(service:options:)</code> / <code>pull(service:options:)</code> and wire it through.</p>
+<p><strong>Abstraction leak #14:</strong> <code>ProjectOrchestrator.build/pull</code> emit "not supported via daemon API" frames rather than actual build/pull output, because <code>Runtime</code> has no <code>build(image:options:)</code> or <code>pull(image:options:)</code> protocol method. Real implementation requires either (a) adding those methods to the <code>Runtime</code> protocol with conformers delegating to the <code>RunCommandRunner</code> seam, or (b) a new orchestration surface for CLI-backed operations. Deferred to a future ticket.</p>
+<p><strong>New files:</strong>
+- <code>Sources/Container-Compose/Server/ProjectOrchestrator.swift</code>
+- <code>Sources/Container-Compose/Server/Routes/ProjectLifecycleRoutes.swift</code>
+- <code>Tests/.../ProjectLifecycleRoutesTests.swift</code></p>
+<p><strong>New types in APISchemas.swift:</strong> <code>APIProjectUpRequest</code>, <code>APIProjectServiceState</code>, <code>APIProjectUpResponse</code>, <code>APIProjectDownRequest</code>, <code>APIProjectDownResponse</code>, <code>APIProjectRestartRequest</code>, <code>APIProjectRestartResponse</code>, <code>APIProjectBuildRequest</code>, <code>APIProjectBuildFrame</code>, <code>APIProjectPullRequest</code>, <code>APIProjectPullFrame</code>, <code>APIProjectScaleRequest</code>, <code>APIProjectScaleResponse</code>.</p>
+<h3 id="phase-11-shipped-chaos-1357">Phase 11 — SHIPPED (CHAOS-1357)<a class="headerlink" href="#phase-11-shipped-chaos-1357" title="Permanent link">&para;</a></h3>
+<p>API hardening: unified error envelope, Prometheus metrics, OpenAPI spec. Shipped 2026-05-01.</p>
+<p><strong>Three components shipped:</strong></p>
+<ol>
+<li>
+<p><strong><code>APIErrorEnvelope</code> migration</strong> — Added <code>APIErrorEnvelope { error, message, code, requestId }</code> as the canonical error response shape. <code>APIErrorEnvelope.legacy()</code> builder maps HTTP status codes to string error keys (<code>not_found</code>, <code>conflict</code>, <code>not_supported</code>, <code>invalid_state</code>, <code>internal_error</code>). Migrated 33+ call sites across 10 route files. <code>APIErrorResponse</code> and <code>APIStatsErrorResponse</code> deprecated with <code>@available(*, deprecated)</code>.</p>
+</li>
+<li>
+<p><strong>Middleware pair</strong> — <code>RequestIDHeaderMiddleware</code> stamps <code>X-Request-Id</code> on every response using <code>context.id.description</code>. <code>ErrorMappingMiddleware</code> catches <code>RuntimeError</code> thrown by route handlers and converts to <code>APIErrorEnvelope</code> (404 / 409 / 501 / 500 as appropriate) so routes don't need per-error catch blocks for uncaught runtime errors.</p>
+</li>
+<li>
+<p><strong><code>GET /metrics</code></strong> — <code>MetricsRoutes</code> refreshes three custom Prometheus gauges (<code>container_compose_uptime_seconds</code>, <code>container_compose_memory_rss_bytes</code>, <code>container_compose_registry_containers</code>) and emits the full <code>PrometheusCollectorRegistry</code> in <code>text/plain; version=0.0.4</code> format. Uses Hummingbird's built-in <code>MetricsMiddleware</code> for per-route request counters/histograms. RSS via Darwin <code>task_info(MACH_TASK_BASIC_INFO)</code> in <code>ProcessRSS.swift</code>.</p>
+</li>
+<li>
+<p><strong><code>GET /openapi.yaml</code></strong> — <code>OpenAPIRoute</code> serves a hand-written OpenAPI 3.1 spec from <code>Bundle.module</code> (SwiftPM resource) covering all 25 daemon routes.</p>
+</li>
+</ol>
+<p><strong>New files:</strong>
+- <code>Sources/Container-Compose/Server/RequestIDHeaderMiddleware.swift</code>
+- <code>Sources/Container-Compose/Server/ErrorMappingMiddleware.swift</code>
+- <code>Sources/Container-Compose/Server/ProcessRSS.swift</code>
+- <code>Sources/Container-Compose/Server/Routes/MetricsRoutes.swift</code>
+- <code>Sources/Container-Compose/Server/Routes/OpenAPIRoute.swift</code>
+- <code>Resources/openapi.yaml</code>
+- <code>Tests/.../ErrorEnvelopeTests.swift</code> (16 tests)
+- <code>Tests/.../MetricsRoutesTests.swift</code> (8 tests)
+- <code>Tests/.../OpenAPIRouteTests.swift</code> (6 tests)</p>
+<p><strong>Architecture decisions locked by CHAOS-1357:</strong></p>
+<h4 id="decision-17-error-shape-envelope-vs-per-route-custom-types">Decision #17 — Error shape: envelope vs per-route custom types<a class="headerlink" href="#decision-17-error-shape-envelope-vs-per-route-custom-types" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> Single <code>APIErrorEnvelope</code> with <code>error</code> (machine key), <code>message</code> (human text), <code>code</code> (E_NNN default or custom), <code>requestId</code> (per-request UUID for log correlation).</p>
+<p><strong>Rationale:</strong> Callers need a stable key to branch on (<code>error == "not_found"</code>). <code>message</code> is free-text for humans. <code>code</code> enables future fine-grained error codes without changing the <code>error</code> key. <code>requestId</code> ties client errors back to server logs.</p>
+<h4 id="decision-18-prometheus-bootstrap-singleton-per-process">Decision #18 — Prometheus bootstrap: singleton per process<a class="headerlink" href="#decision-18-prometheus-bootstrap-singleton-per-process" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> <code>MetricsSystem.bootstrap(PrometheusMetricsFactory())</code> called once in <code>ComposeServe.run()</code> before <code>Application</code> construction. In tests, a file-scope lazy flag (<code>nonisolated(unsafe) var _metricsBootstrapped</code>) ensures bootstrap fires at most once even when Swift Testing creates fresh struct instances per test.</p>
+<p><strong>Rationale:</strong> <code>MetricsSystem.bootstrap()</code> is a global one-time call that crashes on double invocation. The lazy-flag pattern is the standard workaround in swift-metrics tests without requiring <code>@_spi(Testing)</code> bootstrap-internal access.</p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>CHAOS-1340 (epic): https://linear.app/fullchaos/issue/CHAOS-1340</li>
+<li>CHAOS-1345 (architecture PRD): https://linear.app/fullchaos/issue/CHAOS-1345</li>
+<li>CHAOS-1346 (Phase 1, shipped): https://linear.app/fullchaos/issue/CHAOS-1346</li>
+<li>CHAOS-1347 (Phase 2, blocked-on-this): https://linear.app/fullchaos/issue/CHAOS-1347</li>
+<li>CHAOS-1348 (Phase 3, future): https://linear.app/fullchaos/issue/CHAOS-1348</li>
+<li>CHAOS-1349 (this PR): https://linear.app/fullchaos/issue/CHAOS-1349</li>
+<li>CHAOS-1350 (Phase 2.B, shipped): https://linear.app/fullchaos/issue/CHAOS-1350</li>
+<li>apple/container#1476 (closed; rejection rationale informs the "no upstream advocacy" rule): https://github.com/apple/container/issues/1476</li>
+<li>Socktainer's design we're explicitly diverging from: https://github.com/socktainer/socktainer</li>
+<li>apple/containerization (the direct backend target): https://github.com/apple/containerization</li>
+<li>Hummingbird (HTTP server, locked in Decision #2): https://github.com/hummingbird-project/hummingbird</li>
+<li>swift-service-lifecycle (signal handling): https://github.com/swift-server/swift-service-lifecycle</li>
+<li>Phase 0 spike report: <code>docs/plans/native-api-spike-report.md</code></li>
+<li>Prior planning doc this supersedes: <code>docs/plans/socktainer-pivot-summary.md</code></li>
+</ul>
+<h2 id="locked-decisions-chaos-1359-2026-05-01">Locked decisions (CHAOS-1359 — 2026-05-01)<a class="headerlink" href="#locked-decisions-chaos-1359-2026-05-01" title="Permanent link">&para;</a></h2>
+<h3 id="decision-14-tcptls-transport-flag-spec">Decision #14 — TCP/TLS transport flag spec<a class="headerlink" href="#decision-14-tcptls-transport-flag-spec" title="Permanent link">&para;</a></h3>
+<p><strong>Chosen form:</strong> <code>--listen &lt;url&gt;</code> with <code>unix://</code>, <code>tcp://</code>, <code>tls://</code> schemes. Plain TCP on a non-localhost address requires <code>--insecure</code> (explicit acknowledgment that traffic is unencrypted). Single listener only (multi-bind deferred). URL-shape mirrors Docker, Podman, Kubernetes patterns so the flag is immediately intuitive to operators familiar with those tools.</p>
+<p><strong>Full spec:</strong></p>
+<ul>
+<li>Default: <code>unix:///&lt;homedir&gt;/.container-compose/api.sock</code> (same as the deprecated <code>--socket</code> default).</li>
+<li><code>unix:///path</code> — Unix domain socket (any absolute or tilde-expanded path).</li>
+<li><code>tcp://host:port</code> — plain TCP. Localhost (<code>localhost</code>, <code>127.0.0.1</code>, <code>::1</code>) allowed without <code>--insecure</code>. Non-localhost requires <code>--insecure</code>; a warning is emitted on every startup in that mode.</li>
+<li><code>tls://host:port</code> — TLS-wrapped TCP. Requires <code>--cert</code> + <code>--key</code> (or auto-detected from <code>~/.container-compose/cert.pem</code> + <code>key.pem</code> generated by <code>system generate-cert</code>).</li>
+<li><code>--socket &lt;path&gt;</code> is retained as a deprecated back-compat synonym for <code>unix:///path</code>. Mutual exclusion: <code>--socket</code> and <code>--listen</code> cannot both be set.</li>
+</ul>
+<p><strong>Certificate generation:</strong> <code>container-compose system generate-cert</code> generates a self-signed P-256 cert via swift-certificates + swift-crypto, writing <code>cert.pem</code> (mode 0644) + <code>key.pem</code> (mode 0600) to <code>~/.container-compose/</code> (or a custom <code>--out-dir</code>). Includes BasicConstraints, KeyUsage(digitalSignature+keyAgreement), ExtendedKeyUsage(serverAuth), and SAN (localhost + 127.0.0.1 + ::1 by default).</p>
+<p><strong>Client-side TCP/TLS:</strong> <code>system status --address &lt;url&gt; --cacert &lt;path&gt;</code> probes TCP/TLS daemons via AsyncHTTPClient. Auto-trust policy: explicit <code>--cacert</code> wins; otherwise auto-trusts <code>~/.container-compose/cert.pem</code> on localhost targets; falls back to system roots.</p>
+<p><strong>Idempotence:</strong> <code>isAlreadyServing(listenAddress:)</code> dispatches to the existing UnixSocketProbe for <code>.unix</code> and a new TCPProbe (SO_SNDTIMEO, 1s timeout, no TLS handshake) for <code>.tcp</code>/<code>.tls</code>.</p>
+<p><strong>Out of scope (deliberately deferred):</strong>
+- Multi-bind listener (deferred to v1.2 — operational complexity vs. value unclear at v1)
+- ACME / Let's Encrypt (explicit non-goal for v1; self-signed covers the primary local use case)
+- Per-route authorization beyond daemon-access authentication (deferred to v1.2)</p>
+<p><strong>PR-2 / PR-3 coordination:</strong> <code>ServeDaemon.run(listen:certPath:keyPath:clientCAPath:launchdManaged:)</code> now contains both middleware and auth wiring: <code>// MARK: - Middleware (CHAOS-1357)</code> and <code>// MARK: - Auth (CHAOS-1356)</code>.</p>
+<h3 id="phase-10-shipped-chaos-1356">Phase 10 — SHIPPED (CHAOS-1356)<a class="headerlink" href="#phase-10-shipped-chaos-1356" title="Permanent link">&para;</a></h3>
+<p>Daemon authentication and mutual TLS. Shipped 2026-05-01.</p>
+<p><strong>CLI surface added:</strong>
+- <code>container-compose system generate-key --name &lt;name&gt; [--auth-file &lt;path&gt;]</code> — generates a <code>cc_v1_...</code> API token and prints the raw token once.
+- <code>container-compose system revoke-key &lt;name&gt; [--auth-file &lt;path&gt;]</code> — removes a stored key by name; exits 1 when absent.
+- <code>container-compose system list-keys [--auth-file &lt;path&gt;]</code> — lists key names, 8-character hash prefixes, and creation timestamps only.</p>
+<p><strong>Serve flags added:</strong>
+- <code>--auth-required</code> — requires bearer-token auth on Unix socket listeners (TCP/TLS require auth regardless).
+- <code>--client-ca &lt;path&gt;</code> — enables mTLS for <code>tls://</code> listeners; every accepted TLS connection must present a certificate signed by the CA bundle.</p>
+<p><strong>Implementation notes:</strong>
+- <code>AuthStore</code> persists only SHA-256 token hashes in <code>~/.container-compose/auth.json</code> with 0600 permissions.
+- <code>AuthMiddleware</code> returns exact <code>APIErrorEnvelope</code> responses for missing/malformed/invalid credentials and composes mTLS with bearer auth.
+- <code>TLSBootstrap.makeServerConfig(certPath:keyPath:clientCAPath:)</code> sets NIOSSL full verification and additional trust roots when <code>--client-ca</code> is provided.</p>
+<p><strong>Architecture decisions locked by CHAOS-1356:</strong></p>
+<h4 id="decision-15-auth-credential-format-storage">Decision #15 — Auth credential format &amp; storage<a class="headerlink" href="#decision-15-auth-credential-format-storage" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> 32-byte random tokens, base64url-encoded with <code>cc_v1_</code> prefix, SHA-256 hashed for <code>~/.container-compose/auth.json</code> storage (atomic-rename writes, 0600 perms). No salt.</p>
+<p><strong>Rationale:</strong> Token entropy makes salting moot. Atomic-rename is POSIX-guaranteed; no flock needed. Prefix is grep-able for accidental leaks in commits.</p>
+<h4 id="decision-16-mtls-bearer-composition">Decision #16 — mTLS + bearer composition<a class="headerlink" href="#decision-16-mtls-bearer-composition" title="Permanent link">&para;</a></h4>
+<p><strong>Chosen:</strong> OR composition — either credential suffices. Valid client cert from <code>--client-ca</code> ≡ authenticated; alternatively valid bearer ≡ authenticated. Per-route authorization deferred to v1.2.</p>
+<p><strong>Rationale:</strong> Matches Docker daemon model. Simpler middleware + fewer failure modes.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -9,7 +9,7 @@ Start the container-compose HTTP API daemon over a Unix domain socket.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose serve [options]
 ```
 
@@ -32,7 +32,7 @@ container-compose serve [options]
 
 Bind to the default Unix domain socket.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose serve
 ```
 
@@ -40,7 +40,7 @@ container-compose serve
 
 Specify a different location for the socket.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose serve --listen unix:///tmp/cc.sock
 ```
 
@@ -48,7 +48,7 @@ container-compose serve --listen unix:///tmp/cc.sock
 
 Enable encrypted transport on a TCP port.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose serve --listen tls://0.0.0.0:8443 --cert cert.pem --key key.pem
 ```
 

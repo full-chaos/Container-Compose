@@ -24,7 +24,7 @@ Container-Compose supports advanced build features from the Compose specificatio
 
 The complete example lives at [`Sample Compose Files/Build with target/docker-compose.yml`](../../Sample%20Compose%20Files/Build%20with%20target/docker-compose.yml). Here's what it does:
 
-```yaml filename="docker-compose.yml"
+```yaml title="docker-compose.yml"
 # Demonstrates the full build sub-feature surface (Phase 2F).
 #  - target: pick a stage out of a multi-stage Dockerfile
 #  - dockerfile_inline: write the Dockerfile contents in compose itself
@@ -70,7 +70,7 @@ services:
 
 To build the images defined in your compose file without starting the containers, use the `build` subcommand. This is useful for verifying your Dockerfile logic and build arguments before deployment.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose build
 ```
 
@@ -90,7 +90,7 @@ The `api` service specifies `target: production`. This assumes your `Dockerfile`
 
 After the build completes, you can verify that the images were created by listing them with the Apple Container CLI.
 
-```bash filename="terminal"
+```bash title="terminal"
 container images
 ```
 
@@ -114,7 +114,7 @@ The tool also handles complex features like `cache_from` and `cache_to` by mappi
 
 To remove the images created during this tutorial, use the `container image rm` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container image rm api:1.0.0 builder-only:latest
 ```
 

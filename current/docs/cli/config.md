@@ -9,7 +9,7 @@ Parse, resolve and render the compose file.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose config [global-options] [options]
 ```
 
@@ -30,7 +30,7 @@ container-compose config [global-options] [options]
 
 Print the fully resolved and merged compose file.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose config
 ```
 
@@ -38,7 +38,7 @@ container-compose config
 
 Print only the names of the services defined in the compose file.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose config --services
 ```
 
@@ -46,7 +46,7 @@ container-compose config --services
 
 Print only the names of the volumes defined in the compose file.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose config --volumes
 ```
 

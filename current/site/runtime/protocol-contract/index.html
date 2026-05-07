@@ -1,0 +1,3432 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/runtime/protocol-contract/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Runtime Protocol Contract - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#runtime-protocol-contract" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Runtime Protocol Contract
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../feature-parity/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../feature-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Method Reference
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Method Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#discovery-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      Discovery group
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Discovery group">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#version-async-throws-runtimeversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      version() async throws -&gt; RuntimeVersion
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listfilters-runtimelistfilters-async-throws-runtimecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      list(filters: RuntimeListFilters) async throws -&gt; [RuntimeContainer]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#listnetworks-async-throws-runtimenetwork" class="md-nav__link">
+    <span class="md-ellipsis">
+      listNetworks() async throws -&gt; [RuntimeNetwork]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#getid-string-async-throws-runtimecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      get(id: String) async throws -&gt; RuntimeContainer
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lifecycle-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lifecycle group
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Lifecycle group">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#createid-string-configuration-runtimecreateconfiguration-async-throws-runtimecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      create(id: String, configuration: RuntimeCreateConfiguration) async throws -&gt; RuntimeContainer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startid-string-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      start(id: String) async throws
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stopid-string-options-runtimestopoptions-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      stop(id: String, options: RuntimeStopOptions) async throws
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#killid-string-signal-int32-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      kill(id: String, signal: Int32) async throws
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#waitid-string-timeoutseconds-int-async-throws-runtimeexitstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      wait(id: String, timeoutSeconds: Int) async throws -&gt; RuntimeExitStatus
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removeid-string-force-bool-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      remove(id: String, force: Bool) async throws
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observability-group" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observability group
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Observability group">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logsid-string-options-runtimelogoptions-async-throws-asyncstreamruntimelogframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      logs(id: String, options: RuntimeLogOptions) async throws -&gt; AsyncStream&lt;RuntimeLogFrame&gt;
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#events-async-throws-asyncstreamruntimecontainerevent" class="md-nav__link">
+    <span class="md-ellipsis">
+      events() async throws -&gt; AsyncStream&lt;RuntimeContainerEvent&gt;
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#statisticsfor-id-string-async-throws-runtimestatistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      statistics(for id: String) async throws -&gt; RuntimeStatistics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resource-crud-group-chaos-1353" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource CRUD group (CHAOS-1353)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Resource CRUD group (CHAOS-1353)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#networks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Networks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Networks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#createnetworkspec-runtimecreatenetworkspec-async-throws-runtimenetwork" class="md-nav__link">
+    <span class="md-ellipsis">
+      createNetwork(spec: RuntimeCreateNetworkSpec) async throws -&gt; RuntimeNetwork
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removenetworkid-string-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      removeNetwork(id: String) async throws
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#volumes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Volumes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Volumes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#listvolumes-async-throws-runtimevolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      listVolumes() async throws -&gt; [RuntimeVolume]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createvolumespec-runtimecreatevolumespec-async-throws-runtimevolume" class="md-nav__link">
+    <span class="md-ellipsis">
+      createVolume(spec: RuntimeCreateVolumeSpec) async throws -&gt; RuntimeVolume
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removevolumename-string-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      removeVolume(name: String) async throws
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Secrets
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Secrets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#listsecrets-async-throws-runtimesecret" class="md-nav__link">
+    <span class="md-ellipsis">
+      listSecrets() async throws -&gt; [RuntimeSecret]
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createsecretspec-runtimecreatesecretspec-async-throws-runtimesecret" class="md-nav__link">
+    <span class="md-ellipsis">
+      createSecret(spec: RuntimeCreateSecretSpec) async throws -&gt; RuntimeSecret
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removesecretname-string-async-throws" class="md-nav__link">
+    <span class="md-ellipsis">
+      removeSecret(name: String) async throws
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conformer-comparison-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conformer Comparison Matrix
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#threading-model-and-tasklocal-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Threading Model and TaskLocal Injection
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Threading Model and TaskLocal Injection">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#runtimeenvironment" class="md-nav__link">
+    <span class="md-ellipsis">
+      RuntimeEnvironment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Production usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test injection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sendable-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sendable contract
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conformer-specific-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conformer-Specific Quirks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Conformer-Specific Quirks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bridgecontainerclientruntime-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      BridgeContainerClientRuntime quirks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applecontainerizationruntime-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      AppleContainerizationRuntime quirks
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mockruntime-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      MockRuntime quirks
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-protocol-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known Protocol Gaps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/runtime/protocol-contract.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="runtime-protocol-contract">Runtime Protocol Contract<a class="headerlink" href="#runtime-protocol-contract" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Source files:</strong>
+- <code>Sources/Container-Compose/Runtime/Runtime.swift</code> (protocol definition, <code>RuntimeError</code>, <code>RuntimeEnvironment</code>)
+- <code>Sources/Container-Compose/Runtime/RuntimeTypes.swift</code> (all <code>Runtime*</code> value types)
+- <code>Sources/Container-Compose/Runtime/BridgeContainerClientRuntime.swift</code> (Bridge conformer)
+- <code>Sources/Container-Compose/Runtime/AppleContainerizationRuntime.swift</code> (native conformer, macOS only)
+- <code>Sources/Container-Compose/Runtime/RuntimeVolumeClient.swift</code> (shared volume backend)
+- <code>Tests/TestHelpers/MockRuntime.swift</code> (stateful test fake)
+- <code>Tests/TestHelpers/RecordingRuntime.swift</code> (call-recording test fake)</p>
+<p><strong>Background:</strong> CHAOS-1346 Phase 1. The <code>Runtime</code> protocol is the seam that
+lets Container-Compose swap its container backend without modifying call sites.
+See the header comment in <code>Runtime.swift:21-38</code> for the full architectural rationale.</p>
+</blockquote>
+<hr />
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p><code>Runtime</code> is a Swift protocol declared at <code>Runtime.swift:39</code>:</p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">public</span> <span class="kd">protocol</span> <span class="nc">Runtime</span><span class="p">:</span> <span class="n">Sendable</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
+</span></code></pre></div>
+<p>All methods are <code>async throws</code>. Every type crossing the protocol boundary is
+<code>Sendable</code>-clean. The protocol has four conformers:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Kind</th>
+<th style="text-align: left;">Where defined</th>
+<th style="text-align: left;">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;"><code>struct</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:49</code></td>
+<td style="text-align: left;">Delegates read paths to <code>ContainerClientProvider</code> (apple/container XPC); write paths mostly throw <code>.notSupported</code>. <strong>Default conformer.</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>AppleContainerizationRuntime</code></td>
+<td style="text-align: left;"><code>actor</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:53</code></td>
+<td style="text-align: left;">Registry-backed; lifecycle drives state only (Phase 1 skeleton — no real VM calls). Requires macOS.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>MockRuntime</code></td>
+<td style="text-align: left;"><code>final actor</code></td>
+<td style="text-align: left;"><code>Tests/TestHelpers/MockRuntime.swift:46</code></td>
+<td style="text-align: left;">Full stateful fake for tests. Implements all methods including resource CRUD.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>RecordingRuntime</code></td>
+<td style="text-align: left;"><code>actor</code></td>
+<td style="text-align: left;"><code>Tests/TestHelpers/RecordingRuntime.swift:28</code></td>
+<td style="text-align: left;">Records every call as an <code>Entry</code>; returns stubbed data. Used to assert which calls a command makes.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="method-reference">Method Reference<a class="headerlink" href="#method-reference" title="Permanent link">&para;</a></h2>
+<h3 id="discovery-group">Discovery group<a class="headerlink" href="#discovery-group" title="Permanent link">&para;</a></h3>
+<h4 id="version-async-throws-runtimeversion"><code>version() async throws -&gt; RuntimeVersion</code><a class="headerlink" href="#version-async-throws-runtimeversion" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:47</code></p>
+<p>Returns backend metadata for the Container REST API version endpoint.
+<code>RuntimeVersion</code> is declared at <code>RuntimeTypes.swift:116</code>.</p>
+<p><strong>Parameters:</strong> none</p>
+<p><strong>Returns:</strong> <code>RuntimeVersion</code> with five fields:
+- <code>apiVersion: String</code> — currently <code>"v1"</code> in all conformers
+- <code>daemonVersion: String</code> — build version from <code>Main.version</code>
+- <code>serverName: String</code> — <code>"container-compose"</code> in all conformers
+- <code>backendDescription: String</code> — backend-specific: <code>"bridge (apple/container CLI)"</code> (Bridge, <code>BridgeContainerClientRuntime.swift:60</code>), <code>"apple-containerization 0.31.0"</code> (Apple, <code>AppleContainerizationRuntime.swift:79</code>), <code>"mock-runtime"</code> (Mock, <code>MockRuntime.swift:29</code>), <code>"recording-runtime"</code> (Recording, <code>RecordingRuntime.swift:121</code>)
+- <code>arch: String</code> — compile-time constant: <code>"arm64"</code> or <code>"x86_64"</code></p>
+<p><strong>Throws:</strong> Never in any production or test conformer. The method is not declared <code>rethrows</code> because the protocol contract allows conformers to throw if a future backend requires a round-trip.</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/SystemRoutes.swift:25</code> — GET <code>/system/info</code>
+- <code>Sources/Container-Compose/Server/Routes/SystemRoutes.swift:37</code> — GET <code>/version</code></p>
+<hr />
+<h4 id="listfilters-runtimelistfilters-async-throws-runtimecontainer"><code>list(filters: RuntimeListFilters) async throws -&gt; [RuntimeContainer]</code><a class="headerlink" href="#listfilters-runtimelistfilters-async-throws-runtimecontainer" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:53</code></p>
+<p>Returns all containers visible to this runtime that match <code>filters</code>. Conformers treat unknown or empty filters as no-ops, never throw for them.</p>
+<p><strong>Parameters:</strong>
+- <code>filters: RuntimeListFilters</code> — declared at <code>RuntimeTypes.swift:175</code>
+  - <code>.all</code> (static preset) — no filtering
+  - <code>status: [RuntimeContainerStatus]?</code> — keep containers in these states; empty or <code>nil</code> = no filter
+  - <code>namePrefix: String?</code> — keep containers whose id starts with this; empty or <code>nil</code> = no filter
+  - <code>func matches(_ container: RuntimeContainer) -&gt; Bool</code> — per-container predicate (<code>RuntimeTypes.swift:188</code>)</p>
+<p><strong>Returns:</strong> <code>[RuntimeContainer]</code>, ordered by id ascending in <code>MockRuntime</code>; unordered in Bridge/Apple.</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:65-71</code>): calls <code>ContainerClientEnvironment.current.list(filters: .all)</code>, translates <code>ContainerSnapshot</code> → <code>RuntimeContainer</code>, then applies <code>filters.matches</code> in-process.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:84-89</code>): calls <code>registry.list()</code>, maps records, applies <code>filters.matches</code>.
+- <strong>Mock</strong> (<code>MockRuntime.swift:84-88</code>): filters from in-memory <code>containers</code> dictionary, returns sorted by id.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:126-129</code>): appends <code>.list</code> to entries, filters stubbed containers.</p>
+<p><strong>Throws:</strong> May throw <code>RuntimeError.backendFailure</code> on XPC failure (Bridge only).</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/ContainerRoutes.swift:26</code> — GET <code>/containers</code>
+- <code>Sources/Container-Compose/Server/Routes/ProjectRoutes.swift:33</code> — GET <code>/projects</code>
+- <code>Sources/Container-Compose/Server/Routes/ProjectRoutes.swift:40</code> — used for project grouping</p>
+<hr />
+<h4 id="listnetworks-async-throws-runtimenetwork"><code>listNetworks() async throws -&gt; [RuntimeNetwork]</code><a class="headerlink" href="#listnetworks-async-throws-runtimenetwork" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:60</code></p>
+<p>Returns runtime-side network summaries. <code>RuntimeNetwork</code> is declared at <code>RuntimeTypes.swift:144</code>.</p>
+<p><strong>Returns:</strong> Each <code>RuntimeNetwork</code> carries: <code>id</code>, <code>name</code>, <code>driver</code>, <code>labels: [String: String]</code>, <code>attachedContainerIds: [String]</code>.</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:73-82</code>): always throws <code>RuntimeError.notSupported(operation: "listNetworks", conformer: "BridgeContainerClientRuntime")</code>. The <code>apple/container</code> XPC client has no network list API.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:97-99</code>): returns <code>[]</code> (empty array). Network enumeration is deferred to Phase 3.
+- <strong>Mock</strong> (<code>MockRuntime.swift:90-92</code>): returns stubbed networks sorted by name.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:131-133</code>): records <code>.listNetworks</code>, returns stubbed networks.</p>
+<p><strong>Throws:</strong> <code>RuntimeError.notSupported</code> for Bridge (always). See also <a href="../error-codes/#notsupportedoperation-string-conformer-string">error-codes.md — notSupported</a>.</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/NetworkRoutes.swift:28</code> — GET <code>/networks</code></p>
+<hr />
+<h4 id="getid-string-async-throws-runtimecontainer"><code>get(id: String) async throws -&gt; RuntimeContainer</code><a class="headerlink" href="#getid-string-async-throws-runtimecontainer" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:66</code></p>
+<p>Returns a single container by id. Callers may <code>try?</code> to coerce to <code>nil</code>.</p>
+<p><strong>Parameters:</strong>
+- <code>id: String</code> — the container id (convention: <code>&lt;project&gt;-&lt;service&gt;</code>)</p>
+<p><strong>Returns:</strong> <code>RuntimeContainer</code> if found.</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:84-92</code>): calls <code>ContainerClientProvider.get(id:)</code>, translates to <code>RuntimeContainer</code>. Catches all errors and rethrows as <code>RuntimeError.notFound(id: id)</code> — including cases that might be XPC failures rather than true not-found (see Leak #12 in <code>docs/plans/runtime-abstraction-leaks.md</code>).
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:101-106</code>): checks registry; throws <code>RuntimeError.notFound</code> when <code>registry.get(id:)</code> returns <code>nil</code>.
+- <strong>Mock</strong> (<code>MockRuntime.swift:94-99</code>): dictionary lookup; throws <code>notFound</code> when absent.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:136-142</code>): appends <code>.get(id:)</code>, returns first stub match or throws <code>notFound</code>.</p>
+<p><strong>Throws:</strong> <code>RuntimeError.notFound(id:)</code> when no container with that id exists.</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/ContainerRoutes.swift:34</code> — GET <code>/containers/{id}</code>
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift:54</code> — container lifecycle operations</p>
+<hr />
+<h3 id="lifecycle-group">Lifecycle group<a class="headerlink" href="#lifecycle-group" title="Permanent link">&para;</a></h3>
+<h4 id="createid-string-configuration-runtimecreateconfiguration-async-throws-runtimecontainer"><code>create(id: String, configuration: RuntimeCreateConfiguration) async throws -&gt; RuntimeContainer</code><a class="headerlink" href="#createid-string-configuration-runtimecreateconfiguration-async-throws-runtimecontainer" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:73-76</code></p>
+<p>Creates a container from an image reference and configuration. Returns the freshly registered container in <code>.created</code> state. Call <code>start(id:)</code> to run it.</p>
+<p><strong>Parameters:</strong>
+- <code>id: String</code> — desired container id
+- <code>configuration: RuntimeCreateConfiguration</code> — declared at <code>RuntimeTypes.swift:448</code>:
+  - <code>imageReference: String</code> — OCI image reference
+  - <code>cpus: Int</code> — CPU count (default <code>1</code>)
+  - <code>memoryInBytes: UInt64</code> — memory limit (default <code>256 * 1024 * 1024</code>, i.e., 256 MB)
+  - <code>hostname: String?</code>
+  - <code>environment: [String]</code> — <code>KEY=VALUE</code> pairs
+  - <code>command: [String]</code>
+  - <code>workingDirectory: String?</code>
+  - <code>publishedPorts: [RuntimePublishedPort]</code></p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift</code>): delegates to <code>ContainerClientProvider.create(id:configuration:)</code>. The production provider maps <code>RuntimeCreateConfiguration</code> into apple/container's <code>Flags.Process</code>, <code>Flags.Management</code>, and <code>Flags.Resource</code>, then reuses <code>Utility.containerConfigFromFlags(...)</code> before calling <code>ContainerClient.create(...)</code>.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:110-129</code>): checks registry for duplicate, allocates <code>RuntimeContainerRecord</code> in <code>.created</code> state, registers it, initializes <code>LogRingBuffer</code> entries for stdout/stderr, emits <code>.created</code> event. No real <code>ContainerManager.create</code> call in Phase 1.
+- <strong>Mock</strong> (<code>MockRuntime.swift:101-120</code>): throws <code>alreadyExists</code> on duplicate, stores container in memory, publishes <code>.created</code> event.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:144-156</code>): records <code>.create(id:)</code>, returns a freshly constructed <code>.created</code> container.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.alreadyExists(id:)</code> if a container with this id exists
+- <code>RuntimeError.backendFailure(message:)</code> for bridge/XPC failures that are not duplicate or not-found semantics</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/ContainerCreateRoute.swift</code> — POST <code>/containers/create</code></p>
+<hr />
+<h4 id="startid-string-async-throws"><code>start(id: String) async throws</code><a class="headerlink" href="#startid-string-async-throws" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:83</code></p>
+<p>Transitions a container from <code>.created</code>, <code>.stopped</code>, or <code>.exited</code> to <code>.running</code>.</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:124-130</code>): delegates to <code>ContainerClientEnvironment.current.start(id:)</code>, maps errors via <code>mapUpstreamError</code>. Note: Bridge catches all errors from the XPC call and maps them to <code>backendFailure</code> or <code>notFound</code> — it does not produce <code>invalidState</code>.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:132-146</code>): verifies container exists (throws <code>notFound</code>), verifies state is <code>.created</code>, <code>.stopped</code>, or <code>.exited</code> (throws <code>invalidState</code>), updates registry to <code>.running</code>, emits <code>.started</code> event. No <code>LinuxContainer.start()</code> call in Phase 1.
+- <strong>Mock</strong> (<code>MockRuntime.swift:123-139</code>): verifies container exists, verifies state is <code>.created</code> (throws <code>invalidState</code> for any other state), sets to <code>.running</code>, publishes <code>.started</code> event.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:158-160</code>): records <code>.start(id:)</code>, returns without error.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container does not exist (Apple, Mock, Bridge via mapUpstreamError)
+- <code>RuntimeError.invalidState(id:expected:actual:)</code> — state check failed (Apple: accepts created/stopped/exited; Mock: accepts only created)
+- <code>RuntimeError.backendFailure(message:)</code> — XPC error (Bridge)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift:77</code> — POST <code>/containers/{id}/start</code>
+- <code>Sources/Container-Compose/Server/Routes/ProjectLifecycleRoutes.swift:106</code> — POST <code>/projects/{name}/start</code></p>
+<hr />
+<h4 id="stopid-string-options-runtimestopoptions-async-throws"><code>stop(id: String, options: RuntimeStopOptions) async throws</code><a class="headerlink" href="#stopid-string-options-runtimestopoptions-async-throws" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:89</code></p>
+<p>Stops a running container. <code>RuntimeStopOptions</code> is declared at <code>RuntimeTypes.swift:201</code>:
+- <code>signal: Int32</code> (default <code>15</code> / SIGTERM)
+- <code>timeoutSeconds: Int</code> (default <code>10</code>)
+- <code>RuntimeStopOptions.default</code> — the standard preset</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:133-140</code>): translates to <code>ContainerStopOptions</code>, delegates to <code>ContainerClientProvider.stop</code>. Propagates XPC errors without remapping (no <code>mapUpstreamError</code> call here).
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:148-162</code>): throws <code>notFound</code> if container absent; returns silently if not <code>.running</code> (idempotent); transitions through <code>.stopping</code>, records exit with code <code>0</code>, closes log buffers, emits <code>.stopped</code> event.
+- <strong>Mock</strong> (<code>MockRuntime.swift:142-158</code>): throws <code>notFound</code> if absent, throws <code>invalidState</code> if not <code>.running</code>, sets to <code>.stopped</code> with <code>lastExitCode: 0</code>, publishes <code>.stopped</code> event. <strong>Note:</strong> Mock is stricter than Apple — it throws <code>invalidState</code> for non-running containers; Apple returns silently.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:162-164</code>): records <code>.stop(id:)</code>, returns without error.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container not found (Apple, Mock)
+- <code>RuntimeError.invalidState(id:expected:actual:)</code> — not running (Mock only; Apple is idempotent)
+- XPC errors propagated raw from Bridge (not remapped here)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift:102</code> — POST <code>/containers/{id}/stop</code>
+- <code>Sources/Container-Compose/Server/Routes/ProjectLifecycleRoutes.swift:138</code> — POST <code>/projects/{name}/stop</code></p>
+<hr />
+<h4 id="killid-string-signal-int32-async-throws"><code>kill(id: String, signal: Int32) async throws</code><a class="headerlink" href="#killid-string-signal-int32-async-throws" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:92</code></p>
+<p>Sends an arbitrary signal to the container's init process.</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:142-149</code>): delegates to <code>ContainerClientProvider.kill(id:signal:)</code>, maps via <code>mapUpstreamError</code>.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:164-168</code>): verifies existence (throws <code>notFound</code>), emits <code>.killed</code> event. Does not invoke a real vsock kill in Phase 1.
+- <strong>Mock</strong> (<code>MockRuntime.swift:161-177</code>): verifies existence, verifies <code>.running</code> state (throws <code>invalidState</code>), sets to <code>.stopped</code> with <code>lastExitCode: 128 + signal</code>, publishes <code>.killed</code> event.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:166-168</code>): records <code>.kill(id:signal:)</code>.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container not found (Apple, Mock, Bridge via mapUpstreamError)
+- <code>RuntimeError.invalidState(id:expected:actual:)</code> — not running (Mock only)
+- <code>RuntimeError.backendFailure(message:)</code> — XPC error (Bridge via mapUpstreamError)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift:135</code> — POST <code>/containers/{id}/kill</code>
+- <code>Sources/Container-Compose/Server/Routes/ProjectLifecycleRoutes.swift:168</code> — POST <code>/projects/{name}/kill</code></p>
+<hr />
+<h4 id="waitid-string-timeoutseconds-int-async-throws-runtimeexitstatus"><code>wait(id: String, timeoutSeconds: Int) async throws -&gt; RuntimeExitStatus</code><a class="headerlink" href="#waitid-string-timeoutseconds-int-async-throws-runtimeexitstatus" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:95</code></p>
+<p>Blocks until the container exits or <code>timeoutSeconds</code> elapses. <code>RuntimeExitStatus</code> is declared at <code>RuntimeTypes.swift:215</code>:
+- <code>exitCode: Int32</code>
+- <code>exitedAt: Date</code></p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:151-155</code>): always throws <code>RuntimeError.notSupported(operation: "wait", conformer: "BridgeContainerClientRuntime")</code>. The apple/container XPC client has no blocking wait equivalent.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:171-179</code>): throws <code>notFound</code> if absent; returns existing <code>exitStatus</code> if present; otherwise throws <code>RuntimeError.timeout(id:seconds:)</code> immediately (Phase 1 does not have a real wait mechanism — the container never genuinely exits).
+- <strong>Mock</strong> (<code>MockRuntime.swift:180-191</code>): polls every 10ms until status is <code>.stopped</code>/<code>.exited</code> or deadline passes (throws <code>RuntimeError.timeout</code>). Returns <code>RuntimeExitStatus</code> with <code>lastExitCode</code>.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:170-173</code>): records <code>.wait(id:)</code>, returns <code>RuntimeExitStatus(exitCode: 0, exitedAt: Date())</code>.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container not found
+- <code>RuntimeError.timeout(id:seconds:)</code> — timeout elapsed (Apple, Mock)
+- <code>RuntimeError.notSupported(operation: "wait", conformer: "BridgeContainerClientRuntime")</code> — Bridge, always</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift:160</code> — POST <code>/containers/{id}/wait</code></p>
+<hr />
+<h4 id="removeid-string-force-bool-async-throws"><code>remove(id: String, force: Bool) async throws</code><a class="headerlink" href="#removeid-string-force-bool-async-throws" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:99</code></p>
+<p>Removes a stopped container's metadata and writable layer.</p>
+<p><strong>Parameters:</strong>
+- <code>force: Bool</code> — if <code>true</code>, running containers are killed before removal. If <code>false</code>, attempting to remove a running container throws <code>invalidState</code>.</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:158-161</code>): delegates to <code>ContainerClientProvider.delete(id:force:)</code>. No error remapping — propagates raw XPC errors.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:181-191</code>): throws <code>notFound</code> if absent; throws <code>invalidState(expected: .stopped, actual: .running)</code> when <code>!force &amp;&amp; record.state == .running</code>; removes from registry, clears log buffers, emits <code>.removed</code> event.
+- <strong>Mock</strong> (<code>MockRuntime.swift:194-205</code>): throws <code>notFound</code> if absent; throws <code>invalidState</code> if running and <code>!force</code>; removes from all in-memory stores, finishes log subscribers, publishes <code>.removed</code> event.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:175-177</code>): records <code>.remove(id:force:)</code>.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container not found (Apple, Mock)
+- <code>RuntimeError.invalidState(id:expected:actual:)</code> — running and <code>force == false</code> (Apple, Mock)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift:184</code> — DELETE <code>/containers/{id}</code></p>
+<hr />
+<h3 id="observability-group">Observability group<a class="headerlink" href="#observability-group" title="Permanent link">&para;</a></h3>
+<h4 id="logsid-string-options-runtimelogoptions-async-throws-asyncstreamruntimelogframe"><code>logs(id: String, options: RuntimeLogOptions) async throws -&gt; AsyncStream&lt;RuntimeLogFrame&gt;</code><a class="headerlink" href="#logsid-string-options-runtimelogoptions-async-throws-asyncstreamruntimelogframe" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:108</code></p>
+<p>Replays (and optionally follows) the container's stdout and stderr log stream.</p>
+<p><strong>Parameters:</strong>
+- <code>options: RuntimeLogOptions</code> — declared at <code>RuntimeTypes.swift:291</code>:
+  - <code>follow: Bool</code> — continue streaming after replay (default <code>false</code>)
+  - <code>tail: Int?</code> — limit to last N frames; <code>nil</code> = all
+  - <code>since: Date?</code> — skip frames older than this date
+  - <code>timestamps: Bool</code> — include timestamps in frame metadata
+  - <code>RuntimeLogOptions.default</code> — no-follow, no-tail, no-since preset</p>
+<p><strong>Returns:</strong> <code>AsyncStream&lt;RuntimeLogFrame&gt;</code>. Each <code>RuntimeLogFrame</code> (declared <code>RuntimeTypes.swift:307</code>) has:
+- <code>timestamp: Date</code>
+- <code>source: RuntimeLogFrame.Source</code> — <code>.stdout</code> or <code>.stderr</code>
+- <code>data: Data</code> — raw log line bytes (newlines stripped by bridge log collection)</p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:165-178</code>): fetches <code>[FileHandle]</code> via <code>ContainerClientProvider.logs(id:options:)</code>. Throws <code>RuntimeError.notFound(id:)</code> on any error from that call (<code>BridgeContainerClientRuntime.swift:174</code>). Collects all frames from handles (<code>collectLogFrames</code>), sorts by timestamp, applies <code>tail</code>. The stream finishes immediately after replay — <code>follow</code> is not honoured in Phase 1.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:196-212</code>): throws <code>notFound</code> if container absent. Drains <code>stdoutBuffers[id]</code> and <code>stderrBuffers[id]</code> via <code>LogRingBuffer.replay(options:)</code>, merges in timestamp order (<code>merge(stdout:stderr:)</code>), yields all frames, finishes. No live-follow in Phase 1.
+- <strong>Mock</strong> (<code>MockRuntime.swift:207-226</code>): throws <code>notFound</code> if absent. Replays filtered log frames. If <code>follow: true</code>, registers a continuation in <code>logContinuations</code> and keeps the stream open until cancellation. Test code injects frames via <code>injectLogFrame(_:forContainerID:)</code>.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:179-191</code>): records <code>.logs(id:options:)</code>. Throws <code>logsError</code> if configured, otherwise returns stubbed frames.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container not found or no log handles (Apple, Bridge, Mock)
+- Configured <code>logsError</code> (Recording only)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/LogsRoutes.swift</code> — GET <code>/containers/{id}/logs</code></p>
+<hr />
+<h4 id="events-async-throws-asyncstreamruntimecontainerevent"><code>events() async throws -&gt; AsyncStream&lt;RuntimeContainerEvent&gt;</code><a class="headerlink" href="#events-async-throws-asyncstreamruntimecontainerevent" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:114</code></p>
+<p>Subscribes to lifecycle events. Each call returns an independent stream. <code>RuntimeContainerEvent</code> is declared at <code>RuntimeTypes.swift:234</code>:
+- <code>.created(id: String, at: Date)</code>
+- <code>.started(id: String, at: Date)</code>
+- <code>.stopped(id: String, exitCode: Int32, at: Date)</code>
+- <code>.killed(id: String, signal: Int32, at: Date)</code>
+- <code>.oomKilled(id: String, at: Date)</code>
+- <code>.removed(id: String, at: Date)</code></p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:180-217</code>): polls <code>ContainerClientProvider.events()</code> at 1-second intervals. Filters to events newer than last emitted timestamp, sorts, yields translated events. Finishes the stream on persistent error or cancellation. <code>oomKilled</code> is not generated — <code>ContainerEvent.action</code> has no OOM case. Translation at <code>BridgeContainerClientRuntime.swift:289-300</code>: <code>die</code> and <code>stop</code> actions map to <code>.stopped</code> with <code>exitCode: 0</code> (exit code is not available from <code>ContainerEvent</code>).
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:214-222</code>): registers a <code>UUID</code>-keyed continuation in <code>eventContinuations</code>. Events are broadcast to all active continuations by the private <code>emit(_:)</code> method at <code>AppleContainerizationRuntime.swift:263</code>. Cancellation removes the continuation via <code>unsubscribe(eventID:)</code>.
+- <strong>Mock</strong> (<code>MockRuntime.swift:228-236</code>): same pattern as Apple — registers UUID-keyed continuation. Tests inject events via <code>injectEvent(_:)</code> at <code>MockRuntime.swift:257</code>.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:193-203</code>): records <code>.events</code>. Returns stubbed event list as a finished stream. Throws <code>eventsError</code> if configured.</p>
+<p><strong>Throws:</strong> Does not throw in production conformers. The Bridge stream finishes silently on persistent XPC error. Recording throws configured <code>eventsError</code>.</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/EventsRoutes.swift:26</code> — GET <code>/events</code></p>
+<hr />
+<h4 id="statisticsfor-id-string-async-throws-runtimestatistics"><code>statistics(for id: String) async throws -&gt; RuntimeStatistics</code><a class="headerlink" href="#statisticsfor-id-string-async-throws-runtimestatistics" title="Permanent link">&para;</a></h4>
+<p><strong>Declared:</strong> <code>Runtime.swift:118</code></p>
+<p>Returns a single polled statistics snapshot. <code>RuntimeStatistics</code> is declared at <code>RuntimeTypes.swift:249</code>:
+- <code>id: String</code>
+- <code>cpuUsageUsec: UInt64?</code>
+- <code>memoryUsageBytes: UInt64?</code>
+- <code>memoryLimitBytes: UInt64?</code>
+- <code>oomKillCount: UInt64?</code>
+- <code>networks: [RuntimeStatistics.Network]</code> — per-interface rx/tx bytes
+- <code>sampledAt: Date</code></p>
+<p><strong>Conformer behaviour:</strong>
+- <strong>Bridge</strong> (<code>BridgeContainerClientRuntime.swift:219-227</code>): calls <code>ContainerClientProvider.stats(id:)</code>, translates via <code>translate(stats:)</code> at <code>BridgeContainerClientRuntime.swift:231-250</code>. All network traffic is aggregated into a single synthetic <code>"eth0"</code> entry because <code>ContainerStats</code> does not expose per-interface breakdown. <code>oomKillCount</code> is always <code>nil</code> — it requires <code>MemoryEventStatistics</code> which is not available via <code>ContainerStats</code>.
+- <strong>Apple</strong> (<code>AppleContainerizationRuntime.swift:224-241</code>): throws <code>notFound</code> if absent; returns an empty <code>RuntimeStatistics(id: id, sampledAt: Date())</code> — all optional fields are <code>nil</code>. Real vsock stats require a live <code>LinuxContainer</code> instance (Phase 2).
+- <strong>Mock</strong> (<code>MockRuntime.swift:238-244</code>): throws <code>notFound</code> if absent; returns stubbed statistics injected via <code>injectStatistics(_:forContainerID:)</code>, or an empty snapshot if none was injected.
+- <strong>Recording</strong> (<code>RecordingRuntime.swift:207-227</code>): records <code>.statistics(id:)</code>. Supports three stub modes: single snapshot (<code>stubbedStatistics</code>), sequence of snapshots (<code>stubbedStatisticsSequence</code> — throws <code>notFound</code> when exhausted), or empty snapshot.</p>
+<p><strong>Throws:</strong>
+- <code>RuntimeError.notFound(id:)</code> — container not found (Apple, Mock, Bridge via mapUpstreamError)
+- <code>RuntimeError.backendFailure(message:)</code> — XPC error (Bridge)
+- Configured <code>statisticsError</code> (Recording)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/StatsRoutes.swift:52</code> — GET <code>/containers/{id}/stats</code></p>
+<hr />
+<h3 id="resource-crud-group-chaos-1353">Resource CRUD group (CHAOS-1353)<a class="headerlink" href="#resource-crud-group-chaos-1353" title="Permanent link">&para;</a></h3>
+<h4 id="networks">Networks<a class="headerlink" href="#networks" title="Permanent link">&para;</a></h4>
+<h5 id="createnetworkspec-runtimecreatenetworkspec-async-throws-runtimenetwork"><code>createNetwork(spec: RuntimeCreateNetworkSpec) async throws -&gt; RuntimeNetwork</code><a class="headerlink" href="#createnetworkspec-runtimecreatenetworkspec-async-throws-runtimenetwork" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:127</code></p>
+<p><code>RuntimeCreateNetworkSpec</code> declared at <code>RuntimeTypes.swift:420</code>: <code>name</code>, <code>driver</code> (default <code>"bridge"</code>), <code>subnet: String?</code>, <code>gateway: String?</code>, <code>labels</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Always throws <code>notSupported(operation: "createNetwork", conformer: "BridgeContainerClientRuntime")</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:441-446</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Always throws <code>notSupported(operation: "createNetwork", conformer: "AppleContainerizationRuntime")</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:359-364</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Creates in-memory <code>RuntimeNetwork</code> with UUID id; throws <code>alreadyExists</code> on duplicate name</td>
+<td style="text-align: left;"><code>MockRuntime.swift:335-348</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.createNetwork(name:)</code>; throws <code>createNetworkError</code> if configured; returns stub network</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:231-243</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rationale for <code>notSupported</code>:</strong> Neither the apple/container XPC client nor <code>apple/containerization</code> expose a Swift API for network creation. Documented as Leak #9 in <code>docs/plans/runtime-abstraction-leaks.md</code>.</p>
+<hr />
+<h5 id="removenetworkid-string-async-throws"><code>removeNetwork(id: String) async throws</code><a class="headerlink" href="#removenetworkid-string-async-throws" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:131</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Always throws <code>notSupported(operation: "removeNetwork", conformer: "BridgeContainerClientRuntime")</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:449-454</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Always throws <code>notSupported(operation: "removeNetwork", conformer: "AppleContainerizationRuntime")</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:367-372</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Removes by id; throws <code>notFound</code> if absent</td>
+<td style="text-align: left;"><code>MockRuntime.swift:350-356</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.removeNetwork(id:)</code>; throws <code>removeNetworkError</code> if configured</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:245-252</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h4 id="volumes">Volumes<a class="headerlink" href="#volumes" title="Permanent link">&para;</a></h4>
+<p>Both production conformers delegate volume operations to <code>RuntimeVolumeClient</code> (declared at <code>RuntimeVolumeClient.swift:22</code>), which calls the apple/container XPC volume registry via <code>ClientVolume</code>. Only the <code>"local"</code> driver is fully supported — non-local drivers throw <code>notSupported(operation: "createVolume(driver=&lt;driver&gt;)", conformer: "RuntimeVolumeClient")</code> at <code>RuntimeVolumeClient.swift:30</code>.</p>
+<h5 id="listvolumes-async-throws-runtimevolume"><code>listVolumes() async throws -&gt; [RuntimeVolume]</code><a class="headerlink" href="#listvolumes-async-throws-runtimevolume" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:136</code></p>
+<p><code>RuntimeVolume</code> declared at <code>RuntimeTypes.swift:331</code>: <code>name</code>, <code>driver</code>, <code>labels</code>, <code>createdAt: Date?</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Delegates to <code>RuntimeVolumeClient.list()</code> → <code>ClientVolume.list()</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:458</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Delegates to <code>RuntimeVolumeClient.list()</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:376</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Returns in-memory volume dictionary values sorted by name</td>
+<td style="text-align: left;"><code>MockRuntime.swift:359-361</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.listVolumes</code>; returns stubbed volumes</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:255-258</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h5 id="createvolumespec-runtimecreatevolumespec-async-throws-runtimevolume"><code>createVolume(spec: RuntimeCreateVolumeSpec) async throws -&gt; RuntimeVolume</code><a class="headerlink" href="#createvolumespec-runtimecreatevolumespec-async-throws-runtimevolume" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:141</code></p>
+<p><code>RuntimeCreateVolumeSpec</code> declared at <code>RuntimeTypes.swift:351</code>: <code>name</code>, <code>driver</code> (default <code>"local"</code>), <code>labels</code>, <code>driverOptions</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Delegates to <code>RuntimeVolumeClient.create(spec:)</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:462</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Delegates to <code>RuntimeVolumeClient.create(spec:)</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:380</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Creates in-memory; throws <code>alreadyExists</code> on duplicate</td>
+<td style="text-align: left;"><code>MockRuntime.swift:363-375</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.createVolume(name:)</code>; returns stub volume</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:260-266</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>RuntimeVolumeClient.create</code> error mapping (<code>RuntimeVolumeClient.swift:28-55</code>):
+- <code>VolumeError.volumeAlreadyExists</code> → <code>RuntimeError.alreadyExists(id: name)</code> (line 44)
+- <code>ContainerizationError</code> with message containing <code>"already exists"</code> → <code>RuntimeError.alreadyExists(id: spec.name)</code> (line 50)
+- All other errors → <code>RuntimeError.backendFailure(message:)</code> (lines 46, 52, 54)</p>
+<hr />
+<h5 id="removevolumename-string-async-throws"><code>removeVolume(name: String) async throws</code><a class="headerlink" href="#removevolumename-string-async-throws" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:145</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Delegates to <code>RuntimeVolumeClient.remove(name:)</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:466</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Delegates to <code>RuntimeVolumeClient.remove(name:)</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:384</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Removes from dictionary; throws <code>notFound</code> if absent</td>
+<td style="text-align: left;"><code>MockRuntime.swift:377-381</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.removeVolume(name:)</code>; throws <code>notFound</code> if name not in stubs</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:270-274</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>RuntimeVolumeClient.remove</code> error mapping (<code>RuntimeVolumeClient.swift:58-76</code>):
+- <code>VolumeError.volumeNotFound</code> → <code>RuntimeError.notFound(id: missing)</code> (line 64)
+- <code>ContainerizationError</code> with message containing <code>"not found"</code> → <code>RuntimeError.notFound(id: name)</code> (line 70)
+- All other errors → <code>RuntimeError.backendFailure(message:)</code> (lines 66, 72, 74)</p>
+<p><strong>Call sites:</strong>
+- <code>Sources/Container-Compose/Server/Routes/VolumeRoutes.swift:78</code> — DELETE <code>/volumes/{name}</code>
+- <code>Sources/Container-Compose/Commands/ComposeDown.swift</code> — <code>compose down -v</code></p>
+<hr />
+<h4 id="secrets">Secrets<a class="headerlink" href="#secrets" title="Permanent link">&para;</a></h4>
+<p>All production conformers throw <code>notSupported</code> for every secret method. <code>MockRuntime</code> is the only conformer with a working in-memory secret store.</p>
+<p><code>RuntimeSecret</code> declared at <code>RuntimeTypes.swift:378</code>: <code>name</code>, <code>labels</code>, <code>createdAt</code>. The secret value is never stored in <code>RuntimeSecret</code> — it is accepted only in <code>RuntimeCreateSecretSpec.value</code> during creation and discarded after.</p>
+<h5 id="listsecrets-async-throws-runtimesecret"><code>listSecrets() async throws -&gt; [RuntimeSecret]</code><a class="headerlink" href="#listsecrets-async-throws-runtimesecret" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:151</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Throws <code>notSupported(operation: "listSecrets", conformer: "BridgeContainerClientRuntime")</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:475-479</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Throws <code>notSupported(operation: "listSecrets", conformer: "AppleContainerizationRuntime")</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:394-398</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Returns in-memory secrets sorted by name</td>
+<td style="text-align: left;"><code>MockRuntime.swift:386-388</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.listSecrets</code>; returns stubbed secrets</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:277-280</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h5 id="createsecretspec-runtimecreatesecretspec-async-throws-runtimesecret"><code>createSecret(spec: RuntimeCreateSecretSpec) async throws -&gt; RuntimeSecret</code><a class="headerlink" href="#createsecretspec-runtimecreatesecretspec-async-throws-runtimesecret" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:157</code></p>
+<p><code>RuntimeCreateSecretSpec</code> declared at <code>RuntimeTypes.swift:398</code>: <code>name</code>, <code>value: String</code>, <code>labels</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Throws <code>notSupported(operation: "createSecret", conformer: "BridgeContainerClientRuntime")</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:483-487</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Throws <code>notSupported(operation: "createSecret", conformer: "AppleContainerizationRuntime")</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:402-406</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Creates in-memory (value stored but never returned); throws <code>alreadyExists</code> on duplicate</td>
+<td style="text-align: left;"><code>MockRuntime.swift:390-403</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.createSecret(name:)</code>; returns stub secret</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:282-288</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h5 id="removesecretname-string-async-throws"><code>removeSecret(name: String) async throws</code><a class="headerlink" href="#removesecretname-string-async-throws" title="Permanent link">&para;</a></h5>
+<p><strong>Declared:</strong> <code>Runtime.swift:161</code></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Conformer</th>
+<th style="text-align: left;">Behaviour</th>
+<th style="text-align: left;">Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Bridge</td>
+<td style="text-align: left;">Throws <code>notSupported(operation: "removeSecret", conformer: "BridgeContainerClientRuntime")</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime.swift:491-495</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Apple</td>
+<td style="text-align: left;">Throws <code>notSupported(operation: "removeSecret", conformer: "AppleContainerizationRuntime")</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime.swift:410-414</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Mock</td>
+<td style="text-align: left;">Removes by name; throws <code>notFound</code> if absent</td>
+<td style="text-align: left;"><code>MockRuntime.swift:404-408</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Recording</td>
+<td style="text-align: left;">Records <code>.removeSecret(name:)</code>; throws <code>notFound</code> if name not in stubs</td>
+<td style="text-align: left;"><code>RecordingRuntime.swift:290-295</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rationale for <code>notSupported</code>:</strong> Neither the apple/container XPC client nor <code>apple/containerization</code> exposes a secret management API. A durable backend (e.g. macOS Keychain) is deferred. Documented as Leak #11 in <code>docs/plans/runtime-abstraction-leaks.md</code>.</p>
+<hr />
+<h2 id="conformer-comparison-matrix">Conformer Comparison Matrix<a class="headerlink" href="#conformer-comparison-matrix" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: center;">Bridge</th>
+<th style="text-align: center;">Apple</th>
+<th style="text-align: center;">Mock</th>
+<th style="text-align: center;">Recording</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>version</code></td>
+<td style="text-align: center;">returns constant</td>
+<td style="text-align: center;">returns constant</td>
+<td style="text-align: center;">returns constant</td>
+<td style="text-align: center;">returns constant</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>list</code></td>
+<td style="text-align: center;">XPC → filter</td>
+<td style="text-align: center;">registry → filter</td>
+<td style="text-align: center;">memory → filter</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>listNetworks</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;"><code>[]</code></td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>get</code></td>
+<td style="text-align: center;">XPC</td>
+<td style="text-align: center;">registry</td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub or <code>notFound</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>create</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">registry + events</td>
+<td style="text-align: center;">memory + events</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>start</code></td>
+<td style="text-align: center;">XPC</td>
+<td style="text-align: center;">registry + events</td>
+<td style="text-align: center;">memory + events</td>
+<td style="text-align: center;">no-op</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>stop</code></td>
+<td style="text-align: center;">XPC (raw errors)</td>
+<td style="text-align: center;">registry + events (idempotent)</td>
+<td style="text-align: center;">memory + events (strict)</td>
+<td style="text-align: center;">no-op</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>kill</code></td>
+<td style="text-align: center;">XPC + map</td>
+<td style="text-align: center;">events only</td>
+<td style="text-align: center;">memory + events (strict)</td>
+<td style="text-align: center;">no-op</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wait</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">immediate timeout</td>
+<td style="text-align: center;">polling loop</td>
+<td style="text-align: center;">stub exit 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>remove</code></td>
+<td style="text-align: center;">XPC (raw errors)</td>
+<td style="text-align: center;">registry + events</td>
+<td style="text-align: center;">memory + events</td>
+<td style="text-align: center;">no-op</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>logs</code></td>
+<td style="text-align: center;">file handles (no follow)</td>
+<td style="text-align: center;">ring buffer (no follow)</td>
+<td style="text-align: center;">memory + optional follow</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>events</code></td>
+<td style="text-align: center;">1s poll loop</td>
+<td style="text-align: center;">push broadcast</td>
+<td style="text-align: center;">push broadcast</td>
+<td style="text-align: center;">stub (finished)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>statistics</code></td>
+<td style="text-align: center;">XPC + eth0 agg</td>
+<td style="text-align: center;">empty snapshot</td>
+<td style="text-align: center;">memory or stub</td>
+<td style="text-align: center;">stub or seq</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>createNetwork</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>removeNetwork</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>listVolumes</code></td>
+<td style="text-align: center;">XPC (<code>RuntimeVolumeClient</code>)</td>
+<td style="text-align: center;">XPC (<code>RuntimeVolumeClient</code>)</td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>createVolume</code></td>
+<td style="text-align: center;">XPC (<code>RuntimeVolumeClient</code>, local only)</td>
+<td style="text-align: center;">XPC (<code>RuntimeVolumeClient</code>, local only)</td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>removeVolume</code></td>
+<td style="text-align: center;">XPC (<code>RuntimeVolumeClient</code>)</td>
+<td style="text-align: center;">XPC (<code>RuntimeVolumeClient</code>)</td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>listSecrets</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>createSecret</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>removeSecret</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;"><code>.notSupported</code></td>
+<td style="text-align: center;">memory</td>
+<td style="text-align: center;">stub</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="threading-model-and-tasklocal-injection">Threading Model and TaskLocal Injection<a class="headerlink" href="#threading-model-and-tasklocal-injection" title="Permanent link">&para;</a></h2>
+<h3 id="runtimeenvironment">RuntimeEnvironment<a class="headerlink" href="#runtimeenvironment" title="Permanent link">&para;</a></h3>
+<p><code>RuntimeEnvironment</code> is declared at <code>Runtime.swift:240</code>:</p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">public</span> <span class="kd">enum</span> <span class="nc">RuntimeEnvironment</span> <span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="p">@</span><span class="n">TaskLocal</span> <span class="kd">public</span> <span class="kd">static</span> <span class="kd">var</span> <span class="nv">current</span><span class="p">:</span> <span class="n">any</span> <span class="n">Runtime</span> <span class="p">=</span> <span class="n">BridgeContainerClientRuntime</span><span class="p">()</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>@TaskLocal</code> means the value is inherited by child tasks and can be overridden for the duration of a closure via <code>withValue</code>. Every <code>RuntimeEnvironment.current</code> access reads the innermost binding from the task's task-local storage chain. The default value (<code>BridgeContainerClientRuntime()</code>) is the initial binding for the root task.</p>
+<h3 id="production-usage">Production usage<a class="headerlink" href="#production-usage" title="Permanent link">&para;</a></h3>
+<p>Production route handlers read <code>RuntimeEnvironment.current</code> directly. Example from <code>ContainerRoutes.swift:26</code>:</p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kd">let</span> <span class="nv">runtime</span> <span class="p">=</span> <span class="n">RuntimeEnvironment</span><span class="p">.</span><span class="n">current</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kd">let</span> <span class="nv">containers</span> <span class="p">=</span> <span class="k">try</span> <span class="k">await</span> <span class="n">runtime</span><span class="p">.</span><span class="n">list</span><span class="p">(</span><span class="n">filters</span><span class="p">:</span> <span class="n">filters</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Full set of production call sites:
+- <code>Sources/Container-Compose/Server/Routes/ContainerRoutes.swift</code> (lines 26, 34)
+- <code>Sources/Container-Compose/Server/Routes/LifecycleRoutes.swift</code> (lines 54, 77, 102, 135, 160, 184)
+- <code>Sources/Container-Compose/Server/Routes/ProjectLifecycleRoutes.swift</code> (lines 66, 106, 138, 168, 194, 220)
+- <code>Sources/Container-Compose/Server/Routes/ProjectRoutes.swift</code> (lines 33, 40)
+- <code>Sources/Container-Compose/Server/Routes/NetworkRoutes.swift</code> (lines 28, 36, 66)
+- <code>Sources/Container-Compose/Server/Routes/VolumeRoutes.swift</code> (lines 32, 49, 78)
+- <code>Sources/Container-Compose/Server/Routes/SecretRoutes.swift</code> (lines 39, 55)
+- <code>Sources/Container-Compose/Server/Routes/EventsRoutes.swift</code> (line 26)
+- <code>Sources/Container-Compose/Server/Routes/StatsRoutes.swift</code> (line 52)
+- <code>Sources/Container-Compose/Server/Routes/SystemRoutes.swift</code> (lines 25, 37)</p>
+<h3 id="test-injection">Test injection<a class="headerlink" href="#test-injection" title="Permanent link">&para;</a></h3>
+<p>Tests bind a mock or recording conformer for the duration of a task:</p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// From Tests/Container-Compose-StaticTests/ComposeUpVolumeIdempotencyTests.swift:46</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kd">let</span> <span class="nv">didCreate</span> <span class="p">=</span> <span class="k">try</span> <span class="k">await</span> <span class="n">RuntimeEnvironment</span><span class="p">.</span><span class="err">$</span><span class="n">current</span><span class="p">.</span><span class="n">withValue</span><span class="p">(</span><span class="n">runtime</span><span class="p">)</span> <span class="p">{</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="c1">// code under test runs against `runtime`</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The <code>$current</code> prefix accesses the <code>TaskLocal</code> projected value, whose <code>withValue(_:operation:)</code> method establishes a scoped override. Tests that exercise the Bridge conformer instead use <code>ContainerClientEnvironment.$current.withValue(provider) { ... }</code> (e.g. <code>ComposeDownConfigsSecretsCleanupTests.swift:58</code>).</p>
+<h3 id="sendable-contract">Sendable contract<a class="headerlink" href="#sendable-contract" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>BridgeContainerClientRuntime</code> is a value type (<code>struct</code>) — no captured mutable state. It reads from <code>ContainerClientEnvironment.current</code> (an actor) at each call site.</li>
+<li><code>AppleContainerizationRuntime</code> is <code>public actor</code> — actor isolation covers <code>stdoutBuffers</code>, <code>stderrBuffers</code>, and <code>eventContinuations</code>. <code>ContainerRegistry</code> is itself an actor (<code>ContainerRegistry.swift</code>).</li>
+<li><code>MockRuntime</code> and <code>RecordingRuntime</code> are <code>final actor</code> — all mutations are actor-isolated.</li>
+</ul>
+<hr />
+<h2 id="conformer-specific-quirks">Conformer-Specific Quirks<a class="headerlink" href="#conformer-specific-quirks" title="Permanent link">&para;</a></h2>
+<h3 id="bridgecontainerclientruntime-quirks">BridgeContainerClientRuntime quirks<a class="headerlink" href="#bridgecontainerclientruntime-quirks" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong><code>get</code> maps all errors to <code>notFound</code></strong> (<code>BridgeContainerClientRuntime.swift:89</code>): any XPC failure during <code>get(id:)</code> is caught and rethrown as <code>RuntimeError.notFound(id: id)</code>. This means a daemon crash during a <code>get</code> looks like a not-found to the route handler and returns 404 instead of 500. Documented as Leak #12.</p>
+</li>
+<li>
+<p><strong><code>stop</code> does not remap errors</strong> (<code>BridgeContainerClientRuntime.swift:133-140</code>): unlike <code>start</code> and <code>kill</code>, the <code>stop</code> method calls <code>provider.stop</code> directly without <code>mapUpstreamError</code>. XPC failures propagate as raw errors that route handlers do not catch, producing 500 responses with backend error detail.</p>
+</li>
+<li>
+<p><strong>Log follow not supported</strong> (<code>BridgeContainerClientRuntime.swift:345-366</code>): the <code>streamLogs</code> helper drains file handles and finishes the stream immediately. The <code>RuntimeLogOptions.follow</code> flag is accepted but ignored.</p>
+</li>
+<li>
+<p><strong>Events: exit code always 0</strong> (<code>BridgeContainerClientRuntime.swift:295</code>): <code>ContainerEvent.action</code> <code>.stop</code>/<code>.die</code> map to <code>.stopped(exitCode: 0)</code> because the <code>ContainerEvent</code> type does not carry an exit code. Real exit codes are only available via <code>ContainerSnapshot.lastExitCode</code>.</p>
+</li>
+<li>
+<p><strong>Stats: network aggregation</strong> (<code>BridgeContainerClientRuntime.swift:235-239</code>): <code>ContainerStats</code> provides aggregate rx/tx bytes. The bridge synthesizes a single <code>RuntimeStatistics.Network(interface: "eth0", ...)</code> entry regardless of the container's actual network interfaces.</p>
+</li>
+</ol>
+<h3 id="applecontainerizationruntime-quirks">AppleContainerizationRuntime quirks<a class="headerlink" href="#applecontainerizationruntime-quirks" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Phase 1 skeleton</strong> (<code>AppleContainerizationRuntime.swift:29-47</code>): lifecycle methods (<code>create</code>, <code>start</code>, <code>stop</code>, <code>kill</code>, <code>wait</code>, <code>remove</code>) drive registry state only. No <code>LinuxContainer</code> or <code>ContainerManager</code> methods are called. The <code>Containerization</code> import exists for compile-time dependency verification via <code>_phase2DependencyAnchor()</code> at <code>AppleContainerizationRuntime.swift:341</code>.</p>
+</li>
+<li>
+<p><strong><code>wait</code> throws timeout immediately</strong> (<code>AppleContainerizationRuntime.swift:171-179</code>): if a container has no <code>exitStatus</code> recorded, <code>wait</code> throws <code>RuntimeError.timeout</code> immediately regardless of <code>timeoutSeconds</code>. There is no actual blocking poll in Phase 1.</p>
+</li>
+<li>
+<p><strong><code>stop</code> is idempotent</strong> (<code>AppleContainerizationRuntime.swift:148-162</code>): if the container is not <code>.running</code>, <code>stop</code> returns without error. This diverges from <code>MockRuntime</code> which throws <code>invalidState</code> for non-running containers.</p>
+</li>
+<li>
+<p><strong>Empty statistics</strong> (<code>AppleContainerizationRuntime.swift:224-241</code>): <code>statistics(for:)</code> returns <code>RuntimeStatistics(id: id, sampledAt: Date())</code> with all CPU/memory fields <code>nil</code>. Clients see <code>null</code> in NDJSON stats frames.</p>
+</li>
+<li>
+<p><strong><code>listNetworks</code> returns <code>[]</code></strong> (<code>AppleContainerizationRuntime.swift:97-99</code>): unlike Bridge which throws <code>notSupported</code>, Apple returns an empty array. This is intentional per the Phase 2 comment — the route handler gets a valid empty list while network backing is deferred.</p>
+</li>
+</ol>
+<h3 id="mockruntime-quirks">MockRuntime quirks<a class="headerlink" href="#mockruntime-quirks" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong><code>stop</code> is strict</strong> (<code>MockRuntime.swift:142-158</code>): throws <code>invalidState</code> if the container is not <code>.running</code>. Apple's conformer is idempotent for non-running containers; Mock is not.</p>
+</li>
+<li>
+<p><strong><code>start</code> accepts only <code>.created</code></strong> (<code>MockRuntime.swift:123-138</code>): throws <code>invalidState</code> for any state other than <code>.created</code>. The Apple conformer also accepts <code>.stopped</code> and <code>.exited</code>.</p>
+</li>
+<li>
+<p><strong>Full secret support</strong> (<code>MockRuntime.swift:386-409</code>): the only conformer where secret CRUD works end-to-end. Secret value is stored in the actor state but never returned through the protocol — <code>RuntimeSecret</code> never carries values.</p>
+</li>
+<li>
+<p><strong><code>resetToCreated</code></strong> (<code>MockRuntime.swift:425-437</code>): test-only affordance to reset a stopped/exited container back to <code>.created</code> state, enabling re-<code>start</code> sequences in tests.</p>
+</li>
+</ol>
+<hr />
+<h2 id="known-protocol-gaps">Known Protocol Gaps<a class="headerlink" href="#known-protocol-gaps" title="Permanent link">&para;</a></h2>
+<p>The canonical gap catalogue is <code>docs/plans/runtime-abstraction-leaks.md</code>. Key items:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Leak #</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Protocol impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">#4</td>
+<td style="text-align: left;">Bridge: <code>wait</code>, <code>listNetworks</code>, and secret CRUD throw <code>.notSupported</code>; <code>logs</code> follow ignored; <code>events</code> OOM not emitted</td>
+<td style="text-align: left;">REST routes return 501 for the unsupported Bridge paths</td>
+</tr>
+<tr>
+<td style="text-align: center;">#6</td>
+<td style="text-align: left;">Bridge: all network stats aggregated into synthetic <code>"eth0"</code></td>
+<td style="text-align: left;"><code>statistics.networks</code> always has at most 1 entry on Bridge</td>
+</tr>
+<tr>
+<td style="text-align: center;">#7</td>
+<td style="text-align: left;">Apple: <code>statistics</code> returns empty snapshot</td>
+<td style="text-align: left;">All <code>cpuUsageUsec</code>, <code>memoryUsageBytes</code> etc. are <code>nil</code> on Apple</td>
+</tr>
+<tr>
+<td style="text-align: center;">#9</td>
+<td style="text-align: left;">Both production conformers: <code>createNetwork</code>/<code>removeNetwork</code> throw <code>.notSupported</code></td>
+<td style="text-align: left;">POST/DELETE <code>/networks</code> always returns 501</td>
+</tr>
+<tr>
+<td style="text-align: center;">#11</td>
+<td style="text-align: left;">Both production conformers: all secret CRUD throws <code>.notSupported</code></td>
+<td style="text-align: left;">POST/DELETE <code>/secrets</code> always returns 501</td>
+</tr>
+<tr>
+<td style="text-align: center;">#12</td>
+<td style="text-align: left;">Bridge <code>get</code>: all XPC errors mapped to <code>notFound</code></td>
+<td style="text-align: left;">Bridge may return 404 when daemon is unresponsive (should be 500)</td>
+</tr>
+<tr>
+<td style="text-align: center;">#13</td>
+<td style="text-align: left;">Resolved: Bridge <code>create</code> delegates through <code>ContainerClientProvider.create</code></td>
+<td style="text-align: left;">POST <code>/containers/create</code> reaches the XPC create path on Bridge</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../error-codes/">Error Codes Reference</a> — full <code>RuntimeError</code>, <code>ComposeError</code>, and other error type documentation</li>
+<li><a href="../../guides/migration-from-docker-compose/">Migration from Docker Compose</a> — user-facing impact of protocol gaps</li>
+<li><a href="../../feature-parity/">Feature Parity Inventory</a> — compose-spec field coverage</li>
+<li><a href="../../plans/runtime-abstraction-leaks/">Runtime Abstraction Leaks</a> — canonical gap catalogue</li>
+<li><a href="../../plans/native-api-server/">Native API Server Plan</a> — phased migration roadmap</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

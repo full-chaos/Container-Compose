@@ -1,0 +1,2875 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/plans/no-upstream-refactor-and-linear/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Plan — No-Upstream Refactor + Linear Implementation Sweep - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#plan-no-upstream-refactor-linear-implementation-sweep" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Plan — No-Upstream Refactor + Linear Implementation Sweep
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../feature-parity/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../feature-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Goal
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-scope-decisions-with-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Scope decisions (with evidence)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Scope decisions (with evidence)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#in-scope-will-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      IN scope (will implement)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-scope-upstream-blocked-documented-for-future-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      OUT of scope (upstream-blocked — documented for future reference)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Phases
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-branch-baseline-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 — Branch + baseline (5 min)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-r1-r3-quick-wins-1-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — R1 + R3 quick wins (~1 hr)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1 — R1 + R3 quick wins (~1 hr)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-r1-remove-composerun-pullimage-duplicate" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.1 — R1: Remove ComposeRun pullImage duplicate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-r3-agentsmd-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.2 — R3: AGENTS.md refresh
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-r2-consolidate-env-merging-2-3-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — R2: Consolidate env merging (~2-3 hr)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2 — R2: Consolidate env merging (~2-3 hr)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-identify-the-duplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.1 — Identify the duplication
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-lift-to-a-shared-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.2 — Lift to a shared helper
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.3 — Verify
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-chaos-1333-configs-secrets-full-source-resolution-3-5-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — CHAOS-1333: Configs + secrets full source resolution (~3-5 hr)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 — CHAOS-1333: Configs + secrets full source resolution (~3-5 hr)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-design-temp-file-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 — Design temp-file strategy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-extend-codable-structs-already-decoded-verification-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.2 — Extend Codable structs (already decoded — verification step)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-expand-composeconfigsandsecretsswift" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.3 — Expand Compose+ConfigsAndSecrets.swift
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-cleanup-hook-in-compose-down-full-project-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.4 — Cleanup hook in compose down (full-project only)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.5 — Tests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-coverage-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.6 — Coverage update
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-chaos-1338-coverage-honesty-for-decode-only-fields-1-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 — CHAOS-1338: Coverage honesty for decode-only fields (~1 hr)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-final-verification-linear-hygiene-30-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 5 — Final verification + Linear hygiene (~30 min)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-risks-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Risks &amp; open questions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-verification-matrix-pre-merge" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Verification matrix (pre-merge)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rollback-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Rollback plan
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/plans/no-upstream-refactor-and-linear.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="plan-no-upstream-refactor-linear-implementation-sweep">Plan — No-Upstream Refactor + Linear Implementation Sweep<a class="headerlink" href="#plan-no-upstream-refactor-linear-implementation-sweep" title="Permanent link">&para;</a></h1>
+<p><strong>Author:</strong> Sisyphus
+<strong>Date:</strong> 2026-04-29
+<strong>Repo:</strong> <code>/Users/chris/projects/full-chaos/container/container-compose</code>
+<strong>Trigger:</strong> User asked for a plan to refactor + implement remaining Linear issues that don't require apple/container upstream changes.</p>
+<hr />
+<h2 id="1-goal">1. Goal<a class="headerlink" href="#1-goal" title="Permanent link">&para;</a></h2>
+<p>Drain the <strong>no-upstream</strong> backlog for Container-Compose by:
+1. Finishing the refactors AGENTS.md still hints at (<code>pullImage</code> dedupe, env-merge consolidation, doc refresh).
+2. Implementing the only Linear issues that explicitly do not need fork patches (CHAOS-1333, CHAOS-1338 coverage portion).
+3. Producing crisp evidence that everything else is genuinely upstream-blocked, so future agents stop re-investigating.</p>
+<p>After this plan ships, the no-upstream Linear queue for Container-Compose should be <strong>empty</strong>.</p>
+<hr />
+<h2 id="2-scope-decisions-with-evidence">2. Scope decisions (with evidence)<a class="headerlink" href="#2-scope-decisions-with-evidence" title="Permanent link">&para;</a></h2>
+<h3 id="in-scope-will-implement">IN scope (will implement)<a class="headerlink" href="#in-scope-will-implement" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Evidence it's no-upstream</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>R1</strong></td>
+<td>Replace <code>ComposeRun.swift:352</code> private <code>pullImage</code> with shared <code>Compose+Pull.swift:19</code> helper</td>
+<td>Pure refactor; helper already exists</td>
+</tr>
+<tr>
+<td><strong>R2</strong></td>
+<td>Consolidate <code>.env</code> + env_file + environment merging</td>
+<td>Pure refactor; logic duplicated in <code>ComposeUp.swift:582-601</code>, <code>ComposeCreate.swift:361-375</code>, <code>ComposeRun.swift:265-280</code></td>
+</tr>
+<tr>
+<td><strong>R3</strong></td>
+<td>AGENTS.md refresh (Tier 1 fully shipped, Tier 2 fully shipped, document new no-upstream queue state)</td>
+<td>Docs only</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1333</strong></td>
+<td>Configs + secrets: full source resolution. <strong>Configs:</strong> <code>file:</code> ✅, <code>content:</code>, <code>environment:</code>. <strong>Secrets:</strong> <code>file:</code> ✅, <code>environment:</code> (no <code>content:</code> per compose-spec). Bind-mount via temp files.</td>
+<td>Issue description: <em>"Container-Compose only, no fork patches."</em> <code>Compose+ConfigsAndSecrets.swift</code> already mounts <code>file:</code> sources via <code>-v hostPath:target</code>; we expand source resolution to cover the remaining cases</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1338 (partial)</strong></td>
+<td>Flip 14 decode-only-no-equivalent coverage rows from <code>partial</code> → <code>miss</code></td>
+<td>Pure docs/coverage update; the umbrella ticket explicitly lists this as one of two acceptable outcomes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="out-of-scope-upstream-blocked-documented-for-future-reference">OUT of scope (upstream-blocked — documented for future reference)<a class="headerlink" href="#out-of-scope-upstream-blocked-documented-for-future-reference" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Why upstream-blocked</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHAOS-1332 (models/provider runtime)</td>
+<td>apple/container has no LLM model runtime</td>
+<td>Issue description: <em>"Likely no [equivalent] — may need to integrate with apple/container as a fork patch"</em></td>
+</tr>
+<tr>
+<td>CHAOS-1334 (network driver_opts/attachable/enable_ipv6/internal/ipam)</td>
+<td><code>container network create</code> has no equivalent flags</td>
+<td>Issue description: <em>"Most don't have one today. Where an equivalent doesn't exist: fork-patch container to add"</em></td>
+</tr>
+<tr>
+<td>CHAOS-1335 (volume driver_opts + improved named-volume handling)</td>
+<td><code>container volume</code> API needs extension</td>
+<td>Issue description: <em>"Fork-patch container if volume options API needs extension"</em></td>
+</tr>
+<tr>
+<td>CHAOS-1336 (deploy.resources.reservations)</td>
+<td><code>container run</code> only has <code>--cpus</code>/<code>--memory</code> (hard VM allocation, not reservation semantics)</td>
+<td><code>.build/checkouts/container/docs/command-reference.md:40-41</code> — only limits flags exist; reservations are semantically distinct</td>
+</tr>
+<tr>
+<td>CHAOS-1337 (build.entitlements → <code>--allow</code>)</td>
+<td><code>container build</code> has no <code>--allow</code>/entitlement flag</td>
+<td><code>grep allow\|entitlement\|insecure</code> in <code>BuildCommand.swift</code> → no matches</td>
+</tr>
+<tr>
+<td>CHAOS-1340 (Epic — Docker API compatibility)</td>
+<td>Fork-side runtime work — new <code>container system api</code> daemon translating Docker REST → <code>ContainerClient</code>. Linear is canonical.</td>
+<td><code>docs/upstream-fork-status.md</code> §2.E</td>
+</tr>
+<tr>
+<td>CHAOS-1341 (MVP — read-only HTTP bridge)</td>
+<td>Sub-issue of CHAOS-1340; events/list/inspect/networks. Unblocks Traefik in <code>dev-health</code> + <code>script-manifest</code>.</td>
+<td><code>docs/upstream-fork-status.md</code> §2.E</td>
+</tr>
+<tr>
+<td>CHAOS-1342 (Streaming reads — stats + logs)</td>
+<td>Sub-issue of CHAOS-1340 (depends on 1341); <code>/containers/{id}/stats</code> + <code>/containers/{id}/logs?follow=true</code>. Unblocks SigNoz <code>otel-collector</code> + Grafana Alloy.</td>
+<td><code>docs/upstream-fork-status.md</code> §2.E</td>
+</tr>
+<tr>
+<td>Container log file layout gap</td>
+<td>Sibling concern to CHAOS-1340: <code>signoz</code> reads <code>/var/lib/docker/containers</code>, <code>alloy</code> reads <code>/var/log</code> — Apple <code>container</code> has no equivalent path layout. No Linear ticket yet (see §2.F).</td>
+<td><code>docs/upstream-fork-status.md</code> §2.F</td>
+</tr>
+<tr>
+<td><code>compose watch</code> <code>sync+restart</code> / <code>sync+exec</code> partial</td>
+<td>Both need <code>container cp</code> equivalent</td>
+<td><code>ComposeWatch.swift:208-211, 220-223</code> literally says <em>"requires 'container cp' equivalent (not yet available)"</em></td>
+</tr>
+<tr>
+<td>CHAOS-1338 (full umbrella)</td>
+<td>Decision-making ticket; the work portion is the coverage flip handled above</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-phases">3. Phases<a class="headerlink" href="#3-phases" title="Permanent link">&para;</a></h2>
+<p>Each phase ends with a passing <code>swift test --filter Container-Compose-StaticTests</code> and clean diagnostics. Each is a separate PR with its own CHAOS-style commit subject.</p>
+<h3 id="phase-0-branch-baseline-5-min">Phase 0 — Branch + baseline (5 min)<a class="headerlink" href="#phase-0-branch-baseline-5-min" title="Permanent link">&para;</a></h3>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Create branch <code>feat/no-upstream-sweep</code> off <code>main</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>make build</code> to confirm clean baseline.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>swift test --filter Container-Compose-StaticTests</code> to confirm green baseline.</li>
+</ul>
+<p><strong>Exit gate:</strong> Both succeed. If either fails, stop and triage before proceeding.</p>
+<h3 id="phase-1-r1-r3-quick-wins-1-hr">Phase 1 — R1 + R3 quick wins (~1 hr)<a class="headerlink" href="#phase-1-r1-r3-quick-wins-1-hr" title="Permanent link">&para;</a></h3>
+<h4 id="11-r1-remove-composerun-pullimage-duplicate">1.1 — R1: Remove <code>ComposeRun</code> <code>pullImage</code> duplicate<a class="headerlink" href="#11-r1-remove-composerun-pullimage-duplicate" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Read <code>Compose+Pull.swift:19</code> to confirm signature parity with <code>ComposeRun.swift:352</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> If signatures differ, adapt the shared helper (it already serves <code>ComposePull</code> + <code>ComposeCreate</code>; keep changes additive).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Delete <code>ComposeRun.swift:350-398</code> (the <code>// MARK: - Pull image helper</code> block).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update the callsite earlier in <code>ComposeRun.swift</code> (search for <code>try await pullImage(</code>) to call the shared helper.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>lsp_diagnostics</code> clean on <code>ComposeRun.swift</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>swift test --filter ComposeRun</code> (and any pull-related tests) green.</li>
+</ul>
+<p><strong>Commit:</strong> <code>refactor: drop ComposeRun's private pullImage in favor of shared helper (CHAOS-1315 follow-up)</code></p>
+<h4 id="12-r3-agentsmd-refresh">1.2 — R3: AGENTS.md refresh<a class="headerlink" href="#12-r3-agentsmd-refresh" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In §6 "High-leverage open work":</li>
+<li>Remove the entire Tier 1 numbered list (items 1-6 all shipped). Replace with a one-liner pointing at the no-upstream queue.</li>
+<li>Remove the Tier 2 "Shipped" list duplication; the sentence above already says "All six items below shipped".</li>
+<li>Add a new "Currently no-upstream-actionable" subsection listing CHAOS-1333 + CHAOS-1338-coverage and noting all others need fork patches.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In §1 "Project Summary": no change.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In §4 "Coverage": after Phase 4 lands, totals will shift; defer any number changes to Phase 4's commit.</li>
+</ul>
+<p><strong>Commit:</strong> <code>docs: refresh AGENTS.md — Tier 1/2 fully shipped, document no-upstream queue</code></p>
+<p><strong>Exit gate for Phase 1:</strong></p>
+<ol>
+<li><strong>R1 verification</strong> — <code>swift build -c release</code> exits 0; <code>lsp_diagnostics</code> on <code>ComposeRun.swift</code> returns zero error-severity entries; <code>grep -c "private func pullImage" Sources/Container-Compose/Commands/ComposeRun.swift</code> prints <code>0</code> (the duplicate is gone); <code>grep -c "func pullImage" Sources/Container-Compose/Commands/Compose+Pull.swift</code> still prints <code>1</code> (the shared helper survives).</li>
+<li><strong>R3 verification (concrete content checks on AGENTS.md)</strong> — run all four greps; each must produce the expected exit code:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># The Tier 1 numbered list header was removed</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>!<span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;^#### Tier 1 — Actionable now&quot;</span><span class="w"> </span>AGENTS.md
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># The new &quot;Currently no-upstream-actionable&quot; subsection was added</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;Currently no-upstream-actionable&quot;</span><span class="w"> </span>AGENTS.md
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># CHAOS-1333 is now mentioned in §6</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;CHAOS-1333&quot;</span><span class="w"> </span>AGENTS.md
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># The Tier 2 &quot;Shipped:&quot; duplicate list was removed (the bullet headers gone)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>!<span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s2">&quot;^Shipped:</span>$<span class="s2">&quot;</span><span class="w"> </span>AGENTS.md
+</span></code></pre></div>
+   All four must exit 0 with the negation semantics shown (<code>!</code> lines). Any failure means the doc edit is incomplete.</li>
+<li><strong>CI</strong> — both commits pushed; the GitHub Actions workflow is green for the branch.</li>
+</ol>
+<h3 id="phase-2-r2-consolidate-env-merging-2-3-hr">Phase 2 — R2: Consolidate env merging (~2-3 hr)<a class="headerlink" href="#phase-2-r2-consolidate-env-merging-2-3-hr" title="Permanent link">&para;</a></h3>
+<p><strong>Scope clarification:</strong> This is a <strong>pure refactor</strong> with no schema or behavior change. The current model and merge precedence stay exactly as they are today; we are only lifting duplicated code into one shared function. If a model change (e.g. supporting null-value environment keys per compose-spec) becomes desirable, it goes into a separate follow-up issue, not this phase.</p>
+<p>Exact current types (verified at planning time):
+- <code>Service.environment</code> is <code>[String: String]?</code> — <code>Sources/Container-Compose/Codable Structs/Service.swift:48</code>.
+- <code>service.env_file</code> decodes into <code>[EnvFileEntry]?</code> — <code>Sources/Container-Compose/Codable Structs/EnvFileEntry.swift:22-46</code>.
+- The merge in <code>ComposeUp.swift:582-602</code> starts from <code>environmentVariables</code> (a <code>[String: String]</code> already populated upstream from the <code>.env</code> file) — process env is <strong>not</strong> part of the merge today; do not introduce it.</p>
+<p><strong>Exact current precedence (from <code>ComposeUp.swift:584-602</code>, <code>ComposeCreate.swift:361-377</code>, <code>ComposeRun.swift:265-282</code> — all three are identical):</strong></p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">var</span> <span class="nv">combinedEnv</span><span class="p">:</span> <span class="p">[</span><span class="nb">String</span><span class="p">:</span> <span class="nb">String</span><span class="p">]</span> <span class="p">=</span> <span class="n">environmentVariables</span>  <span class="c1">// baseline</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">if</span> <span class="kd">let</span> <span class="nv">envFiles</span> <span class="p">=</span> <span class="n">service</span><span class="p">.</span><span class="n">env_file</span> <span class="p">{</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="k">for</span> <span class="n">entry</span> <span class="k">in</span> <span class="n">envFiles</span> <span class="p">{</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>        <span class="c1">// … skip non-existent + non-required …</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="n">combinedEnv</span><span class="p">.</span><span class="n">merge</span><span class="p">(</span><span class="n">loadEnvFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">resolved</span><span class="p">))</span> <span class="p">{</span> <span class="n">current</span><span class="p">,</span> <span class="kc">_</span> <span class="k">in</span> <span class="n">current</span> <span class="p">}</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="c1">//                                                ^^^^^^^^^^^^^^^^^^^^^^ baseline wins on conflict</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="p">}</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">}</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="k">if</span> <span class="kd">let</span> <span class="nv">serviceEnv</span> <span class="p">=</span> <span class="n">service</span><span class="p">.</span><span class="n">environment</span> <span class="p">{</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">combinedEnv</span><span class="p">.</span><span class="n">merge</span><span class="p">(</span><span class="n">serviceEnv</span><span class="p">)</span> <span class="p">{</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="k">in</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="k">guard</span> <span class="o">!</span><span class="n">new</span><span class="p">.</span><span class="bp">contains</span><span class="p">(</span><span class="s">&quot;${&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="p">{</span> <span class="k">return</span> <span class="n">old</span> <span class="p">}</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>        <span class="k">return</span> <span class="n">new</span>  <span class="c1">// service.environment overrides ONLY when new value has no `${`</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="p">}</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">}</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1">// then `${VAR}` substitution applied to .mapValues</span>
+</span></code></pre></div>
+<p>Resulting rules the refactor MUST preserve <strong>exactly</strong>:
+- <strong>Baseline beats env_file on conflict</strong> (<code>{ current, _ in current }</code>). The baseline is whatever the caller passes (today: vars loaded from the project's <code>.env</code> file).
+- <strong>Earlier env_file entries beat later env_file entries</strong> (same closure — first write wins).
+- <strong><code>service.environment</code> overrides previous keys</strong> when the new value is a literal — but it <strong>keeps the previous value</strong> when the new value contains <code>${</code> (the merge defers <code>${VAR}</code> resolution to the post-merge substitution step).
+- <code>${VAR}</code> substitution runs <strong>after</strong> the merge in the caller (NOT inside the helper).</p>
+<h4 id="21-identify-the-duplication">2.1 — Identify the duplication<a class="headerlink" href="#21-identify-the-duplication" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Re-read the three callsites verbatim and confirm they implement the rules above:</li>
+<li><code>ComposeUp.swift:584-608</code></li>
+<li><code>ComposeCreate.swift:361-377</code></li>
+<li><code>ComposeRun.swift:265-282</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Note per-callsite <strong>post-merge</strong> transforms (these stay outside the helper): ComposeUp also runs <code>${VAR}</code> substitution + service-name→IP rewrite; ComposeRun layers <code>--env</code> CLI overrides last.</li>
+</ul>
+<h4 id="22-lift-to-a-shared-helper">2.2 — Lift to a shared helper<a class="headerlink" href="#22-lift-to-a-shared-helper" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add to <code>Helper Functions.swift</code> (or a new <code>Compose+Environment.swift</code>):
+  <div class="language-swift highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">/// Merge service env preserving current Container-Compose precedence:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1">///   1. Start from `baseline` (caller-provided, typically loaded from the</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1">///      project&#39;s `.env` file).</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">///   2. For each entry in `serviceEnvFile` (in declared order), load the file</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">///      and merge with **first-writer-wins** semantics — baseline values and</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">///      earlier env_file entries are NEVER overridden. `entry.required == false`</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1">///      with a missing file is silently skipped.</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1">///   3. Merge `serviceEnvironment` on top: a key is overridden ONLY when the</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1">///      service.environment value does NOT contain `${`. Values with `${` are</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">///      treated as references and the existing key is kept (the caller is</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">///      expected to run `${VAR}` substitution AFTER calling this helper).</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">/// The helper does NOT perform substitution, runtime overrides, or service-name</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1">/// → IP rewriting. Those stay in the caller.</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="kd">static</span> <span class="kd">func</span> <span class="nf">mergeServiceEnvironment</span><span class="p">(</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="n">baseline</span><span class="p">:</span> <span class="p">[</span><span class="nb">String</span><span class="p">:</span> <span class="nb">String</span><span class="p">],</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="n">serviceEnvFile</span><span class="p">:</span> <span class="p">[</span><span class="n">EnvFileEntry</span><span class="p">]?,</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    <span class="n">serviceEnvironment</span><span class="p">:</span> <span class="p">[</span><span class="nb">String</span><span class="p">:</span> <span class="nb">String</span><span class="p">]?,</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>    <span class="n">projectDirectory</span><span class="p">:</span> <span class="nb">String</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="p">)</span> <span class="p">-&gt;</span> <span class="p">[</span><span class="nb">String</span><span class="p">:</span> <span class="nb">String</span><span class="p">]</span>
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace the 3 callsites. Per-callsite post-merge transforms (substitution, IP rewrite, <code>--env</code> overrides) stay inline in their respective commands — only the duplicated merge body moves into the helper.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add unit tests in <code>Tests/Container-Compose-StaticTests/EnvironmentMergeTests.swift</code> (new file) covering exactly these 6 cases (matching current behavior):</li>
+<li>Empty inputs return the baseline unchanged.</li>
+<li>env_file value does <strong>not</strong> override a baseline key with the same name (baseline wins).</li>
+<li>Earlier <code>env_file</code> entries beat later <code>env_file</code> entries on conflict.</li>
+<li><code>service.environment</code> with a literal value overrides a key from baseline / env_file.</li>
+<li><code>service.environment</code> with a value containing <code>${...}</code> does <strong>not</strong> override the existing key (substitution is the caller's job).</li>
+<li>Missing env_file with <code>required: false</code> is silently skipped; merge result is unchanged. (<code>required: true</code> enforcement is out of scope of this refactor — current behavior is also silent skip.)</li>
+</ul>
+<h4 id="23-verify">2.3 — Verify<a class="headerlink" href="#23-verify" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>lsp_diagnostics</code> clean on all four touched files.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>swift test --filter EnvironmentMergeTests</code> green.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>swift test --filter Container-Compose-StaticTests</code> green (regression check).</li>
+</ul>
+<p><strong>Commit:</strong> <code>refactor: consolidate service environment merging into shared helper</code></p>
+<p><strong>Exit gate for Phase 2:</strong> Tests green, no behavior change in existing snapshot tests.</p>
+<h3 id="phase-3-chaos-1333-configs-secrets-full-source-resolution-3-5-hr">Phase 3 — CHAOS-1333: Configs + secrets full source resolution (~3-5 hr)<a class="headerlink" href="#phase-3-chaos-1333-configs-secrets-full-source-resolution-3-5-hr" title="Permanent link">&para;</a></h3>
+<h4 id="31-design-temp-file-strategy">3.1 — Design temp-file strategy<a class="headerlink" href="#31-design-temp-file-strategy" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Decide temp dir location: <code>~/.containers/Compose/&lt;project&gt;/configs-secrets/</code> (parallels existing <code>~/.containers/Volumes/&lt;project&gt;/</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Decide cleanup: full-project <code>compose down</code> (no service args) removes the project's temp dir — see §3.4 for the partial-down safety rule.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Decide naming: <strong><code>&lt;config|secret&gt;-&lt;name&gt;-&lt;sha256short&gt;</code></strong> where <code>&lt;sha256short&gt;</code> is the first 12 hex chars of the SHA-256 of the resolved content bytes. Single dash separator throughout. Single-source-of-truth examples: <code>config-inline_cfg-7a9b1c8d4e2f</code>, <code>secret-env_secret-3f0a55e7d8b9</code>. Identical content collides on the same filename so two services referencing the same <code>content:</code>/<code>environment:</code> source reuse one file. <strong>The smoke-test glob in §3 Phase 3 exit gate item 3 (<code>config-inline_cfg-*</code>) and the §3.5 reuse test depend on this exact format — keep them in sync.</strong></li>
+</ul>
+<h4 id="32-extend-codable-structs-already-decoded-verification-step">3.2 — Extend Codable structs (already decoded — verification step)<a class="headerlink" href="#32-extend-codable-structs-already-decoded-verification-step" title="Permanent link">&para;</a></h4>
+<p>Verified at planning time, no decoding work needed:
+- <code>Sources/Container-Compose/Codable Structs/Config.swift:75-76</code> decodes both <code>content</code> and <code>environment</code>.
+- <code>Sources/Container-Compose/Codable Structs/Secret.swift:71-72</code> decodes <code>environment</code>. (Compose-spec does not define <code>secret.content</code>; do not add one.)</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Re-confirm via <code>grep</code> immediately before starting Phase 3 (catches any model regression that landed between plan-write and execution):
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>grep<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;content = try&#39;</span><span class="w"> </span><span class="s2">&quot;Sources/Container-Compose/Codable Structs/Config.swift&quot;</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>grep<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;environment = try&#39;</span><span class="w"> </span><span class="s2">&quot;Sources/Container-Compose/Codable Structs/Config.swift&quot;</span><span class="w"> </span><span class="s2">&quot;Sources/Container-Compose/Codable Structs/Secret.swift&quot;</span>
+</span></code></pre></div>
+  Each command must print at least one matching line. If any are missing, expand 3.2 to actually add the field; otherwise skip the rest of 3.2.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> If any parsing-test additions become necessary (none expected), they go into the existing file <code>Tests/Container-Compose-StaticTests/SecretConfigNicheTests.swift</code> (which already covers niche secret/config decoding fields). Do not create new <code>*ParsingTests.swift</code> files for this — there is no such file in the suite today.</li>
+</ul>
+<h4 id="33-expand-composeconfigsandsecretsswift">3.3 — Expand <code>Compose+ConfigsAndSecrets.swift</code><a class="headerlink" href="#33-expand-composeconfigsandsecretsswift" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In the <code>guard let sourceFile = topLevel.file else { ... }</code> block (lines 52, 86), replace warn-skip with a switch:</li>
+<li><code>topLevel.file != nil</code> → existing path (resolve tilde, bind-mount).</li>
+<li><code>topLevel.content != nil</code> → write content to temp file, bind-mount that path.</li>
+<li><code>topLevel.environment != nil</code> → read host env var, write value to temp file, bind-mount.</li>
+<li>All-nil → keep warn-skip but route through a single <code>print("Warning: …")</code> at the bottom.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Same logic mirrored for secrets (lines 71-103).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Extract the temp-file write into a small helper function so configs and secrets share it.</li>
+</ul>
+<h4 id="34-cleanup-hook-in-compose-down-full-project-only">3.4 — Cleanup hook in <code>compose down</code> (full-project only)<a class="headerlink" href="#34-cleanup-hook-in-compose-down-full-project-only" title="Permanent link">&para;</a></h4>
+<p><code>ComposeDown</code> accepts a service-list argument (<code>ComposeDown.swift:38-39</code>) and filters down to just those services + their reverse-dep tree (<code>ComposeDown.swift:129-134</code>). Because temp-file names are content-addressed (sha256 of inline content / env-var value, see §3.1), two services CAN share the same temp file. Therefore: deleting the project's <code>configs-secrets/</code> directory on every <code>down</code> call is unsafe — a partial down could remove files still mounted by sibling services that remain up.</p>
+<p><strong>Cleanup policy:</strong></p>
+<ul>
+<li>Only clean when <code>self.services.isEmpty</code> (full-project <code>down</code>). The plain <code>container-compose down</code> invocation hits this case; <code>container-compose down web</code> does not.</li>
+<li>Implementation in <code>ComposeDown.run()</code>, after <code>stopOldStuff(services, remove: false)</code>:
+  <div class="language-swift highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">if</span> <span class="kc">self</span><span class="p">.</span><span class="n">services</span><span class="p">.</span><span class="bp">isEmpty</span><span class="p">,</span> <span class="kd">let</span> <span class="nv">projectName</span> <span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="kd">let</span> <span class="nv">secretsDir</span> <span class="p">=</span> <span class="n">URL</span><span class="p">(</span><span class="n">fileURLWithPath</span><span class="p">:</span> <span class="bp">NSString</span><span class="p">(</span><span class="n">string</span><span class="p">:</span> <span class="s">&quot;~/.containers/Compose/</span><span class="si">\(</span><span class="n">projectName</span><span class="si">)</span><span class="s">/configs-secrets&quot;</span><span class="p">).</span><span class="n">expandingTildeInPath</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="k">try</span><span class="p">?</span> <span class="n">FileManager</span><span class="p">.</span><span class="k">default</span><span class="p">.</span><span class="n">removeItem</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="n">secretsDir</span><span class="p">)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="p">}</span>
+</span></code></pre></div></li>
+<li>If the directory doesn't exist, <code>removeItem</code> throws → swallowed by <code>try?</code>. No-op silent.</li>
+<li>Add inline doc-comment explaining the partial-down safety rule so future readers don't "improve" this into a per-service cleanup that breaks shared temp files.</li>
+</ul>
+<p><strong>Test for the safety property</strong> (add to Phase 3.5 list):
+- New unit test: <code>ComposeDownConfigsSecretsCleanupTests</code> — given a populated <code>configs-secrets/</code> dir, <code>compose down</code> (no args) removes it; <code>compose down web</code> leaves it intact.</p>
+<h4 id="35-tests">3.5 — Tests<a class="headerlink" href="#35-tests" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In <code>Tests/Container-Compose-StaticTests/ConfigsAndSecretsArgsTests.swift</code> (new or existing):</li>
+<li>Test <code>file:</code> source still emits expected <code>-v</code> arg (regression).</li>
+<li>Test <code>content:</code> source writes temp file + emits <code>-v &lt;tempPath&gt;:&lt;target&gt;</code>.</li>
+<li>Test <code>environment:</code> source resolves env var + writes temp file + emits <code>-v</code>.</li>
+<li>Test missing env var produces a clear warning, not a crash.</li>
+<li>Test multiple services referencing the same content reuse the same temp file.</li>
+</ul>
+<h4 id="36-coverage-update">3.6 — Coverage update<a class="headerlink" href="#36-coverage-update" title="Permanent link">&para;</a></h4>
+<p>Per the actual rows in <code>coverage.html</code> (group <code>id: "config"</code> lines 1257-1303, group <code>id: "secret"</code> lines 1203-1255), flip the following:</p>
+<p><strong>Partial → Ok</strong> (5 rows, gain "Implemented"):
+- <code>config.file</code> (line 1261) — already mounted today; row note is stale ("Parsed; not mounted")
+- <code>config.content</code> (line 1285) — newly mounted via temp file
+- <code>config.environment</code> (line 1291) — newly mounted via temp file
+- <code>secret.file</code> (line 1207) — already mounted today; row note is stale ("Parsed; not mounted at runtime")
+- <code>secret.environment</code> (line 1213) — newly mounted via temp file</p>
+<p><strong>Partial → Miss</strong> (2 rows, won't-fix):
+- <code>config.template_driver</code> (line 1297) — no templating engine; warn-skip stays
+- <code>secret.template_driver</code> (line 1249) — no templating engine; warn-skip stays</p>
+<p>Each flip = update the row's <code>status</code> string and rewrite the trailing note string. The header counters re-compute automatically from the data (verified at <code>coverage.html:1488-1507</code>); no manual counter edit needed.</p>
+<p><strong>Commit:</strong> <code>feat: configs + secrets full source resolution (file/content/environment) (CHAOS-1333)</code></p>
+<p><strong>Exit gate for Phase 3:</strong></p>
+<ol>
+<li><strong>Static tests</strong> — <code>swift test --filter Container-Compose-StaticTests</code> exits 0. The exact new <code>@Test</code> cases this phase adds (8 total, distributed as noted):</li>
+<li><code>ConfigsSecretsRuntimeTests</code> (extend the existing file at <code>Tests/Container-Compose-StaticTests/ConfigsSecretsRuntimeTests.swift</code> with these 6 cases, on top of the 4 already there at planning time):<ol>
+<li><code>file:</code> source still emits expected <code>-v</code> arg (regression on the existing path).</li>
+<li><code>content:</code> source on a config writes a temp file under <code>~/.containers/Compose/&lt;project&gt;/configs-secrets/</code> and emits <code>-v &lt;tempPath&gt;:&lt;target&gt;</code>.</li>
+<li><code>environment:</code> source on a config resolves the host env var, writes its value to a temp file, and emits <code>-v</code>.</li>
+<li><code>environment:</code> source on a secret resolves the host env var, writes its value to a temp file, and emits <code>-v &lt;tempPath&gt;:/run/secrets/&lt;source&gt;</code>.</li>
+<li>Missing host env var produces a clear warning (printed, not thrown) and skips the mount.</li>
+<li>Two services sharing the same <code>content:</code> (or same env var value) reuse a single temp file (sha256-named so the second <code>build</code> call is a no-op write).</li>
+</ol>
+</li>
+<li><code>ComposeDownConfigsSecretsCleanupTests</code> (new file at <code>Tests/Container-Compose-StaticTests/ComposeDownConfigsSecretsCleanupTests.swift</code> — 2 cases):<ol>
+<li><code>compose down</code> with no service args removes the project's <code>configs-secrets/</code> directory (positive case).</li>
+<li><code>compose down web</code> (one service argument) leaves the project's <code>configs-secrets/</code> directory intact (partial-down safety per §3.4).</li>
+</ol>
+</li>
+</ol>
+<p>The "+8" delta covers all required cases listed in §3.4 and §3.5.
+2. <strong>Diagnostics</strong> — <code>lsp_diagnostics</code> returns no errors on <code>Compose+ConfigsAndSecrets.swift</code>, <code>ComposeDown.swift</code>, <code>ConfigsSecretsRuntimeTests.swift</code>.
+3. <strong>Manual smoke test</strong> — One consistent working directory (the repo root) and one consistent binary path (the freshly-built release binary, no global install assumed).</p>
+<p>a. Build the release binary first:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>build<span class="w">   </span><span class="c1"># produces .build/release/container-compose at repo root</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nv">BIN</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">/.build/release/container-compose&quot;</span><span class="w">   </span><span class="c1"># absolute path; reused below</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nb">test</span><span class="w"> </span>-x<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BIN</span><span class="s2">&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;FAIL: release binary missing&quot;</span><span class="p">;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+</span></code></pre></div></p>
+<p>b. Create fixture <code>Sample Compose Files/Configs and Secrets/docker-compose.yaml</code> with one service that mounts each kind of source. Compose-spec requires a <code>services:</code> block, so:
+   <div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">smoke</span><span class="p">:</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">docker.io/library/alpine:3</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;sh&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;-c&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;cat</span><span class="nv"> </span><span class="s">/run/secrets/env_secret;</span><span class="nv"> </span><span class="s">cat</span><span class="nv"> </span><span class="s">/etc/inline_cfg;</span><span class="nv"> </span><span class="s">cat</span><span class="nv"> </span><span class="s">/etc/env_cfg;</span><span class="nv"> </span><span class="s">sleep</span><span class="nv"> </span><span class="s">2&quot;</span><span class="p p-Indicator">]</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="nt">configs</span><span class="p">:</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inline_cfg</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/inline_cfg</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">env_cfg</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/env_cfg</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">    </span><span class="nt">secrets</span><span class="p">:</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">env_secret</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="nt">configs</span><span class="p">:</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">  </span><span class="nt">inline_cfg</span><span class="p">:</span>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">    </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;hello-from-content&quot;</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">  </span><span class="nt">env_cfg</span><span class="p">:</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SMOKE_CFG_VAR</span>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="nt">secrets</span><span class="p">:</span>
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">  </span><span class="nt">env_secret</span><span class="p">:</span>
+</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SMOKE_SECRET_VAR</span>
+</span></code></pre></div></p>
+<p>c. Run from the <strong>repo root</strong> (path stays valid):
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nv">FIXTURE</span><span class="o">=</span><span class="s2">&quot;Sample Compose Files/Configs and Secrets&quot;</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nv">PROJECT</span><span class="o">=</span><span class="s2">&quot;configs-and-secrets&quot;</span><span class="w">   </span><span class="c1"># = sanitized basename of FIXTURE per deriveProjectName</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="nv">SECRETS_DIR</span><span class="o">=</span><span class="s2">&quot;</span><span class="nv">$HOME</span><span class="s2">/.containers/Compose/</span><span class="nv">$PROJECT</span><span class="s2">/configs-secrets&quot;</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nv">SMOKE_CFG_VAR</span><span class="o">=</span>cfg-from-env<span class="w"> </span><span class="nv">SMOKE_SECRET_VAR</span><span class="o">=</span>secret-from-env<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="s2">&quot;</span><span class="nv">$BIN</span><span class="s2">&quot;</span><span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$FIXTURE</span><span class="s2">/docker-compose.yaml&quot;</span><span class="w"> </span>--project-directory<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$FIXTURE</span><span class="s2">&quot;</span><span class="w"> </span>--project-name<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PROJECT</span><span class="s2">&quot;</span>
+</span></code></pre></div></p>
+<p><strong>Pass criteria</strong> (all four must hold; check with the SAME <code>$BIN</code> and the SAME absolute <code>$SECRETS_DIR</code>):
+   - The <code>up</code> command exits 0.
+   - <code>ls "$SECRETS_DIR"</code> lists exactly 3 files (one per source: <code>inline_cfg</code>, <code>env_cfg</code>, <code>env_secret</code>).
+   - <code>cat "$SECRETS_DIR"/config-inline_cfg-*</code> prints exactly <code>hello-from-content</code>.
+   - After <code>"$BIN" down -f "$FIXTURE/docker-compose.yaml" --project-directory "$FIXTURE" --project-name "$PROJECT"</code> exits 0, <code>ls "$SECRETS_DIR" 2&gt;/dev/null | wc -l</code> returns <code>0</code> (cleanup verified per §3.4).</p>
+<p>If the <code>container</code> runtime is not available on the dev host, document this in the PR description and mark the smoke test as deferred to CI on a runtime-capable host. Do NOT skip the unit-test cases (those run without the runtime).
+4. <strong>Linear</strong> — comment on CHAOS-1333 with PR link; transition state to In Review.</p>
+<h3 id="phase-4-chaos-1338-coverage-honesty-for-decode-only-fields-1-hr">Phase 4 — CHAOS-1338: Coverage honesty for decode-only fields (~1 hr)<a class="headerlink" href="#phase-4-chaos-1338-coverage-honesty-for-decode-only-fields-1-hr" title="Permanent link">&para;</a></h3>
+<p>For these 14 fields, flip <code>coverage.html</code> rows from <code>partial</code> → <code>miss</code> with a note column citing the upstream-equivalent absence:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>service.annotations          — labels variant; no apple/container equivalent
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>service.attach               — Docker attach mode; no equivalent
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>service.cgroup               — Linux cgroup config; no equivalent
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>service.cgroup_parent        — Linux cgroup config; no equivalent
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>service.credential_spec      — Windows-only; no equivalent
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>service.device_cgroup_rules  — Linux cgroup rules; no equivalent
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>service.isolation            — Windows-only; no equivalent
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>service.label_file           — file-based labels; no equivalent
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>service.post_start           — lifecycle hook; no equivalent
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>service.pre_stop             — lifecycle hook; no equivalent
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>service.pull_refresh_after   — pull-policy timing; no equivalent
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>service.storage_opt          — Linux storage opts; no equivalent
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>service.use_api_socket       — Docker API socket forwarding; no equivalent
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>service.volumes_from         — deprecated; no equivalent
+</span></code></pre></div>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In <code>coverage.html</code>, for each of the 14 fields above, locate the row in the <code>"id": "service"</code> group (rows array spans roughly lines 322-876). Change the second element from <code>"partial"</code> to <code>"miss"</code> and rewrite the trailing note string to match the §3 Phase 4 evidence column ("…; no apple/container equivalent").</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Do <strong>not</strong> edit any header counter — the counters are computed by JS at runtime from the data array (see <code>coverage.html:1488-1507</code>). Editing them would create drift; the assertions in the exit gate below verify the JS-derived counts are correct.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Regenerate <code>coverage.json</code> locally via <code>scripts/regen-coverage.sh</code> to confirm the extractor still parses (file is gitignored — do not commit).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Skip README screenshot update (out of scope; opens its own follow-up if needed).</li>
+</ul>
+<p><strong>Commit:</strong> <code>docs: flip 14 decode-only no-equivalent rows from partial → miss (CHAOS-1338)</code></p>
+<p><strong>Exit gate for Phase 4:</strong></p>
+<p>Baseline (per AGENTS.md §4 + <code>coverage.html:1488-1507</code> aggregator): <strong>137 ok / 55 partial / 2 miss / 194 total</strong> (70.6% / 28.4% / 1.0%).</p>
+<p>Expected after Phase 3 + Phase 4 land together (Phase 3 contributes +5 ok, −5 partial, +2 miss; Phase 4 contributes −14 partial, +14 miss):
+- <strong>142 ok</strong> (73.2%)
+- <strong>34 partial</strong> (17.5%)
+- <strong>18 miss</strong> (9.3%)
+- <strong>194 total</strong> (unchanged)</p>
+<p>Verification uses the dedicated extractor <code>scripts/regen-coverage.sh</code>, which parses the inline JSON <code>&lt;script id="coverage-data"&gt;</code> block (it does NOT match the JS <code>labels</code> object on <code>coverage.html:1488</code> — that's regular code, not the data block). Naive <code>grep '"ok"' coverage.html</code> overcounts because of that labels object; do not use grep for aggregate counts. All four checks below must pass before opening the PR:</p>
+<ol>
+<li>
+<p><strong>Regen + aggregate count</strong> — exits 0 and prints the expected line:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>bash<span class="w"> </span>scripts/regen-coverage.sh
+</span></code></pre></div>
+   Expected stdout (exact): <code>wrote /…/coverage.json — 194 rows (ok=142, partial=34, miss=18)</code>.
+   The script's print at <code>scripts/regen-coverage.sh:72-77</code> is the source of truth for this format.</p>
+</li>
+<li>
+<p><strong>Per-row assertion: the 14 service fields are <code>miss</code></strong> — using <code>jq</code> on the regenerated JSON:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>jq<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="s1">  (.groups[] | select(.id == &quot;service&quot;) | .rows</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s1">     | map(select(.[0] as $f</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="s1">         | [&quot;annotations&quot;,&quot;attach&quot;,&quot;cgroup&quot;,&quot;cgroup_parent&quot;,&quot;credential_spec&quot;,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="s1">            &quot;device_cgroup_rules&quot;,&quot;isolation&quot;,&quot;label_file&quot;,&quot;post_start&quot;,&quot;pre_stop&quot;,</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="s1">            &quot;pull_refresh_after&quot;,&quot;storage_opt&quot;,&quot;use_api_socket&quot;,&quot;volumes_from&quot;]</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="s1">           | index($f)))</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="s1">     | length == 14 and all(.[1] == &quot;miss&quot;))</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="s1">&#39;</span><span class="w"> </span>coverage.json
+</span></code></pre></div>
+   Expected: exit 0, prints <code>true</code>. Length check guards against any field being accidentally renamed or removed.</p>
+</li>
+<li>
+<p><strong>Per-row assertion: Phase-3 partial→ok flips landed correctly</strong> — verifies the 5 rows updated by Phase 3.6 have status <code>ok</code>:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>jq<span class="w"> </span>-e<span class="w"> </span><span class="s1">&#39;</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s1">  ((.groups[] | select(.id==&quot;config&quot;) | .rows</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s1">     | map(select(.[0] as $f | [&quot;file&quot;,&quot;content&quot;,&quot;environment&quot;] | index($f)))</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s1">     | length == 3 and all(.[1] == &quot;ok&quot;))</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="s1">   and</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="s1">   (.groups[] | select(.id==&quot;secret&quot;) | .rows</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="s1">     | map(select(.[0] as $f | [&quot;file&quot;,&quot;environment&quot;] | index($f)))</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="s1">     | length == 2 and all(.[1] == &quot;ok&quot;)))</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="s1">&#39;</span><span class="w"> </span>coverage.json
+</span></code></pre></div>
+   Expected: exit 0, prints <code>true</code>.</p>
+</li>
+<li>
+<p><strong>Linear</strong> — <code>linear i comment CHAOS-1338</code> with a body containing the PR link and the literal string "coverage portion complete; umbrella stays open as fork-patch decision tracker for the 14 fields above" (use stdin <code>-b -</code> form per the linear skill's piping section if posting from a file).</p>
+</li>
+</ol>
+<h3 id="phase-5-final-verification-linear-hygiene-30-min">Phase 5 — Final verification + Linear hygiene (~30 min)<a class="headerlink" href="#phase-5-final-verification-linear-hygiene-30-min" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Note: an earlier draft of this plan included an "R4 — <code>Service.cpus_top</code> audit" phase. Verification at planning time (<code>grep cpus_top Sources/</code>) shows the field is already wired: <code>Codable Structs/Service.swift:211</code> declares it, <code>Codable Structs/Service.swift:356</code> aliases it to YAML key <code>cpus</code>, <code>DockerCompose.swift:501</code> participates in <code>extends</code> merge, and <code>Compose+ArgsResource.swift:32</code> consumes it to emit <code>--cpus</code>. R4 is therefore dropped — no code change needed.</p>
+</blockquote>
+<p><strong>Tasks:</strong></p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> On the merged branch run, in order, and require each to pass before the next:</li>
+<li><code>make build</code> — exit 0.</li>
+<li><code>swift test --filter Container-Compose-StaticTests</code> — exit 0; expected total test count = pre-plan baseline + 8 (Phase 3: 6 in <code>ConfigsSecretsRuntimeTests</code> + 2 in <code>ComposeDownConfigsSecretsCleanupTests</code>) + 6 (Phase 2: the six <code>EnvironmentMergeTests</code> cases enumerated in §3 Phase 2.2). Net new <code>@Test</code> cases = +14.</li>
+<li><code>lsp_diagnostics</code> over each file changed in the plan — zero <code>error</code>-severity entries; warnings allowed only if pre-existing.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update AGENTS.md §4 "Coverage vs. compose-spec" totals to <strong>142 / 34 / 18 / 194</strong> (matches Phase 4 expected counts); update the prose paragraph to state Phase 3 added inline-content + env-var sources for configs and env-var sources for secrets.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Linear:</li>
+<li><code>linear i update CHAOS-1333 --state Done</code> and <code>linear i comment CHAOS-1333 -b "&lt;PR link + summary&gt;"</code>.</li>
+<li>CHAOS-1338: leave Backlog (umbrella tracker); <code>linear i comment CHAOS-1338 -b "&lt;PR link&gt;; coverage portion complete; 14 partial→miss flips listed"</code>.</li>
+<li>For each upstream-blocked open issue (1332, 1334, 1335, 1336, 1337): post a comment containing the evidence captured in §2 above so the next person doesn't re-investigate. Use <code>linear i comment CHAOS-XXXX -b -</code> with stdin from a per-issue snippet.</li>
+</ul>
+<p><strong>Exit gate for Phase 5:</strong></p>
+<ol>
+<li>All three commands above exited 0 with the expected outputs.</li>
+<li>AGENTS.md §4 totals match the post-plan numbers (142 / 34 / 18 / 194).</li>
+<li><code>linear i list --project "Container Compose" --output json | jq '[.[] | select(.state == "Backlog")] | length'</code> returns ≤ 6 (the 5 upstream-blocked issues plus the umbrella; CHAOS-1333 dropped to Done).</li>
+</ol>
+<hr />
+<h2 id="4-risks-open-questions">4. Risks &amp; open questions<a class="headerlink" href="#4-risks-open-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>R2 env-merging precedence</strong> may have subtle per-command differences I missed. Mitigation: snapshot tests on existing fixtures before refactor; diff after.</li>
+<li><strong>CHAOS-1333 temp-file lifecycle</strong> — if a user runs <code>compose up</code> then crashes the host, temp files leak. Acceptable for v1; could later add <code>compose up</code> to clean stale temp dirs, but out of scope here.</li>
+<li><strong>CHAOS-1333 <code>environment:</code> source</strong> — compose-spec is ambiguous about whether the env var is read from the host or the container. Going with host (matches Docker Compose behavior).</li>
+<li><strong>AGENTS.md drift between phases</strong> — Phase 1.2 refreshes the high-level Tier sections; Phases 3/4 shift coverage numbers; Phase 5 finalizes the §4 totals. Prefer per-phase commits to keep each PR self-contained.</li>
+<li><strong>Should each phase be its own PR or one big PR?</strong> Recommendation: separate PRs (matches recent repo convention of CHAOS-XXXX micro-PRs). Confirm with user before opening.</li>
+</ol>
+<hr />
+<h2 id="5-verification-matrix-pre-merge">5. Verification matrix (pre-merge)<a class="headerlink" href="#5-verification-matrix-pre-merge" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Build</th>
+<th>StaticTests</th>
+<th>DynamicTests</th>
+<th>Diagnostics</th>
+<th>Other</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 (R1+R3)</td>
+<td>required</td>
+<td>required</td>
+<td>optional</td>
+<td>required</td>
+<td>n/a</td>
+</tr>
+<tr>
+<td>2 (R2)</td>
+<td>required</td>
+<td>required</td>
+<td>optional</td>
+<td>required</td>
+<td>n/a</td>
+</tr>
+<tr>
+<td>3 (CHAOS-1333)</td>
+<td>required</td>
+<td>required</td>
+<td><strong>required</strong> if runtime available</td>
+<td>required</td>
+<td>smoke test fixture in <code>Sample Compose Files/Configs and Secrets/</code> (commands + pass criteria in §3 Phase 3 exit gate)</td>
+</tr>
+<tr>
+<td>4 (CHAOS-1338 cov)</td>
+<td>n/a</td>
+<td>n/a</td>
+<td>n/a</td>
+<td>n/a</td>
+<td><code>scripts/regen-coverage.sh</code> stdout matches expected line; jq-based per-row + aggregate assertions (commands in §3 Phase 4 exit gate)</td>
+</tr>
+<tr>
+<td>5 (cleanup)</td>
+<td>required (final pre-merge full build)</td>
+<td>required (final full StaticTests)</td>
+<td>optional</td>
+<td>required (final pass over all touched files)</td>
+<td>Linear comments on CHAOS-1332/1334/1335/1336/1337 with §2 evidence</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-rollback-plan">6. Rollback plan<a class="headerlink" href="#6-rollback-plan" title="Permanent link">&para;</a></h2>
+<p>Each phase = own commit on own branch. If anything breaks:
+- <code>git revert &lt;sha&gt;</code> the offending commit.
+- Phase 3 has the most surface area (writes temp files); if rollback needed, also <code>rm -rf ~/.containers/Compose/&lt;project&gt;/</code> on test hosts.
+- No upstream fork changes in this plan, so no cross-repo rollback coordination needed.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c0724665937a07c68cf8e9927242f71191f9014f",
-  "short": "c072466",
+  "commit": "eeecb51e56d07a42b1817c56eb5831b8306c1b14",
+  "short": "eeecb51",
   "target": "current",
-  "message": "docs: add limitations & troubleshooting guides, expand quickstart (#144)",
-  "published_at": "2026-05-07T16:25:13.330708+00:00"
+  "message": "docs: render docs/ as MkDocs Material site, embed coverage, document fork#dev (#145)",
+  "published_at": "2026-05-07T16:32:03.465622+00:00"
 }

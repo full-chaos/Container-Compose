@@ -24,7 +24,7 @@ Container-Compose allows you to inject configuration files and sensitive data in
 
 The complete example lives at [`Sample Compose Files/Configs and Secrets/docker-compose.yaml`](../../Sample%20Compose%20Files/Configs%20and%20Secrets/docker-compose.yaml). Here's what it does:
 
-```yaml filename="docker-compose.yaml"
+```yaml title="docker-compose.yaml"
 services:
   smoke:
     image: docker.io/library/alpine:3
@@ -50,7 +50,7 @@ secrets:
 
 The compose file uses environment variables as sources for one config and one secret. Before running the project, you must set these variables on your host machine.
 
-```bash filename="terminal"
+```bash title="terminal"
 export SMOKE_CFG_VAR="config-from-env"
 export SMOKE_SECRET_VAR="secret-from-env"
 ```
@@ -59,7 +59,7 @@ export SMOKE_SECRET_VAR="secret-from-env"
 
 Launch the project using the `up` command. Container-Compose will process the configs and secrets, creating temporary files on the host to facilitate the bind-mounts.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up
 ```
 
@@ -94,7 +94,7 @@ For `content` sources, the text is written directly to a file. For `environment`
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

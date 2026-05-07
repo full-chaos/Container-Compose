@@ -9,7 +9,7 @@ Create containers without starting them.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose create [global-options] [options] [services...]
 ```
 
@@ -35,7 +35,7 @@ container-compose create [global-options] [options] [services...]
 
 Provision all containers defined in the compose file without starting them.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose create
 ```
 
@@ -43,7 +43,7 @@ container-compose create
 
 Only create the `db` container.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose create db
 ```
 

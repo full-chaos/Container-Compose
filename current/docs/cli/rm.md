@@ -9,7 +9,7 @@ Remove stopped project containers.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose rm [global-options] [options] [services...]
 ```
 
@@ -35,7 +35,7 @@ container-compose rm [global-options] [options] [services...]
 
 Delete all containers for the project that are not currently running.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose rm
 ```
 
@@ -43,7 +43,7 @@ container-compose rm
 
 Stop and remove all containers, even if they are active.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose rm -f -s
 ```
 
@@ -51,7 +51,7 @@ container-compose rm -f -s
 
 Only remove containers for the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose rm web
 ```
 

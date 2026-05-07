@@ -1,0 +1,3274 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/runtime/error-codes/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Error Codes Reference - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#error-codes-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Error Codes Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../feature-parity/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../feature-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-lookup-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick lookup table
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtimeerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      RuntimeError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RuntimeError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notfoundid-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      notFound(id: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alreadyexistsid-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      alreadyExists(id: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidstateid-string-expected-runtimecontainerstatus-actual-runtimecontainerstatus" class="md-nav__link">
+    <span class="md-ellipsis">
+      invalidState(id: String, expected: RuntimeContainerStatus, actual: RuntimeContainerStatus)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timeoutid-string-seconds-int" class="md-nav__link">
+    <span class="md-ellipsis">
+      timeout(id: String, seconds: Int)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imagenotfoundreference-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      imageNotFound(reference: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notsupportedoperation-string-conformer-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      notSupported(operation: String, conformer: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backendfailuremessage-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      backendFailure(message: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistencefailuremessage-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      persistenceFailure(message: String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#composeerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ComposeError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComposeError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#imagenotfoundstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      imageNotFound(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidprojectname" class="md-nav__link">
+    <span class="md-ellipsis">
+      invalidProjectName
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#externalvolumenotfoundstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      externalVolumeNotFound(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidshelltokenizationinput-string-reason-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      invalidShellTokenization(input: String, reason: String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#yamlerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      YamlError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="YamlError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#composefilenotfoundstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      composeFileNotFound(String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#composevalidationerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ComposeValidationError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComposeValidationError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#noservicesdefined" class="md-nav__link">
+    <span class="md-ellipsis">
+      noServicesDefined
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serviceneedsimageorbuildservicename-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      serviceNeedsImageOrBuild(serviceName: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidportformatportspec-string-servicename-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      invalidPortFormat(portSpec: String, serviceName: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#circulardependencyservicechain-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      circularDependency(serviceChain: [String])
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resourceconstraintoutofrangefield-string-value-string-min-int-max-int" class="md-nav__link">
+    <span class="md-ellipsis">
+      resourceConstraintOutOfRange(field: String, value: String, min: Int, max: Int?)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#includeerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      IncludeError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IncludeError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cyclicincludestring" class="md-nav__link">
+    <span class="md-ellipsis">
+      cyclicInclude(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filenotfoundstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      fileNotFound(String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#composememoryparseerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ComposeMemoryParseError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComposeMemoryParseError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      empty
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      invalid(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negativestring" class="md-nav__link">
+    <span class="md-ellipsis">
+      negative(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overflowstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      overflow(String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#composewaiterror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ComposeWaitError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ComposeWaitError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timeoutcontainername-string-condition-dependsoncondition-seconds-timeinterval" class="md-nav__link">
+    <span class="md-ellipsis">
+      timeout(containerName: String, condition: DependsOnCondition, seconds: TimeInterval)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nonzeroexitcodecontainername-string-exitcode-int32" class="md-nav__link">
+    <span class="md-ellipsis">
+      nonZeroExitCode(containerName: String, exitCode: Int32)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listenaddresserror" class="md-nav__link">
+    <span class="md-ellipsis">
+      ListenAddressError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ListenAddressError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#malformedstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      malformed(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missinghostorportstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      missingHostOrPort(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unsupportedschemestring" class="md-nav__link">
+    <span class="md-ellipsis">
+      unsupportedScheme(String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terminalerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      TerminalError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="TerminalError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#commandfailedstring" class="md-nav__link">
+    <span class="md-ellipsis">
+      commandFailed(String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#orchestratorerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      OrchestratorError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OrchestratorError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#projectnotfoundname-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      projectNotFound(name: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#servicenotfoundproject-string-service-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      serviceNotFound(project: String, service: String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidreplicacountint" class="md-nav__link">
+    <span class="md-ellipsis">
+      invalidReplicaCount(Int)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authstoreerror" class="md-nav__link">
+    <span class="md-ellipsis">
+      AuthStoreError
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AuthStoreError">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#duplicatenamestring" class="md-nav__link">
+    <span class="md-ellipsis">
+      duplicateName(String)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#malformedfilestring" class="md-nav__link">
+    <span class="md-ellipsis">
+      malformedFile(String)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/runtime/error-codes.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="error-codes-reference">Error Codes Reference<a class="headerlink" href="#error-codes-reference" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Scope:</strong> Every error type a user or integrator can encounter when running
+Container-Compose commands or calling the Container REST API.
+<strong>Source of truth:</strong> <code>Sources/Container-Compose/</code> — every entry below was
+verified against Swift source before inclusion.</p>
+</blockquote>
+<hr />
+<h2 id="quick-lookup-table">Quick lookup table<a class="headerlink" href="#quick-lookup-table" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Error type</th>
+<th style="text-align: left;">Cases</th>
+<th style="text-align: left;">Layer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><a href="#runtimeerror"><code>RuntimeError</code></a></td>
+<td style="text-align: left;"><code>notFound</code>, <code>alreadyExists</code>, <code>invalidState</code>, <code>timeout</code>, <code>imageNotFound</code>, <code>notSupported</code>, <code>backendFailure</code>, <code>persistenceFailure</code></td>
+<td style="text-align: left;">Runtime layer, REST API</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#composeerror"><code>ComposeError</code></a></td>
+<td style="text-align: left;"><code>imageNotFound</code>, <code>invalidProjectName</code>, <code>externalVolumeNotFound</code>, <code>invalidShellTokenization</code></td>
+<td style="text-align: left;">YAML parsing, startup</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#yamlerror"><code>YamlError</code></a></td>
+<td style="text-align: left;"><code>composeFileNotFound</code></td>
+<td style="text-align: left;">File loading</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#composevalidationerror"><code>ComposeValidationError</code></a></td>
+<td style="text-align: left;"><code>noServicesDefined</code>, <code>serviceNeedsImageOrBuild</code>, <code>invalidPortFormat</code>, <code>circularDependency</code>, <code>resourceConstraintOutOfRange</code></td>
+<td style="text-align: left;">Structural validation</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#includeerror"><code>IncludeError</code></a></td>
+<td style="text-align: left;"><code>cyclicInclude</code>, <code>fileNotFound</code></td>
+<td style="text-align: left;"><code>include:</code> processing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#composememoryarseerror"><code>ComposeMemoryParseError</code></a></td>
+<td style="text-align: left;"><code>empty</code>, <code>invalid</code>, <code>negative</code>, <code>overflow</code></td>
+<td style="text-align: left;">Memory quantity parsing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#composewaiterror"><code>ComposeWaitError</code></a></td>
+<td style="text-align: left;"><code>timeout</code>, <code>nonZeroExitCode</code></td>
+<td style="text-align: left;"><code>depends_on</code> waiting</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#listenaddresserror"><code>ListenAddressError</code></a></td>
+<td style="text-align: left;"><code>malformed</code>, <code>missingHostOrPort</code>, <code>unsupportedScheme</code></td>
+<td style="text-align: left;"><code>--listen</code> flag parsing</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#terminalerror"><code>TerminalError</code></a></td>
+<td style="text-align: left;"><code>commandFailed</code></td>
+<td style="text-align: left;">Subprocess execution</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#orchestratorerror"><code>OrchestratorError</code></a></td>
+<td style="text-align: left;"><code>projectNotFound</code>, <code>serviceNotFound</code>, <code>invalidReplicaCount</code></td>
+<td style="text-align: left;">REST API project routes</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="#authstoreerror"><code>AuthStoreError</code></a></td>
+<td style="text-align: left;"><code>duplicateName</code>, <code>malformedFile</code></td>
+<td style="text-align: left;">TLS client auth store</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="runtimeerror">RuntimeError<a class="headerlink" href="#runtimeerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Runtime/Runtime.swift:191-200</code></p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kd">public</span> <span class="kd">enum</span> <span class="nc">RuntimeError</span><span class="p">:</span> <span class="n">Error</span><span class="p">,</span> <span class="n">Sendable</span><span class="p">,</span> <span class="nb">Equatable</span> <span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">case</span> <span class="n">notFound</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="k">case</span> <span class="n">alreadyExists</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="k">case</span> <span class="n">invalidState</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="n">RuntimeContainerStatus</span><span class="p">,</span> <span class="n">actual</span><span class="p">:</span> <span class="n">RuntimeContainerStatus</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">case</span> <span class="n">timeout</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nb">Int</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">case</span> <span class="n">imageNotFound</span><span class="p">(</span><span class="n">reference</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="k">case</span> <span class="n">notSupported</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">conformer</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="k">case</span> <span class="n">backendFailure</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">case</span> <span class="n">persistenceFailure</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>LocalizedError</code> messages are defined at <code>Runtime.swift:202-223</code>. The error type is <code>Equatable</code> — test assertions can use <code>==</code>.</p>
+<p>Conformers map their backend-specific errors into this vocabulary using private <code>mapUpstreamError</code> helpers:
+- Bridge conformer: <code>BridgeContainerClientRuntime.swift:317-333</code>
+- Apple conformer: <code>AppleContainerizationRuntime.swift:322-333</code></p>
+<hr />
+<h3 id="notfoundid-string"><code>notFound(id: String)</code><a class="headerlink" href="#notfoundid-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime: container '&lt;id&gt;' not found</code> (<code>Runtime.swift:206</code>)</p>
+<p><strong>Meaning:</strong> No container, volume, network, or secret with the given identifier exists in the runtime's view.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>BridgeContainerClientRuntime.swift:90</code> — <code>get(id:)</code> catches any XPC error from <code>ContainerClientProvider.get</code>
+- <code>BridgeContainerClientRuntime.swift:174</code> — <code>logs(id:)</code> catches any error from <code>ContainerClientProvider.logs</code>
+- <code>AppleContainerizationRuntime.swift:103</code> — <code>get(id:)</code> when <code>registry.get(id:)</code> returns <code>nil</code>
+- <code>AppleContainerizationRuntime.swift:134</code> — <code>start(id:)</code> when container absent
+- <code>AppleContainerizationRuntime.swift:150</code> — <code>stop(id:)</code> when container absent
+- <code>AppleContainerizationRuntime.swift:166</code> — <code>kill(id:)</code> when container absent
+- <code>AppleContainerizationRuntime.swift:173</code> — <code>wait(id:)</code> when container absent
+- <code>AppleContainerizationRuntime.swift:183</code> — <code>remove(id:)</code> when container absent
+- <code>AppleContainerizationRuntime.swift:198</code> — <code>logs(id:)</code> when container absent
+- <code>AppleContainerizationRuntime.swift:226</code> — <code>statistics(for:)</code> when container absent
+- <code>RuntimeVolumeClient.swift:64</code> — <code>remove(name:)</code> when <code>VolumeError.volumeNotFound</code>
+- <code>RuntimeVolumeClient.swift:70</code> — <code>remove(name:)</code> when <code>ContainerizationError</code> message contains <code>"not found"</code>
+- <code>RuntimeVolumeClient.swift:84</code> — <code>inspect(name:)</code> when <code>VolumeError.volumeNotFound</code>
+- <code>RuntimeVolumeClient.swift:90</code> — <code>inspect(name:)</code> when <code>ContainerizationError</code> message contains <code>"not found"</code>
+- <code>RecordingRuntime.swift:141</code> — <code>get(id:)</code> when no stub matches
+- <code>RecordingRuntime.swift:252</code> — <code>removeNetwork(id:)</code> when not in stubs
+- <code>RecordingRuntime.swift:274</code> — <code>removeVolume(name:)</code> when not in stubs
+- <code>RecordingRuntime.swift:293</code> — <code>removeSecret(name:)</code> when not in stubs
+- <code>MockRuntime.swift:96</code> — <code>get(id:)</code> when absent
+- <code>MockRuntime.swift:272</code> — <code>requireContainer</code> helper (used by all lifecycle methods)</p>
+<p><strong>Common triggers:</strong>
+- Querying a container that was removed between your last <code>list</code> and this call
+- A <code>compose down</code> ran concurrently with a <code>ps</code> or <code>logs</code> request
+- Typo in the service or project name
+- Calling <code>remove</code> on an already-removed container (non-idempotent)</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Error: Runtime: container &#39;myproject-web&#39; not found
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Run <code>container-compose ps</code> to see currently registered containers.
+2. If the container should exist, re-run <code>compose up</code> to recreate it.
+3. Verify container naming: compose uses <code>&lt;project&gt;-&lt;service&gt;</code> convention.
+4. For volume operations, check <code>container volume list</code>.</p>
+<p><strong>HTTP mapping:</strong> 404 Not Found (via <code>ErrorMappingMiddleware</code>)</p>
+<p><strong>Related:</strong> <a href="../protocol-contract/#getid-string-async-throws---runtimecontainer">protocol-contract.md — get</a></p>
+<hr />
+<h3 id="alreadyexistsid-string"><code>alreadyExists(id: String)</code><a class="headerlink" href="#alreadyexistsid-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime: container '&lt;id&gt;' already exists</code> (<code>Runtime.swift:208</code>)</p>
+<p><strong>Meaning:</strong> A resource with the given identifier already exists and the operation does not overwrite.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>AppleContainerizationRuntime.swift:115</code> — <code>create(id:)</code> when <code>registry.get(id:)</code> returns non-nil
+- <code>RuntimeVolumeClient.swift:44</code> — <code>create(spec:)</code> when <code>VolumeError.volumeAlreadyExists</code>
+- <code>RuntimeVolumeClient.swift:50</code> — <code>create(spec:)</code> when <code>ContainerizationError</code> message contains <code>"already exists"</code>
+- <code>MockRuntime.swift:105</code> — <code>create(id:)</code> on duplicate id
+- <code>MockRuntime.swift:364</code> — <code>createVolume(spec:)</code> on duplicate name
+- <code>MockRuntime.swift:391</code> — <code>createSecret(spec:)</code> on duplicate name
+- <code>MockRuntime.swift:336</code> — <code>createNetwork(spec:)</code> on duplicate name</p>
+<p><strong>Common triggers:</strong>
+- Running <code>compose up</code> twice without <code>compose down</code> between runs
+- Creating a named volume that already exists in the container runtime
+- A failed teardown left orphan containers registered in the runtime</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Error: Runtime: container &#39;myproject-web&#39; already exists
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Run <code>compose down</code> to clean up existing resources, then retry.
+2. For volumes you want to preserve: inspect first (<code>container volume inspect &lt;name&gt;</code>), then decide whether to remove.
+3. For orphan containers: <code>container rm &lt;id&gt;</code> removes an individual container.</p>
+<p><strong>HTTP mapping:</strong> 409 Conflict</p>
+<hr />
+<h3 id="invalidstateid-string-expected-runtimecontainerstatus-actual-runtimecontainerstatus"><code>invalidState(id: String, expected: RuntimeContainerStatus, actual: RuntimeContainerStatus)</code><a class="headerlink" href="#invalidstateid-string-expected-runtimecontainerstatus-actual-runtimecontainerstatus" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime: container '&lt;id&gt;' has invalid state (expected &lt;expected&gt;, actual &lt;actual&gt;)</code> (<code>Runtime.swift:210</code>)</p>
+<p><code>RuntimeContainerStatus</code> cases: <code>unknown</code>, <code>created</code>, <code>running</code>, <code>stopping</code>, <code>stopped</code>, <code>exited</code> (<code>RuntimeTypes.swift:66-72</code>).</p>
+<p><strong>Meaning:</strong> A lifecycle operation was attempted on a container that is not in the required state.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>AppleContainerizationRuntime.swift:137-141</code> — <code>start(id:)</code> when state is not <code>.created</code>, <code>.stopped</code>, or <code>.exited</code>
+- <code>AppleContainerizationRuntime.swift:186</code> — <code>remove(id:force: false)</code> when state is <code>.running</code>
+- <code>MockRuntime.swift:125-126</code> — <code>start(id:)</code> when state is not <code>.created</code>
+- <code>MockRuntime.swift:144-145</code> — <code>stop(id:)</code> when state is not <code>.running</code>
+- <code>MockRuntime.swift:163-164</code> — <code>kill(id:)</code> when state is not <code>.running</code>
+- <code>MockRuntime.swift:196-197</code> — <code>remove(id:force: false)</code> when state is <code>.running</code></p>
+<p><strong>Common triggers:</strong>
+- Calling <code>start</code> on an already-running container
+- Calling <code>kill</code> on a stopped container (Mock only — Apple <code>kill</code> does not check state)
+- Calling <code>remove</code> on a running container without <code>--force</code>
+- A race condition between two concurrent lifecycle operations</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Error: Runtime: container &#39;myproject-web&#39; has invalid state (expected created, actual running)
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Check current state: <code>container-compose ps</code>.
+2. Stop the container before removing: <code>compose stop &lt;service&gt;</code>.
+3. Use <code>--force</code> flag where the CLI exposes it (e.g. <code>compose rm --force</code>).
+4. For the REST API, read the <code>actual</code> field in the error response before retrying.</p>
+<p><strong>HTTP mapping:</strong> 409 Conflict</p>
+<hr />
+<h3 id="timeoutid-string-seconds-int"><code>timeout(id: String, seconds: Int)</code><a class="headerlink" href="#timeoutid-string-seconds-int" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime: container '&lt;id&gt;' timed out after &lt;seconds&gt;s</code> (<code>Runtime.swift:212</code>)</p>
+<p><strong>Meaning:</strong> A blocking <code>wait</code> operation did not complete within the allotted time.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>AppleContainerizationRuntime.swift:178</code> — <code>wait(id:)</code> when no <code>exitStatus</code> is recorded in Phase 1 (immediately)
+- <code>MockRuntime.swift:188</code> — <code>wait(id:)</code> when deadline passes while polling</p>
+<p><strong>Common triggers:</strong>
+- The container process is hung and not responding to SIGTERM
+- The container is a long-running service that was never intended to exit
+- In Phase 1 <code>AppleContainerizationRuntime</code>: always thrown when <code>wait</code> is called on a container that has not been stopped via <code>stop(id:)</code> first (the registry never records an exit status from a real process)</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Error: Runtime: container &#39;myproject-worker&#39; timed out after 30s
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Send a stronger signal: <code>compose kill &lt;service&gt;</code> (SIGKILL).
+2. For the REST API's <code>DELETE /containers/{id}</code> path, use <code>force=true</code>.
+3. Increase the timeout if the container is genuinely slow to exit.</p>
+<p><strong>HTTP mapping:</strong> 504 Gateway Timeout</p>
+<hr />
+<h3 id="imagenotfoundreference-string"><code>imageNotFound(reference: String)</code><a class="headerlink" href="#imagenotfoundreference-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime: image '&lt;reference&gt;' not found</code> (<code>Runtime.swift:214</code>)</p>
+<p><strong>Meaning:</strong> The container image was not found locally or could not be pulled at runtime. Distinct from <code>ComposeError.imageNotFound</code>, which fires at YAML parse time when a service has neither <code>image:</code> nor <code>build:</code>.</p>
+<p><strong>Actual throw sites:</strong> Not thrown by any current production conformer in Phase 1 — declared for Phase 2 when <code>AppleContainerizationRuntime.create()</code> wires the actual <code>ContainerManager.create</code> call and can encounter a missing image. Will be thrown by the Bridge conformer's <code>mapUpstreamError</code> helper when <code>apple/containerization</code> pull errors are mapped.</p>
+<p><strong>Common triggers (Phase 2 and later):</strong>
+- The image tag does not exist in the registry
+- Network access to the registry is unavailable
+- A typo in the <code>image:</code> field</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Error: Runtime: image &#39;myorg/myapp:v1.2.3&#39; not found
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Pull the image manually: <code>container pull &lt;reference&gt;</code>.
+2. If using a private registry, check that credentials are configured.
+3. For <code>build:</code>-backed services, run <code>compose build &lt;service&gt;</code> to build locally.</p>
+<p><strong>Note:</strong> <code>ComposeError.imageNotFound</code> fires earlier — see <a href="#imagenotfoundstring">ComposeError — imageNotFound</a> below.</p>
+<p><strong>HTTP mapping:</strong> 404 Not Found</p>
+<hr />
+<h3 id="notsupportedoperation-string-conformer-string"><code>notSupported(operation: String, conformer: String)</code><a class="headerlink" href="#notsupportedoperation-string-conformer-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime: operation '&lt;operation&gt;' is not supported by '&lt;conformer&gt;'</code> (<code>Runtime.swift:216</code>)</p>
+<p><strong>Meaning:</strong> The requested operation is not implemented by the active runtime backend.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>BridgeContainerClientRuntime.swift:78</code> — <code>listNetworks()</code>
+- <code>BridgeContainerClientRuntime.swift:116-118</code> — <code>create(id:)</code>
+- <code>BridgeContainerClientRuntime.swift:152-154</code> — <code>wait(id:)</code>
+- <code>BridgeContainerClientRuntime.swift:442-445</code> — <code>createNetwork(spec:)</code>
+- <code>BridgeContainerClientRuntime.swift:450-453</code> — <code>removeNetwork(id:)</code>
+- <code>BridgeContainerClientRuntime.swift:476-479</code> — <code>listSecrets()</code>
+- <code>BridgeContainerClientRuntime.swift:484-487</code> — <code>createSecret(spec:)</code>
+- <code>BridgeContainerClientRuntime.swift:492-495</code> — <code>removeSecret(name:)</code>
+- <code>AppleContainerizationRuntime.swift:360-364</code> — <code>createNetwork(spec:)</code>
+- <code>AppleContainerizationRuntime.swift:368-372</code> — <code>removeNetwork(id:)</code>
+- <code>AppleContainerizationRuntime.swift:395-398</code> — <code>listSecrets()</code>
+- <code>AppleContainerizationRuntime.swift:403-406</code> — <code>createSecret(spec:)</code>
+- <code>AppleContainerizationRuntime.swift:411-414</code> — <code>removeSecret(name:)</code>
+- <code>RuntimeVolumeClient.swift:30</code> — <code>create(spec:)</code> when <code>spec.driver != "local"</code></p>
+<p><strong>Operation strings by conformer:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">operation string</th>
+<th style="text-align: left;">conformer</th>
+<th style="text-align: left;">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>"listNetworks"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No network list API in XPC client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"wait"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No blocking wait in XPC client</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"createNetwork"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No network CRUD in XPC client (Leak #9)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"removeNetwork"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No network CRUD in XPC client (Leak #9)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"listSecrets"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No secret management in XPC client (Leak #11)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"createSecret"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No secret management in XPC client (Leak #11)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"removeSecret"</code></td>
+<td style="text-align: left;"><code>BridgeContainerClientRuntime</code></td>
+<td style="text-align: left;">No secret management in XPC client (Leak #11)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"createNetwork"</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime</code></td>
+<td style="text-align: left;">No network CRUD in apple/containerization (Leak #9)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"removeNetwork"</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime</code></td>
+<td style="text-align: left;">No network CRUD in apple/containerization (Leak #9)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"listSecrets"</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime</code></td>
+<td style="text-align: left;">No secret management in apple/containerization (Leak #11)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"createSecret"</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime</code></td>
+<td style="text-align: left;">No secret management in apple/containerization (Leak #11)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"removeSecret"</code></td>
+<td style="text-align: left;"><code>AppleContainerizationRuntime</code></td>
+<td style="text-align: left;">No secret management in apple/containerization (Leak #11)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>"createVolume(driver=&lt;driver&gt;)"</code></td>
+<td style="text-align: left;"><code>RuntimeVolumeClient</code></td>
+<td style="text-align: left;">Only <code>"local"</code> driver is supported</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Error: Runtime: operation &#39;create&#39; is not supported by &#39;BridgeContainerClientRuntime&#39;
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. For container create/start via the REST API with Bridge backend: use <code>compose up</code> (CLI path) which goes through <code>RunCommandRunner</code> rather than the <code>Runtime</code> protocol.
+2. For network CRUD: use <code>container network create/remove</code> CLI directly.
+3. For secrets: use compose file <code>secrets:</code> with a <code>file:</code> source.
+4. HTTP callers receive <strong>501 Not Implemented</strong>; treat this as "use the CLI instead."
+5. For non-local volume drivers: only <code>driver: local</code> is supported; switch to the default or remove the <code>driver:</code> key.</p>
+<p><strong>HTTP mapping:</strong> 501 Not Implemented</p>
+<hr />
+<h3 id="backendfailuremessage-string"><code>backendFailure(message: String)</code><a class="headerlink" href="#backendfailuremessage-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime backend failure: &lt;message&gt;</code> (<code>Runtime.swift:218</code>)</p>
+<p><strong>Meaning:</strong> The underlying runtime backend returned an error that does not map to a more specific <code>RuntimeError</code> case. The <code>message</code> field carries the backend's original error description.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>BridgeContainerClientRuntime.swift:329</code> — <code>mapUpstreamError</code> fallback for any non-<code>notFound</code> upstream error
+- <code>RuntimeVolumeClient.swift:46</code> — <code>create</code> when <code>VolumeError</code> case is not <code>volumeAlreadyExists</code>
+- <code>RuntimeVolumeClient.swift:52</code> — <code>create</code> when <code>ContainerizationError</code> doesn't contain <code>"already exists"</code>
+- <code>RuntimeVolumeClient.swift:54</code> — <code>create</code> for any other error type
+- <code>RuntimeVolumeClient.swift:66</code> — <code>remove</code> when <code>VolumeError</code> case is not <code>volumeNotFound</code>
+- <code>RuntimeVolumeClient.swift:72</code> — <code>remove</code> when <code>ContainerizationError</code> doesn't contain <code>"not found"</code>
+- <code>RuntimeVolumeClient.swift:74</code> — <code>remove</code> for any other error type
+- <code>RuntimeVolumeClient.swift:86</code> — <code>inspect</code> when <code>VolumeError</code> case is not <code>volumeNotFound</code>
+- <code>RuntimeVolumeClient.swift:92</code> — <code>inspect</code> when <code>ContainerizationError</code> doesn't contain <code>"not found"</code>
+- <code>RuntimeVolumeClient.swift:94</code> — <code>inspect</code> for any other error type
+- <code>LogRingBuffer.swift:83</code> — write-after-close: <code>"LogRingBuffer write after close"</code></p>
+<p><strong>Common triggers:</strong>
+- The <code>apple/container</code> XPC service is not running or has crashed
+- An XPC call during <code>start</code> or <code>kill</code> failed for a reason other than not-found
+- A stats (<code>vsock</code>) request failed for a running container
+- Volume operations hitting an XPC error not covered by the specific error cases</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Error: Runtime backend failure: start failed for &#39;myproject-web&#39;: The operation couldn&#39;t be completed.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Check that the container runtime service is running: <code>container system info</code>.
+2. Inspect recent logs: <code>compose logs &lt;service&gt;</code>.
+3. Restart the container runtime service if unresponsive.
+4. HTTP callers receive <strong>502 Bad Gateway</strong>; a 502 indicates a problem with the underlying container runtime, not with the compose file.</p>
+<p><strong>HTTP mapping:</strong> 502 Bad Gateway</p>
+<hr />
+<h3 id="persistencefailuremessage-string"><code>persistenceFailure(message: String)</code><a class="headerlink" href="#persistencefailuremessage-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Runtime persistence failure: &lt;message&gt;</code> (<code>Runtime.swift:220</code>)</p>
+<p><strong>Meaning:</strong> A durable state write failed. Currently covers failures in <code>ContainerRegistry</code> (disk persistence) and POSIX file locking.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>ContainerRegistry.swift:183</code> — <code>loadFromDisk</code> when registry JSON cannot be decoded: <code>"could not decode registry at &lt;path&gt;: &lt;error&gt;"</code>
+- <code>ContainerRegistry.swift:227</code> — <code>withFileLock</code> when lock file cannot be opened: <code>"could not open lock file '&lt;path&gt;' (errno=&lt;errno&gt;)"</code>
+- <code>ContainerRegistry.swift:234</code> — <code>withFileLock</code> when <code>flock(LOCK_EX)</code> fails: <code>"could not acquire flock on '&lt;path&gt;' (errno=&lt;errno&gt;)"</code></p>
+<p><strong>Common triggers:</strong>
+- The container registry JSON file on disk is corrupt
+- The process does not have write access to the registry directory
+- A previous crash left an inconsistent lock file state
+- Filesystem is full or the filesystem is read-only</p>
+<p><strong>What users see in CLI output:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Error: Runtime persistence failure: could not decode registry at /var/lib/container-compose/registry.json: ...
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Retry once — transient lock acquisition failures may resolve automatically.
+2. If the error persists, stop all containers (<code>compose down</code>) and restart the container runtime service.
+3. If the registry file is corrupt, back it up and remove it; the registry will be re-initialized on next startup.
+4. Report the <code>message</code> field content in a bug report — it contains the raw error from the disk/lock subsystem.</p>
+<p><strong>HTTP mapping:</strong> 500 Internal Server Error</p>
+<hr />
+<h2 id="composeerror">ComposeError<a class="headerlink" href="#composeerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Errors.swift:39-57</code></p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kd">public</span> <span class="kd">enum</span> <span class="nc">ComposeError</span><span class="p">:</span> <span class="n">Error</span><span class="p">,</span> <span class="n">LocalizedError</span> <span class="p">{</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">case</span> <span class="n">imageNotFound</span><span class="p">(</span><span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="k">case</span> <span class="n">invalidProjectName</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="k">case</span> <span class="n">externalVolumeNotFound</span><span class="p">(</span><span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="k">case</span> <span class="n">invalidShellTokenization</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Thrown during compose YAML parsing and startup, before any container is started.</p>
+<hr />
+<h3 id="imagenotfoundstring"><code>imageNotFound(String)</code><a class="headerlink" href="#imagenotfoundstring" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Service &lt;name&gt; must define either 'image' or 'build'.</code> (<code>Errors.swift:46</code>)</p>
+<p><strong>Meaning:</strong> A service in the compose file declares neither an <code>image:</code> field nor a <code>build:</code> section.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>Sources/Container-Compose/Commands/Compose+Pull.swift:39</code> — during <code>compose pull</code> when a service has no image reference
+- <code>Sources/Container-Compose/Commands/ComposeCreate.swift:349</code> — during <code>compose create</code>
+- <code>Sources/Container-Compose/Commands/ComposeRun.swift:175</code> — during <code>compose run</code>
+- <code>Sources/Container-Compose/Commands/ComposeUp.swift:747</code> — during <code>compose up</code> service processing</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Error: Service myservice must define either &#39;image&#39; or &#39;build&#39;.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Add either <code>image: &lt;reference&gt;</code> or <code>build: &lt;context&gt;</code> to the service definition.</p>
+<p><strong>Note:</strong> Distinct from <code>RuntimeError.imageNotFound</code>, which fires at container creation time when an image is not available in the registry.</p>
+<hr />
+<h3 id="invalidprojectname"><code>invalidProjectName</code><a class="headerlink" href="#invalidprojectname" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Could not find project name.</code> (<code>Errors.swift:50</code>)</p>
+<p><strong>Meaning:</strong> Container-Compose could not determine a project name from any available source.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>Sources/Container-Compose/Commands/ComposeCreate.swift:332</code>
+- <code>Sources/Container-Compose/Commands/ComposeUp.swift:417</code>
+- <code>Sources/Container-Compose/Commands/ComposeUp.swift:656</code></p>
+<p>Project name resolution order:
+1. <code>--project-name</code> CLI flag
+2. <code>COMPOSE_PROJECT_NAME</code> environment variable
+3. Directory name of the compose file</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Error: Could not find project name.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Pass <code>--project-name &lt;name&gt;</code> explicitly on the command line, or set <code>COMPOSE_PROJECT_NAME=myproject</code> in your shell environment.</p>
+<hr />
+<h3 id="externalvolumenotfoundstring"><code>externalVolumeNotFound(String)</code><a class="headerlink" href="#externalvolumenotfoundstring" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>External volume '&lt;name&gt;' was not found. Create it with 'container volume create &lt;name&gt;' before running compose.</code> (<code>Errors.swift:53</code>)</p>
+<p><strong>Meaning:</strong> A volume declared with <code>external: true</code> under <code>volumes:</code> was not found in the container runtime's volume list.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>Sources/Container-Compose/Commands/ComposeUp.swift:441</code> — during <code>compose up</code> volume setup</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Error: External volume &#39;my-data&#39; was not found. Create it with &#39;container volume create my-data&#39; before running compose.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>container<span class="w"> </span>volume<span class="w"> </span>create<span class="w"> </span>&lt;name&gt;
+</span></code></pre></div>
+Then re-run <code>compose up</code>. If the volume name is wrong, correct the <code>name:</code> field under <code>volumes:</code> in the compose file.</p>
+<hr />
+<h3 id="invalidshelltokenizationinput-string-reason-string"><code>invalidShellTokenization(input: String, reason: String)</code><a class="headerlink" href="#invalidshelltokenizationinput-string-reason-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Could not tokenize string-form command/entrypoint '&lt;input&gt;': &lt;reason&gt;</code> (<code>Errors.swift:56</code>)</p>
+<p><strong>Meaning:</strong> A <code>command:</code> or <code>entrypoint:</code> field was given as a string (rather than a YAML list) and could not be split into tokens using POSIX shell rules.</p>
+<p><strong>Actual throw sites:</strong>
+- <code>Sources/Container-Compose/Helper Functions.swift:177</code> — unterminated single quote
+- <code>Sources/Container-Compose/Helper Functions.swift:179</code> — unterminated double quote
+- <code>Sources/Container-Compose/Helper Functions.swift:181</code> — trailing backslash</p>
+<p><strong>Reason values:</strong>
+- <code>"unterminated single quote"</code>
+- <code>"unterminated double quote"</code>
+- <code>"trailing backslash"</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Error: Could not tokenize string-form command/entrypoint &#39;start --name &#39;my app&#39;: unterminated single quote
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Fix the quoting, or rewrite as a YAML list:
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Before (string form — may fail)</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;myapp</span><span class="nv"> </span><span class="s">--flag</span><span class="nv"> </span><span class="s">&#39;value</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">space&#39;&quot;</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># After (list form — always safe)</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;myapp&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;--flag&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;value</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">space&quot;</span><span class="p p-Indicator">]</span>
+</span></code></pre></div></p>
+<hr />
+<h2 id="yamlerror">YamlError<a class="headerlink" href="#yamlerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Errors.swift:28-37</code></p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kd">public</span> <span class="kd">enum</span> <span class="nc">YamlError</span><span class="p">:</span> <span class="n">Error</span><span class="p">,</span> <span class="n">LocalizedError</span> <span class="p">{</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="k">case</span> <span class="n">composeFileNotFound</span><span class="p">(</span><span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<hr />
+<h3 id="composefilenotfoundstring"><code>composeFileNotFound(String)</code><a class="headerlink" href="#composefilenotfoundstring" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>compose.yml not found at &lt;path&gt;</code> (<code>Errors.swift:33</code>)</p>
+<p><strong>Meaning:</strong> No compose file was found at the expected path. The associated string is the path that was searched.</p>
+<p><strong>Common triggers:</strong>
+- Running <code>container-compose</code> from a directory that has no <code>compose.yml</code>, <code>compose.yaml</code>, <code>docker-compose.yml</code>, or <code>docker-compose.yaml</code>
+- Specifying a <code>--file</code> path that does not exist</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Error: compose.yml not found at /Users/me/myproject
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Verify the current directory: <code>ls compose.yml</code>
+2. Pass the path explicitly: <code>container-compose -f /path/to/compose.yml up</code></p>
+<hr />
+<h2 id="composevalidationerror">ComposeValidationError<a class="headerlink" href="#composevalidationerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Errors.swift:71-88</code></p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kd">public</span> <span class="kd">enum</span> <span class="nc">ComposeValidationError</span><span class="p">:</span> <span class="n">Error</span><span class="p">,</span> <span class="nb">Equatable</span> <span class="p">{</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="k">case</span> <span class="n">noServicesDefined</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="k">case</span> <span class="n">serviceNeedsImageOrBuild</span><span class="p">(</span><span class="n">serviceName</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="k">case</span> <span class="n">invalidPortFormat</span><span class="p">(</span><span class="n">portSpec</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">serviceName</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="k">case</span> <span class="n">circularDependency</span><span class="p">(</span><span class="n">serviceChain</span><span class="p">:</span> <span class="p">[</span><span class="nb">String</span><span class="p">])</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="k">case</span> <span class="n">resourceConstraintOutOfRange</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="bp">min</span><span class="p">:</span> <span class="nb">Int</span><span class="p">,</span> <span class="bp">max</span><span class="p">:</span> <span class="nb">Int</span><span class="p">?)</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Thrown by <code>DockerCompose.validate()</code> when a compose file contains invalid or semantically inconsistent configuration. Fired before any containers are started.</p>
+<hr />
+<h3 id="noservicesdefined"><code>noServicesDefined</code><a class="headerlink" href="#noservicesdefined" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Compose file defines no services.</code> (<code>Errors.swift:94</code>)</p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Codable Structs/DockerCompose.swift:558</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>Error: Compose file defines no services.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Add at least one service under the <code>services:</code> key.</p>
+<hr />
+<h3 id="serviceneedsimageorbuildservicename-string"><code>serviceNeedsImageOrBuild(serviceName: String)</code><a class="headerlink" href="#serviceneedsimageorbuildservicename-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Service '&lt;name&gt;' must define either 'image' or 'build'.</code> (<code>Errors.swift:96</code>)</p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Codable Structs/DockerCompose.swift:564</code></p>
+<p><strong>Recovery:</strong> Add <code>image:</code> or <code>build:</code> to the named service.</p>
+<hr />
+<h3 id="invalidportformatportspec-string-servicename-string"><code>invalidPortFormat(portSpec: String, serviceName: String)</code><a class="headerlink" href="#invalidportformatportspec-string-servicename-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Service '&lt;serviceName&gt;': invalid port specification '&lt;portSpec&gt;'.</code> (<code>Errors.swift:98</code>)</p>
+<p><strong>Actual throw sites:</strong> <code>DockerCompose.swift:609</code>, <code>DockerCompose.swift:640</code>, <code>DockerCompose.swift:657</code>, <code>DockerCompose.swift:662</code></p>
+<p><strong>Common triggers:</strong>
+- Port number outside the valid range (1–65535)
+- Invalid port spec string format (e.g. missing <code>:</code>, extra colons)</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>Error: Service &#39;web&#39;: invalid port specification &#39;99999:80&#39;.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Use valid port format: <code>HOST_PORT:CONTAINER_PORT</code>, <code>HOST_PORT:CONTAINER_PORT/proto</code>, or <code>CONTAINER_PORT</code> alone. All port numbers must be in range 1–65535.</p>
+<hr />
+<h3 id="circulardependencyservicechain-string"><code>circularDependency(serviceChain: [String])</code><a class="headerlink" href="#circulardependencyservicechain-string" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Circular dependency detected: &lt;svc1&gt; → &lt;svc2&gt; → &lt;svc1&gt;</code> (<code>Errors.swift:100</code>)</p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Codable Structs/DockerCompose.swift:675</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>Error: Circular dependency detected: web → db → web
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Remove the cycle from <code>depends_on</code>. Compose <code>depends_on</code> is a DAG — no service may directly or transitively depend on itself.</p>
+<hr />
+<h3 id="resourceconstraintoutofrangefield-string-value-string-min-int-max-int"><code>resourceConstraintOutOfRange(field: String, value: String, min: Int, max: Int?)</code><a class="headerlink" href="#resourceconstraintoutofrangefield-string-value-string-min-int-max-int" title="Permanent link">&para;</a></h3>
+<p><strong>Message (with max):</strong> <code>Resource constraint '&lt;field&gt;' value '&lt;value&gt;' is out of range [&lt;min&gt;, &lt;max&gt;].</code> (<code>Errors.swift:103</code>)
+<strong>Message (no max):</strong> <code>Resource constraint '&lt;field&gt;' value '&lt;value&gt;' must be ≥ &lt;min&gt;.</code> (<code>Errors.swift:106</code>)</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>Error: Resource constraint &#39;deploy.resources.limits.cpus&#39; value &#39;-1&#39; must be ≥ 0.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Set the resource constraint to a value within the documented range. For <code>cpus</code>, the minimum is <code>0</code>; for memory, the minimum is <code>0</code>.</p>
+<hr />
+<h2 id="includeerror">IncludeError<a class="headerlink" href="#includeerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Codable Structs/Include.swift</code> (lines around 75–87, verified by throw sites below)</p>
+<p>Thrown when processing <code>include:</code> directives in a compose file.</p>
+<hr />
+<h3 id="cyclicincludestring"><code>cyclicInclude(String)</code><a class="headerlink" href="#cyclicincludestring" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Cyclic include detected: '&lt;path&gt;' is already being loaded.</code></p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Codable Structs/DockerCompose.swift:225</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>Error: Cyclic include detected: &#39;/path/to/common.yml&#39; is already being loaded.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Remove the cycle. No compose file may include itself directly or transitively.</p>
+<hr />
+<h3 id="filenotfoundstring"><code>fileNotFound(String)</code><a class="headerlink" href="#filenotfoundstring" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Included compose file not found: '&lt;path&gt;'</code></p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Codable Structs/DockerCompose.swift:230</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>Error: Included compose file not found: &#39;/path/to/shared.yml&#39;
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Verify the path relative to the primary compose file's directory, or use an absolute path.</p>
+<hr />
+<h2 id="composememoryparseerror">ComposeMemoryParseError<a class="headerlink" href="#composememoryparseerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Helper Functions.swift:29-34</code></p>
+<p>Internal validation errors for memory quantity strings. Surfaces when Container-Compose validates memory fields for logical consistency.</p>
+<hr />
+<h3 id="empty"><code>empty</code><a class="headerlink" href="#empty" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Helper Functions.swift:45</code></p>
+<p><strong>Meaning:</strong> The memory quantity string is empty or whitespace-only.</p>
+<p><strong>Recovery:</strong> Provide a valid quantity: <code>256m</code>, <code>1g</code>, <code>536870912</code>.</p>
+<hr />
+<h3 id="invalidstring"><code>invalid(String)</code><a class="headerlink" href="#invalidstring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Helper Functions.swift:85</code></p>
+<p><strong>Meaning:</strong> The memory quantity string has an unrecognized suffix or format.</p>
+<p><strong>Recovery:</strong> Use standard suffixes: <code>b</code>, <code>k</code>, <code>m</code>, <code>g</code>, <code>t</code> (case-insensitive), or IEC variants <code>Ki</code>, <code>Mi</code>, <code>Gi</code>, <code>Ti</code>.</p>
+<hr />
+<h3 id="negativestring"><code>negative(String)</code><a class="headerlink" href="#negativestring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Helper Functions.swift:87</code></p>
+<p><strong>Meaning:</strong> The numeric portion is negative.</p>
+<p><strong>Recovery:</strong> Use a positive integer.</p>
+<hr />
+<h3 id="overflowstring"><code>overflow(String)</code><a class="headerlink" href="#overflowstring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Helper Functions.swift:90</code></p>
+<p><strong>Meaning:</strong> The computed byte value overflows a <code>UInt64</code> (&gt;16 exabytes).</p>
+<p><strong>Recovery:</strong> Use a realistic memory limit.</p>
+<hr />
+<h2 id="composewaiterror">ComposeWaitError<a class="headerlink" href="#composewaiterror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Commands/Compose+Wait.swift:82-102</code></p>
+<p>Thrown when waiting for a <code>depends_on</code> condition to be satisfied.</p>
+<hr />
+<h3 id="timeoutcontainername-string-condition-dependsoncondition-seconds-timeinterval"><code>timeout(containerName: String, condition: DependsOnCondition, seconds: TimeInterval)</code><a class="headerlink" href="#timeoutcontainername-string-condition-dependsoncondition-seconds-timeinterval" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Timed out after &lt;N&gt;s waiting for container '&lt;name&gt;' to satisfy condition '&lt;condition&gt;'.</code></p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Commands/Compose+Wait.swift:75</code></p>
+<p><strong>Common triggers:</strong>
+- The upstream service is slow to start
+- The upstream service is crash-looping on startup
+- <code>condition: service_healthy</code> is specified but the service has no healthcheck defined</p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>Error: Timed out after 30s waiting for container &#39;myproject-db&#39; to satisfy condition &#39;service_healthy&#39;.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Check upstream service logs: <code>compose logs &lt;upstream-service&gt;</code>.
+2. For <code>service_healthy</code>: ensure the upstream service defines a <code>healthcheck:</code> in the compose file.
+3. Internal timeout is not currently user-configurable via compose YAML (<code>stop_grace_period</code> is warn-skipped — see <code>docs/feature-parity.md</code>).</p>
+<hr />
+<h3 id="nonzeroexitcodecontainername-string-exitcode-int32"><code>nonZeroExitCode(containerName: String, exitCode: Int32)</code><a class="headerlink" href="#nonzeroexitcodecontainername-string-exitcode-int32" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Container '&lt;name&gt;' exited with non-zero status &lt;code&gt;; service_completed_successfully condition not satisfied.</code></p>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Commands/Compose+Wait.swift:65</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>Error: Container &#39;myproject-migrate&#39; exited with non-zero status 1; service_completed_successfully condition not satisfied.
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong>
+1. Run the service standalone: <code>compose run --no-deps &lt;service&gt;</code>.
+2. Check logs: <code>compose logs &lt;service&gt;</code>.
+3. Fix the service's startup logic or initialization script.</p>
+<hr />
+<h2 id="listenaddresserror">ListenAddressError<a class="headerlink" href="#listenaddresserror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Commands/ListenAddress.swift:115-130</code></p>
+<p>Thrown when parsing the <code>--listen</code> address for <code>compose serve</code>.</p>
+<hr />
+<h3 id="malformedstring"><code>malformed(String)</code><a class="headerlink" href="#malformedstring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Commands/ListenAddress.swift:39</code></p>
+<p><strong>Meaning:</strong> The address string does not match any supported format.</p>
+<p><strong>Expected formats:</strong> <code>unix:///path/to/socket</code>, <code>tcp://host:port</code>, <code>tls://host:port</code></p>
+<p><strong>What users see:</strong>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>Error: malformed listen address: &#39;localhost:8080&#39;
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Correct the <code>--listen</code> flag: <code>--listen tcp://127.0.0.1:8080</code></p>
+<hr />
+<h3 id="missinghostorportstring"><code>missingHostOrPort(String)</code><a class="headerlink" href="#missinghostorportstring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Commands/ListenAddress.swift:63</code></p>
+<p><strong>Meaning:</strong> A <code>tcp://</code> or <code>tls://</code> address was provided but is missing the host or port component.</p>
+<p><strong>Recovery:</strong> Supply both: <code>tcp://127.0.0.1:2376</code></p>
+<hr />
+<h3 id="unsupportedschemestring"><code>unsupportedScheme(String)</code><a class="headerlink" href="#unsupportedschemestring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Commands/ListenAddress.swift:68</code></p>
+<p><strong>Meaning:</strong> The URL scheme is not one of <code>unix</code>, <code>tcp</code>, or <code>tls</code>.</p>
+<p><strong>Recovery:</strong> Use one of the supported schemes. <code>http://</code> and <code>https://</code> are not accepted — use <code>tcp://</code> or <code>tls://</code> instead.</p>
+<hr />
+<h2 id="terminalerror">TerminalError<a class="headerlink" href="#terminalerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Errors.swift:59-65</code></p>
+<div class="language-swift highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="kd">public</span> <span class="kd">enum</span> <span class="nc">TerminalError</span><span class="p">:</span> <span class="n">Error</span><span class="p">,</span> <span class="n">LocalizedError</span> <span class="p">{</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="k">case</span> <span class="n">commandFailed</span><span class="p">(</span><span class="nb">String</span><span class="p">)</span>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<hr />
+<h3 id="commandfailedstring"><code>commandFailed(String)</code><a class="headerlink" href="#commandfailedstring" title="Permanent link">&para;</a></h3>
+<p><strong>Message:</strong> <code>Command failed: &lt;self&gt;</code> (<code>Errors.swift:63</code>)</p>
+<p><strong>Meaning:</strong> A subprocess invoked via <code>RunCommandRunner</code> returned a non-zero exit code. The associated string is the command that failed.</p>
+<p><strong>Common triggers:</strong>
+- <code>container run</code> or <code>container build</code> failed
+- The <code>apple/container</code> CLI is not installed or not on <code>PATH</code>
+- The container image failed to build or start</p>
+<p><strong>Recovery:</strong>
+1. Run the failing command manually with the same arguments to see its output.
+2. Verify that <code>container</code> is installed: <code>which container</code>.
+3. Check container logs for startup errors.</p>
+<hr />
+<h2 id="orchestratorerror">OrchestratorError<a class="headerlink" href="#orchestratorerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Server/ProjectOrchestrator.swift:55-62</code> (approximate; verified by throw sites)</p>
+<p>Errors surfaced by <code>ProjectOrchestrator</code> to REST API route handlers.</p>
+<hr />
+<h3 id="projectnotfoundname-string"><code>projectNotFound(name: String)</code><a class="headerlink" href="#projectnotfoundname-string" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw sites:</strong>
+- <code>ProjectOrchestrator.swift:107</code> — when container list for project is empty
+- <code>ProjectOrchestrator.swift:109</code> — when project lookup returns empty
+- <code>ProjectOrchestrator.swift:148</code> — service operation with unknown project
+- <code>ProjectOrchestrator.swift:175</code> — service operation with unknown project
+- <code>ProjectOrchestrator.swift:239</code> — project stop with unknown project</p>
+<p><strong>HTTP mapping:</strong> 404 Not Found</p>
+<p><strong>What users see in REST API:</strong>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;project &#39;myproject&#39; not found&quot;</span><span class="w"> </span><span class="p">}</span>
+</span></code></pre></div></p>
+<p><strong>Recovery:</strong> Verify the project name. If the project was never started, run <code>compose up</code> first. The REST API uses <code>&lt;project&gt;-&lt;service&gt;</code> to group containers.</p>
+<hr />
+<h3 id="servicenotfoundproject-string-service-string"><code>serviceNotFound(project: String, service: String)</code><a class="headerlink" href="#servicenotfoundproject-string-service-string" title="Permanent link">&para;</a></h3>
+<p><strong>HTTP mapping:</strong> 404 Not Found</p>
+<p><strong>Recovery:</strong> Check that the service name matches the <code>services:</code> key in the compose file exactly. Service names are case-sensitive.</p>
+<hr />
+<h3 id="invalidreplicacountint"><code>invalidReplicaCount(Int)</code><a class="headerlink" href="#invalidreplicacountint" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>ProjectOrchestrator.swift:306</code></p>
+<p><strong>HTTP mapping:</strong> 400 Bad Request</p>
+<p><strong>Recovery:</strong> Set <code>replicas</code> to a non-negative integer in the REST request body.</p>
+<hr />
+<h2 id="authstoreerror">AuthStoreError<a class="headerlink" href="#authstoreerror" title="Permanent link">&para;</a></h2>
+<p><strong>Source:</strong> <code>Sources/Container-Compose/Server/AuthStore.swift:152-163</code> (approximate)</p>
+<p>Thrown during <code>compose serve</code> startup when mutual TLS is configured.</p>
+<hr />
+<h3 id="duplicatenamestring"><code>duplicateName(String)</code><a class="headerlink" href="#duplicatenamestring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Server/AuthStore.swift:89</code></p>
+<p><strong>Meaning:</strong> Two client certificates with the same name were found in the auth store configuration.</p>
+<p><strong>Recovery:</strong> Ensure each client entry in the TLS configuration has a unique name.</p>
+<hr />
+<h3 id="malformedfilestring"><code>malformedFile(String)</code><a class="headerlink" href="#malformedfilestring" title="Permanent link">&para;</a></h3>
+<p><strong>Actual throw site:</strong> <code>Sources/Container-Compose/Server/AuthStore.swift:77</code></p>
+<p><strong>Meaning:</strong> The auth store file at the given path could not be decoded. The associated string is the file path.</p>
+<p><strong>Recovery:</strong> Verify the auth store file is valid JSON matching the expected schema. Re-generate it from the certificate if needed.</p>
+<hr />
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../protocol-contract/">Runtime Protocol Contract</a> — how <code>RuntimeError</code> cases map to <code>Runtime</code> method throws, with per-conformer detail</li>
+<li><a href="../../guides/migration-from-docker-compose/">Migration from Docker Compose</a> — troubleshooting section for common migration errors</li>
+<li><a href="../../feature-parity/">Feature Parity Inventory</a> — which compose fields may silently fail (Tier 0)</li>
+<li><a href="../../plans/runtime-abstraction-leaks/">Runtime Abstraction Leaks</a> — known gaps that affect <code>notSupported</code> and <code>backendFailure</code> cases</li>
+<li><a href="../reviews/">Reviews</a> — code review notes and context</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

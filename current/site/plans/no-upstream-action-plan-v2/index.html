@@ -1,0 +1,3543 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/plans/no-upstream-action-plan-v2/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>No upstream action plan v2 - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#plan-no-upstream-action-plan-v2" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              No upstream action plan v2
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../feature-parity/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../feature-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-goal" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Goal
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-scope-decisions-with-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Scope decisions (with evidence)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Scope decisions (with evidence)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#already-shipped-verified-during-planning-linear-hygiene-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Already shipped (verified during planning) — Linear hygiene only
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#in-scope-will-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      IN scope (will implement)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-scope-upstream-blocked-or-fork-engineering-documented-for-next-planning-cycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      OUT of scope (upstream-blocked or fork-engineering — documented for next planning cycle)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-pre-flight-verification-before-kicking-off-phase-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Pre-flight verification (before kicking off Phase 0)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Pre-flight verification (before kicking off Phase 0)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-qa-execution-conventions-read-this-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 — QA execution conventions (READ THIS FIRST)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-baseline-establishment" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.2 — Baseline establishment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Phases
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-branch-fork-bump-1-2-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 — Branch + fork bump (1-2 hr)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 0 — Branch + fork bump (1-2 hr)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#01-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.1 — Branch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#02-fork-merge-upstream" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.2 — Fork merge upstream
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#03-bump-container-composes-packageresolved" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.3 — Bump Container-Compose's Package.resolved
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#04-identify-newly-landed-flag-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      0.4 — Identify newly-landed flag surface
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-quick-wins-chaos-1366-chaos-1369-chaos-1363-2-3-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 1 — Quick wins (CHAOS-1366 + CHAOS-1369 + CHAOS-1363) (~2-3 hr)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 1 — Quick wins (CHAOS-1366 + CHAOS-1369 + CHAOS-1363) (~2-3 hr)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-chaos-1366-runtimeerrorimagenotfound" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.1 — CHAOS-1366: RuntimeError.imageNotFound
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.1 — CHAOS-1366: RuntimeError.imageNotFound">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#part-a-enum-errordescription-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Part A — Enum + errorDescription (mandatory)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#part-b-map-dispatch-errors-at-runcommandrunnerswift-mandatory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Part B — Map dispatch errors at RunCommandRunner.swift (mandatory)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tests
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-chaos-1369-eventroutes-deprecation-cleanup" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.2 — CHAOS-1369: EventRoutes deprecation cleanup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.2 — CHAOS-1369: EventRoutes deprecation cleanup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Steps
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qa-per-chaos-1369" class="md-nav__link">
+    <span class="md-ellipsis">
+      QA per CHAOS-1369
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-chaos-1363-launchagent-throttleinterval" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.3 — CHAOS-1363: LaunchAgent ThrottleInterval
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-tier-0-sweep-chaos-1370-family-6-10-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 2 — Tier 0 sweep (CHAOS-1370 family) (~6-10 hr)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 2 — Tier 0 sweep (CHAOS-1370 family) (~6-10 hr)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-chaos-1371-security-opt-userns" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.1 — CHAOS-1371: --security-opt / --userns
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-chaos-1372-ipc-pid-uts" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.2 — CHAOS-1372: --ipc / --pid / --uts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-chaos-1373-device-sysctl" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.3 — CHAOS-1373: --device / --sysctl
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-chaos-1374-ip-ip6-mac-address" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.4 — CHAOS-1374: --ip / --ip6 / --mac-address
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-chaos-1375-advanced-resource-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.5 — CHAOS-1375: Advanced resource flags
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-chaos-1376-gpus-blkio-" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.6 — CHAOS-1376: --gpus / --blkio-*
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-chaos-1377-container-build-flag-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.7 — CHAOS-1377: container build flag audit
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.7 — CHAOS-1377: container build flag audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Steps
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qa-per-chaos-1377" class="md-nav__link">
+    <span class="md-ellipsis">
+      QA per CHAOS-1377
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#28-coverage-notes-batch-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.8: Coverage notes batch update
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-tier-1-wireup-1-2-days" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 3 — Tier 1 wireup (~1-2 days)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 — Tier 1 wireup (~1-2 days)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-chaos-1368-named-volume-runtime-crud" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 — CHAOS-1368: Named volume runtime CRUD
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-chaos-1336-deferred-deployresourcesreservations" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.2 — CHAOS-1336 (deferred): deploy.resources.reservations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-coverage-docs-reconciliation-1-2-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 4 — Coverage + docs reconciliation (~1-2 hr)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5-final-verification-linear-hygiene-1-hr" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 5 — Final verification + Linear hygiene (~1 hr)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-risks-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Risks &amp; open questions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-verification-matrix-pre-merge-per-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Verification matrix (pre-merge per phase)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-effort-estimate" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Effort estimate
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-recipe-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Recipe reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-out-of-scope-deferrals-track-for-next-planning-cycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Out of scope deferrals (track for next planning cycle)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-rollback-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Rollback plan
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-out-of-band-what-this-plan-does-not-do" class="md-nav__link">
+    <span class="md-ellipsis">
+      11. Out-of-band: what this plan does NOT do
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/plans/no-upstream-action-plan-v2.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<blockquote>
+<p>⚠️ <strong>SUPERSEDED — DO NOT EXECUTE.</strong> This plan's Phase 0 ("merge upstream into the fork") incorrectly conflated <code>apple/container</code> (canonical) with <code>full-chaos/container</code> (fork, now frozen). The fork is no longer modified. Phases 1.1-1.3 (CHAOS-1366/1369/1363) and Phase 2 (CHAOS-1370 family Tier 0 sweep) ARE valid and being executed in PRs #74-#80 against apple/container directly. Phase 3 / 4 / 5 need replanning. See <code>docs/upstream-fork-status.md</code> for current direction.</p>
+</blockquote>
+<h1 id="plan-no-upstream-action-plan-v2">Plan — No-Upstream Action Plan v2<a class="headerlink" href="#plan-no-upstream-action-plan-v2" title="Permanent link">&para;</a></h1>
+<p><strong>Author:</strong> Sisyphus
+<strong>Date:</strong> 2026-05-01
+<strong>Repo:</strong> <code>/Users/chris/projects/full-chaos/container/container-compose</code>
+<strong>Trigger:</strong> Post-audit follow-up. The 2026-05-01 feature-parity audit (<code>docs/feature-parity.md</code>) revealed Container-Compose drops to ~58% honest coverage (was inflated to ~74% by silent-failure flags). User asked: "create a plan to tackle what we can currently, without upstream apple/container changes." User also flagged: "<code>--shm-size</code> was recently added yesterday."
+<strong>Review:</strong> Initial draft rejected by Momus (3 blockers). This v2 reflects fixes: drop R1/R2 (already shipped), drop CHAOS-1367 from active phases (already in main as CHAOS-1344), fix file paths, add executable QA per task.</p>
+<hr />
+<h2 id="1-goal">1. Goal<a class="headerlink" href="#1-goal" title="Permanent link">&para;</a></h2>
+<p>Drain the no-upstream backlog now that we have:
+1. A precise feature-parity inventory (<code>docs/feature-parity.md</code>)
+2. Honest public coverage matrix (PR #72 — <code>coverage.html</code> reflecting Tier 0 silent failures)
+3. Verified apple/container HEAD state (multiple flags landed in last 30 days)
+4. A 16-ticket Linear backlog (CHAOS-1370 + CHAOS-1378 families) ready for execution</p>
+<p>After this plan ships:
+- Container-Compose builds against a fork that's caught up with upstream apple/container HEAD
+- ~22 Tier 0 silent-failure sites are remediated (warn-skip pattern, no more <code>unknown option</code>)
+- 4+ open backlog items closed (CHAOS-1366, CHAOS-1369, CHAOS-1363, CHAOS-1370 family)
+- Coverage matrix reconciled to reflect post-remediation state
+- All Tier 1 wireable items (CHAOS-1336, CHAOS-1368) have either landed or have updated effort estimates pending Tier 0 cleanup</p>
+<hr />
+<h2 id="2-scope-decisions-with-evidence">2. Scope decisions (with evidence)<a class="headerlink" href="#2-scope-decisions-with-evidence" title="Permanent link">&para;</a></h2>
+<h3 id="already-shipped-verified-during-planning-linear-hygiene-only">Already shipped (verified during planning) — Linear hygiene only<a class="headerlink" href="#already-shipped-verified-during-planning-linear-hygiene-only" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Prior work</th>
+<th>Status</th>
+<th>Verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>R1</strong> (drop ComposeRun's private <code>pullImage</code>)</td>
+<td>SHIPPED</td>
+<td><code>grep -c "private func pullImage" Sources/Container-Compose/Commands/ComposeRun.swift</code> returns 0; line 164 calls shared helper</td>
+</tr>
+<tr>
+<td><strong>R2</strong> (consolidate env merging)</td>
+<td>SHIPPED</td>
+<td><code>mergeServiceEnvironment</code> exists at <code>Sources/Container-Compose/Helper Functions.swift:73-99</code>; all 3 callsites (ComposeUp:584, ComposeCreate:359, ComposeRun:271) use it; tests at <code>Tests/Container-Compose-StaticTests/EnvironmentMergeTests.swift</code> exist</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1367</strong> (pull host-platform default)</td>
+<td>SHIPPED in code</td>
+<td><code>Compose+Pull.swift:56-61</code> already implements <code>defaultRuntimePlatform()</code> fallback (CHAOS-1344 fix). Phase 5 only needs Linear closure with PR link</td>
+</tr>
+</tbody>
+</table>
+<h3 id="in-scope-will-implement">IN scope (will implement)<a class="headerlink" href="#in-scope-will-implement" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Title</th>
+<th>Tier</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>F0</strong></td>
+<td>Bump <code>full-chaos/container@tier2-fork-patches</code> to pull upstream main (gain <code>--shm-size</code> and any other recent landings)</td>
+<td>sync</td>
+<td>Upstream PR #1488 (<code>--shm-size</code>) merged 2026-04-30; fork last commit <code>c910d3d</code> is Apr 22. Fork is 8 days behind. Verified via <code>gh api repos/full-chaos/container/compare/apple:main...full-chaos:tier2-fork-patches</code>.</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1370</strong></td>
+<td>Tier 0 sweep umbrella + 7 sub-issues</td>
+<td>Tier 0</td>
+<td>Filed 2026-05-01. All 7 sub-issues independently verified against fork's <code>Flags.swift</code> — flags genuinely missing.</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1366</strong></td>
+<td>Add <code>RuntimeError.imageNotFound(reference:)</code> mapping case</td>
+<td>infra</td>
+<td>Verified: <code>enum RuntimeError</code> at <code>Sources/Container-Compose/Runtime/Runtime.swift:169</code> has cases <code>.notFound(id:) / .alreadyExists / .invalidState / .timeout / .notSupported / .backendFailure / .persistenceFailure</code> — no <code>.imageNotFound</code>.</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1369</strong></td>
+<td>Deprecation warning cleanup for <code>EventRoutes</code></td>
+<td>tech-debt</td>
+<td>Verified: <code>EventsRoutes.swift:85</code> extends deprecated <code>APIStatsErrorResponse</code>; <code>ProjectRoutes.swift:122</code> extends deprecated <code>APIErrorResponse</code>. Both visible at <code>make build</code> tail.</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1363</strong></td>
+<td>LaunchAgent <code>ThrottleInterval</code> for fast-crash protection</td>
+<td>infra</td>
+<td>Verified: <code>Resources/com.full-chaos.container-compose.plist</code> has Label/ProgramArguments/RunAtLoad/KeepAlive/StandardOutPath/StandardErrorPath but NO <code>&lt;key&gt;ThrottleInterval&lt;/key&gt;</code>.</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1336</strong> (partial)</td>
+<td>Wire <code>service.deploy.resources.reservations.cpus/memory</code></td>
+<td>Tier 1, blocked</td>
+<td>Reservations emit <code>--memory-reservation</code> which is currently a silent failure (CHAOS-1375 territory). After Tier 0 sweep, the wireup either drops these mappings or files an upstream FR.</td>
+</tr>
+<tr>
+<td><strong>CHAOS-1368</strong></td>
+<td>Replace volume hardlink-dir with <code>container volume create</code></td>
+<td>Tier 1</td>
+<td>apple/container's <code>container volume create --label/--opt/--size</code> exists upstream. Open question: does <code>container run -v &lt;name&gt;:&lt;path&gt;</code> resolve names? Plan includes a 30-min smoke test as Phase 4 gate.</td>
+</tr>
+<tr>
+<td><strong>Coverage reconciliation</strong></td>
+<td>Update <code>coverage.html</code> post-Tier-0-sweep: notes flip from "silent failure" to "decoded; warn-skipped"</td>
+<td>docs</td>
+<td>Mechanical follow-on; pattern matches CHAOS-1338.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="out-of-scope-upstream-blocked-or-fork-engineering-documented-for-next-planning-cycle">OUT of scope (upstream-blocked or fork-engineering — documented for next planning cycle)<a class="headerlink" href="#out-of-scope-upstream-blocked-or-fork-engineering-documented-for-next-planning-cycle" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Why</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHAOS-1334 (network IPAM extensions)</td>
+<td>Needs fork patch to add <code>--driver-opts</code>/<code>--attachable</code>/<code>--ipv6</code>/<code>--ip-range</code>/<code>--gateway</code>/<code>--aux-address</code>/<code>--ipam-driver</code>/<code>--ipam-opt</code> to <code>container network create</code></td>
+<td>apple/container <code>NetworkCreate.swift</code> only has <code>--label</code>/<code>--internal</code>/<code>--subnet</code>/<code>--subnet-v6</code>/<code>--plugin</code>/<code>--plugin-variant</code></td>
+</tr>
+<tr>
+<td>CHAOS-1335 (volume <code>driver_opts</code>)</td>
+<td>Could be Tier 1 if we move to native CRUD (CHAOS-1368), but propagation requires the fork to expose <code>--opt KEY=VALUE</code> in <code>volume create</code> flags. Currently <code>container volume create --opt</code> exists upstream — re-verify scope after CHAOS-1368 lands.</td>
+<td>bg_865daeda showed VolumeCreate has <code>--opt</code></td>
+</tr>
+<tr>
+<td>CHAOS-1378 family (Tier 3 FRs)</td>
+<td>All 7 require apple/container engineering; this plan filters them OUT</td>
+<td>docs/feature-parity.md §6</td>
+</tr>
+<tr>
+<td>CHAOS-1332 (AI models / provider)</td>
+<td>Frontier Tier 5 — spec evolving, not investing yet</td>
+<td>docs/feature-parity.md §8</td>
+</tr>
+<tr>
+<td>CHAOS-1345 (Architecture PRD)</td>
+<td>Umbrella backlog; no concrete deliverable</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-pre-flight-verification-before-kicking-off-phase-0">3. Pre-flight verification (before kicking off Phase 0)<a class="headerlink" href="#3-pre-flight-verification-before-kicking-off-phase-0" title="Permanent link">&para;</a></h2>
+<h3 id="31-qa-execution-conventions-read-this-first">3.1 — QA execution conventions (READ THIS FIRST)<a class="headerlink" href="#31-qa-execution-conventions-read-this-first" title="Permanent link">&para;</a></h3>
+<p>All shell QA snippets in this plan assume the following conventions. Per Momus v4 review, default <code>bash</code>/<code>zsh</code> interpretation of the snippets has two pitfalls that invalidate pass/fail gates:</p>
+<ol>
+<li>
+<p><strong>Pipelines mask exit codes.</strong> <code>make build 2&gt;&amp;1 | tail -5</code> returns <code>tail</code>'s exit code, NOT the build's. Run every QA block under <code>set -o pipefail</code>:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>pipefail
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>build<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">    </span><span class="c1"># now actually fails if build fails</span>
+</span></code></pre></div>
+   Either prefix each block with <code>set -o pipefail</code>, run individual commands without piping, or invoke a wrapper:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>bash<span class="w"> </span>-o<span class="w"> </span>pipefail<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;&lt;command&gt;&#39;</span>
+</span></code></pre></div></p>
+</li>
+<li>
+<p><strong><code>grep -c ... # expect 0</code> is misleading.</strong> On both BSD and GNU <code>grep</code>, zero matches exits with status 1, so a naive <code>grep -c X file</code> assertion FAILS exactly when the expected result is "0 matches." Wherever you see <code># expect 0</code> in the QA blocks below, interpret it as one of these idiomatic forms:
+   <div class="language-sh highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Negation form (preferred):</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>!<span class="w"> </span>grep<span class="w"> </span>-qE<span class="w"> </span><span class="s1">&#39;pattern&#39;</span><span class="w"> </span>file<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PASS: no matches&quot;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Explicit count form:</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;pattern&#39;</span><span class="w"> </span>file<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PASS: 0 matches&quot;</span>
+</span></code></pre></div>
+   The <code>2&gt;/dev/null || true</code> belt-and-suspenders prevents the <code>grep -c</code> exit-1 from killing a piped script.</p>
+</li>
+<li>
+<p><strong>Directory greps need <code>-r</code> or specific files.</strong> Plain <code>grep -E 'pat' Some/Dir/</code> errors with <code>Is a directory</code>. Either use <code>grep -rE 'pat' Some/Dir/</code> or list files explicitly: <code>grep -E 'pat' Some/Dir/{File1,File2}.swift</code>.</p>
+</li>
+<li>
+<p><strong><code>swift test --filter</code> accepts a literal substring</strong>, not regex. Where the plan writes <code>--filter "GpusBlkio|ResourceArgs"</code>, run two separate test invocations: <code>swift test --filter GpusBlkio &amp;&amp; swift test --filter ResourceArgs</code>.</p>
+</li>
+</ol>
+<p>The QA snippets in §4 are written in their compact form for readability; apply the conventions above when executing.</p>
+<h3 id="32-baseline-establishment">3.2 — Baseline establishment<a class="headerlink" href="#32-baseline-establishment" title="Permanent link">&para;</a></h3>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">cd</span><span class="w"> </span>/Users/chris/projects/full-chaos/container/container-compose
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>git<span class="w"> </span>checkout<span class="w"> </span>main<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>pull<span class="w"> </span>origin<span class="w"> </span>main
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>pipefail
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>make<span class="w"> </span>build<span class="w">                                          </span><span class="c1"># exit 0 expected</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w">   </span><span class="c1"># exit 0 expected</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>linear<span class="w"> </span>issues<span class="w"> </span>get<span class="w"> </span>CHAOS-1370<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;&quot;state&quot;&#39;</span><span class="w">       </span><span class="c1"># confirm Backlog</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>linear<span class="w"> </span>issues<span class="w"> </span>get<span class="w"> </span>CHAOS-1378<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">&#39;&quot;state&quot;&#39;</span><span class="w">       </span><span class="c1"># confirm Backlog</span>
+</span></code></pre></div>
+<p>Expected: all green, both umbrellas open, baseline clean.</p>
+<hr />
+<h2 id="4-phases">4. Phases<a class="headerlink" href="#4-phases" title="Permanent link">&para;</a></h2>
+<p>Each phase is a separate PR with its own CHAOS-style commit subject. Each ends with passing build + tests + clean diagnostics. <strong>Every sub-task includes an executable QA scenario with concrete tool, command, and pass criteria.</strong></p>
+<h3 id="phase-0-branch-fork-bump-1-2-hr">Phase 0 — Branch + fork bump (1-2 hr)<a class="headerlink" href="#phase-0-branch-fork-bump-1-2-hr" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Catch fork up to upstream so <code>--shm-size</code> and any other recent landings are picked up.</p>
+<h4 id="01-branch">0.1 — Branch<a class="headerlink" href="#01-branch" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Create branch <code>feat/no-upstream-action-plan-v2</code> off <code>main</code>.</li>
+</ul>
+<p><strong>QA:</strong> <code>git branch --show-current</code> outputs <code>feat/no-upstream-action-plan-v2</code>.</p>
+<h4 id="02-fork-merge-upstream">0.2 — Fork merge upstream<a class="headerlink" href="#02-fork-merge-upstream" title="Permanent link">&para;</a></h4>
+<p>This is in a SEPARATE repo (<code>full-chaos/container</code>), but Container-Compose drives the cadence.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In <code>/Users/chris/projects/full-chaos/container/container/</code>:
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>git<span class="w"> </span>fetch<span class="w"> </span>upstream<span class="w"> </span>main<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>fetch<span class="w"> </span>origin
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>git<span class="w"> </span>checkout<span class="w"> </span>tier2-fork-patches
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>git<span class="w"> </span>merge<span class="w"> </span>--no-ff<span class="w"> </span>upstream/main<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;merge: pull apple/container@main into tier2-fork-patches (gain --shm-size, etc.)&quot;</span>
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Resolve any conflicts. Most likely conflict-free since fork's 4 commits don't touch <code>Flags.swift</code> body, only add fields.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In the fork: <code>swift build</code> and <code>swift test</code> to confirm clean post-merge.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Push: <code>git push origin tier2-fork-patches</code>.</li>
+</ul>
+<p><strong>QA per the merge</strong> (grep patterns updated per Momus v3 review — Swift ArgumentParser uses <code>customLong("name")</code> / <code>.long</code> / <code>.shortAndLong</code> modifiers, NOT literal <code>"--name"</code> strings):</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>/Users/chris/projects/full-chaos/container/container/
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>swift<span class="w"> </span>build<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">      </span><span class="c1"># exit 0; no errors</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">       </span><span class="c1"># exit 0</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="c1"># Verify --shm-size landed (it appears as customLong(&quot;shm-size&quot;) OR a property named shmSize with .long)</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>grep<span class="w"> </span>-nE<span class="w"> </span><span class="s1">&#39;customLong\(&quot;shm-size&quot;\)|var shmSize:&#39;</span><span class="w"> </span>Sources/Services/ContainerAPIService/Client/Flags.swift<span class="w">   </span><span class="c1"># expect &gt;= 1 match</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># Verify --restart still present (fork patch)</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>grep<span class="w"> </span>-nE<span class="w"> </span><span class="s1">&#39;customLong\(&quot;restart&quot;\)|var restart:&#39;</span><span class="w"> </span>Sources/Services/ContainerAPIService/Client/Flags.swift<span class="w">    </span><span class="c1"># expect &gt;= 1 match</span>
+</span></code></pre></div>
+<p>Pass criteria: build + test exit 0; both greps return &gt;= 1 match (proves merge brought <code>--shm-size</code> AND fork's <code>--restart</code> survived).</p>
+<h4 id="03-bump-container-composes-packageresolved">0.3 — Bump Container-Compose's <code>Package.resolved</code><a class="headerlink" href="#03-bump-container-composes-packageresolved" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In container-compose repo: <code>swift package update container</code> to pick up the new fork SHA.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Commit <code>Package.resolved</code> with subject: <code>chore(deps): bump full-chaos/container to gain upstream --shm-size (PR #1488 + others)</code>.</li>
+</ul>
+<p><strong>QA:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">cd</span><span class="w"> </span>/Users/chris/projects/full-chaos/container/container-compose
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>swift<span class="w"> </span>package<span class="w"> </span>update<span class="w"> </span>container<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>make<span class="w"> </span>build<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">   </span><span class="c1"># exit 0</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Verify --shm-size in the checked-out fork source (declaration form, not literal)</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>grep<span class="w"> </span>-nE<span class="w"> </span><span class="s1">&#39;customLong\(&quot;shm-size&quot;\)|var shmSize:&#39;</span><span class="w"> </span>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift<span class="w">   </span><span class="c1"># expect &gt;= 1 match</span>
+</span></code></pre></div>
+<p>Pass criteria: All commands exit 0; new fork SHA in <code>Package.resolved</code>; grep finds <code>--shm-size</code> declaration.</p>
+<h4 id="04-identify-newly-landed-flag-surface">0.4 — Identify newly-landed flag surface<a class="headerlink" href="#04-identify-newly-landed-flag-surface" title="Permanent link">&para;</a></h4>
+<p>After fork bump, re-grep <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift</code> for the flags previously listed as silent failures. <strong>Use ArgumentParser declaration patterns</strong>, not literal <code>"--flag"</code> strings — the latter only appears in some files (e.g., help text) but is unreliable as a presence indicator.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Run the audit grep. Each line below probes one flag using all three common ArgumentParser shapes (<code>customLong("name")</code>, <code>name: .long</code>/<code>shortAndLong</code> paired with a <code>var &lt;camelCase&gt;:</code> declaration):
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nv">FLAGS_FILE</span><span class="o">=</span>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">for</span><span class="w"> </span>flag_decl<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="s1">&#39;shm-size|var shmSize:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="s1">&#39;stop-signal|var stopSignal:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span><span class="s1">&#39;add-host|var addHost:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="s1">&#39;cap-add|var capAdd:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="s1">&#39;cap-drop|var capDrop:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span><span class="s1">&#39;ulimit|var ulimits:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span><span class="s1">&#39;memory-reservation|var memoryReservation:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">  </span><span class="s1">&#39;pids-limit|var pidsLimit:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span><span class="s1">&#39;security-opt|var securityOpt:&#39;</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">  </span><span class="s1">&#39;gpus|var gpus:&#39;</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">  </span><span class="nv">cli_part</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">flag_decl</span><span class="p">%%|*</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">  </span><span class="nv">var_part</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">flag_decl</span><span class="p">##*|</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">  </span><span class="nv">matches</span><span class="o">=</span><span class="k">$(</span>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;customLong\\(\&quot;</span><span class="nv">$cli_part</span><span class="s2">\&quot;\\)|</span><span class="nv">$var_part</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$FLAGS_FILE</span><span class="s2">&quot;</span><span class="k">)</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$cli_part</span><span class="s2">: </span><span class="nv">$matches</span><span class="s2">&quot;</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="k">done</span>
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Capture which flags returned &gt;= 1. Each such flag is now upstream-supported and must be EXCLUDED from the Tier 0 sweep (Phase 2 sub-issues).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Comment the list on CHAOS-1370 (markdown bullet list).</li>
+</ul>
+<p><strong>QA:</strong> The script above runs to completion; each flag prints <code>&lt;name&gt;: &lt;count&gt;</code>; document the resulting list. Pass criteria: at minimum <code>shm-size: 1</code> and <code>cap-add: 1</code> and <code>ulimit: 1</code> after fork bump (per the librarian audit findings).</p>
+<p><strong>Exit gate Phase 0:</strong></p>
+<ol>
+<li><code>make build</code> exits 0 with the new fork.</li>
+<li><code>swift test --filter Container-Compose-StaticTests</code> exits 0.</li>
+<li>Fork's <code>Flags.swift</code> contains <code>--shm-size</code> (line known after grep).</li>
+<li><code>Package.resolved</code> committed; PR opened with title <code>chore(deps): bump fork</code>.</li>
+<li>CHAOS-1370 commented with the "newly-landed flags" list from 0.4.</li>
+</ol>
+<hr />
+<h3 id="phase-1-quick-wins-chaos-1366-chaos-1369-chaos-1363-2-3-hr">Phase 1 — Quick wins (CHAOS-1366 + CHAOS-1369 + CHAOS-1363) (~2-3 hr)<a class="headerlink" href="#phase-1-quick-wins-chaos-1366-chaos-1369-chaos-1363-2-3-hr" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Drain the small-effort backlog to clear the deck for the Tier 0 sweep.</p>
+<p>Each is a separate commit / PR.</p>
+<h4 id="11-chaos-1366-runtimeerrorimagenotfound">1.1 — CHAOS-1366: <code>RuntimeError.imageNotFound</code><a class="headerlink" href="#11-chaos-1366-runtimeerrorimagenotfound" title="Permanent link">&para;</a></h4>
+<p><strong>File path corrections (per Momus v2 review):</strong>
+- <code>enum RuntimeError</code> lives at <code>Sources/Container-Compose/Runtime/Runtime.swift:169</code> (NOT <code>Runtime/RuntimeError.swift</code>).
+- The active image-pull dispatch path is at <code>Sources/Container-Compose/Runtime/RunCommandRunner.swift:209-220</code> (handles <code>case "ImagePull"</code>). <code>AppleContainerizationRuntime.swift</code> does NOT contain the pull path. The compose-side caller is <code>Sources/Container-Compose/Commands/Compose+Pull.swift:52-65</code>.</p>
+<p>This task ships in two parts. Part A is enum-only; Part B is the actual error-mapping at the dispatch boundary.</p>
+<h5 id="part-a-enum-errordescription-mandatory">Part A — Enum + <code>errorDescription</code> (mandatory)<a class="headerlink" href="#part-a-enum-errordescription-mandatory" title="Permanent link">&para;</a></h5>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Read <code>Sources/Container-Compose/Runtime/Runtime.swift:169-198</code> to see the existing enum + <code>LocalizedError</code> extension.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add new case to <code>enum RuntimeError</code>:
+  <div class="language-swift highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">case</span> <span class="n">imageNotFound</span><span class="p">(</span><span class="n">reference</span><span class="p">:</span> <span class="nb">String</span><span class="p">)</span>
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add corresponding switch arm in <code>LocalizedError.errorDescription</code>:
+  <div class="language-swift highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">case</span> <span class="p">.</span><span class="n">imageNotFound</span><span class="p">(</span><span class="kd">let</span> <span class="nv">reference</span><span class="p">):</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">return</span> <span class="s">&quot;Runtime: image &#39;</span><span class="si">\(</span><span class="n">reference</span><span class="si">)</span><span class="s">&#39; not found&quot;</span>
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add <code>Equatable</code> if not auto-derived (the existing enum has associated values; verify the synthesized <code>Equatable</code> covers the new case).</li>
+</ul>
+<h5 id="part-b-map-dispatch-errors-at-runcommandrunnerswift-mandatory">Part B — Map dispatch errors at <code>RunCommandRunner.swift</code> (mandatory)<a class="headerlink" href="#part-b-map-dispatch-errors-at-runcommandrunnerswift-mandatory" title="Permanent link">&para;</a></h5>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Read <code>Sources/Container-Compose/Runtime/RunCommandRunner.swift:200-230</code> to see the <code>ImagePull</code> dispatch case (line 211-212: <code>let cmd = try Application.ImagePull.parse(argv)</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Wrap the <code>try await cmd.run()</code> (or equivalent) in a <code>do/catch</code> that detects the upstream "image not found" error condition. Concrete options to inspect upstream's error type:</li>
+<li><code>Application.ImagePull</code> may throw a typed <code>ContainerizationError</code> with a <code>.notFound</code> case; if so, map it.</li>
+<li>It may throw a generic <code>Error</code> whose description contains <code>not found</code> / <code>404</code>; if so, string-match (least preferred — only fall back to this if no typed surface exists).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> On detection: re-throw <code>RuntimeError.imageNotFound(reference: &lt;imageRef&gt;)</code>. Source the <code>&lt;imageRef&gt;</code> from the dispatched argv (the first positional arg per <code>Compose+Pull.swift:54</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Verify the caller path (<code>Compose+Pull.swift:64</code>) propagates the new error type cleanly (no need to handle differently in the caller — error bubbles up to <code>compose up</code> exit handler).</li>
+</ul>
+<h5 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h5>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add <code>Tests/Container-Compose-StaticTests/RuntimeErrorTests.swift</code> if it doesn't exist. Test cases:</li>
+<li><strong>Description:</strong> Construct <code>.imageNotFound(reference: "alpine:3")</code>; assert <code>.errorDescription</code> returns <code>"Runtime: image 'alpine:3' not found"</code>.</li>
+<li><strong>Equality:</strong> Two <code>.imageNotFound(reference: "alpine:3")</code> are equal; one with reference "alpine:3" is NOT equal to one with "redis:7".</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add to <code>Tests/Container-Compose-StaticTests/ComposePullTests.swift</code> (or create <code>RunCommandRunnerImagePullTests.swift</code>):</li>
+<li><strong>Mapping (using <code>RecordingRunner</code> or a synthetic dispatch):</strong> Inject a runner that throws an upstream "not found" error for a given image reference; verify <code>Compose+Pull.pullImage(...)</code> propagates <code>RuntimeError.imageNotFound(reference: &lt;expected&gt;)</code>.</li>
+</ul>
+<p><strong>QA per CHAOS-1366:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Static tests</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>RuntimeErrorTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">      </span><span class="c1"># exit 0; cases 1 + 2 pass</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">   </span><span class="c1"># exit 0; no regressions</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># Code-state assertions</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;case imageNotFound&quot;</span><span class="w"> </span>Sources/Container-Compose/Runtime/Runtime.swift<span class="w">                  </span><span class="c1"># expect 1</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;Runtime: image&#39;</span><span class="w"> </span>Sources/Container-Compose/Runtime/Runtime.swift<span class="w">                      </span><span class="c1"># expect 1 (the errorDescription string)</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;RuntimeError.imageNotFound&quot;</span><span class="w"> </span>Sources/Container-Compose/Runtime/RunCommandRunner.swift<span class="w"> </span><span class="c1"># expect 1 (Part B mapping)</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="c1"># Optional smoke (runtime-equipped only)</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>.build/release/container-compose<span class="w"> </span>up<span class="w"> </span>-f<span class="w"> </span>/tmp/missing-image.yaml<span class="w">   </span><span class="c1"># should exit non-zero with &quot;Runtime: image &#39;foo:bar&#39; not found&quot;, NOT a generic stack trace</span>
+</span></code></pre></div>
+<p>Pass criteria: 5 commands succeed; smoke (if runtime available) shows the new error type in stderr.</p>
+<p><strong>Commit:</strong> <code>feat(runtime): map image-not-found errors to RuntimeError.imageNotFound (CHAOS-1366)</code></p>
+<h4 id="12-chaos-1369-eventroutes-deprecation-cleanup">1.2 — CHAOS-1369: EventRoutes deprecation cleanup<a class="headerlink" href="#12-chaos-1369-eventroutes-deprecation-cleanup" title="Permanent link">&para;</a></h4>
+<p><strong>Critical correction (per Momus v2 review):</strong> <code>APIErrorEnvelope</code> already conforms to <code>ResponseEncodable</code> in <code>Sources/Container-Compose/Server/APISchemas.swift:550</code> (<code>public struct APIErrorEnvelope: Codable, Sendable, Hashable, ResponseEncodable {</code>). The deprecation warnings come from the route-level extensions <code>APIStatsErrorResponse</code> (deprecated type) and <code>APIErrorResponse</code> (deprecated type) — NOT from a missing <code>APIErrorEnvelope</code> conformance. Adding <code>extension APIErrorEnvelope: ResponseEncodable {}</code> would create a duplicate conformance and fail to compile.</p>
+<p><strong>Correct fix:</strong> simply DELETE the two deprecated route-level extensions. The deprecated types remain DEFINED in <code>APISchemas.swift</code> (intentional, for backward compat at the type level), but Hummingbird response encoding only needs <code>APIErrorEnvelope</code> which is already wired.</p>
+<h5 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h5>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Verify pre-conditions:
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>grep<span class="w"> </span>-n<span class="w"> </span><span class="s2">&quot;APIErrorEnvelope.*ResponseEncodable\|APIErrorEnvelope: ResponseEncodable&quot;</span><span class="w"> </span>Sources/Container-Compose/Server/APISchemas.swift
+</span></code></pre></div>
+  Expected: line 550 shows <code>APIErrorEnvelope</code> conforms.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Confirm no real callers still need the deprecated route-level conformances:
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;as APIStatsErrorResponse\|: APIStatsErrorResponse\|APIStatsErrorResponse(&quot;</span><span class="w"> </span>Sources/Container-Compose/Server/Routes/
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;as APIErrorResponse\|: APIErrorResponse\|APIErrorResponse(&quot;</span><span class="w"> </span>Sources/Container-Compose/Server/Routes/
+</span></code></pre></div>
+  If any active uses (i.e., not just the deprecated extension itself or backward-compat comments), STOP and re-scope; the deletion is unsafe. If only matches are the extension + comments, proceed.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In <code>Sources/Container-Compose/Server/Routes/EventsRoutes.swift:85</code>: DELETE the line <code>extension APIStatsErrorResponse: ResponseEncodable {}</code>. Leave any comments at lines 84/86 if they still apply (likely the comment can also be removed).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In <code>Sources/Container-Compose/Server/Routes/ProjectRoutes.swift:122</code>: DELETE the line <code>extension APIErrorResponse: ResponseEncodable {}</code>. The comment at line 121 (<code>// APIErrorResponse: ResponseEncodable retained for backward compat (deprecated).</code>) becomes obsolete — delete it too.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No changes to <code>APISchemas.swift</code> (the deprecated type definitions stay; they're intentionally kept).</li>
+</ul>
+<h5 id="qa-per-chaos-1369">QA per CHAOS-1369<a class="headerlink" href="#qa-per-chaos-1369" title="Permanent link">&para;</a></h5>
+<p>Run with <code>set -o pipefail</code> per §3.1.</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>pipefail
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="c1"># Build must show ZERO deprecation warnings for these specific symbols</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="nv">WARN_COUNT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>make<span class="w"> </span>build<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;APIStatsErrorResponse.*deprecated|&#39;APIErrorResponse&#39;.*deprecated&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span><span class="k">)</span><span class="s2">&quot;</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$WARN_COUNT</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PASS: no deprecation warnings&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;FAIL: </span><span class="nv">$WARN_COUNT</span><span class="s2"> warnings&quot;</span><span class="p">;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="c1"># General test pass</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w">   </span><span class="c1"># exit 0</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="c1"># Confirm extensions deleted from each Routes/ file (recursive grep, then assert 0)</span>
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="nv">EXT_COUNT</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>grep<span class="w"> </span>-rE<span class="w"> </span><span class="s2">&quot;^extension APIStatsErrorResponse|^extension APIErrorResponse&quot;</span><span class="w"> </span>Sources/Container-Compose/Server/Routes/<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">&#39; &#39;</span><span class="k">)</span><span class="s2">&quot;</span>
+</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="o">[</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$EXT_COUNT</span><span class="s2">&quot;</span><span class="w"> </span>-eq<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;PASS: extensions deleted&quot;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="o">{</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;FAIL: </span><span class="nv">$EXT_COUNT</span><span class="s2"> remaining&quot;</span><span class="p">;</span><span class="w"> </span><span class="nb">exit</span><span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="o">}</span>
+</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>
+</span><span id="__span-13-14"><a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="c1"># Type definitions ARE retained in APISchemas.swift (backward compat)</span>
+</span><span id="__span-13-15"><a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;struct APIStatsErrorResponse|struct APIErrorResponse&quot;</span><span class="w"> </span>Sources/Container-Compose/Server/APISchemas.swift<span class="w">  </span><span class="c1"># expect &gt;= 1 (still defined)</span>
+</span></code></pre></div>
+<p>Pass criteria: build emits zero deprecation warnings for these specific symbols; tests pass; route-level extensions gone; type definitions retained.</p>
+<p><strong>Commit:</strong> <code>chore: remove deprecated APIStatsErrorResponse/APIErrorResponse route-level extensions (CHAOS-1369)</code></p>
+<h4 id="13-chaos-1363-launchagent-throttleinterval">1.3 — CHAOS-1363: LaunchAgent ThrottleInterval<a class="headerlink" href="#13-chaos-1363-launchagent-throttleinterval" title="Permanent link">&para;</a></h4>
+<p><strong>File path:</strong> <code>Resources/com.full-chaos.container-compose.plist</code>.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Read the plist to confirm current state (53 lines; no <code>ThrottleInterval</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Insert the following after <code>&lt;/array&gt;</code> (line 37 — the close of <code>ProgramArguments</code>):
+  <div class="language-xml highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="w">    </span><span class="cm">&lt;!-- Throttle restarts: launchd will not relaunch within this window --&gt;</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">    </span><span class="nt">&lt;key&gt;</span>ThrottleInterval<span class="nt">&lt;/key&gt;</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">    </span><span class="nt">&lt;integer&gt;</span>10<span class="nt">&lt;/integer&gt;</span>
+</span></code></pre></div>
+  10 seconds is the standard launchd recommendation for daemon plists; matches <code>brew services</code> defaults.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update Homebrew formula tests if any reference the plist content.</li>
+</ul>
+<p><strong>QA per CHAOS-1363:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>plutil<span class="w"> </span>-lint<span class="w"> </span>Resources/com.full-chaos.container-compose.plist<span class="w">                    </span><span class="c1"># &quot;OK&quot; output expected</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;ThrottleInterval&quot;</span><span class="w"> </span>Resources/com.full-chaos.container-compose.plist<span class="w">      </span><span class="c1"># exactly 1</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;&lt;integer&gt;10&lt;/integer&gt;&quot;</span><span class="w"> </span>Resources/com.full-chaos.container-compose.plist<span class="w"> </span><span class="c1"># exactly 1</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>plutil<span class="w"> </span>-extract<span class="w"> </span>ThrottleInterval<span class="w"> </span>raw<span class="w"> </span>Resources/com.full-chaos.container-compose.plist<span class="w">   </span><span class="c1"># outputs &quot;10&quot;</span>
+</span></code></pre></div>
+<p>Pass criteria: plist validates; key + value present; <code>plutil -extract</code> returns 10.</p>
+<p><strong>Commit:</strong> <code>chore(serve): add ThrottleInterval to LaunchAgent plist for fast-crash protection (CHAOS-1363)</code></p>
+<p><strong>Exit gate Phase 1:</strong></p>
+<ol>
+<li>All 3 sub-tasks have their commits + green CI.</li>
+<li><code>make build</code> exits 0 with <strong>fewer warnings</strong> than baseline (CHAOS-1369 should have removed the deprecation warnings — count via <code>make build 2&gt;&amp;1 | grep -c "warning:"</code>).</li>
+<li><code>lsp_diagnostics</code> clean on every touched file (no error-severity entries).</li>
+<li>Linear: comment + transition each ticket (CHAOS-1366, CHAOS-1369, CHAOS-1363) to In Review or Done.</li>
+</ol>
+<hr />
+<h3 id="phase-2-tier-0-sweep-chaos-1370-family-6-10-hr">Phase 2 — Tier 0 sweep (CHAOS-1370 family) (~6-10 hr)<a class="headerlink" href="#phase-2-tier-0-sweep-chaos-1370-family-6-10-hr" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Execute the 7 sub-issues filed under CHAOS-1370 to stop emitting flags upstream rejects.</p>
+<p><strong>Recipe to follow</strong> (from <code>bg_27b0d5bf</code>): Recipe A — Tier 0 Cleanup (canonical reference: CHAOS-1329/1330/1331).</p>
+<p>The recipe in one paragraph: replace <code>args.append("--&lt;flag&gt;", value)</code> with <code>warnUnsupportedRuntimeFieldOnce("service.&lt;field&gt;", "Note: '&lt;field&gt;' is parsed but not supported by Apple container; ignored.")</code>. Update the corresponding test in <code>Tests/Container-Compose-StaticTests/&lt;Topic&gt;ArgsTests.swift</code> to assert the warn-skip path. After the source change lands, update the <code>coverage.html</code> row note from "silent failure" to "decoded; warn-skipped" (status stays <code>partial</code>).</p>
+<p><strong>IMPORTANT scope adjustment from Phase 0.4:</strong> Any flag that is NOW upstream-supported (e.g., <code>--shm-size</code> per PR #1488) should be EXCLUDED from the warn-skip pattern — it's no longer a silent failure. Adjust CHAOS-1375 scope accordingly.</p>
+<h4 id="21-chaos-1371-security-opt-userns">2.1 — CHAOS-1371: <code>--security-opt</code> / <code>--userns</code><a class="headerlink" href="#21-chaos-1371-security-opt-userns" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> In <code>Sources/Container-Compose/Commands/Compose+ArgsSecurity.swift:40-45</code>:</li>
+<li>Wrap <code>args.append(contentsOf: ["--security-opt", opt])</code> block in a <code>warnUnsupportedRuntimeFieldOnce("service.security_opt", "Note: 'security_opt' is parsed but not supported by Apple container; ignored.")</code> call.</li>
+<li>Same for <code>--userns</code> block.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update <code>Tests/Container-Compose-StaticTests/SecurityArgsTests.swift</code>:</li>
+<li>Find tests that assert <code>--security-opt</code> is in argv → flip to assert it is NOT in argv.</li>
+<li>Add new test asserting the warning print path (use <code>RecordingRunner</code> or capture stdout).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage flip in <code>coverage.html</code>: <code>service.security_opt</code> and <code>service.userns_mode</code> row notes change from "silent failure" to "decoded; warn-skipped via warnUnsupportedRuntimeFieldOnce".</li>
+</ul>
+<p><strong>QA per CHAOS-1371:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>SecurityArgsTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">      </span><span class="c1"># exit 0</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">   </span><span class="c1"># exit 0</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;args.append.*security-opt&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsSecurity.swift<span class="w">   </span><span class="c1"># expect 0</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;args.append.*userns&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsSecurity.swift<span class="w">        </span><span class="c1"># expect 0</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;warnUnsupportedRuntimeFieldOnce.*security_opt&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsSecurity.swift<span class="w">   </span><span class="c1"># expect 1</span>
+</span></code></pre></div>
+<p>Pass criteria: tests pass; emissions removed; warnings added.</p>
+<p><strong>Commit:</strong> <code>feat(args): warn-and-skip --security-opt / --userns (CHAOS-1371)</code></p>
+<h4 id="22-chaos-1372-ipc-pid-uts">2.2 — CHAOS-1372: <code>--ipc</code> / <code>--pid</code> / <code>--uts</code><a class="headerlink" href="#22-chaos-1372-ipc-pid-uts" title="Permanent link">&para;</a></h4>
+<p><strong>Files to modify:</strong> <code>Sources/Container-Compose/Commands/Compose+ArgsNetworking.swift:134-149</code>, <code>Tests/Container-Compose-StaticTests/NetworkArgsTests.swift</code>.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace each <code>args.append(contentsOf: ["--ipc"|"--pid"|"--uts", value])</code> block with <code>warnUnsupportedRuntimeFieldOnce("service.&lt;field&gt;", "Note: '&lt;field&gt;' is parsed but not supported by Apple container; ignored.")</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update tests asserting these flags appear → flip to assert absence + warning.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage flip in <code>coverage.html</code>: 3 row notes flipped.</li>
+</ul>
+<p><strong>QA per CHAOS-1372:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>NetworkArgsTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                                </span><span class="c1"># exit 0</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;args.append.*&quot;--(ipc|pid|uts)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsNetworking.swift<span class="w">   </span><span class="c1"># expect 0</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;warnUnsupportedRuntimeFieldOnce.*&quot;service\.(ipc|pid|uts)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsNetworking.swift<span class="w">  </span><span class="c1"># expect 3</span>
+</span></code></pre></div>
+<p><strong>Commit:</strong> <code>feat(args): warn-and-skip --ipc / --pid / --uts (CHAOS-1372)</code></p>
+<h4 id="23-chaos-1373-device-sysctl">2.3 — CHAOS-1373: <code>--device</code> / <code>--sysctl</code><a class="headerlink" href="#23-chaos-1373-device-sysctl" title="Permanent link">&para;</a></h4>
+<p><strong>Files to modify:</strong> <code>Sources/Container-Compose/Commands/Compose+ArgsStorage.swift:45-56</code>, <code>Tests/Container-Compose-StaticTests/StorageArgsTests.swift</code>.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace each <code>args.append(contentsOf: ["--device", device])</code> (loop) with a single <code>warnUnsupportedRuntimeFieldOnce</code> per non-empty array.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Same for <code>--sysctl</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update tests.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage flip.</li>
+</ul>
+<p><strong>QA per CHAOS-1373:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>StorageArgsTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                                </span><span class="c1"># exit 0</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;args.append.*&quot;--(device|sysctl)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsStorage.swift<span class="w">   </span><span class="c1"># expect 0</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;warnUnsupportedRuntimeFieldOnce.*&quot;service\.(devices|sysctls)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsStorage.swift<span class="w">  </span><span class="c1"># expect 2</span>
+</span></code></pre></div>
+<p><strong>Commit:</strong> <code>feat(args): warn-and-skip --device / --sysctl (CHAOS-1373)</code></p>
+<h4 id="24-chaos-1374-ip-ip6-mac-address">2.4 — CHAOS-1374: <code>--ip</code> / <code>--ip6</code> / <code>--mac-address</code><a class="headerlink" href="#24-chaos-1374-ip-ip6-mac-address" title="Permanent link">&para;</a></h4>
+<p><strong>Files to modify:</strong> <code>Sources/Container-Compose/Commands/Compose+ArgsNetworking.swift:54-62, 124</code>, <code>Tests/Container-Compose-StaticTests/NetworkArgsTests.swift</code>.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For <code>--ip</code> and <code>--ip6</code> (currently emitted from <code>service.networks.&lt;n&gt;.ipv4_address</code> / <code>ipv6_address</code>): replace emission with <code>warnUnsupportedRuntimeFieldOnce</code>. Keep the field-name granularity in the warning (e.g., <code>"service.networks.&lt;name&gt;.ipv4_address"</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For <code>--mac-address</code> (line 124): replace standalone emission with <code>warnUnsupportedRuntimeFieldOnce</code>. <strong>NOTE</strong>: apple/container DOES support mac-address inside <code>--network &lt;name&gt;,mac=...</code>. A future Tier 1 wireup could compose into the network arg; for now, just warn-skip.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update tests.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage flip.</li>
+</ul>
+<p><strong>QA per CHAOS-1374:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>NetworkArgsTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                                </span><span class="c1"># exit 0</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;args.append.*&quot;--(ip|ip6|mac-address)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsNetworking.swift<span class="w">   </span><span class="c1"># expect 0</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;warnUnsupportedRuntimeFieldOnce&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsNetworking.swift<span class="w">          </span><span class="c1"># expect &gt;= 5 (existing 2 + new 3)</span>
+</span></code></pre></div>
+<p><strong>Commit:</strong> <code>feat(args): warn-and-skip --ip / --ip6 / --mac-address (CHAOS-1374)</code></p>
+<h4 id="25-chaos-1375-advanced-resource-flags">2.5 — CHAOS-1375: Advanced resource flags<a class="headerlink" href="#25-chaos-1375-advanced-resource-flags" title="Permanent link">&para;</a></h4>
+<p><strong>Files to modify:</strong> <code>Sources/Container-Compose/Commands/Compose+ArgsResource.swift:46-127</code>, <code>Tests/Container-Compose-StaticTests/ResourceArgsTests.swift</code>.</p>
+<p>Flags to convert (subject to Phase 0.4 exclusions): <code>--memory-reservation</code>, <code>--memory-swappiness</code>, <code>--memory-swap</code>, <code>--pids-limit</code>, <code>--shm-size</code> <em>(EXCLUDE if Phase 0.4 confirmed upstream support — keep emission as-is)</em>, <code>--cpu-shares</code>, <code>--cpuset-cpus</code>, <code>--cpu-period</code>, <code>--cpu-quota</code>, <code>--cpu-rt-period</code>, <code>--cpu-rt-runtime</code>, <code>--cpu-count</code>, <code>--cpu-percent</code>, <code>--oom-kill-disable</code>, <code>--oom-score-adj</code>.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For each, wrap emission in <code>warnUnsupportedRuntimeFieldOnce</code> with the matching <code>service.&lt;field&gt;</code> key.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Pre-check on <code>--shm-size</code>:</strong> before editing, run the Phase-0.4 grep again. If <code>--shm-size</code> is in fork → leave emission. If not → include in this sweep.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update test cases (15 flags × at least 1 test each = ~15-20 cases).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage flips for each row.</li>
+</ul>
+<p><strong>QA per CHAOS-1375:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>ResourceArgsTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                               </span><span class="c1"># exit 0</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># Count: emissions for the 14 expected-flipped flags should be 0</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="nv">EXPECTED_FLIPPED</span><span class="o">=</span><span class="s1">&#39;--memory-reservation|--memory-swappiness|--memory-swap|--pids-limit|--cpu-shares|--cpuset-cpus|--cpu-period|--cpu-quota|--cpu-rt-period|--cpu-rt-runtime|--cpu-count|--cpu-percent|--oom-kill-disable|--oom-score-adj&#39;</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;args.append.*\&quot;(</span><span class="nv">$EXPECTED_FLIPPED</span><span class="s2">)\&quot;&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">    </span><span class="c1"># expect 0</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="c1"># --cpus / --memory / --ulimit emissions stay intact (these ARE upstream-supported)</span>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;args.append.*\&quot;--cpus\&quot;&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">                  </span><span class="c1"># expect 1+</span>
+</span><span id="__span-20-10"><a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;args.append.*\&quot;--memory\&quot;&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">                </span><span class="c1"># expect 1+</span>
+</span><span id="__span-20-11"><a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;args.append.*\&quot;--ulimit\&quot;&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">                </span><span class="c1"># expect 1+</span>
+</span><span id="__span-20-12"><a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>
+</span><span id="__span-20-13"><a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="c1"># --shm-size: depends on Phase 0.4 — if upstream supports, expect 1; else 0</span>
+</span><span id="__span-20-14"><a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s2">&quot;args.append.*\&quot;--shm-size\&quot;&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">              </span><span class="c1"># 1 OR 0 depending on phase 0.4</span>
+</span></code></pre></div>
+<p><strong>Commit:</strong> <code>feat(args): warn-and-skip advanced resource flags not in apple/container (CHAOS-1375)</code></p>
+<h4 id="26-chaos-1376-gpus-blkio-">2.6 — CHAOS-1376: <code>--gpus</code> / <code>--blkio-*</code><a class="headerlink" href="#26-chaos-1376-gpus-blkio-" title="Permanent link">&para;</a></h4>
+<p><strong>Files to modify:</strong> <code>Sources/Container-Compose/Commands/Compose+ArgsResource.swift:131-173</code>, <code>Tests/Container-Compose-StaticTests/GpusBlkioTests.swift</code>.</p>
+<p>Currently <code>--gpus</code> and <code>--blkio-*</code> flags are emitted with a <code>print("Note: ... may reject this flag.")</code> warning. Per Momus v1 review, this "warn-emit" pattern is ineffective — the runtime errors anyway. Convert to true <code>warnUnsupportedRuntimeFieldOnce</code> skip-emit.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Delete the emission AND the <code>print(...)</code> warning at line 149 (<code>Note: 'gpus' is parsed and forwarded as --gpus...</code>) AND the print at line 172 (<code>Note: 'blkio_config' is parsed and forwarded...</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace with <code>warnUnsupportedRuntimeFieldOnce("service.gpus", ...)</code> and <code>warnUnsupportedRuntimeFieldOnce("service.blkio_config", ...)</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update <code>GpusBlkioTests</code> (or whichever existing tests cover these — verify file existence first via <code>ls Tests/Container-Compose-StaticTests/ | grep -i 'gpu\|blkio'</code>).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage flip.</li>
+</ul>
+<p><strong>QA per CHAOS-1376:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span><span class="s2">&quot;GpusBlkio|ResourceArgs&quot;</span><span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                       </span><span class="c1"># exit 0</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;args.append.*&quot;--(gpus|blkio-weight|blkio-weight-device|device-read-bps|device-write-bps|device-read-iops|device-write-iops)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">    </span><span class="c1"># expect 0</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>grep<span class="w"> </span>-cE<span class="w"> </span><span class="s1">&#39;warnUnsupportedRuntimeFieldOnce.*&quot;service\.(gpus|blkio_config)&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">   </span><span class="c1"># expect 2</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;may reject this flag&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">       </span><span class="c1"># expect 0 (old warn-emit removed)</span>
+</span></code></pre></div>
+<p><strong>Commit:</strong> <code>feat(args): convert --gpus / --blkio-* from warn-emit to skip-emit (CHAOS-1376)</code></p>
+<h4 id="27-chaos-1377-container-build-flag-audit">2.7 — CHAOS-1377: <code>container build</code> flag audit<a class="headerlink" href="#27-chaos-1377-container-build-flag-audit" title="Permanent link">&para;</a></h4>
+<p><strong>This is an AUDIT, not a warn-skip edit.</strong> Different shape from 2.1-2.6. Goal: enumerate every flag Container-Compose emits to <code>container build</code> and verify each against upstream's <code>BuildCommand</code> flag set; remediate or file follow-on tickets for any silent failures.</p>
+<h5 id="steps_1">Steps<a class="headerlink" href="#steps_1" title="Permanent link">&para;</a></h5>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Read upstream's <code>BuildCommand</code> source:</strong>
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>cat<span class="w"> </span>.build/checkouts/container/Sources/ContainerCommands/BuildCommand.swift
+</span></code></pre></div>
+  Capture every <code>@Option</code> and <code>@Flag</code> declaration (long name + short name if any).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Read Container-Compose's emission:</strong>
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>grep<span class="w"> </span>-nE<span class="w"> </span><span class="s1">&#39;&quot;--[a-z-]+&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/ComposeBuild.swift
+</span></code></pre></div>
+  Capture every flag string.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Diff:</strong> for each Container-Compose emission, check whether it appears in upstream's BuildCommand. Produce a comparison table:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Container-Compose emits</th>
+<th>Upstream BuildCommand has</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--build-arg</code></td>
+<td>yes/no</td>
+<td>keep / warn-skip</td>
+</tr>
+<tr>
+<td><code>--file</code></td>
+<td>yes/no</td>
+<td>keep / warn-skip</td>
+</tr>
+<tr>
+<td>...</td>
+<td>...</td>
+<td>...</td>
+</tr>
+</tbody>
+</table>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For each Tier 0 flag found (Container-Compose emits, upstream doesn't): remediate inline (warn-skip pattern from 2.1-2.6) OR file a new sub-issue under CHAOS-1370 if scope is large.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Specifically verify: <code>--shm-size</code> on <code>container build</code> (suspected missing — Phase 0.4 only checked <code>container run</code>), <code>--target</code>, <code>--cache-from</code>, <code>--cache-to</code>, <code>--secret</code>, <code>--ssh</code>.</li>
+</ul>
+<h5 id="qa-per-chaos-1377">QA per CHAOS-1377<a class="headerlink" href="#qa-per-chaos-1377" title="Permanent link">&para;</a></h5>
+<p>The audit step is <strong>manual</strong> (set comparison), not a shell one-liner — Swift ArgumentParser uses three different declaration forms (<code>customLong</code>, <code>.long</code>, <code>.shortAndLong</code>) that don't normalize cleanly. Per Momus v3 review, a naive <code>customLong</code>-only extraction misses most flags.</p>
+<p><strong>Step 1 — Enumerate upstream BuildCommand flags manually:</strong></p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Open <code>.build/checkouts/container/Sources/ContainerCommands/BuildCommand.swift</code> and enumerate every <code>@Option</code>/<code>@Flag</code> declaration. For each, record the CLI name:</li>
+<li><code>customLong("name")</code> → CLI flag is <code>--name</code></li>
+<li><code>.long</code> paired with <code>var camelCase:</code> → CLI flag is <code>--camel-case</code> (kebab-case-conversion)</li>
+<li><code>.shortAndLong</code> paired with <code>var camelCase:</code> → CLI flag is <code>--camel-case</code> plus <code>-c</code> (first letter)</li>
+<li><code>[.short, .customLong("name")]</code> → CLI flag is <code>--name</code> plus <code>-&lt;short&gt;</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Write the enumerated list to <code>docs/plans/chaos-1377-build-audit.md</code> as a Markdown table:
+  | Upstream flag | Declaration form | Source line |</li>
+</ul>
+<p><strong>Step 2 — Enumerate Container-Compose's emissions:</strong></p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Run:
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>grep<span class="w"> </span>-nE<span class="w"> </span><span class="s1">&#39;args\.append.*&quot;--[a-z-]+&quot;|args\s*\+=.*&quot;--[a-z-]+&quot;&#39;</span><span class="w"> </span>Sources/Container-Compose/Commands/ComposeBuild.swift
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Add to the same audit doc as a second table:
+  | Compose-Compose emits | Source line | Compose field source |</li>
+</ul>
+<p><strong>Step 3 — Diff manually (set difference of Step 1 ∩ Step 2):</strong></p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For each flag in Step 2's table, check whether it appears in Step 1's. Mark each as:</li>
+<li><code>OK</code> (upstream supports — no action)</li>
+<li><code>TIER 0</code> (upstream doesn't support — silent failure; remediate via warn-skip per Recipe A)</li>
+</ul>
+<p><strong>Step 4 — Remediation (if any TIER 0 flags found):</strong></p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Apply Recipe A (warn-and-skip pattern) to each TIER 0 build flag in <code>Sources/Container-Compose/Commands/ComposeBuild.swift</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Update or add tests. <strong>NOTE:</strong> <code>ComposeBuildRuntimeArgvTests</code> may not yet exist — verify with <code>ls Tests/Container-Compose-StaticTests/ | grep -i ComposeBuild</code> before referencing. If it doesn't exist, add tests to existing <code>ComposeBuildParsingTests</code> or create a new <code>ComposeBuildRuntimeArgvTests</code> per the test-file convention.</li>
+</ul>
+<p><strong>QA per Step 4 (if remediation happened):</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1"># Adapt test filter to actual file name discovered in Step 4 prerequisite check</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>ComposeBuild<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">                                                    </span><span class="c1"># exit 0</span>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">                                   </span><span class="c1"># exit 0</span>
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>
+</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="c1"># Verify each removed emission no longer present (per Tier 0 list from Step 3)</span>
+</span><span id="__span-25-6"><a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="c1"># Example for hypothetical --shm-size on build:</span>
+</span><span id="__span-25-7"><a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a><span class="c1"># grep -c &#39;args.append.*&quot;--shm-size&quot;&#39; Sources/Container-Compose/Commands/ComposeBuild.swift   # expect 0 if remediated</span>
+</span></code></pre></div>
+<p><strong>QA per Step 1-3 (audit-only):</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1"># The audit deliverable IS the comparison table at docs/plans/chaos-1377-build-audit.md</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>ls<span class="w"> </span>docs/plans/chaos-1377-build-audit.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>wc<span class="w"> </span>-l<span class="w"> </span>docs/plans/chaos-1377-build-audit.md<span class="w">   </span><span class="c1"># file exists; non-empty</span>
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s1">&#39;^|&#39;</span><span class="w"> </span>docs/plans/chaos-1377-build-audit.md<span class="w">                                       </span><span class="c1"># expect &gt;= 20 (at least two tables with several rows each)</span>
+</span></code></pre></div>
+<p>Pass criteria: audit doc committed; if any TIER 0 found, remediation tests pass; build still green.</p>
+<p><strong>Commit (if remediation needed):</strong> <code>feat(build): warn-and-skip &lt;flag-list&gt; not in apple/container BuildCommand (CHAOS-1377)</code>
+<strong>Commit (if audit-only, no Tier 0 findings):</strong> <code>docs(plans): document container build flag audit findings (CHAOS-1377)</code></p>
+<h4 id="28-coverage-notes-batch-update">2.8: Coverage notes batch update<a class="headerlink" href="#28-coverage-notes-batch-update" title="Permanent link">&para;</a></h4>
+<p>After all sub-issues land, update each affected <code>coverage.html</code> row note ONCE:</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace <code>"... unconditionally emits --&lt;flag&gt; which upstream 'apple/container' does not yet accept (silent failure)..."</code> with <code>"... decoded; warn-skipped via warnUnsupportedRuntimeFieldOnce..."</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Run <code>bash scripts/regen-coverage.sh</code> to validate JSON.</li>
+</ul>
+<p><strong>QA per Phase 2.8:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>bash<span class="w"> </span>scripts/regen-coverage.sh<span class="w">    </span><span class="c1"># exit 0; expected aggregate counts</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json; d=json.load(open(&#39;coverage.json&#39;)); print(&#39;partial:&#39;, d[&#39;counts&#39;][&#39;partial&#39;])&quot;</span><span class="w">   </span><span class="c1"># expect same partial count as before edit</span>
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;silent failure&quot;</span><span class="w"> </span>coverage.html<span class="w">   </span><span class="c1"># expect significant decrease (was 25; should be &lt;5)</span>
+</span></code></pre></div>
+<p><strong>Exit gate Phase 2:</strong></p>
+<ol>
+<li>All 7 sub-issues have their commits, each isolated PRs (or one mega PR if the user prefers).</li>
+<li><code>swift test --filter Container-Compose-StaticTests</code> exits 0; new tests assert warn-skip on every Tier 0 flag.</li>
+<li><strong>Smoke test</strong> on a runtime-equipped Mac: <code>container-compose up</code> against a compose file that sets <code>service.security_opt</code>, <code>service.ipc</code>, <code>service.devices</code>, etc. → should print Note warnings and proceed to <code>up</code>, NOT fail with <code>unknown option</code>. Specific test fixture: <code>Sample Compose Files/Tier0-smoke/docker-compose.yaml</code> (create it as part of the PR with one service touching every Tier 0 flag).</li>
+<li><code>coverage.html</code> regenerates clean; status bars show the same partial count (note text changed but status didn't).</li>
+<li>Linear: CHAOS-1371-1377 transitioned to Done; CHAOS-1370 transitioned to Done; PR links pasted as comments.</li>
+</ol>
+<hr />
+<h3 id="phase-3-tier-1-wireup-1-2-days">Phase 3 — Tier 1 wireup (~1-2 days)<a class="headerlink" href="#phase-3-tier-1-wireup-1-2-days" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Implement Tier 1 wireable items now that Tier 0 cleanup has cleared the deck.</p>
+<h4 id="31-chaos-1368-named-volume-runtime-crud">3.1 — CHAOS-1368: Named volume runtime CRUD<a class="headerlink" href="#31-chaos-1368-named-volume-runtime-crud" title="Permanent link">&para;</a></h4>
+<p>This is the headline Tier 1 item.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Smoke test first</strong> (30 min on runtime-equipped Mac): does <code>container run -v &lt;name&gt;:&lt;path&gt;</code> resolve named volumes? Run:
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>container<span class="w"> </span>volume<span class="w"> </span>create<span class="w"> </span>test-vol
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>test-vol:/data<span class="w"> </span>alpine:3<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;touch /data/foo &amp;&amp; ls /data&quot;</span>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>container<span class="w"> </span>volume<span class="w"> </span>rm<span class="w"> </span>test-vol
+</span></code></pre></div></li>
+<li><strong>Pass:</strong> <code>foo</code> shown in output → upstream resolves names → proceed with replacement.</li>
+<li><strong>Fail:</strong> source treated as host path (creates <code>./test-vol</code> directory) → file new sub-issue under CHAOS-1378 (upstream FR for named-volume <code>-v</code> resolution); <strong>abort Phase 3.1</strong>, leave hardlink-dir fallback in place.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> If smoke passes:</li>
+<li>Replace <code>~/.containers/Volumes/&lt;project&gt;/&lt;name&gt;/</code> hardlink-dir with <code>container volume create &lt;project&gt;-&lt;name&gt;</code> (or just <code>&lt;name&gt;</code> if scoping differs).</li>
+<li>Files: <code>ComposeUp.swift:212-440</code> (volume creation), <code>ComposeUp.swift:820-880</code> (service volume bind), <code>ComposeCreate.swift</code> parallel logic.</li>
+<li>Wire <code>volumes.&lt;n&gt;.driver_opts</code> → <code>--opt KEY=VALUE</code> (CHAOS-1335 partial; verifies upstream supports).</li>
+<li>Wire <code>volumes.&lt;n&gt;.labels</code> → <code>--label KEY=VALUE</code> on volume create.</li>
+<li>Update <code>ComposeDown.swift</code> to remove volumes on <code>down</code> (CHAOS-1339 was just truncation fix; this is broader).</li>
+<li>Update warn-message at <code>ComposeUp.swift:870-871</code> (currently misleading).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Tests: new <code>Tests/Container-Compose-StaticTests/NamedVolumeRuntimeTests.swift</code> covering 6+ cases (create, mount, driver_opts, labels, cleanup, cross-project sharing).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Coverage: flip <code>top.volumes</code> partial → ok; flip <code>volume.driver_opts</code> partial → ok; flip <code>volume.labels</code> partial → ok; remove <code>service.volumes (named-volume short form)</code> row OR flip to ok.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Docs: update <code>docs/feature-parity.md</code> Appendix B (§13) to reflect resolution; close CHAOS-1368.</li>
+</ul>
+<p><strong>QA per CHAOS-1368:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1"># Static tests</span>
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>NamedVolumeRuntimeTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">     </span><span class="c1"># exit 0</span>
+</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w"> </span><span class="c1"># exit 0</span>
+</span><span id="__span-29-4"><a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="c1"># Code-state assertions</span>
+</span><span id="__span-29-5"><a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;createVolumeHardLink\|hardlink&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/ComposeUp.swift<span class="w">    </span><span class="c1"># expect 0 or only in deprecated comments</span>
+</span><span id="__span-29-6"><a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="c1"># Smoke (runtime-equipped only)</span>
+</span><span id="__span-29-7"><a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>.build/release/container-compose<span class="w"> </span>up<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;Sample Compose Files/Healthchecked Redis/docker-compose.yaml&quot;</span>
+</span><span id="__span-29-8"><a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>container<span class="w"> </span>volume<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>healthchecked-redis-redis-data<span class="w">    </span><span class="c1"># expect named volume present</span>
+</span><span id="__span-29-9"><a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a>.build/release/container-compose<span class="w"> </span>down<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;Sample Compose Files/Healthchecked Redis/docker-compose.yaml&quot;</span>
+</span><span id="__span-29-10"><a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a>container<span class="w"> </span>volume<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span>healthchecked-redis-redis-data<span class="w"> </span><span class="c1"># expect 0 (cleaned up)</span>
+</span></code></pre></div>
+<p>Pass criteria: static tests pass; code no longer references hardlink fallback; named volume created + cleaned up correctly via runtime API.</p>
+<p><strong>Commit:</strong> <code>feat(volumes): replace hardlink-dir fallback with native container volume create (CHAOS-1368)</code></p>
+<h4 id="32-chaos-1336-deferred-deployresourcesreservations">3.2 — CHAOS-1336 (deferred): <code>deploy.resources.reservations</code><a class="headerlink" href="#32-chaos-1336-deferred-deployresourcesreservations" title="Permanent link">&para;</a></h4>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Verify upstream state first:</strong>
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;&quot;--memory-reservation&quot;|customLong\(&quot;memory-reservation&quot;\)&#39;</span><span class="w"> </span>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift
+</span></code></pre></div></li>
+<li><strong>No matches:</strong> <code>--memory-reservation</code> still not upstream → don't wire; leave decode-only with note. Comment on CHAOS-1336 with deferral reason; transition to "Blocked" or comment-and-leave.</li>
+<li><strong>Match:</strong> Now landed → proceed with wireup.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>If wireable:</strong></li>
+<li>In <code>Sources/Container-Compose/Commands/Compose+ArgsResource.swift:31-48</code>: extend the <code>mem_reservation</code> block to also check <code>service.deploy?.resources?.reservations?.memory</code>. Same precedence pattern as <code>cpus</code>/<code>memory</code> limits (top-level wins over deploy).</li>
+<li>Same for <code>cpus</code>: extend to check <code>service.deploy?.resources?.reservations?.cpus</code>.</li>
+<li>Tests: <code>Tests/Container-Compose-StaticTests/ResourceArgsTests.swift</code> add 4 cases:<ol>
+<li><code>deploy.resources.reservations.memory</code> → emits <code>--memory-reservation</code> when <code>mem_reservation</code> not set.</li>
+<li><code>mem_reservation</code> wins over <code>deploy.resources.reservations.memory</code> when both set.</li>
+<li><code>deploy.resources.reservations.cpus</code> → emits <code>--cpus</code> (or appropriate flag).</li>
+<li>Neither set → no flag emitted.</li>
+</ol>
+</li>
+<li>Coverage: flip <code>deploy.resources.reservations.cpus</code> / <code>memory</code> partial → ok.</li>
+</ul>
+<p><strong>QA per CHAOS-1336:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="c1"># Pre-check (gates the rest of the work)</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;&quot;--memory-reservation&quot;&#39;</span><span class="w"> </span>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift
+</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="c1"># If pre-check passed:</span>
+</span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>ResourceArgsTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5<span class="w">    </span><span class="c1"># exit 0; 4 new cases</span>
+</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3<span class="w">   </span><span class="c1"># exit 0</span>
+</span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;deploy?.resources?.reservations&quot;</span><span class="w"> </span>Sources/Container-Compose/Commands/Compose+ArgsResource.swift<span class="w">   </span><span class="c1"># expect 2 (cpus + memory)</span>
+</span></code></pre></div>
+<p>Pass criteria: pre-check determines path; if proceeding, all 3 commands succeed.</p>
+<p><strong>Commit:</strong> <code>feat(args): wire deploy.resources.reservations runtime application (CHAOS-1336)</code> OR comment-only deferral.</p>
+<p><strong>Exit gate Phase 3:</strong></p>
+<ol>
+<li>CHAOS-1368 smoke test passed (or formally deferred with new sub-issue filed).</li>
+<li>CHAOS-1336 wireup completed OR deferred with comment on Linear ticket.</li>
+<li><code>make build</code> exit 0; <code>swift test --filter Container-Compose-StaticTests</code> exit 0; <code>swift test --filter Container-Compose-DynamicTests</code> exit 0 if runtime available.</li>
+<li><code>lsp_diagnostics</code> clean.</li>
+<li>Linear: CHAOS-1368/1336 closed (or commented with deferral reason).</li>
+</ol>
+<hr />
+<h3 id="phase-4-coverage-docs-reconciliation-1-2-hr">Phase 4 — Coverage + docs reconciliation (~1-2 hr)<a class="headerlink" href="#phase-4-coverage-docs-reconciliation-1-2-hr" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Align all docs with post-Phase-3 reality.</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>coverage.html</code> final pass: every flipped row note now matches actual code state (no more "silent failure" for fields that have been remediated).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>docs/feature-parity.md</code>:</li>
+<li>§1 TL;DR: update Tier 0 count downward (was 22 sites; now ~14 since shm_size / cap-add / cap-drop / ulimit are upstream-supported and warn-skip cleanup landed).</li>
+<li>§3 Tier 0: mark each remediated row with link to PR.</li>
+<li>§4 Tier 1: mark CHAOS-1368 status.</li>
+<li>§9.3 NEW tickets table: update statuses (CHAOS-1370 → Done if Phase 2 finished).</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>docs/upstream-fork-status.md</code> §1: refresh with the post-merge fork commit list.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>AGENTS.md</code> §4 "Coverage vs. compose-spec": refresh totals from <code>bash scripts/regen-coverage.sh</code> output.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>README.md</code>: no changes likely needed.</li>
+</ul>
+<p><strong>QA per Phase 4:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>bash<span class="w"> </span>scripts/regen-coverage.sh<span class="w">                                  </span><span class="c1"># exit 0</span>
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json; d=json.load(open(&#39;coverage.json&#39;)); print(d[&#39;counts&#39;])&quot;</span><span class="w">   </span><span class="c1"># outputs new aggregate; record in commit message</span>
+</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;silent failure&quot;</span><span class="w"> </span>coverage.html<span class="w">                          </span><span class="c1"># expect 0</span>
+</span><span id="__span-32-4"><a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>grep<span class="w"> </span><span class="s2">&quot;Tier 0&quot;</span><span class="w"> </span>docs/feature-parity.md<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-3<span class="w">                  </span><span class="c1"># confirm count updated</span>
+</span></code></pre></div>
+<p><strong>Commit:</strong> <code>docs: reconcile feature-parity, coverage, and AGENTS.md after Phase 0-3</code></p>
+<p><strong>Exit gate Phase 4:</strong></p>
+<ol>
+<li><code>bash scripts/regen-coverage.sh</code> exits 0 with new aggregate counts.</li>
+<li><code>python3 -c "import re,json; ..."</code> JSON validation passes.</li>
+<li>Manual review: every row note in coverage.html accurately describes runtime state.</li>
+<li>AGENTS.md §4 totals match the new aggregate.</li>
+</ol>
+<hr />
+<h3 id="phase-5-final-verification-linear-hygiene-1-hr">Phase 5 — Final verification + Linear hygiene (~1 hr)<a class="headerlink" href="#phase-5-final-verification-linear-hygiene-1-hr" title="Permanent link">&para;</a></h3>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Aggregate verification commands</strong> (must all pass before merge of any Phase 0-4 PR):
+  <div class="language-sh highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>make<span class="w"> </span>build<span class="w">                                          </span><span class="c1"># exit 0</span>
+</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests<span class="w">   </span><span class="c1"># exit 0</span>
+</span><span id="__span-33-3"><a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>bash<span class="w"> </span>scripts/regen-coverage.sh<span class="w">                      </span><span class="c1"># exit 0, expected count</span>
+</span></code></pre></div></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Linear closure batch:</strong></li>
+<li><strong>Already-shipped (close with PR/SHA reference, no code change):</strong><ul>
+<li>CHAOS-1367 → close with reference to <code>Compose+Pull.swift:56-61</code> and PR for CHAOS-1344 (already in main)</li>
+</ul>
+</li>
+<li><strong>Phase 1 closures:</strong><ul>
+<li>CHAOS-1366, 1369, 1363 → Done with PR links</li>
+</ul>
+</li>
+<li><strong>Phase 2 closures:</strong><ul>
+<li>CHAOS-1370, 1371, 1372, 1373, 1374, 1375, 1376, 1377 → Done with PR links</li>
+</ul>
+</li>
+<li><strong>Phase 3 closures:</strong><ul>
+<li>CHAOS-1368 → Done with PR link OR deferred comment</li>
+<li>CHAOS-1336 → Done with PR link OR deferred comment</li>
+</ul>
+</li>
+<li><strong>Comment-and-leave (still pending fork or upstream):</strong><ul>
+<li>CHAOS-1334, 1335 → comment with current state (likely stays Backlog if fork patch needed)</li>
+<li>CHAOS-1378 (FR campaign) → comment with progress; sub-issues stay open until upstream FRs filed</li>
+</ul>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Outdated cleanup:</strong> Per <code>bg_37b5fab4</code>, close CHAOS-1300, 1301, 1302 as duplicates of 1315/1318/1317.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <strong>Branch cleanup:</strong> <code>git push origin --delete</code> any stale per-phase branches once their PRs merge.</li>
+</ul>
+<p><strong>QA per Phase 5:</strong></p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="c1"># Build + test (full)</span>
+</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>make<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>swift<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--filter<span class="w"> </span>Container-Compose-StaticTests
+</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="c1"># Linear-side</span>
+</span><span id="__span-34-4"><a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>linear<span class="w"> </span>issues<span class="w"> </span>list<span class="w"> </span>--team<span class="w"> </span>CHAOS<span class="w"> </span>--project<span class="w"> </span><span class="s2">&quot;Container Compose&quot;</span><span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-34-5"><a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a><span class="w">  </span>jq<span class="w"> </span><span class="s1">&#39;[.[] | select(.state == &quot;Backlog&quot; and (.title | test(&quot;Tier 0|silent failure&quot;)))] | length&#39;</span><span class="w">   </span><span class="c1"># expect 0</span>
+</span><span id="__span-34-6"><a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>linear<span class="w"> </span>issues<span class="w"> </span>list<span class="w"> </span>--team<span class="w"> </span>CHAOS<span class="w"> </span>--project<span class="w"> </span><span class="s2">&quot;Container Compose&quot;</span><span class="w"> </span>--output<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-34-7"><a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a><span class="w">  </span>jq<span class="w"> </span><span class="s1">&#39;[.[] | select(.state == &quot;Backlog&quot;)] | length&#39;</span><span class="w">                                                </span><span class="c1"># expect &lt;= 5</span>
+</span></code></pre></div>
+<p><strong>Exit gate Phase 5:</strong></p>
+<ol>
+<li>All Phase 0-4 PRs merged; main has clean build.</li>
+<li>Linear backlog query shows no remaining Tier 0 / silent-failure tickets in Backlog.</li>
+<li>Total open backlog (excluding Tier 5 / fork-engineering / FR campaign) is &lt;= 5.</li>
+</ol>
+<hr />
+<h2 id="5-risks-open-questions">5. Risks &amp; open questions<a class="headerlink" href="#5-risks-open-questions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Fork merge conflicts</strong> — apple/container's recent activity (PR #1421 NetworkResource refactor, PR #1488 shm-size) may conflict with our 6 fork patches. Mitigation: do the merge in a separate branch first; if conflicts are non-trivial, file CHAOS sub-issue and consider rebasing fork's patches onto upstream main one-by-one.</p>
+</li>
+<li>
+<p><strong>CHAOS-1368 smoke test outcome</strong> — drives Phase 3.1 binary path. Until the smoke test runs, named volume CRUD work is an open question. Plan accommodates either outcome.</p>
+</li>
+<li>
+<p><strong><code>--shm-size</code> regression</strong> — after Phase 0 fork bump, if <code>--shm-size</code> doesn't actually work end-to-end (e.g., the upstream PR has a bug or the fork merge introduced a defect), Container-Compose's emission becomes a regression. Mitigation: Phase 0 exit gate includes <code>swift test</code> and a manual smoke run.</p>
+</li>
+<li>
+<p><strong>CHAOS-1377 (build flag audit)</strong> — may surface additional Tier 0 flags I haven't quantified yet. Plan keeps it in Phase 2 but allows scope expansion.</p>
+</li>
+<li>
+<p><strong>Linear hygiene drift</strong> — the recent batch (CHAOS-1370-1385) plus existing tickets (CHAOS-1334-1369) creates ~25 active items. Phase 5 cleanup is essential to keep the backlog tractable for the next person.</p>
+</li>
+<li>
+<p><strong>Smoke-test environment</strong> — several phases assume a runtime-equipped Mac. If executor doesn't have one, mark dynamic verification as deferred-to-CI and proceed with static-test-only gates. Document in PR.</p>
+</li>
+<li>
+<p><strong>Stale plan risk</strong> — this v2 was rewritten after Momus rejected v1 for citing already-shipped work. Re-verify each "in scope" item with the QA pre-checks before starting; codebase moves fast.</p>
+</li>
+</ol>
+<hr />
+<h2 id="6-verification-matrix-pre-merge-per-phase">6. Verification matrix (pre-merge per phase)<a class="headerlink" href="#6-verification-matrix-pre-merge-per-phase" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Build</th>
+<th>StaticTests</th>
+<th>DynamicTests</th>
+<th>Diagnostics</th>
+<th>Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 (fork bump)</td>
+<td>required</td>
+<td>required</td>
+<td>optional</td>
+<td>required</td>
+<td>comment on CHAOS-1325 (fork dependency); update CHAOS-1370 with newly-landed flags list</td>
+</tr>
+<tr>
+<td>1.1 (CHAOS-1366)</td>
+<td>required</td>
+<td>required</td>
+<td>optional</td>
+<td>required</td>
+<td>close CHAOS-1366</td>
+</tr>
+<tr>
+<td>1.2 (CHAOS-1369)</td>
+<td>required</td>
+<td>required</td>
+<td>optional</td>
+<td>required</td>
+<td>close CHAOS-1369</td>
+</tr>
+<tr>
+<td>1.3 (CHAOS-1363)</td>
+<td>required</td>
+<td>required</td>
+<td>n/a</td>
+<td>required</td>
+<td>close CHAOS-1363</td>
+</tr>
+<tr>
+<td>2.1-2.7 (Tier 0 sweep)</td>
+<td>required</td>
+<td>required</td>
+<td><strong>required</strong> if runtime available — smoke test for absence of <code>unknown option</code> errors</td>
+<td>required</td>
+<td>close CHAOS-1371-1377 + 1370</td>
+</tr>
+<tr>
+<td>3.1 (CHAOS-1368)</td>
+<td>required</td>
+<td>required</td>
+<td><strong>required</strong> for smoke test</td>
+<td>required</td>
+<td>close CHAOS-1368 OR file new sub-issue</td>
+</tr>
+<tr>
+<td>3.2 (CHAOS-1336)</td>
+<td>required</td>
+<td>required</td>
+<td>optional</td>
+<td>required</td>
+<td>close CHAOS-1336 OR comment deferral</td>
+</tr>
+<tr>
+<td>4 (docs)</td>
+<td>n/a</td>
+<td>n/a</td>
+<td>n/a</td>
+<td>n/a</td>
+<td>comment on all open tickets touched</td>
+</tr>
+<tr>
+<td>5 (final)</td>
+<td>required (full)</td>
+<td>required (full)</td>
+<td>required if runtime available</td>
+<td>required (full)</td>
+<td>batch close per §5 + close CHAOS-1367 (already shipped)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-effort-estimate">7. Effort estimate<a class="headerlink" href="#7-effort-estimate" title="Permanent link">&para;</a></h2>
+<p>Total: <strong>~3-4 dev-days</strong> if executed sequentially by one person; <strong>~1.5-2 days</strong> with judicious parallelism (Phase 1 sub-tasks are independent; Phase 2 sub-issues are independent).</p>
+<p>Reduced from v1's 4-5 days because R1, R2, and CHAOS-1367 are already shipped.</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Effort</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>1-2 hr</td>
+<td>Fork merge dominates</td>
+</tr>
+<tr>
+<td>1</td>
+<td>2-3 hr</td>
+<td>3 small isolated PRs (down from 5 in v1)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>6-10 hr</td>
+<td>7 small isolated PRs (or one batch)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>1-2 days</td>
+<td>CHAOS-1368 is the long pole</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1-2 hr</td>
+<td>Mechanical doc reconciliation</td>
+</tr>
+<tr>
+<td>5</td>
+<td>1 hr</td>
+<td>Linear hygiene + final verification</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-recipe-reference">8. Recipe reference<a class="headerlink" href="#8-recipe-reference" title="Permanent link">&para;</a></h2>
+<p>This plan invokes the following playbooks from the recipe library (assembled in <code>bg_27b0d5bf</code> of the planning session):</p>
+<ul>
+<li><strong>Recipe A (Tier 0 Cleanup)</strong> — Phase 2 sub-issues. Pattern reference: PR #39, CHAOS-1329/1330/1331.</li>
+<li><strong>Recipe B (Fork Patch + Wireup)</strong> — not invoked in this plan (no new fork patches; only the merge in Phase 0).</li>
+<li><strong>Recipe C (Decode + Runtime Bind-Mount)</strong> — partially invoked for Phase 3.1 (named volume CRUD shares the materialization-at-runtime pattern). Pattern reference: PR #46, CHAOS-1333.</li>
+<li><strong>Recipe D (Coverage Flip)</strong> — Phase 4 batch updates. Pattern reference: PR #48, CHAOS-1338.</li>
+<li><strong>Recipe E (CLI Subcommand Addition)</strong> — not invoked.</li>
+</ul>
+<hr />
+<h2 id="9-out-of-scope-deferrals-track-for-next-planning-cycle">9. Out of scope deferrals (track for next planning cycle)<a class="headerlink" href="#9-out-of-scope-deferrals-track-for-next-planning-cycle" title="Permanent link">&para;</a></h2>
+<p>These are NOT in this plan but the user should know they exist:</p>
+<ul>
+<li><strong>CHAOS-1334</strong> (network IPAM extensions) — needs fork patch. Candidate for a follow-on "Tier 2 fork-patch sweep" plan.</li>
+<li><strong>CHAOS-1335</strong> (volume <code>driver_opts</code>) — partially addressed by CHAOS-1368 wireup but propagation requires verification.</li>
+<li><strong>CHAOS-1378 family</strong> (Tier 3 FRs) — campaign of 7 upstream issue filings on <code>apple/container</code>. Each is ~30 min of writing + linking. Could be batched into a single half-day session.</li>
+<li><strong><code>--stop-signal</code> (PR #1462)</strong> — once upstream merges, fork bump in next planning cycle and wireup is trivial.</li>
+<li><strong><code>extra_hosts</code> (PR #1340)</strong> — once upstream merges, CHAOS-1330 unlocks (was previously remediated to warn-skip; can be re-wired to emit <code>--add-host</code> properly).</li>
+</ul>
+<hr />
+<h2 id="10-rollback-plan">10. Rollback plan<a class="headerlink" href="#10-rollback-plan" title="Permanent link">&para;</a></h2>
+<p>Each phase = own commit on own branch. If anything breaks:</p>
+<ul>
+<li><strong>Phase 0 (fork bump)</strong> — <code>git revert</code> the <code>Package.resolved</code> commit; the fork repo can stay merged but Container-Compose pins to the previous SHA.</li>
+<li><strong>Phases 1-3</strong> — per-commit revert; no cross-repo coordination needed.</li>
+<li><strong>Phase 4</strong> — pure docs; revert is cosmetic.</li>
+<li><strong>Phase 5</strong> — Linear-only; no code revert needed. Reopen tickets if state was prematurely flipped.</li>
+</ul>
+<hr />
+<h2 id="11-out-of-band-what-this-plan-does-not-do">11. Out-of-band: what this plan does NOT do<a class="headerlink" href="#11-out-of-band-what-this-plan-does-not-do" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Does not file new Linear tickets (the 16 tickets in CHAOS-1370/1378 families are sufficient).</li>
+<li>Does not modify the <code>coverage.html</code> rendering layer (the JSON tuple + JS aggregator is unchanged; this plan only adds rows / flips statuses).</li>
+<li>Does not introduce a new doc tier system (the proposal in <code>bg_40e40de2</code> to add <code>FORK</code>/<code>STUB</code> tiers is a future enhancement, deferred to a separate UX redesign plan).</li>
+<li>Does not pursue any Tier 5 (frontier) work — <code>service.models</code>, <code>service.provider</code> (CHAOS-1332) stay tracked-only.</li>
+<li>Does not address the architectural PRD (CHAOS-1345); separate planning cycle.</li>
+<li>Does not re-do R1, R2, or CHAOS-1367 — verified already shipped during planning.</li>
+</ul>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Audit: <a href="../../feature-parity/"><code>docs/feature-parity.md</code></a></li>
+<li>Public matrix updates: PR #72 (<code>coverage.html</code> Tier 0 reflection)</li>
+<li>Prior plan that drained the previous queue: <a href="../no-upstream-refactor-and-linear/"><code>docs/plans/no-upstream-refactor-and-linear.md</code></a></li>
+<li>Upstream PR landings: apple/container <a href="https://github.com/apple/container/pull/1488">#1488 (--shm-size)</a>, <a href="https://github.com/apple/container/pull/1383">#1383 (--cap-add/--cap-drop)</a>, <a href="https://github.com/apple/container/pull/1462">#1462 (--stop-signal in-flight)</a>, <a href="https://github.com/apple/container/pull/1340">#1340 (extra_hosts in-flight)</a>, <a href="https://github.com/apple/container/pull/1421">#1421 (NetworkResource refactor)</a></li>
+<li>Linear team: <strong>CHAOS</strong> (project: Container Compose)</li>
+<li>Recipe playbooks: extracted in <code>bg_27b0d5bf</code> (this session); to be promoted to <code>docs/plans/recipes.md</code> if useful long-term</li>
+<li>Momus review: 2026-05-01, v1 rejected with 3 blockers (R1/R2 stale, file-path errors, missing executable QA); v2 fixes all three.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

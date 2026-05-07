@@ -1,0 +1,4124 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/feature-parity/">
+      
+      
+        <link rel="prev" href="../guides/runtime-protocol/">
+      
+      
+        <link rel="next" href="../upstream-fork-status/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>Feature Parity - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#feature-parity-inventory-container-compose-applecontainer" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Feature Parity
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. TL;DR
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Methodology
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Methodology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-sources-cross-referenced" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.1 Sources cross-referenced
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-what-supported-by-applecontainer-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.2 What "supported by apple/container" means
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tier-0-silent-failure-high-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Tier 0 — Silent Failure (HIGH PRIORITY)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tier 0 — Silent Failure (HIGH PRIORITY)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-container-runtime-flags-target-container-run-container-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 Container runtime flags (target: container run / container create)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#311-tier-0-round-2-chaos-1397" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1.1 Tier 0 Round 2 (CHAOS-1397)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-network-create-flags-target-container-network-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.2 Network create flags (target: container network create)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-build-flags-target-container-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.3 Build flags (target: container build)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-tier-1-wireable-now-we-can-do-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Tier 1 — Wireable Now (we can do this)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-tier-2-fork-patch-path-deprecated" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Tier 2 — Fork-patch path (deprecated)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Tier 2 — Fork-patch path (deprecated)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-already-shipped-via-fork-production-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Already shipped via fork (production today)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-could-add-to-fork-not-yet-shipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Could-add-to-fork (not yet shipped)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-tier-3-upstream-fr-file-against-applecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Tier 3 — Upstream FR (file against apple/container)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-tier-4-wont-do-decoded-coveragehtml-miss" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Tier 4 — Won't do (decoded → coverage.html miss)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Tier 4 — Won&#39;t do (decoded → coverage.html miss)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-linuxwindows-specific-no-apple-equivalent" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.1 Linux/Windows-specific (no Apple equivalent)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-swarm-only-orchestrator-surface-different-orchestrator-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.2 Swarm-only orchestrator surface (different orchestrator class)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-deprecated-by-compose-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.3 Deprecated by compose-spec
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-decoded-only-with-no-applecontainer-equivalent-chaos-1338-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.4 Decoded-only with no apple/container equivalent (CHAOS-1338 family)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-tier-5-frontier-track-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Tier 5 — Frontier (track only)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-linear-ticket-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Linear ticket map
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Linear ticket map">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-already-done-no-action-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      9.1 Already Done (no action needed)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-open-backlog-already-filed-valid" class="md-nav__link">
+    <span class="md-ellipsis">
+      9.2 Open backlog (already filed, valid)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-new-tickets-filed-this-audit-2026-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      9.3 New tickets filed (this audit, 2026-05-01)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-recommended-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Recommended next steps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      11. References
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-appendix-a-verified-applecontainer-cli-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. Appendix A — Verified apple/container CLI surface
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Appendix A — Verified apple/container CLI surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flagslogging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Logging
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsprocessbase" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.ProcessBase
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Process
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsresource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Resource
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsdns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.DNS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsmanagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Management
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fork-only-additions-in-full-chaoscontainer-not-in-upstream-applecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fork-only additions in full-chaos/container (NOT in upstream apple/container)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-network-create-subcommand-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      container network create (subcommand-local)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-build-subcommand-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      container build (subcommand-local)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-not-in-upstream-applecontainer-tier-0-tier-23-territory" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is NOT in upstream apple/container (Tier 0 + Tier 2/3 territory)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-appendix-b-named-volumes-deep-dive" class="md-nav__link">
+    <span class="md-ellipsis">
+      13. Appendix B — Named volumes (deep dive)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Appendix B — Named volumes (deep dive)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Current behavior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-smoke-test-result-green" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 smoke-test result: GREEN
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-broken-suboptimal" class="md-nav__link">
+    <span class="md-ellipsis">
+      What's broken / suboptimal
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-needs-to-happen" class="md-nav__link">
+    <span class="md-ellipsis">
+      What needs to happen
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bind-mount-vs-named-volume-disambiguation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bind-mount vs. named-volume disambiguation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. TL;DR
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-methodology" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Methodology
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Methodology">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-sources-cross-referenced" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.1 Sources cross-referenced
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-what-supported-by-applecontainer-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      2.2 What "supported by apple/container" means
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tier-0-silent-failure-high-priority" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Tier 0 — Silent Failure (HIGH PRIORITY)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tier 0 — Silent Failure (HIGH PRIORITY)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-container-runtime-flags-target-container-run-container-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1 Container runtime flags (target: container run / container create)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#311-tier-0-round-2-chaos-1397" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.1.1 Tier 0 Round 2 (CHAOS-1397)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-network-create-flags-target-container-network-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.2 Network create flags (target: container network create)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-build-flags-target-container-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      3.3 Build flags (target: container build)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-tier-1-wireable-now-we-can-do-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Tier 1 — Wireable Now (we can do this)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-tier-2-fork-patch-path-deprecated" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Tier 2 — Fork-patch path (deprecated)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Tier 2 — Fork-patch path (deprecated)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-already-shipped-via-fork-production-today" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Already shipped via fork (production today)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-could-add-to-fork-not-yet-shipped" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Could-add-to-fork (not yet shipped)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-tier-3-upstream-fr-file-against-applecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Tier 3 — Upstream FR (file against apple/container)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-tier-4-wont-do-decoded-coveragehtml-miss" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Tier 4 — Won't do (decoded → coverage.html miss)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Tier 4 — Won&#39;t do (decoded → coverage.html miss)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-linuxwindows-specific-no-apple-equivalent" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.1 Linux/Windows-specific (no Apple equivalent)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-swarm-only-orchestrator-surface-different-orchestrator-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.2 Swarm-only orchestrator surface (different orchestrator class)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-deprecated-by-compose-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.3 Deprecated by compose-spec
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-decoded-only-with-no-applecontainer-equivalent-chaos-1338-family" class="md-nav__link">
+    <span class="md-ellipsis">
+      7.4 Decoded-only with no apple/container equivalent (CHAOS-1338 family)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-tier-5-frontier-track-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Tier 5 — Frontier (track only)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-linear-ticket-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Linear ticket map
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Linear ticket map">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-already-done-no-action-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      9.1 Already Done (no action needed)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-open-backlog-already-filed-valid" class="md-nav__link">
+    <span class="md-ellipsis">
+      9.2 Open backlog (already filed, valid)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-new-tickets-filed-this-audit-2026-05-01" class="md-nav__link">
+    <span class="md-ellipsis">
+      9.3 New tickets filed (this audit, 2026-05-01)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-recommended-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. Recommended next steps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      11. References
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-appendix-a-verified-applecontainer-cli-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. Appendix A — Verified apple/container CLI surface
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Appendix A — Verified apple/container CLI surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flagslogging" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Logging
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsprocessbase" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.ProcessBase
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsprocess" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Process
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsresource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Resource
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsdns" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.DNS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagsmanagement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Flags.Management
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fork-only-additions-in-full-chaoscontainer-not-in-upstream-applecontainer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fork-only additions in full-chaos/container (NOT in upstream apple/container)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-network-create-subcommand-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      container network create (subcommand-local)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#container-build-subcommand-local" class="md-nav__link">
+    <span class="md-ellipsis">
+      container build (subcommand-local)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-is-not-in-upstream-applecontainer-tier-0-tier-23-territory" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is NOT in upstream apple/container (Tier 0 + Tier 2/3 territory)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-appendix-b-named-volumes-deep-dive" class="md-nav__link">
+    <span class="md-ellipsis">
+      13. Appendix B — Named volumes (deep dive)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. Appendix B — Named volumes (deep dive)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Current behavior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-0-smoke-test-result-green" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phase 0 smoke-test result: GREEN
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-broken-suboptimal" class="md-nav__link">
+    <span class="md-ellipsis">
+      What's broken / suboptimal
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-needs-to-happen" class="md-nav__link">
+    <span class="md-ellipsis">
+      What needs to happen
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bind-mount-vs-named-volume-disambiguation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bind-mount vs. named-volume disambiguation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/feature-parity.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="feature-parity-inventory-container-compose-applecontainer">Feature Parity Inventory — Container-Compose ↔ apple/container<a class="headerlink" href="#feature-parity-inventory-container-compose-applecontainer" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Audit date:</strong> 2026-05-01
+<strong>Author:</strong> Sisyphus (audit + synthesis)
+<strong>Scope:</strong> Compose-spec coverage in Container-Compose vs. CLI / runtime surface of <code>apple/container</code>
+<strong>Method:</strong> Six parallel scouts across <code>coverage.html</code>, source-code gap markers, argv emission, doc inventory, apple/container source, and CLI doc standards
+<strong>Status:</strong> Canonical companion to <a href="../coverage.html"><code>coverage.html</code></a> (data) and <a href="../upstream-fork-status/"><code>upstream-fork-status.md</code></a> (fork dependencies)</p>
+</blockquote>
+<hr />
+<h2 id="1-tldr">1. TL;DR<a class="headerlink" href="#1-tldr" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tier</th>
+<th style="text-align: center;">Count</th>
+<th style="text-align: left;">Description</th>
+<th style="text-align: left;">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Tier 0 — Silent failure</strong></td>
+<td style="text-align: center;"><strong>~32 flags</strong></td>
+<td style="text-align: left;">Container-Compose unconditionally emits flags <code>apple/container</code> does NOT accept. Setting these compose fields produces <code>unknown option</code> runtime errors.</td>
+<td style="text-align: left;"><strong>Fix in Container-Compose</strong> (Tier 0 cleanup, file new tickets)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tier 1 — Wireable now</strong></td>
+<td style="text-align: center;">6 fields</td>
+<td style="text-align: left;">Runtime support exists; we just haven't wired or enforced.</td>
+<td style="text-align: left;"><strong>Fix in Container-Compose</strong> (existing or new tickets)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tier 2 — Fork-patch path (deprecated)</strong></td>
+<td style="text-align: center;">0 active / 7 historical</td>
+<td style="text-align: left;">Historical bucket only. The fork is frozen, so no new work should target it.</td>
+<td style="text-align: left;"><strong>Do not patch the fork</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tier 3 — Upstream PR / FR</strong></td>
+<td style="text-align: center;">19 features</td>
+<td style="text-align: left;">Need apple/container engineering, including the items previously parked in Tier 2.</td>
+<td style="text-align: left;"><strong>File FR upstream</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tier 4 — Won't do</strong></td>
+<td style="text-align: center;">21 fields</td>
+<td style="text-align: left;">Deprecated, Swarm-only, or platform-specific (Windows/Linux cgroups).</td>
+<td style="text-align: left;">Decoded → warn-skipped → <code>coverage.html</code> <code>miss</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Tier 5 — Frontier</strong></td>
+<td style="text-align: center;">3 fields</td>
+<td style="text-align: left;">AI/LLM provisioning — spec still evolving.</td>
+<td style="text-align: left;">Track only</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical finding:</strong> Tier 0 is the biggest discovery of this audit. <code>--ipc</code>, <code>--pid</code>, <code>--uts</code>, <code>--device</code>, <code>--userns</code>, <code>--security-opt</code>, <code>--shm-size</code>, <code>--pids-limit</code>, <code>--memory-reservation</code>, <code>--memory-swap</code>, <code>--memory-swappiness</code>, <code>--cpu-shares</code>, <code>--cpuset-cpus</code>, <code>--cpu-period</code>, <code>--cpu-quota</code>, <code>--cpu-rt-period</code>, <code>--cpu-rt-runtime</code>, <code>--cpu-count</code>, <code>--cpu-percent</code>, <code>--oom-kill-disable</code>, <code>--oom-score-adj</code>, <code>--sysctl</code>, <code>--ip</code>, <code>--ip6</code>, <code>--gpus</code>, <code>--mac-address</code>, and older <code>--blkio-*</code> emissions have <strong>no entry</strong> in upstream <code>apple/container</code>'s <code>Flags.Management</code> / <code>Flags.Resource</code> (verified by cloning <code>apple/container@main</code> 2026-05-01 and grepping). The runtime will reject unsupported flags. CHAOS-1329 (logging), CHAOS-1330 (extra_hosts), CHAOS-1331 (aliases) already followed this remediation pattern; CHAOS-1370 handled the first broad sweep, CHAOS-1397 tracks the Round 2 follow-up for seven more runtime flags plus three Up/Create build emissions, and CHAOS-1380 now guards <code>--blkio-*</code> emission behind a runtime capability probe.</p>
+<p><strong>Fork-dependency note:</strong> container-compose currently builds against <code>full-chaos/container</code> (branch <code>tier2-fork-patches</code>), which still carries 6 compose-relevant patches not in upstream <code>apple/container</code>. Those features work today for fork-pinned users, but the fork is frozen and is no longer a valid implementation path for new work. From a planning perspective, those gaps are now blocked on upstream <code>apple/container</code>. Named volumes are a separate nuanced gap with their own dedicated section — see <a href="#13-appendix-b--named-volumes-deep-dive">Appendix B (§13)</a>.</p>
+<hr />
+<h2 id="2-methodology">2. Methodology<a class="headerlink" href="#2-methodology" title="Permanent link">&para;</a></h2>
+<h3 id="21-sources-cross-referenced">2.1 Sources cross-referenced<a class="headerlink" href="#21-sources-cross-referenced" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong><a href="../coverage.html"><code>coverage.html</code></a></strong> — canonical compose-spec coverage matrix (62 partials, 16 misses out of 197 fields after CHAOS-1384). Inline JSON <code>&lt;script id="coverage-data"&gt;</code> block.</li>
+<li><strong>In-code gap markers</strong> — every <code>#warning(...)</code>, <code>print("Note: ... is not supported by Apple container; ignored.")</code>, <code>"Detected, But Not Supported"</code>, and <code>// Phase N TODO</code> in <code>Sources/Container-Compose/</code>.</li>
+<li><strong>Argv emission</strong> — every <code>args.append("--flag", ...)</code> in <code>Sources/Container-Compose/Commands/Compose+Args*.swift</code> and <code>Compose&lt;Name&gt;.swift</code>. Mapped to the apple/container subcommand (<code>run</code>, <code>build</code>, <code>network create</code>, <code>volume create</code>, <code>exec</code>, etc.) it targets.</li>
+<li><strong>apple/container CLI surface</strong> — read directly from <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift</code> (canonical <code>Flags.Management</code>/<code>Flags.Process</code>/<code>Flags.Resource</code>/<code>Flags.DNS</code> definitions) and <code>.build/checkouts/container/Sources/ContainerCommands/Container/{ContainerRun,ContainerCreate,ContainerExec}.swift</code> and <code>.build/checkouts/container/Sources/ContainerCommands/Network/NetworkCreate.swift</code>.</li>
+<li><strong>Linear</strong> — existing CHAOS issues (Done + Backlog) so we don't duplicate.</li>
+<li><strong><code>upstream-fork-status.md</code></strong> — prior cataloguing of fork dependencies; reconciled into Tier 2 / Tier 3 below.</li>
+</ol>
+<h3 id="22-what-supported-by-applecontainer-means">2.2 What "supported by apple/container" means<a class="headerlink" href="#22-what-supported-by-applecontainer-means" title="Permanent link">&para;</a></h3>
+<p>A flag is "supported" if it appears as an <code>@Option</code>/<code>@Flag</code> declaration in either:
+- <code>Flags.Management</code>, <code>Flags.Process</code>, <code>Flags.Resource</code>, <code>Flags.DNS</code>, <code>Flags.ProcessBase</code>, <code>Flags.Logging</code>, <code>Flags.Registry</code>, <code>Flags.Progress</code>, <code>Flags.ImageFetch</code> (under <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift</code>), OR
+- A subcommand-local declaration in <code>.build/checkouts/container/Sources/ContainerCommands/...</code> (e.g., <code>NetworkCreate.swift</code> declares <code>--subnet</code>, <code>--internal</code>, <code>--plugin</code>).</p>
+<p>Anything else passed to <code>container &lt;subcommand&gt;</code> will fail argument parsing with <code>Error: unknown option &lt;flag&gt;</code>.</p>
+<hr />
+<h2 id="3-tier-0-silent-failure-high-priority">3. Tier 0 — Silent Failure (HIGH PRIORITY)<a class="headerlink" href="#3-tier-0-silent-failure-high-priority" title="Permanent link">&para;</a></h2>
+<p>These are flags Container-Compose <strong>emits unconditionally</strong> when the corresponding compose field is set, but <code>apple/container</code> rejects them. Each is a real bug — the user's <code>container-compose up</code> will fail at runtime with <code>Error: unknown option --&lt;flag&gt;</code>. Pattern matches the already-remediated CHAOS-1329 (<code>--log-driver</code>), CHAOS-1330 (<code>--add-host</code>), CHAOS-1331 (<code>--alias</code>).</p>
+<p><strong>Remediation pattern:</strong> stop emitting the flag; emit a <code>print("Note: '&lt;field&gt;' is parsed but not supported by Apple container; ignored.")</code> instead. Coverage row stays <code>partial</code> (decoded but not wired).</p>
+<h3 id="31-container-runtime-flags-target-container-run-container-create">3.1 Container runtime flags (target: <code>container run</code> / <code>container create</code>)<a class="headerlink" href="#31-container-runtime-flags-target-container-run-container-create" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Compose field</th>
+<th style="text-align: left;">Currently emitted as</th>
+<th style="text-align: left;">apple/container support?</th>
+<th style="text-align: left;">Container-Compose source</th>
+<th style="text-align: left;">Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>service.security_opt</code></td>
+<td style="text-align: left;"><code>--security-opt</code></td>
+<td style="text-align: left;">❌ no <code>Flags.Management.securityOpt</code></td>
+<td style="text-align: left;"><code>Compose+ArgsSecurity.swift:40-42</code></td>
+<td style="text-align: left;">CHAOS-1371</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.userns_mode</code></td>
+<td style="text-align: left;"><code>--userns</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsSecurity.swift:43-45</code></td>
+<td style="text-align: left;">CHAOS-1371</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.ipc</code></td>
+<td style="text-align: left;"><code>--ipc</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsNetworking.swift:134-137</code></td>
+<td style="text-align: left;">CHAOS-1372</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.pid</code></td>
+<td style="text-align: left;"><code>--pid</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsNetworking.swift:140-143</code></td>
+<td style="text-align: left;">CHAOS-1372</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.uts</code></td>
+<td style="text-align: left;"><code>--uts</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsNetworking.swift:146-149</code></td>
+<td style="text-align: left;">CHAOS-1372</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.devices</code></td>
+<td style="text-align: left;"><code>--device</code> (per device)</td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsStorage.swift:52-56</code></td>
+<td style="text-align: left;">CHAOS-1373</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.sysctls</code></td>
+<td style="text-align: left;"><code>--sysctl KEY=VALUE</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsStorage.swift:45-49</code></td>
+<td style="text-align: left;">CHAOS-1373</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.networks.&lt;n&gt;.ipv4_address</code></td>
+<td style="text-align: left;"><code>--ip</code></td>
+<td style="text-align: left;">❌ (only via <code>--network &lt;name&gt;,mac=...,mtu=...</code>; no <code>--ip</code> standalone)</td>
+<td style="text-align: left;"><code>Compose+ArgsNetworking.swift:54-56</code></td>
+<td style="text-align: left;">CHAOS-1374</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.networks.&lt;n&gt;.ipv6_address</code></td>
+<td style="text-align: left;"><code>--ip6</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsNetworking.swift:60-62</code></td>
+<td style="text-align: left;">CHAOS-1374</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.mac_address</code></td>
+<td style="text-align: left;"><code>--mac-address</code></td>
+<td style="text-align: left;">❌ standalone (only within <code>--network &lt;name&gt;,mac=...</code>)</td>
+<td style="text-align: left;"><code>Compose+ArgsNetworking.swift:124</code></td>
+<td style="text-align: left;">CHAOS-1374</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.deploy.resources.limits.pids</code> / <code>service.pids_limit</code></td>
+<td style="text-align: left;"><code>--pids-limit</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:60-63</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.shm_size</code></td>
+<td style="text-align: left;"><code>--shm-size</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:66-68</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.mem_reservation</code> / <code>deploy.resources.reservations.memory</code></td>
+<td style="text-align: left;"><code>--memory-reservation</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:46-48</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.mem_swappiness</code></td>
+<td style="text-align: left;"><code>--memory-swappiness</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:51-53</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.memswap_limit</code></td>
+<td style="text-align: left;"><code>--memory-swap</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:56-58</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_shares</code></td>
+<td style="text-align: left;"><code>--cpu-shares</code></td>
+<td style="text-align: left;">❌ (only <code>--cpus</code> exists)</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:81-83</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpuset</code></td>
+<td style="text-align: left;"><code>--cpuset-cpus</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:86-88</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_period</code></td>
+<td style="text-align: left;"><code>--cpu-period</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:91-93</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_quota</code></td>
+<td style="text-align: left;"><code>--cpu-quota</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:96-98</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_rt_period</code></td>
+<td style="text-align: left;"><code>--cpu-rt-period</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:101-103</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_rt_runtime</code></td>
+<td style="text-align: left;"><code>--cpu-rt-runtime</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:106-108</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_count</code></td>
+<td style="text-align: left;"><code>--cpu-count</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:111-113</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.cpu_percent</code></td>
+<td style="text-align: left;"><code>--cpu-percent</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:116-118</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.oom_kill_disable</code></td>
+<td style="text-align: left;"><code>--oom-kill-disable</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:71-73</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.oom_score_adj</code></td>
+<td style="text-align: left;"><code>--oom-score-adj</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift:76-78</code></td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.gpus</code></td>
+<td style="text-align: left;"><code>--gpus all</code> / <code>--gpus count=N,...</code></td>
+<td style="text-align: left;">❌ (warn-skipped; Phase 1 spike found no public API path for Docker-style GPU compute passthrough)</td>
+<td style="text-align: left;"><code>Compose+RuntimeWarnings.swift</code></td>
+<td style="text-align: left;">CHAOS-1379</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.blkio_config</code></td>
+<td style="text-align: left;"><code>--blkio-weight</code>, <code>--blkio-weight-device</code>, <code>--device-read-bps</code>, <code>--device-write-bps</code>, <code>--device-read-iops</code>, <code>--device-write-iops</code></td>
+<td style="text-align: left;">guarded fork support; older/upstream runtimes warn-skip</td>
+<td style="text-align: left;"><code>Compose+ArgsResource.swift</code></td>
+<td style="text-align: left;">CHAOS-1380</td>
+</tr>
+</tbody>
+</table>
+<h3 id="311-tier-0-round-2-chaos-1397">3.1.1 Tier 0 Round 2 (CHAOS-1397)<a class="headerlink" href="#311-tier-0-round-2-chaos-1397" title="Permanent link">&para;</a></h3>
+<p>Follow-up audit after CHAOS-1370 found seven additional <code>container run</code> flags emitted by Container-Compose but absent from the pinned fork's <code>Flags.Management</code>. CHAOS-1397 converted each to the same warn-skip pattern, leaving the coverage rows <code>partial</code> (decoded but not wired):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Compose field</th>
+<th style="text-align: left;">Was emitted as</th>
+<th style="text-align: left;">apple/container support?</th>
+<th style="text-align: left;">Remediation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>service.stop_signal</code></td>
+<td style="text-align: left;"><code>--stop-signal</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.stop_grace_period</code></td>
+<td style="text-align: left;"><code>--stop-timeout</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once; no duration parsing for unsupported emission</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.hostname</code></td>
+<td style="text-align: left;"><code>--hostname</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once; no <code>${VAR}</code> resolution for unsupported emission</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.domainname</code></td>
+<td style="text-align: left;"><code>--domainname</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once; no <code>${VAR}</code> resolution for unsupported emission</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.expose</code></td>
+<td style="text-align: left;"><code>--expose</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.privileged</code></td>
+<td style="text-align: left;"><code>--privileged</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>service.group_add</code></td>
+<td style="text-align: left;"><code>--group-add</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remediation effort:</strong> Same shape as CHAOS-1329/1330/1331 — wrap each emission in a guard, replace with a <code>print(...)</code> warning, update tests. Each field = small isolated PR. Estimated 4-8 hours total for all 22+ remediations if batched into one Tier-0 sweep.</p>
+<h3 id="32-network-create-flags-target-container-network-create">3.2 Network create flags (target: <code>container network create</code>)<a class="headerlink" href="#32-network-create-flags-target-container-network-create" title="Permanent link">&para;</a></h3>
+<p>These now flow through <code>RuntimeCreateNetworkSpec</code> and <code>BridgeContainerClientRuntime.createNetwork(...)</code> when the linked full-chaos/container fork exposes the matching <code>NetworkCreate</code> flags:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Compose field</th>
+<th style="text-align: left;">Status</th>
+<th style="text-align: left;">Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>networks.&lt;n&gt;.driver_opts</code></td>
+<td style="text-align: left;">emitted as <code>--driver-opt KEY=VALUE</code></td>
+<td style="text-align: left;">CHAOS-1334</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networks.&lt;n&gt;.attachable</code></td>
+<td style="text-align: left;">emitted as <code>--attachable</code></td>
+<td style="text-align: left;">CHAOS-1334</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networks.&lt;n&gt;.enable_ipv6</code> (bare)</td>
+<td style="text-align: left;">emitted as <code>--ipv6</code></td>
+<td style="text-align: left;">CHAOS-1334</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networks.&lt;n&gt;.internal</code></td>
+<td style="text-align: left;">emitted as <code>--internal</code> ✅ (supported by <code>NetworkCreate</code>)</td>
+<td style="text-align: left;">—</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networks.&lt;n&gt;.ipam.config.ip_range</code> / <code>gateway</code> / <code>aux_addresses</code></td>
+<td style="text-align: left;">emitted as <code>--ip-range</code>, <code>--gateway</code>, <code>--aux-address HOST=IP</code></td>
+<td style="text-align: left;">CHAOS-1334</td>
+</tr>
+</tbody>
+</table>
+<p><code>ipam.driver</code> and <code>ipam.options</code> still warn-skip because the fork branch does not expose <code>--ipam-driver</code> / <code>--ipam-opt</code>.</p>
+<h3 id="33-build-flags-target-container-build">3.3 Build flags (target: <code>container build</code>)<a class="headerlink" href="#33-build-flags-target-container-build" title="Permanent link">&para;</a></h3>
+<p>CHAOS-1377 remediated <code>ComposeBuild</code> after cross-checking <code>.build/checkouts/container/Sources/ContainerCommands/BuildCommand.swift</code>: unsupported <code>build.cache_from</code>, <code>build.cache_to</code>, <code>build.network</code>, <code>build.ssh</code>, and <code>build.shm_size</code> now warn-skip in <code>container-compose build</code>. Tier 0 Round 2 (CHAOS-1397) found and fixed the remaining inline-build inconsistency in <code>ComposeUp.buildService</code> and <code>ComposeCreate.buildService</code> for the three fields those paths still emitted:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Compose field</th>
+<th style="text-align: left;">Was emitted as in Up/Create</th>
+<th style="text-align: left;">apple/container build support?</th>
+<th style="text-align: left;">Remediation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>build.cache_from</code></td>
+<td style="text-align: left;"><code>--cache-from</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once using the same <code>build.cache_from</code> dedupe key as ComposeBuild</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>build.cache_to</code></td>
+<td style="text-align: left;"><code>--cache-to</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once using the same <code>build.cache_to</code> dedupe key as ComposeBuild</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>build.ssh</code></td>
+<td style="text-align: left;"><code>--ssh</code></td>
+<td style="text-align: left;">❌</td>
+<td style="text-align: left;">warn-skip once using the same <code>build.ssh</code> dedupe key as ComposeBuild</td>
+</tr>
+</tbody>
+</table>
+<p><code>--secret</code> remains supported by Apple container's <code>BuildCommand</code> and is still emitted.</p>
+<hr />
+<h2 id="4-tier-1-wireable-now-we-can-do-this">4. Tier 1 — Wireable Now (we can do this)<a class="headerlink" href="#4-tier-1-wireable-now-we-can-do-this" title="Permanent link">&para;</a></h2>
+<p>Runtime support exists; we just need to wire it.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th style="text-align: left;">Compose field</th>
+<th style="text-align: left;">Coverage status</th>
+<th style="text-align: left;">What's needed</th>
+<th style="text-align: left;">Existing Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;"><code>service.healthcheck.*</code> enforcement (test/interval/timeout/retries/start_period/start_interval/disable)</td>
+<td style="text-align: left;">partial (guarded runtime emission)</td>
+<td style="text-align: left;"><code>Compose+Wait.waitForCondition(.serviceHealthy)</code> reads <code>ContainerSnapshot.health</code>; <code>Compose+ArgsLifecycle</code> now emits <code>--health-cmd</code> / <code>--health-*</code> / <code>--no-healthcheck</code> only when the installed fork exposes those flags. Older runtimes are warn-skipped to avoid rejected argv.</td>
+<td style="text-align: left;">Runtime observer/CLI support is staged in <code>full-chaos/container</code> PR #16 (CHAOS-1381), still draft.</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;"><code>service.deploy.resources.reservations.cpus</code></td>
+<td style="text-align: left;">partial (degraded mapping; CHAOS-1336)</td>
+<td style="text-align: left;"><strong>Shipped</strong> as a degraded compose-side fallback in <a href="../Sources/Container-Compose/Commands/Compose+ArgsResource.swift"><code>Compose+ArgsResource.swift</code></a>. Reservation maps onto <code>--cpus</code> as a fixed VM allocation when no limit is set; warns the user that Docker-style soft reservation semantics are not honored. When both limit and reservation are present, the limit wins; if <code>reservation &gt; limit</code>, Container-Compose emits an invalid-input warning instead of silently accepting the inconsistent YAML. Oracle determined upstream <code>--cpu-reservation</code> flags would be misleading in apple/container's VM-per-container model (no inter-container contention inside a dedicated VM).</td>
+<td style="text-align: left;">CHAOS-1336 (resolved compose-side)</td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;"><code>service.deploy.resources.reservations.memory</code></td>
+<td style="text-align: left;">partial (degraded mapping; CHAOS-1336)</td>
+<td style="text-align: left;">Same as #2 — reservation maps onto <code>--memory</code> as a fixed VM allocation when no <code>mem_limit</code> / <code>deploy.limits.memory</code> is set; warns about degraded semantics. Top-level <code>mem_reservation</code> follows the same fallback path. When both limit and reservation are present, the limit wins and an ignored-reservation warning fires; if <code>reservation &gt; limit</code>, a stronger invalid-input warning notes that the YAML should be fixed.</td>
+<td style="text-align: left;">CHAOS-1336 (resolved compose-side)</td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;"><code>top.volumes</code> named volume runtime CRUD (replace hardlink-dir fallback)</td>
+<td style="text-align: left;">partial</td>
+<td style="text-align: left;">Phase 0 source audit is GREEN: <code>container run -v &lt;name&gt;:&lt;path&gt;</code> is parsed as a named volume when <code>&lt;name&gt;</code> has no <code>/</code>, then resolved through <code>ClientVolume.create/inspect</code> before the container starts. Container-Compose can therefore create real local volumes and pass the volume name directly at runtime. Non-<code>local</code> drivers still fall back to the legacy hardlink path. See <a href="#13-appendix-b--named-volumes-deep-dive">Appendix B (§13)</a>.</td>
+<td style="text-align: left;">CHAOS-1368 (open), CHAOS-1335 (open)</td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;"><code>service.provider</code></td>
+<td style="text-align: left;">partial (warn-skipped)</td>
+<td style="text-align: left;">Provider lifecycle wiring is implementation, not runtime — could be done without apple/container changes if model-provisioning is intentionally Container-Compose-side. Frontier feature though — verify spec stability before commit.</td>
+<td style="text-align: left;">CHAOS-1332 (open)</td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">Build/Up <code>pullImage</code> consolidation</td>
+<td style="text-align: left;">refactor</td>
+<td style="text-align: left;"><code>ComposeRun.swift:352</code> has a private <code>pullImage</code> while <code>Compose+Pull.swift:19</code> has the shared helper. Already noted as R1 in <code>docs/plans/no-upstream-refactor-and-linear.md</code>.</td>
+<td style="text-align: left;">tracked in plan, not Linear-ticketed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>CHAOS-1384 update:</strong> <code>configs.template_driver</code> and <code>secrets.template_driver</code> are now compose-side <code>partial</code>, not upstream-blocked: <code>template_driver: golang</code> is rendered host-side before the config/secret is materialized as a bind-mounted temp file; <code>template_driver: file</code> remains the raw/no-op default; unknown drivers warn once and fall back to raw content. Full Go <code>text/template</code> control flow/custom functions remain out of scope.</p>
+<hr />
+<h2 id="5-tier-2-fork-patch-path-deprecated">5. Tier 2 — Fork-patch path (deprecated)<a class="headerlink" href="#5-tier-2-fork-patch-path-deprecated" title="Permanent link">&para;</a></h2>
+<h3 id="51-already-shipped-via-fork-production-today">5.1 Already shipped via fork (production today)<a class="headerlink" href="#51-already-shipped-via-fork-production-today" title="Permanent link">&para;</a></h3>
+<p>These features still work today only because container-compose remains pinned to the frozen fork. They are <strong>not</strong> valid new-work targets anymore; each is now effectively blocked on upstream <code>apple/container</code> landing equivalent support.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Fork addition</th>
+<th style="text-align: left;">Compose surface that depends on it</th>
+<th style="text-align: left;">Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>--restart</code> flag on <code>container run</code></td>
+<td style="text-align: left;"><code>service.restart: always\|on-failure\|unless-stopped\|no</code> — emitted at <code>Compose+ArgsLifecycle.swift:64-66</code></td>
+<td style="text-align: left;">CHAOS-1321 (fork-only; blocked on upstream)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ContainerSnapshot.health: HealthStatus?</code></td>
+<td style="text-align: left;"><code>depends_on.condition: service_healthy</code> blocking via <code>Compose+Wait.swift</code></td>
+<td style="text-align: left;">CHAOS-1319 (fork-only; blocked on upstream)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ContainerSnapshot.lastExitCode: Int32?</code></td>
+<td style="text-align: left;"><code>depends_on.condition: service_completed_successfully</code> exit-code verification</td>
+<td style="text-align: left;">CHAOS-1320 (fork-only; blocked on upstream)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ContainerLogOptions.{since, timestamps}</code></td>
+<td style="text-align: left;"><code>compose logs --since</code> / <code>--timestamps</code> flags</td>
+<td style="text-align: left;">CHAOS-1322 (fork-only; blocked on upstream)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ContainerEvent</code> + <code>events()</code> streaming API</td>
+<td style="text-align: left;"><code>compose events</code> native streaming</td>
+<td style="text-align: left;">CHAOS-1323 (fork-only; blocked on upstream)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Flags.ProcessBase</code></td>
+<td style="text-align: left;"><code>compose run/exec</code> standard <code>-e/-u/-w/-d</code> short flags</td>
+<td style="text-align: left;">CHAOS-1324 (fork-only; blocked on upstream)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Current policy:</strong> new fork-bound work must be explicitly tied to the Phase 1 backlog and guarded in Container-Compose with runtime probes so older/upstream installs still warn-skip. Tracked at <code>docs/upstream-fork-status.md</code>.</p>
+<h3 id="52-could-add-to-fork-not-yet-shipped">5.2 Could-add-to-fork (not yet shipped)<a class="headerlink" href="#52-could-add-to-fork-not-yet-shipped" title="Permanent link">&para;</a></h3>
+<p>This subsection is retained only as historical context. <strong>Do not implement any of these in the fork.</strong> Every item below now belongs to the upstream FR / advocacy queue.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Why it is now upstream-blocked</th>
+<th style="text-align: left;">Existing Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;"><code>--ipc / --pid / --uts</code> namespace mode flags</td>
+<td style="text-align: left;">Needs canonical <code>apple/container</code> CLI/runtime surface</td>
+<td style="text-align: left;">sub-issue of Tier 0 sweep (CHAOS-1372)</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;"><code>--security-opt</code></td>
+<td style="text-align: left;">Needs canonical <code>apple/container</code> CLI/runtime surface</td>
+<td style="text-align: left;">CHAOS-1371</td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;"><code>--device</code> (file passthrough)</td>
+<td style="text-align: left;">Needs canonical <code>apple/container</code> CLI/runtime surface</td>
+<td style="text-align: left;">CHAOS-1373</td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;"><code>--userns</code></td>
+<td style="text-align: left;">Needs canonical <code>apple/container</code> CLI/runtime surface</td>
+<td style="text-align: left;">CHAOS-1371</td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;"><code>--memory-reservation</code>, <code>--memory-swap</code>, <code>--memory-swappiness</code>, <code>--pids-limit</code>, <code>--shm-size</code>, <code>--cpu-shares</code>, <code>--cpuset-cpus</code>, <code>--cpu-period</code>/<code>-quota</code>/<code>-rt-*</code>/<code>-count</code>/<code>-percent</code>, <code>--oom-*</code></td>
+<td style="text-align: left;">Needs canonical <code>apple/container</code> CLI/runtime surface</td>
+<td style="text-align: left;">CHAOS-1375</td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">Network IPAM extensions (<code>--driver-opt</code>, <code>--attachable</code>, <code>--ipv6</code> bare, <code>--ip-range</code>, <code>--gateway</code>, <code>--aux-address</code>)</td>
+<td style="text-align: left;">Wired against the full-chaos/container fork flags; <code>--ipam-driver</code>/<code>--ipam-opt</code> remain unavailable</td>
+<td style="text-align: left;">CHAOS-1334</td>
+</tr>
+<tr>
+<td style="text-align: center;">7</td>
+<td style="text-align: left;"><code>--add-host</code>, <code>--alias</code>, <code>--log-driver</code>/<code>--log-opt</code></td>
+<td style="text-align: left;">Needs canonical <code>apple/container</code> CLI/runtime surface if reintroduced</td>
+<td style="text-align: left;">tracked in upstream-fork-status.md</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Replacement policy:</strong> file or update upstream FRs against <code>apple/container</code>, then keep container-compose in warn-skip / blocked state until upstream lands.</p>
+<hr />
+<h2 id="6-tier-3-upstream-fr-file-against-applecontainer">6. Tier 3 — Upstream FR (file against <code>apple/container</code>)<a class="headerlink" href="#6-tier-3-upstream-fr-file-against-applecontainer" title="Permanent link">&para;</a></h2>
+<p>These need real apple/container engineering and likely virtualization-stack changes. Tracked here for outside-in advocacy.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th style="text-align: left;">Feature</th>
+<th style="text-align: left;">Why upstream</th>
+<th style="text-align: left;">Existing Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td style="text-align: left;">File-level bind mounts (single file, not just directory)</td>
+<td style="text-align: left;">Apple <code>container -v</code> mounts directories only</td>
+<td style="text-align: left;">upstream-fork-status.md §2.B</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td style="text-align: left;">Volume driver plugin system</td>
+<td style="text-align: left;"><code>container volume create --opt</code> exists but only <code>local</code>-style options</td>
+<td style="text-align: left;">CHAOS-1335 (open)</td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td style="text-align: left;">Anonymous volume lifecycle API</td>
+<td style="text-align: left;"><code>ContainerClient</code> lacks volume RM hooks</td>
+<td style="text-align: left;">upstream-fork-status.md §2.B</td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td style="text-align: left;"><code>--gpus</code> (GPU passthrough)</td>
+<td style="text-align: left;">Phase 1 spike found only Virtualization display-device APIs (<code>VZVirtioGraphicsDeviceConfiguration</code> / <code>VZMacGraphicsDeviceConfiguration</code>), not Docker-style GPU compute passthrough; keep warn-skipped unless a lower-level API appears</td>
+<td style="text-align: left;">CHAOS-1379</td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td style="text-align: left;"><code>--blkio-*</code> / cgroup BFQ tuning</td>
+<td style="text-align: left;">Staged through full-chaos/containerization + full-chaos/container fork patches; apple/container#1512 filed opportunistically</td>
+<td style="text-align: left;">CHAOS-1380</td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td style="text-align: left;">Lifecycle hooks (<code>post_start</code> / <code>pre_stop</code>)</td>
+<td style="text-align: left;">Need <code>ContainerClient</code> lifecycle hook API</td>
+<td style="text-align: left;">upstream-fork-status.md §2.C</td>
+</tr>
+<tr>
+<td style="text-align: center;">7</td>
+<td style="text-align: left;"><code>build.entitlements</code> / <code>--allow</code></td>
+<td style="text-align: left;"><code>container build</code> has no entitlement / <code>--allow</code> flag</td>
+<td style="text-align: left;">CHAOS-1337 (open)</td>
+</tr>
+<tr>
+<td style="text-align: center;">8</td>
+<td style="text-align: left;"><code>--log-driver</code> / <code>--log-opt</code></td>
+<td style="text-align: left;">Apple container log layout is fixed</td>
+<td style="text-align: left;">upstream-fork-status.md §2.C</td>
+</tr>
+<tr>
+<td style="text-align: center;">9</td>
+<td style="text-align: left;"><code>--health-cmd</code>, <code>--health-interval</code>, etc. (CLI form)</td>
+<td style="text-align: left;">Container-Compose has guarded emission for <code>run</code> / <code>create</code>; installed runtimes without the fork flags still warn-skip</td>
+<td style="text-align: left;">CHAOS-1381 / full-chaos/container PR #16</td>
+</tr>
+<tr>
+<td style="text-align: center;">10</td>
+<td style="text-align: left;">Per-container log file layout (signoz / alloy compatibility)</td>
+<td style="text-align: left;"><code>/var/lib/docker/containers/*-json.log</code> equivalent</td>
+<td style="text-align: left;">upstream-fork-status.md §2.F (no ticket yet)</td>
+</tr>
+<tr>
+<td style="text-align: center;">11</td>
+<td style="text-align: left;"><code>container create</code> (true create-without-start)</td>
+<td style="text-align: left;">Container-Compose probes for support; today shells out to <code>run --no-start</code>-equivalent</td>
+<td style="text-align: left;">upstream-fork-status.md §2.C</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Filing strategy:</strong> one apple/container GitHub issue per feature (or batched logically). Reference compose-spec sections, cite Container-Compose source line where the gap manifests.</p>
+<hr />
+<h2 id="7-tier-4-wont-do-decoded-coveragehtml-miss">7. Tier 4 — Won't do (decoded → <code>coverage.html</code> <code>miss</code>)<a class="headerlink" href="#7-tier-4-wont-do-decoded-coveragehtml-miss" title="Permanent link">&para;</a></h2>
+<p>Per CHAOS-1338 (Done) and the no-upstream-refactor plan, these are intentionally classified as <code>miss</code> rather than a backlog item.</p>
+<h3 id="71-linuxwindows-specific-no-apple-equivalent">7.1 Linux/Windows-specific (no Apple equivalent)<a class="headerlink" href="#71-linuxwindows-specific-no-apple-equivalent" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>service.cgroup</code>, <code>service.cgroup_parent</code> — Linux cgroup surface</li>
+<li><code>service.device_cgroup_rules</code> — Linux cgroup-v1</li>
+<li><code>service.storage_opt</code> — Linux storage drivers</li>
+<li><code>service.isolation</code>, <code>service.credential_spec</code> — Windows-only</li>
+<li><code>service.label_file</code> — Linux label sourcing</li>
+</ul>
+<h3 id="72-swarm-only-orchestrator-surface-different-orchestrator-class">7.2 Swarm-only orchestrator surface (different orchestrator class)<a class="headerlink" href="#72-swarm-only-orchestrator-surface-different-orchestrator-class" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>service.deploy.mode</code>, <code>service.deploy.replicas</code>, <code>service.deploy.placement</code></li>
+<li><code>service.deploy.update_config</code>, <code>service.deploy.rollback_config</code></li>
+<li><code>service.deploy.endpoint_mode</code></li>
+<li>(Note: <code>coverage.html</code> keeps these as <code>partial</code> because they're decoded; they could be flipped to <code>miss</code> in a follow-up but that's an editorial choice, not a feature gap.)</li>
+</ul>
+<h3 id="73-deprecated-by-compose-spec">7.3 Deprecated by compose-spec<a class="headerlink" href="#73-deprecated-by-compose-spec" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>service.links</code>, <code>service.external_links</code>, <code>service.volumes_from</code></li>
+</ul>
+<h3 id="74-decoded-only-with-no-applecontainer-equivalent-chaos-1338-family">7.4 Decoded-only with no apple/container equivalent (CHAOS-1338 family)<a class="headerlink" href="#74-decoded-only-with-no-applecontainer-equivalent-chaos-1338-family" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>service.annotations</code>, <code>service.attach</code>, <code>service.post_start</code>, <code>service.pre_stop</code>, <code>service.pull_refresh_after</code>, <code>service.use_api_socket</code></li>
+</ul>
+<hr />
+<h2 id="8-tier-5-frontier-track-only">8. Tier 5 — Frontier (track only)<a class="headerlink" href="#8-tier-5-frontier-track-only" title="Permanent link">&para;</a></h2>
+<p>Compose-spec features still evolving. Do not invest significant implementation work until the upstream/runtime direction stabilizes.</p>
+<ul>
+<li><code>top.models</code> / <code>service.models</code> / <code>service.provider</code> — AI/LLM provider plumbing. Linear: CHAOS-1332.</li>
+</ul>
+<hr />
+<h2 id="9-linear-ticket-map">9. Linear ticket map<a class="headerlink" href="#9-linear-ticket-map" title="Permanent link">&para;</a></h2>
+<h3 id="91-already-done-no-action-needed">9.1 Already Done (no action needed)<a class="headerlink" href="#91-already-done-no-action-needed" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Linear</th>
+<th style="text-align: left;">Title</th>
+<th style="text-align: left;">What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CHAOS-1319</td>
+<td style="text-align: left;">Service-healthy enforcement via <code>ContainerSnapshot.health</code></td>
+<td style="text-align: left;">Fork-only today; blocked on upstream parity</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1320</td>
+<td style="text-align: left;">Exit-code verification for <code>service_completed_successfully</code></td>
+<td style="text-align: left;">Fork-only today; blocked on upstream parity</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1321</td>
+<td style="text-align: left;"><code>--restart</code> flag on <code>container run</code></td>
+<td style="text-align: left;">Fork-only today; blocked on upstream parity</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1322</td>
+<td style="text-align: left;"><code>compose logs --since/--timestamps</code></td>
+<td style="text-align: left;">Fork-only today; blocked on upstream parity</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1323</td>
+<td style="text-align: left;">Native <code>compose events</code> streaming</td>
+<td style="text-align: left;">Fork-only today; blocked on upstream parity</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1324</td>
+<td style="text-align: left;">Standard <code>-e/-u/-w/-d</code> flags on <code>compose run/exec</code></td>
+<td style="text-align: left;">Fork-only today; blocked on upstream parity</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1327</td>
+<td style="text-align: left;">Map driver <code>bridge</code> → <code>container-network-vmnet</code></td>
+<td style="text-align: left;">Tier 0 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1328</td>
+<td style="text-align: left;">Auto-qualify short-form image refs</td>
+<td style="text-align: left;">Tier 0 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1329</td>
+<td style="text-align: left;">Stop emitting <code>--log-driver</code> / <code>--log-opt</code></td>
+<td style="text-align: left;">Tier 0 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1330</td>
+<td style="text-align: left;">Stop emitting <code>--add-host</code> (extra_hosts)</td>
+<td style="text-align: left;">Tier 0 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1331</td>
+<td style="text-align: left;">Stop emitting <code>--alias</code> (network aliases)</td>
+<td style="text-align: left;">Tier 0 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1333</td>
+<td style="text-align: left;">Configs + secrets runtime bind-mount</td>
+<td style="text-align: left;">Tier 1 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1338</td>
+<td style="text-align: left;">Decode-only "no equivalent" coverage flips</td>
+<td style="text-align: left;">Tier 4 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1339</td>
+<td style="text-align: left;">Named-volume target truncation fix</td>
+<td style="text-align: left;">Tier 1 → done</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1384</td>
+<td style="text-align: left;">Host-side <code>template_driver: golang</code> rendering for configs / secrets</td>
+<td style="text-align: left;">Reclassified from upstream FR → compose-side partial support</td>
+</tr>
+</tbody>
+</table>
+<h3 id="92-open-backlog-already-filed-valid">9.2 Open backlog (already filed, valid)<a class="headerlink" href="#92-open-backlog-already-filed-valid" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Linear</th>
+<th style="text-align: left;">Title</th>
+<th style="text-align: left;">Tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">CHAOS-1332</td>
+<td style="text-align: left;">Compose AI: wire <code>models</code> + <code>service.provider</code> runtime support</td>
+<td style="text-align: left;">Tier 5 (frontier)</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1334</td>
+<td style="text-align: left;">Network <code>driver_opts</code> / <code>attachable</code> / <code>enable_ipv6</code> / <code>internal</code> / <code>ipam</code> runtime</td>
+<td style="text-align: left;">Fork-backed wiring in progress; <code>ipam.driver/options</code> still unavailable</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1335</td>
+<td style="text-align: left;">Volume <code>driver_opts</code> runtime + improved named-volume handling</td>
+<td style="text-align: left;">Partly wireable; otherwise blocked on apple/container upstream</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1336</td>
+<td style="text-align: left;"><code>deploy.resources.reservations</code> runtime application</td>
+<td style="text-align: left;">Tier 1 (wireable) but still constrained by upstream flag surface</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1337</td>
+<td style="text-align: left;"><code>build.entitlements</code> → <code>--allow</code> equivalent</td>
+<td style="text-align: left;">Tier 3 (upstream FR)</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1366</td>
+<td style="text-align: left;"><code>RuntimeError.imageNotFound</code> mapping</td>
+<td style="text-align: left;">unrelated infra</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1368</td>
+<td style="text-align: left;">Replace volume path-fallback with runtime CRUD</td>
+<td style="text-align: left;">Tier 1 (wireable)</td>
+</tr>
+<tr>
+<td style="text-align: left;">CHAOS-1345</td>
+<td style="text-align: left;">PRD: Architecture and Docker API compatibility plan</td>
+<td style="text-align: left;">umbrella</td>
+</tr>
+</tbody>
+</table>
+<h3 id="93-new-tickets-filed-this-audit-2026-05-01">9.3 New tickets filed (this audit, 2026-05-01)<a class="headerlink" href="#93-new-tickets-filed-this-audit-2026-05-01" title="Permanent link">&para;</a></h3>
+<p>Filed automatically as part of this audit. Two umbrellas, 13 sub-issues.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Linear</th>
+<th style="text-align: left;">Title</th>
+<th style="text-align: left;">Tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><a href="https://linear.app/fullchaos/issue/CHAOS-1370">CHAOS-1370</a></strong></td>
+<td style="text-align: left;">Tier 0: Stop emitting flags <code>apple/container</code> does not accept (sweep) — umbrella</td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1371">CHAOS-1371</a></td>
+<td style="text-align: left;">Tier 0: Stop emitting <code>--security-opt</code> / <code>--userns</code></td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1372">CHAOS-1372</a></td>
+<td style="text-align: left;">Tier 0: Stop emitting <code>--ipc</code> / <code>--pid</code> / <code>--uts</code></td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1373">CHAOS-1373</a></td>
+<td style="text-align: left;">Tier 0: Stop emitting <code>--device</code> / <code>--sysctl</code></td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1374">CHAOS-1374</a></td>
+<td style="text-align: left;">Tier 0: Stop emitting <code>--ip</code> / <code>--ip6</code> / <code>--mac-address</code></td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1375">CHAOS-1375</a></td>
+<td style="text-align: left;">Tier 0: Stop emitting advanced resource flags (<code>--memory-*</code>, <code>--pids-limit</code>, <code>--shm-size</code>, <code>--cpu-*</code>, <code>--oom-*</code>)</td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1376">CHAOS-1376</a></td>
+<td style="text-align: left;">Tier 0: Convert <code>--gpus</code> / <code>--blkio-*</code> from warn-emit to skip-emit</td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1377">CHAOS-1377</a></td>
+<td style="text-align: left;">Tier 0: Audit <code>container build</code> flag emissions vs upstream <code>BuildCommand</code></td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><a href="https://linear.app/fullchaos/issue/CHAOS-1397">CHAOS-1397</a></strong></td>
+<td style="text-align: left;">Tier 0 Round 2: Stop emitting newly-discovered unsupported run flags and sync Up/Create build emission with ComposeBuild</td>
+<td style="text-align: left;">Tier 0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><a href="https://linear.app/fullchaos/issue/CHAOS-1378">CHAOS-1378</a></strong></td>
+<td style="text-align: left;">Tier 3: File apple/container FRs for missing runtime surface — umbrella</td>
+<td style="text-align: left;">Tier 3</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1379">CHAOS-1379</a></td>
+<td style="text-align: left;">Blocked spike: <code>--gpus</code> GPU passthrough; <a href="https://github.com/apple/container/issues/1511">apple/container#1511</a> filed opportunistically</td>
+<td style="text-align: left;">Tier 3 / blocked</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1380">CHAOS-1380</a></td>
+<td style="text-align: left;">Fork patch: <code>--blkio-*</code> / cgroup BFQ tuning; compose-side guarded emission wired; <a href="https://github.com/apple/container/issues/1512">apple/container#1512</a> filed opportunistically</td>
+<td style="text-align: left;">Tier 3 / fork-bound</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1381">CHAOS-1381</a></td>
+<td style="text-align: left;">Fork patch: <code>--health-cmd</code> / <code>--health-*</code> CLI flags plus health observer</td>
+<td style="text-align: left;">Draft fork PR #16; compose-side guarded emission is wired</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1382">CHAOS-1382</a></td>
+<td style="text-align: left;">FR upstream: file-level bind mounts on <code>container run -v</code></td>
+<td style="text-align: left;">Tier 3</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="https://linear.app/fullchaos/issue/CHAOS-1383">CHAOS-1383</a></td>
+<td style="text-align: left;">FR upstream: lifecycle hooks API (<code>post_start</code> / <code>pre_stop</code>)</td>
+<td style="text-align: left;">Tier 3</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-recommended-next-steps">10. Recommended next steps<a class="headerlink" href="#10-recommended-next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>File CHAOS-NEW-A umbrella + 7 sub-issues</strong> (Tier 0 sweep). Effort estimate: 4-8 hours batched, vs. file-by-file 30-60 min each.</li>
+<li><strong>File CHAOS-NEW-B umbrella + 6 sub-issues</strong> (FR campaign). These get filed externally on <code>apple/container</code> GitHub once CHAOS-NEW-B exists internally.</li>
+<li><strong>Tighten <code>coverage.html</code></strong> so every Tier 0 row is <code>partial</code> (decoded but not wired) rather than implicitly "ok". The current row notes are accurate but the wireup status is misleading.</li>
+<li><strong>Cross-link from <code>coverage.html</code> rows to this doc</strong> via section anchors — useful for the rendered https://full-chaos.github.io/container-compose/ page.</li>
+<li><strong>Update <code>AGENTS.md</code> §6</strong> to add a new <code>Tier 0</code> heading above Tier 1, summarizing this audit and pointing here. Tier 1 / Tier 2 / Tier 3 numbering shifts down (rename to Tier 1 / Tier 2 / Tier 3 / Tier 4 to match this doc's tiers).</li>
+</ol>
+<hr />
+<h2 id="11-references">11. References<a class="headerlink" href="#11-references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Coverage matrix data: <a href="../coverage.html"><code>coverage.html</code></a> (canonical), regenerable to <code>coverage.json</code> via <code>scripts/regen-coverage.sh</code></li>
+<li>Fork dependencies: <a href="../upstream-fork-status/"><code>upstream-fork-status.md</code></a></li>
+<li>Plan that drained the prior no-upstream queue: <a href="../plans/no-upstream-refactor-and-linear/"><code>docs/plans/no-upstream-refactor-and-linear.md</code></a></li>
+<li>apple/container CLI flag definitions (verified at audit time): <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift</code> lines 21-405</li>
+<li>apple/container subcommand-local flags: <code>.build/checkouts/container/Sources/ContainerCommands/Container/{ContainerRun,ContainerCreate,ContainerExec}.swift</code>, <code>Network/NetworkCreate.swift</code></li>
+<li>Container-Compose argv emission: <code>Sources/Container-Compose/Commands/Compose+Args*.swift</code></li>
+<li>Linear team: <strong>CHAOS</strong> (project: Container Compose)</li>
+</ul>
+<hr />
+<h2 id="12-appendix-a-verified-applecontainer-cli-surface">12. Appendix A — Verified apple/container CLI surface<a class="headerlink" href="#12-appendix-a-verified-applecontainer-cli-surface" title="Permanent link">&para;</a></h2>
+<p>Captured 2026-05-01 from <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift</code>. Use this as the single source of truth when deciding whether a flag is safe to emit.</p>
+<h3 id="flagslogging"><code>Flags.Logging</code><a class="headerlink" href="#flagslogging" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--debug</code> (env: <code>CONTAINER_DEBUG</code>)</li>
+</ul>
+<h3 id="flagsprocessbase"><code>Flags.ProcessBase</code><a class="headerlink" href="#flagsprocessbase" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--cwd &lt;dir&gt;</code></li>
+<li><code>--env-file &lt;path&gt;</code> (no short flag)</li>
+</ul>
+<h3 id="flagsprocess"><code>Flags.Process</code><a class="headerlink" href="#flagsprocess" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>-e, --env KEY=VALUE</code></li>
+<li><code>--env-file &lt;path&gt;</code></li>
+<li><code>--gid &lt;uint32&gt;</code></li>
+<li><code>-i, --interactive</code></li>
+<li><code>-t, --tty</code></li>
+<li><code>-u, --user &lt;name|uid[:gid]&gt;</code></li>
+<li><code>--uid &lt;uint32&gt;</code></li>
+<li><code>-w, --workdir, --cwd &lt;dir&gt;</code></li>
+<li><code>--ulimit &lt;type&gt;=&lt;soft&gt;[:&lt;hard&gt;]</code></li>
+</ul>
+<h3 id="flagsresource"><code>Flags.Resource</code><a class="headerlink" href="#flagsresource" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>-c, --cpus &lt;int64&gt;</code></li>
+<li><code>-m, --memory &lt;bytes&gt;</code></li>
+</ul>
+<h3 id="flagsdns"><code>Flags.DNS</code><a class="headerlink" href="#flagsdns" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--dns &lt;ip&gt;</code></li>
+<li><code>--dns-domain &lt;domain&gt;</code></li>
+<li><code>--dns-option &lt;opt&gt;</code></li>
+<li><code>--dns-search &lt;domain&gt;</code></li>
+</ul>
+<h3 id="flagsmanagement"><code>Flags.Management</code><a class="headerlink" href="#flagsmanagement" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>-a, --arch &lt;arch&gt;</code></li>
+<li><code>--cap-add &lt;cap&gt;</code></li>
+<li><code>--cap-drop &lt;cap&gt;</code></li>
+<li><code>--cidfile &lt;path&gt;</code></li>
+<li><code>-d, --detach</code></li>
+<li>(group) <code>Flags.DNS</code></li>
+<li><code>--entrypoint &lt;cmd&gt;</code></li>
+<li><code>--init</code></li>
+<li><code>--init-image &lt;image&gt;</code></li>
+<li><code>-k, --kernel &lt;path&gt;</code></li>
+<li><code>-l, --label KEY=VALUE</code></li>
+<li><code>--mount type=...,source=...,target=...,readonly</code></li>
+<li><code>--name &lt;id&gt;</code></li>
+<li><code>--network &lt;name&gt;[,mac=...][,mtu=...]</code> (NB: <code>--ip</code>, <code>--alias</code>, <code>--add-host</code> are NOT here)</li>
+<li><code>--no-dns</code></li>
+<li><code>--os &lt;linux|...&gt;</code></li>
+<li><code>-p, --publish [host-ip:]host-port:container-port[/protocol]</code></li>
+<li><code>--platform &lt;plat&gt;</code> (env: <code>CONTAINER_DEFAULT_PLATFORM</code>)</li>
+<li><code>--publish-socket host_path:container_path</code></li>
+<li><code>--read-only</code></li>
+<li><code>--rm</code></li>
+<li><code>--rosetta</code></li>
+<li><code>--runtime &lt;handler&gt;</code></li>
+<li><code>--ssh</code></li>
+<li><code>--tmpfs &lt;path&gt;</code></li>
+<li><code>--virtualization</code></li>
+<li><code>-v, --volume &lt;spec&gt;</code> (host-path bind mounts; named-volume resolution behavior unverified — see §13)</li>
+</ul>
+<h3 id="fork-only-additions-in-full-chaoscontainer-not-in-upstream-applecontainer">Fork-only additions in <code>full-chaos/container</code> (NOT in upstream apple/container)<a class="headerlink" href="#fork-only-additions-in-full-chaoscontainer-not-in-upstream-applecontainer" title="Permanent link">&para;</a></h3>
+<p>Verified by cloning <code>github.com/apple/container@main</code> 2026-05-01 and grepping for these flags — zero matches. They live only in the frozen <code>tier2-fork-patches</code> branch we still pin for transitional compatibility.</p>
+<ul>
+<li><code>--restart &lt;no|always|on-failure[:N]|unless-stopped&gt;</code> (CHAOS-1321 — added in fork commit <code>c63ed9a</code>). container-compose emits this from <code>service.restart</code> (NOT <code>service.deploy.restart_policy.condition</code>, which is Tier 4 won't-do per CHAOS-1338). Treat it as blocked on upstream <code>apple/container</code>; do not extend the fork further.</li>
+<li><code>health: HealthStatus?</code> field on <code>ContainerSnapshot</code> (CHAOS-1319, fork commit <code>c63ed9a</code>) — read-only API the fork added. Upstream snapshot has no <code>health</code> field.</li>
+<li><code>lastExitCode: Int32?</code> on <code>ContainerSnapshot</code> (CHAOS-1320, fork commit <code>630b8c8</code>).</li>
+<li><code>ContainerLogOptions.{since, timestamps}</code> (CHAOS-1322).</li>
+<li><code>ContainerEvent</code> + <code>events()</code> streaming API (CHAOS-1323).</li>
+<li><code>Flags.ProcessBase</code> short-flag-free subset (CHAOS-1324).</li>
+<li><code>--blkio-weight</code>, <code>--blkio-weight-device</code>, <code>--device-read-bps</code>, <code>--device-write-bps</code>, <code>--device-read-iops</code>, <code>--device-write-iops</code> (CHAOS-1380) — <code>container-compose</code> probes <code>run</code> / <code>create</code> before emitting and warn-skips on older runtimes.</li>
+</ul>
+<h3 id="container-network-create-subcommand-local"><code>container network create</code> (subcommand-local)<a class="headerlink" href="#container-network-create-subcommand-local" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--label KEY=VALUE</code></li>
+<li><code>--internal</code> (host-only)</li>
+<li><code>--subnet &lt;CIDRv4&gt;</code></li>
+<li><code>--subnet-v6 &lt;CIDRv6&gt;</code></li>
+<li><code>--plugin &lt;name&gt;</code> (default: <code>container-network-vmnet</code>)</li>
+<li><code>--plugin-variant &lt;name&gt;</code></li>
+<li><code>&lt;name&gt;</code> (positional)</li>
+</ul>
+<h3 id="container-build-subcommand-local"><code>container build</code> (subcommand-local)<a class="headerlink" href="#container-build-subcommand-local" title="Permanent link">&para;</a></h3>
+<p><em>Not exhaustively re-verified in this audit; see CHAOS-NEW-A.7.</em></p>
+<h3 id="what-is-not-in-upstream-applecontainer-tier-0-tier-23-territory">What is NOT in upstream apple/container (Tier 0 + Tier 2/3 territory)<a class="headerlink" href="#what-is-not-in-upstream-applecontainer-tier-0-tier-23-territory" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--ipc</code>, <code>--pid</code>, <code>--uts</code></li>
+<li><code>--device</code></li>
+<li><code>--userns</code></li>
+<li><code>--security-opt</code></li>
+<li><code>--add-host</code></li>
+<li><code>--alias</code> (network alias)</li>
+<li><code>--gpus</code></li>
+<li><code>--blkio-weight</code>, <code>--blkio-weight-device</code>, <code>--device-read-bps</code>, <code>--device-write-bps</code>, <code>--device-read-iops</code>, <code>--device-write-iops</code> (fork-only; guarded by capability probe)</li>
+<li><code>--shm-size</code></li>
+<li><code>--pids-limit</code></li>
+<li><code>--memory-reservation</code>, <code>--memory-swap</code>, <code>--memory-swappiness</code></li>
+<li><code>--cpu-shares</code>, <code>--cpuset-cpus</code>, <code>--cpu-period</code>, <code>--cpu-quota</code>, <code>--cpu-rt-period</code>, <code>--cpu-rt-runtime</code>, <code>--cpu-count</code>, <code>--cpu-percent</code></li>
+<li><code>--oom-kill-disable</code>, <code>--oom-score-adj</code></li>
+<li><code>--sysctl</code></li>
+<li><code>--ip</code>, <code>--ip6</code> (standalone; <code>--network &lt;name&gt;,mac=...</code> only)</li>
+<li><code>--mac-address</code> (standalone; <code>--network &lt;name&gt;,mac=...</code> only)</li>
+<li><code>--log-driver</code>, <code>--log-opt</code></li>
+<li><code>--health-cmd</code>, <code>--health-interval</code>, <code>--health-retries</code>, <code>--health-timeout</code>, <code>--health-start-period</code></li>
+<li><code>--volumes-from</code></li>
+<li><code>--storage-opt</code></li>
+<li><code>--device-cgroup-rule</code></li>
+<li><code>--isolation</code></li>
+<li>Network create: <code>--driver-opt</code>, <code>--attachable</code>, <code>--ipv6</code> (bare), <code>--ip-range</code>, <code>--gateway</code>, <code>--aux-address</code>; <code>--ipam-driver</code> / <code>--ipam-opt</code> remain unavailable</li>
+<li><code>container build</code>: <code>--allow</code> (entitlements)</li>
+</ul>
+<hr />
+<hr />
+<h2 id="13-appendix-b-named-volumes-deep-dive">13. Appendix B — Named volumes (deep dive)<a class="headerlink" href="#13-appendix-b-named-volumes-deep-dive" title="Permanent link">&para;</a></h2>
+<p>This is a particularly nuanced gap that doesn't fit cleanly into Tier 0/1/2/3. Calling it out separately because the symptoms are subtle.</p>
+<h3 id="current-behavior">Current behavior<a class="headerlink" href="#current-behavior" title="Permanent link">&para;</a></h3>
+<p>Compose YAML like:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">db</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dbdata:/var/lib/postgresql/data</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">volumes</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">dbdata</span><span class="p">:</span>
+</span></code></pre></div>
+<p>is detected at <code>Sources/Container-Compose/Commands/ComposeUp.swift:837</code> via heuristic: source contains <code>/</code> or starts with <code>.</code> / <code>..</code> → bind mount; else → named volume reference.</p>
+<p>For named-volume references, Container-Compose:
+1. Resolves to host directory <code>~/.containers/Volumes/&lt;project&gt;/&lt;name&gt;/</code> (line 866-867)
+2. Creates the directory if missing (line 872)
+3. Emits <code>-v &lt;hostPath&gt;:&lt;containerPath&gt;</code> to <code>container run</code> (line 875-878)
+4. Emits a warning at line 869-871 saying "The 'container' tool does not support named volume references in 'container run -v' command"</p>
+<p>The warning's claim was outdated. apple/container ships <code>container volume create</code> (verified upstream — <code>.build/checkouts/container/Sources/ContainerCommands/Volume/VolumeCreate.swift:28-59</code>) with <code>--label</code>, <code>--opt</code>, and <code>--size</code>, and the runtime path for <code>container run -v</code> resolves bare names as named volumes rather than host paths.</p>
+<h3 id="phase-0-smoke-test-result-green">Phase 0 smoke-test result: GREEN<a class="headerlink" href="#phase-0-smoke-test-result-green" title="Permanent link">&para;</a></h3>
+<p><code>container run -v &lt;name&gt;:&lt;path&gt;</code> <strong>does resolve named volumes</strong> when the source token has no <code>/</code> and is not <code>.</code> / <code>..</code>.</p>
+<p>Evidence:</p>
+<ol>
+<li><code>ContainerRun.run()</code> does not parse <code>-v</code> itself; it delegates to <code>Utility.containerConfigFromFlags(...)</code> with <code>managementFlags</code> (<code>.build/checkouts/container/Sources/ContainerCommands/Container/ContainerRun.swift:92-103</code>). <code>ContainerCreate.run()</code> follows the same path (<code>.build/checkouts/container/Sources/ContainerCommands/Container/ContainerCreate.swift:72-87</code>).</li>
+<li><code>containerConfigFromFlags(...)</code> parses <code>management.volumes</code> via <code>Parser.volumes(...)</code>, then converts each <code>.volume</code> case into <code>Filesystem.volume(...)</code> after <code>getOrCreateVolume(...)</code> resolves it through the volume registry (<code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Utility.swift:167-190</code>).</li>
+<li><code>Parser.volume(...)</code> explicitly classifies <code>src</code> values <strong>without <code>/</code> and not equal to <code>.</code> / <code>..</code></strong> as named volumes, validates the volume name, and returns <code>.volume(ParsedVolume(name: src, ...))</code> instead of a filesystem bind mount (<code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Parser.swift:518-533</code>).</li>
+<li><code>getOrCreateVolume(...)</code> creates or inspects the named volume through <code>ClientVolume.create(...)</code> / <code>ClientVolume.inspect(...)</code>, not through a host-path fallback (<code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Utility.swift:359-392</code>).</li>
+<li><code>container volume create</code> / <code>list</code> are backed by the same registry API (<code>ClientVolume.create/list</code>) and persist real <code>Volume</code> records with <code>name</code>, <code>source</code>, <code>labels</code>, and <code>options</code> (<code>.build/checkouts/container/Sources/ContainerCommands/Volume/VolumeCreate.swift:45-60</code>, <code>.build/checkouts/container/Sources/ContainerCommands/Volume/VolumeList.swift:42-53</code>, <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/ClientVolume.swift:25-68</code>, <code>.build/checkouts/container/Sources/ContainerResource/Volume/Volume.swift:19-38</code>).</li>
+</ol>
+<p>Conclusion: the old <code>container-compose</code> warning was incorrect for local named volumes. The right fix is to create/inspect real volumes and pass the resolved volume <strong>name</strong> to <code>container run -v &lt;name&gt;:&lt;path&gt;</code>.</p>
+<h3 id="whats-broken-suboptimal">What's broken / suboptimal<a class="headerlink" href="#whats-broken-suboptimal" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong><code>top.volumes.&lt;name&gt;.driver_opts</code></strong> — parsed (CHAOS-1335 open) but ignored at runtime. apple/container's <code>volume create --opt KEY=VALUE</code> exists, so this is wireable.</li>
+<li><strong><code>top.volumes.&lt;name&gt;.labels</code></strong> — parsed but not propagated. <code>volume create --label</code> exists.</li>
+<li><strong><code>top.volumes.&lt;name&gt;.driver</code></strong> — only <code>local</code> is honored; non-local drivers fall back to hardlink (line 320-324). This is correct behavior per apple/container scope, but the warning could be more informative.</li>
+<li><strong>Cross-project volume sharing</strong> — hardlink-dir scopes to <code>&lt;project&gt;/&lt;name&gt;</code>. Real <code>container volume create</code> would scope by name only, allowing two projects to share a named volume. This is a behavior divergence that may surprise migrating-from-Docker users.</li>
+<li><strong>Volume cleanup on <code>compose down</code></strong> — current code does not remove the hardlink dir on <code>down</code>. CHAOS-1339 (done) fixed truncation; CHAOS-1368 (open) tracks the broader rework.</li>
+</ul>
+<h3 id="what-needs-to-happen">What needs to happen<a class="headerlink" href="#what-needs-to-happen" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Step</th>
+<th style="text-align: left;">Effort</th>
+<th style="text-align: left;">Linear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1. Verify whether <code>container run -v &lt;name&gt;:&lt;path&gt;</code> (source without <code>/</code>) resolves to a registered volume in current upstream</td>
+<td style="text-align: left;"><strong>Done — GREEN via source audit</strong></td>
+<td style="text-align: left;">CHAOS-1368</td>
+</tr>
+<tr>
+<td style="text-align: left;">2. Replace hardlink-dir fallback with <code>container volume create</code> + <code>container run -v &lt;name&gt;:&lt;path&gt;</code>. Wire <code>driver_opts</code> / <code>labels</code> through.</td>
+<td style="text-align: left;">Implemented in CHAOS-1368 branch; <code>driver_opts</code> wiring also advances CHAOS-1335</td>
+<td style="text-align: left;">CHAOS-1368, CHAOS-1335</td>
+</tr>
+<tr>
+<td style="text-align: left;">3. Preserve existing data by migrating legacy <code>~/.containers/Volumes/&lt;project&gt;/&lt;name&gt;/</code> contents into the runtime volume store on first use.</td>
+<td style="text-align: left;">Implemented with one-time stderr notice and no destructive delete</td>
+<td style="text-align: left;">CHAOS-1368</td>
+</tr>
+<tr>
+<td style="text-align: left;">4. Keep non-<code>local</code> drivers on the legacy hardlink fallback with a clearer warning until apple/container grows broader driver support.</td>
+<td style="text-align: left;">Follow-up / long tail</td>
+<td style="text-align: left;">CHAOS-1335</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bind-mount-vs-named-volume-disambiguation">Bind-mount vs. named-volume disambiguation<a class="headerlink" href="#bind-mount-vs-named-volume-disambiguation" title="Permanent link">&para;</a></h3>
+<p>The <code>/</code> heuristic (line 837) is fragile. A volume name that happens to contain <code>/</code> (e.g., a path-like name) would be misidentified as a bind mount. Compose-spec doesn't strictly forbid this — though it's unusual. Possible improvement (out of scope of this audit): consult <code>top.volumes.&lt;name&gt;</code> first, classify by declaration, fall back to heuristic only for undeclared sources.</p>
+<hr />
+<p><em>This document supersedes earlier scattered notes in AGENTS.md §6, upstream-fork-status.md §2, and <code>docs/plans/no-upstream-refactor-and-linear.md</code> §2 as the single canonical inventory. Those documents remain valid for their original purposes; this one is the cross-cutting view.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

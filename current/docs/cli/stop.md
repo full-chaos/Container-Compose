@@ -9,7 +9,7 @@ Stop running containers without removing them.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose stop [global-options] [options] [services...]
 ```
 
@@ -32,7 +32,7 @@ container-compose stop [global-options] [options] [services...]
 
 Stop all running containers for the project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose stop
 ```
 
@@ -40,7 +40,7 @@ container-compose stop
 
 Only stop the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose stop web
 ```
 

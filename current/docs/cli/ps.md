@@ -9,7 +9,7 @@ List containers for this Compose project.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps [global-options] [options] [services...]
 ```
 
@@ -34,7 +34,7 @@ container-compose ps [global-options] [options] [services...]
 
 Show all running containers for the current project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps
 ```
 
@@ -42,7 +42,7 @@ container-compose ps
 
 Show both running and stopped containers.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps --all
 ```
 
@@ -50,7 +50,7 @@ container-compose ps --all
 
 Useful for scripting.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps -q
 ```
 

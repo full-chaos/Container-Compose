@@ -9,7 +9,7 @@ Push service images.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose push [global-options] [options] [services...]
 ```
 
@@ -35,7 +35,7 @@ container-compose push [global-options] [options] [services...]
 
 Push all images defined in the compose file to their respective registries.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose push
 ```
 
@@ -43,7 +43,7 @@ container-compose push
 
 Only push the image for the `api` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose push api
 ```
 
