@@ -24,6 +24,7 @@
 import ArgumentParser
 import ContainerAPIClient
 import Foundation
+import SystemPackage
 import Yams
 
 public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
@@ -151,8 +152,12 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
     /// data under ~/Library/Application Support.
     internal static func defaultVolumesBaseURL() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSString(string: "~/Library/Application Support").expandingTildeInPath)
-        return appSupport.appending(path: "com.apple.container/volumes", directoryHint: .isDirectory)
+            ?? URL(filePath: NSString(string: "~/Library/Application Support").expandingTildeInPath, directoryHint: .isDirectory)
+        let volumesBasePath = FilePath(appSupport.path(percentEncoded: false))
+            .pushing(FilePath("com.apple.container/volumes"))
+            .lexicallyNormalized()
+            .string
+        return URL(filePath: volumesBasePath, directoryHint: .isDirectory)
     }
 
     /// CHAOS-1413: Cleans up the on-disk volume directory left behind when
@@ -169,20 +174,20 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
         name: String,
         volumesBaseURL: URL = ComposeDown.defaultVolumesBaseURL()
     ) {
-        let volumeDir = volumesBaseURL.appending(path: name, directoryHint: .isDirectory)
-        let volumeImg = volumeDir.appending(path: "volume.img", directoryHint: .notDirectory)
+        let volumeDirPath = FilePath(volumesBaseURL.path(percentEncoded: false)).appending(name).string
+        let volumeImgPath = FilePath(volumeDirPath).appending("volume.img").string
 
-        guard fileManager.fileExists(atPath: volumeImg.path) else {
+        guard fileManager.fileExists(atPath: volumeImgPath) else {
             // No orphan on disk — truly gone. Silent, idempotent.
             return
         }
 
-        print("Warning: removing orphaned volume directory at \(volumeDir.path) (registry had no record of '\(name)')")
+        print("Warning: removing orphaned volume directory at \(volumeDirPath) (registry had no record of '\(name)')")
         do {
-            try fileManager.removeItem(at: volumeDir)
-            print("Removed orphaned volume directory: \(volumeDir.path)")
+            try fileManager.removeItem(at: URL(filePath: volumeDirPath, directoryHint: .isDirectory))
+            print("Removed orphaned volume directory: \(volumeDirPath)")
         } catch {
-            print("Error removing orphaned volume directory '\(volumeDir.path)': \(error)")
+            print("Error removing orphaned volume directory '\(volumeDirPath)': \(error)")
         }
     }
 
@@ -205,7 +210,13 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
     /// intact because sibling services may still mount the same shared files.
     private func cleanupConfigsSecretsTempDirIfFullProjectDown() {
         if self.services.isEmpty, let projectName {
-            let secretsDir = URL(fileURLWithPath: NSString(string: "~/.containers/Compose/\(projectName)/configs-secrets").expandingTildeInPath)
+            let composeDir = NSString(string: "~/.containers/Compose").expandingTildeInPath
+            let secretsDirPath = FilePath(composeDir)
+                .pushing(FilePath(projectName))
+                .pushing("configs-secrets")
+                .lexicallyNormalized()
+                .string
+            let secretsDir = URL(filePath: secretsDirPath, directoryHint: .isDirectory)
             try? FileManager.default.removeItem(at: secretsDir)
         }
     }

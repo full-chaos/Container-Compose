@@ -16,6 +16,7 @@
 
 import ContainerAPIClient
 import Foundation
+import SystemPackage
 
 // Owns the named-volume preparation seam — runtime-registry idempotency,
 // legacy-fallback merge, and the .img block-image migration skip path. The
@@ -42,15 +43,26 @@ extension ComposeUp {
     }
 
     private func legacyVolumeFallbackPath(projectName: String, actualVolumeName: String) -> String {
-        URL.homeDirectory
-            .appending(path: ".containers/Volumes/\(projectName)/\(actualVolumeName)")
-            .path(percentEncoded: false)
+        FilePath(URL.homeDirectory.path(percentEncoded: false))
+            .pushing(".containers")
+            .pushing("Volumes")
+            .pushing(FilePath(projectName))
+            .pushing(FilePath(actualVolumeName))
+            .lexicallyNormalized()
+            .string
+    }
+
+    private func migrationMarkerPath(projectName: String, actualVolumeName: String) -> String {
+        FilePath(URL.homeDirectory.path(percentEncoded: false))
+            .pushing(".container-compose")
+            .pushing("volume-migrations")
+            .pushing(FilePath("\(projectName)--\(actualVolumeName).migrated"))
+            .lexicallyNormalized()
+            .string
     }
 
     private func migrationMarkerURL(projectName: String, actualVolumeName: String) -> URL {
-        URL.homeDirectory
-            .appending(path: ".container-compose/volume-migrations")
-            .appending(path: "\(projectName)--\(actualVolumeName).migrated")
+        URL(filePath: migrationMarkerPath(projectName: projectName, actualVolumeName: actualVolumeName), directoryHint: .notDirectory)
     }
 
     // MARK: - Output
@@ -65,8 +77,8 @@ extension ComposeUp {
     private func mergeLegacyVolumeContents(from legacyPath: String, into destinationPath: String) throws {
         let children = try FileManager.default.contentsOfDirectory(atPath: legacyPath)
         for child in children {
-            let sourcePath = URL(fileURLWithPath: legacyPath).appending(path: child).path(percentEncoded: false)
-            let destination = URL(fileURLWithPath: destinationPath).appending(path: child).path(percentEncoded: false)
+            let sourcePath = FilePath(legacyPath).appending(child).string
+            let destination = FilePath(destinationPath).appending(child).string
             if FileManager.default.fileExists(atPath: destination) {
                 var isDirectory: ObjCBool = false
                 if FileManager.default.fileExists(atPath: sourcePath, isDirectory: &isDirectory), isDirectory.boolValue {
@@ -105,7 +117,8 @@ extension ComposeUp {
             writeWarningToStandardError(
                 "Warning: legacy volume data at '\(legacyPath)' cannot be auto-migrated into block-image runtime volume '\(actualVolumeName)' at '\(runtimeVolumeSource)'. Mount the volume image manually if data preservation is required. Skipping migration; future attempts will be suppressed."
             )
-            try FileManager.default.createDirectory(at: markerURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let markerParentURL = URL(filePath: FilePath(markerURL.path(percentEncoded: false)).removingLastComponent().string, directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: markerParentURL, withIntermediateDirectories: true)
             try "migration-skipped-block-image".write(to: markerURL, atomically: true, encoding: .utf8)
             return
         }
@@ -114,7 +127,7 @@ extension ComposeUp {
         try FileManager.default.createDirectory(atPath: runtimeVolumeSource, withIntermediateDirectories: true)
         try mergeLegacyVolumeContents(from: legacyPath, into: runtimeVolumeSource)
 
-        let markerParent = markerURL.deletingLastPathComponent()
+        let markerParent = URL(filePath: FilePath(markerURL.path(percentEncoded: false)).removingLastComponent().string, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: markerParent, withIntermediateDirectories: true)
         let markerMessage = "migrated"
         try markerMessage.write(to: markerURL, atomically: true, encoding: .utf8)

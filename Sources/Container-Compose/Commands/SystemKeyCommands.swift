@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import SystemPackage
 
 // MARK: - SystemKeyCommands
 
@@ -26,6 +27,6 @@ enum SystemKeyCommands {
             return ServeDaemon.defaultAuthFilePath
         }
         let expanded = (path as NSString).expandingTildeInPath
-        return URL(fileURLWithPath: expanded)
+        return URL(filePath: FilePath(expanded).lexicallyNormalized().string)
     }
 }

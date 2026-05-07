@@ -17,6 +17,7 @@
 import ContainerAPIClient
 import ContainerCommands
 import Foundation
+import SystemPackage
 
 // Canonical implementation of `compose build`'s per-service image build, shared
 // across `ComposeUp`, `ComposeCreate`, and `ComposeBuild`. Lifts the logic onto
@@ -53,7 +54,11 @@ extension ComposeCommand {
             }
         }
 
-        var commands = [URL(fileURLWithPath: buildConfig.context, relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path]
+        let buildContextPath = FilePath(effectiveProjectDirectory)
+            .pushing(FilePath(buildConfig.context))
+            .lexicallyNormalized()
+            .string
+        var commands = [buildContextPath]
 
         for (key, value) in buildConfig.args ?? [:] {
             commands.append(contentsOf: ["--build-arg", "\(key)=\(resolveVariable(value, with: environmentVariables))"])
@@ -68,7 +73,11 @@ extension ComposeCommand {
             inlineTempURL = tempURL
             commands.append(contentsOf: ["--file", tempURL.path])
         } else {
-            commands.append(contentsOf: ["--file", URL(fileURLWithPath: buildConfig.dockerfile ?? "Dockerfile", relativeTo: URL(fileURLWithPath: effectiveProjectDirectory)).path])
+            let dockerfilePath = FilePath(effectiveProjectDirectory)
+                .pushing(FilePath(buildConfig.dockerfile ?? "Dockerfile"))
+                .lexicallyNormalized()
+                .string
+            commands.append(contentsOf: ["--file", dockerfilePath])
         }
 
         if noCache {

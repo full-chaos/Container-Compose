@@ -16,6 +16,7 @@
 
 import ArgumentParser
 import Foundation
+import SystemPackage
 
 // MARK: - SystemGenerateCert
 
@@ -71,8 +72,8 @@ public struct SystemGenerateCert: AsyncParsableCommand {
         try RuntimeModeSupport.requireLocalOnly(operation: "system generate-cert")
 
         let expandedDir = (outDir as NSString).expandingTildeInPath
-        let certPath = (expandedDir as NSString).appendingPathComponent("cert.pem")
-        let keyPath  = (expandedDir as NSString).appendingPathComponent("key.pem")
+        let certPath = FilePath(expandedDir).appending("cert.pem").string
+        let keyPath  = FilePath(expandedDir).appending("key.pem").string
 
         // Check for existing files
         let certExists = FileManager.default.fileExists(atPath: certPath)
@@ -119,7 +120,7 @@ public struct SystemGenerateCert: AsyncParsableCommand {
 
     private func write(string: String, to path: String, mode: mode_t) throws {
         let data = Data(string.utf8)
-        try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        try data.write(to: URL(filePath: path), options: .atomic)
         // Set permissions explicitly — Data.write uses umask
         guard chmod(path, mode) == 0 else {
             throw ExitError("Failed to set file permissions on \(path): \(String(cString: strerror(errno)))")

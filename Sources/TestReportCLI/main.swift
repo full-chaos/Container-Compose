@@ -19,7 +19,7 @@ struct TestReportCLI: ParsableCommand {
     var includePassed: Bool = false
 
     mutating func run() throws {
-        let url = URL(fileURLWithPath: eventsPath)
+        let url = URL(filePath: eventsPath, directoryHint: .notDirectory)
         let readResult: Reader.Result
         do {
             readResult = try Reader.read(from: url)

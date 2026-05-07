@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import SystemPackage
 
 #if canImport(Darwin)
 import Darwin
@@ -96,10 +97,10 @@ public actor ContainerRegistry {
     /// Default on-disk path: `~/.container-compose/registry.json`. The
     /// directory is created on first write.
     public static var defaultStoragePath: String {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".container-compose")
-            .appending(path: "registry.json")
-            .path
+        FilePath(FileManager.default.homeDirectoryForCurrentUser.path)
+            .pushing(FilePath(".container-compose"))
+            .pushing(FilePath("registry.json"))
+            .string
     }
 
     // MARK: - State
@@ -169,7 +170,7 @@ public actor ContainerRegistry {
     private static let currentSchemaVersion: Int = 1
 
     private static func loadFromDisk(at path: String) throws -> [String: RuntimeContainerRecord] {
-        let url = URL(fileURLWithPath: path)
+        let url = URL(filePath: path)
         guard FileManager.default.fileExists(atPath: path) else { return [:] }
         return try withFileLock(at: path) {
             let data = try Data(contentsOf: url)
@@ -188,9 +189,10 @@ public actor ContainerRegistry {
     }
 
     private func writeToDisk() throws {
-        let url = URL(fileURLWithPath: storagePath)
+        let url = URL(filePath: storagePath)
+        let storageDirectory = FilePath(storagePath).removingLastComponent().string
         try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
+            at: URL(filePath: storageDirectory, directoryHint: .isDirectory),
             withIntermediateDirectories: true
         )
         let encoder = JSONEncoder()
@@ -216,7 +218,7 @@ public actor ContainerRegistry {
     @discardableResult
     private static func withFileLock<T>(at path: String, _ work: () throws -> T) throws -> T {
         let lockPath = path + ".lock"
-        let dir = (lockPath as NSString).deletingLastPathComponent
+        let dir = FilePath(lockPath).removingLastComponent().string
         try? FileManager.default.createDirectory(
             atPath: dir,
             withIntermediateDirectories: true

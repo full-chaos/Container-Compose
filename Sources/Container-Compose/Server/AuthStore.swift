@@ -16,6 +16,7 @@
 
 import Crypto
 import Foundation
+import SystemPackage
 
 #if canImport(Darwin)
 import Darwin
@@ -53,31 +54,35 @@ public protocol AuthStore: Sendable {
 
 /// File-backed auth store. JSON document at `path`, atomic-rename writes, 0600 perms.
 public actor FileAuthStore: AuthStore {
-    private let path: URL
+    private let path: String
     private var keys: [StoredKey]
 
     /// Throws if path's parent directory cannot be created or the file is malformed JSON.
     /// Returns an empty store if the file does not exist.
-    public init(path: URL) async throws {
+    public init(path: String) async throws {
         self.path = path
 
         try Self.ensureParentDirectory(for: path)
 
-        guard FileManager.default.fileExists(atPath: path.path) else {
+        guard FileManager.default.fileExists(atPath: path) else {
             self.keys = []
             return
         }
 
         do {
-            let data = try Data(contentsOf: path)
+            let data = try Data(contentsOf: URL(filePath: path))
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             self.keys = try decoder.decode([StoredKey].self, from: data)
         } catch let decodingError as DecodingError {
-            throw AuthStoreError.malformedFile(path.path, underlying: decodingError)
+            throw AuthStoreError.malformedFile(path, underlying: decodingError)
         } catch {
             throw error
         }
+    }
+
+    public init(path: URL) async throws {
+        try await self.init(path: path.path(percentEncoded: false))
     }
 
     public func find(hashHex: String) async -> StoredKey? {
@@ -114,33 +119,33 @@ public actor FileAuthStore: AuthStore {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(keys)
-        let tmp = path.appendingPathExtension("tmp")
+        let tmp = "\(path).tmp"
         let fileManager = FileManager.default
 
         do {
-            try data.write(to: tmp, options: .atomic)
-            try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tmp.path)
+            try data.write(to: URL(filePath: tmp), options: .atomic)
+            try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tmp)
 
-            guard rename(tmp.path, path.path) == 0 else {
+            guard rename(tmp, path) == 0 else {
                 let code = Int(errno)
                 throw NSError(domain: NSPOSIXErrorDomain, code: code)
             }
         } catch {
-            try? fileManager.removeItem(at: tmp)
+            try? fileManager.removeItem(atPath: tmp)
             throw error
         }
     }
 
-    private static func ensureParentDirectory(for path: URL) throws {
-        let parent = path.deletingLastPathComponent()
+    private static func ensureParentDirectory(for path: String) throws {
+        let parent = FilePath(path).removingLastComponent().string
         let fileManager = FileManager.default
 
-        guard !fileManager.fileExists(atPath: parent.path) else {
+        guard !fileManager.fileExists(atPath: parent) else {
             return
         }
 
         try fileManager.createDirectory(
-            at: parent,
+            at: URL(filePath: parent, directoryHint: .isDirectory),
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700]
         )

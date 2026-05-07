@@ -25,6 +25,7 @@ import Foundation
 import Yams
 import Rainbow
 import ContainerCommands
+import SystemPackage
 
 enum ComposeMemoryParseError: Error, Equatable {
     case empty
@@ -193,9 +194,23 @@ internal func posixShellTokenize(_ input: String) throws -> [String] {
     }
 }
 
-public func resolvedPath(for path: String, relativeTo baseURL: URL) -> String {
+/// Resolves a (possibly relative or tilde-prefixed) path against a base
+/// directory, using `SystemPackage.FilePath` for purely lexical resolution.
+///
+/// CHAOS-1443: replaces the previous `URL(fileURLWithPath:relativeTo:)` /
+/// `.standardizedFileURL.path` implementation, which depended on Foundation
+/// consulting the filesystem to decide whether `baseURL` was a directory.
+/// For nonexistent base paths Foundation defaulted to file-shaped URLs and
+/// resolved relative paths against the parent (`./data` against `/tmp/project`
+/// became `/tmp/data`). FilePath does no filesystem I/O — `pushing` handles
+/// the absolute-replaces-base semantics directly and `lexicallyNormalized`
+/// resolves `.` / `..` purely on the path string.
+///
+/// Aligns with apple/container's URL→FilePath migration
+/// (apple/container#1481, #1480).
+public func resolvedPath(for path: String, relativeTo cwd: String) -> String {
     let expandedPath = NSString(string: path).expandingTildeInPath
-    return URL(fileURLWithPath: expandedPath, relativeTo: baseURL).standardizedFileURL.path
+    return FilePath(cwd).pushing(FilePath(expandedPath)).lexicallyNormalized().string
 }
 
 
@@ -204,7 +219,7 @@ public func resolvedPath(for path: String, relativeTo baseURL: URL) -> String {
 /// - Returns: A dictionary of key-value pairs representing environment variables.
 public func loadEnvFile(path: String) -> [String: String] {
     var envVars: [String: String] = [:]
-    let fileURL = URL(fileURLWithPath: path)
+    let fileURL = URL(filePath: path, directoryHint: .notDirectory)
     do {
         let content = try String(contentsOf: fileURL, encoding: .utf8)
         let lines = content.split(separator: "\n")
@@ -247,7 +262,7 @@ public func mergeServiceEnvironment(
 
     if let envFiles = serviceEnvFile {
         for entry in envFiles {
-            let resolved = URL(fileURLWithPath: entry.path, relativeTo: URL(fileURLWithPath: projectDirectory)).path
+            let resolved = FilePath(projectDirectory).pushing(FilePath(entry.path)).lexicallyNormalized().string
             if !entry.required && !FileManager.default.fileExists(atPath: resolved) {
                 continue
             }
@@ -487,7 +502,9 @@ public func effectiveContainerName(
 /// - Returns: A sanitized project name suitable for container naming.
 public func deriveProjectName(cwd: String) -> String {
     // We need to replace '.' with _ because it is not supported in the container name
-    let projectName = URL(fileURLWithPath: cwd).lastPathComponent.replacingOccurrences(of: ".", with: "_")
+    // We need to replace '.' with '_' because it is not supported in the container name.
+    let lastComponent = FilePath(cwd).lastComponent?.string ?? cwd
+    let projectName = lastComponent.replacingOccurrences(of: ".", with: "_")
     return projectName
 }
 
@@ -537,15 +554,12 @@ public func resolveProjectDirectory(
 ) -> String {
     if let cli = cliOverride, !cli.isEmpty {
         let expanded = NSString(string: cli).expandingTildeInPath
-        // `isDirectory: true` on the base URL is required so that
-        // `URL(fileURLWithPath:relativeTo:)` joins the relative path
-        // against `cwd` instead of treating `cwd` as a file and
-        // replacing its last component.
-        let cwdURL = URL(fileURLWithPath: cwd, isDirectory: true)
-        return URL(fileURLWithPath: expanded, relativeTo: cwdURL)
-            .standardizedFileURL.path
+        // CHAOS-1443: FilePath.pushing handles relative-vs-absolute join
+        // semantics directly without consulting the filesystem, replacing the
+        // previous `URL(fileURLWithPath:relativeTo:isDirectory: true)` dance.
+        return FilePath(cwd).pushing(FilePath(expanded)).lexicallyNormalized().string
     }
-    return URL(fileURLWithPath: composeFilePath).deletingLastPathComponent().path
+    return FilePath(composeFilePath).removingLastComponent().string
 }
 
 /// Returns `true` when `source` (the left side of a `service.volumes` entry

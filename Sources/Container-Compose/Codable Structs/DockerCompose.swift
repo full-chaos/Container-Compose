@@ -22,6 +22,7 @@
 //
 
 import Foundation
+import SystemPackage
 import Yams
 
 /// Represents the top-level structure of a docker-compose.yml file.
@@ -225,7 +226,7 @@ extension DockerCompose {
         }
 
         // Directory of the current file — used to resolve relative include paths.
-        let baseDir = (canonicalPath as NSString).deletingLastPathComponent
+        let baseDir = FilePath(canonicalPath).removingLastComponent().string
 
         var newVisited = visited
         newVisited.insert(canonicalPath)
@@ -246,13 +247,11 @@ extension DockerCompose {
 
         for entry in includeEntries {
             for relativePath in entry.path {
-                let includedPath: String
-                if (relativePath as NSString).isAbsolutePath {
-                    includedPath = relativePath
-                } else {
-                    includedPath = (baseDir as NSString).appendingPathComponent(relativePath)
-                }
-                let resolvedIncluded = (includedPath as NSString).standardizingPath
+                let expandedPath = NSString(string: relativePath).expandingTildeInPath
+                let resolvedIncluded = FilePath(baseDir)
+                    .pushing(FilePath(expandedPath))
+                    .lexicallyNormalized()
+                    .string
 
                 let included = try loadAndMerge(mainPath: resolvedIncluded, visited: newVisited)
                 merged = mergeTwo(base: merged, override: included)
@@ -272,7 +271,11 @@ extension DockerCompose {
         visited: Set<String>
     ) throws -> (canonicalPath: String, compose: DockerCompose) {
         let fileManager = FileManager.default
-        let canonicalPath = (mainPath as NSString).standardizingPath
+        let expandedMainPath = NSString(string: mainPath).expandingTildeInPath
+        let canonicalPath = FilePath(FileManager.default.currentDirectoryPath)
+            .pushing(FilePath(expandedMainPath))
+            .lexicallyNormalized()
+            .string
 
         guard !visited.contains(canonicalPath) else {
             throw IncludeError.cyclicInclude(canonicalPath)
@@ -283,8 +286,8 @@ extension DockerCompose {
             throw IncludeError.fileNotFound(mainPath)
         }
 
-        let baseDir = (canonicalPath as NSString).deletingLastPathComponent
-        let envPath = (baseDir as NSString).appendingPathComponent(".env")
+        let baseDir = FilePath(canonicalPath).removingLastComponent().string
+        let envPath = FilePath(baseDir).appending(".env").string
         yamlString = resolveVariable(yamlString, with: loadEnvFile(path: envPath))
 
         let decoded = try YAMLDecoder().decode(DockerCompose.self, from: yamlString)
@@ -401,7 +404,12 @@ extension DockerCompose {
             let service: String
         }
 
-        let rootPath = (composeFilePath ?? sourcePath).map { ($0 as NSString).standardizingPath }
+        let rootPath = (composeFilePath ?? sourcePath).map { path in
+            FilePath(FileManager.default.currentDirectoryPath)
+                .pushing(FilePath(NSString(string: path).expandingTildeInPath))
+                .lexicallyNormalized()
+                .string
+        }
         let memoryPath = "<in-memory-compose>"
         let rootResolvedMap = concreteServices(from: self)
         var cache: [ServiceKey: Service] = [:]
@@ -413,10 +421,12 @@ extension DockerCompose {
 
         func resolveExtendsPath(_ extendsPath: String, relativeTo filePath: String?) -> String {
             let expanded = NSString(string: extendsPath).expandingTildeInPath
-            if (expanded as NSString).isAbsolutePath { return (expanded as NSString).standardizingPath }
-            let baseDir = filePath.map { ($0 as NSString).deletingLastPathComponent }
+            let baseDir = filePath.map { FilePath($0).removingLastComponent().string }
                 ?? FileManager.default.currentDirectoryPath
-            return ((baseDir as NSString).appendingPathComponent(expanded) as NSString).standardizingPath
+            return FilePath(baseDir)
+                .pushing(FilePath(expanded))
+                .lexicallyNormalized()
+                .string
         }
 
         func resolve(_ name: String, in compose: DockerCompose, filePath: String?) throws -> Service {

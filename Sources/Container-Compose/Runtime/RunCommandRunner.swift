@@ -17,6 +17,7 @@
 import Foundation
 import ContainerCommands
 import Darwin
+import SystemPackage
 
 // MARK: - RunRequest
 
@@ -369,7 +370,8 @@ public struct ProductionRunner: RunCommandRunner {
             process.executableURL = resolvedBin
             process.arguments = Array(argv.dropFirst())
             process.currentDirectoryURL = URL(
-                fileURLWithPath: cwd ?? FileManager.default.currentDirectoryPath
+                filePath: cwd ?? FileManager.default.currentDirectoryPath,
+                directoryHint: .isDirectory
             )
             process.standardOutput = stdoutPipe
             process.standardError = stderrPipe
@@ -525,7 +527,8 @@ public struct ProductionRunner: RunCommandRunner {
             proc.executableURL = resolvedBin
             proc.arguments = Array(argv.dropFirst())
             proc.currentDirectoryURL = URL(
-                fileURLWithPath: cwd ?? FileManager.default.currentDirectoryPath
+                filePath: cwd ?? FileManager.default.currentDirectoryPath,
+                directoryHint: .isDirectory
             )
             proc.environment = ProcessInfo.processInfo.environment.merging([
                 "PATH": BinaryResolver.resolutionPath
@@ -558,7 +561,7 @@ public struct ProductionRunner: RunCommandRunner {
             proc.executableURL = resolvedBin
             proc.arguments = Array(argv.dropFirst())
             if let cwd {
-                proc.currentDirectoryURL = URL(fileURLWithPath: cwd)
+                proc.currentDirectoryURL = URL(filePath: cwd, directoryHint: .isDirectory)
             }
             proc.standardOutput = FileHandle.nullDevice
             proc.standardError = FileHandle.nullDevice
@@ -606,12 +609,12 @@ enum BinaryResolver {
             guard FileManager.default.isExecutableFile(atPath: override) else {
                 throw RuntimeError.binaryOverrideInvalid(envVar: envOverride, path: override)
             }
-            return URL(fileURLWithPath: override)
+            return URL(filePath: override)
         }
         for dir in resolutionPath.split(separator: ":") {
-            let candidate = "\(dir)/\(name)"
+            let candidate = FilePath(String(dir)).pushing(FilePath(name)).string
             if FileManager.default.isExecutableFile(atPath: candidate) {
-                return URL(fileURLWithPath: candidate)
+                return URL(filePath: candidate)
             }
         }
         return nil

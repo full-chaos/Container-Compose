@@ -18,6 +18,7 @@ import ContainerAPIClient
 import ContainerResource
 import ContainerizationError
 import Foundation
+import SystemPackage
 
 // MARK: - BridgeContainerClientRuntime
 
@@ -582,10 +583,10 @@ extension BridgeContainerClientRuntime {
                     //    doesn't track — both pass through verbatim. Beyond those
                     //    two daemon-environment differences, every directive that
                     //    the CLI emits is reproduced here.
-                    var perSpecInlineTempURL: URL?
+                    var perSpecInlineTempPath: String?
                     do {
                         let prepared = try Self.makeBuildArgv(spec: spec, context: context)
-                        perSpecInlineTempURL = prepared.inlineTempURL
+                        perSpecInlineTempPath = prepared.inlineTempPath
                         _ = try await RunnerEnvironment.current.run(
                             RunRequest(kind: .swiftAPI(name: "BuildCommand"), argv: prepared.argv, cwd: nil),
                             onStdout: nil,
@@ -606,8 +607,8 @@ extension BridgeContainerClientRuntime {
                     }
 
                     // Per-spec cleanup of any dockerfile_inline tempfile.
-                    if let url = perSpecInlineTempURL {
-                        try? FileManager.default.removeItem(at: url)
+                    if let path = perSpecInlineTempPath {
+                        try? FileManager.default.removeItem(at: URL(filePath: path, directoryHint: .notDirectory))
                     }
                 }
                 continuation.finish()
@@ -619,7 +620,7 @@ extension BridgeContainerClientRuntime {
     /// Construct the full `Application.BuildCommand` argv for a single spec,
     /// mirroring `ComposeBuild.buildService` field-by-field. Pure function
     /// suitable for direct unit testing — the only side effect is writing the
-    /// `dockerfile_inline` tempfile (the URL is returned via `inlineTempURL`
+    /// `dockerfile_inline` tempfile (the path is returned via `inlineTempPath`
     /// so callers can clean it up after the build completes).
     ///
     /// CHAOS-1429 review (Codex finding 2): the prior bridge argv only emitted
@@ -641,12 +642,12 @@ extension BridgeContainerClientRuntime {
     ///   builds run inside the daemon process, which has no user-facing
     ///   console; callers wanting parity would need to forward warnings as
     ///   structured events (separate concern).
-    /// Output of `makeBuildArgv`. `inlineTempURL` is non-nil when
+    /// Output of `makeBuildArgv`. `inlineTempPath` is non-nil when
     /// `context.dockerfileInline` was written to a temp file; the caller is
     /// responsible for cleanup after `BuildCommand` finishes.
     internal struct BuildArgvPlan {
         let argv: [String]
-        let inlineTempURL: URL?
+        let inlineTempPath: String?
     }
 
     internal static func makeBuildArgv(
@@ -664,7 +665,7 @@ extension BridgeContainerClientRuntime {
         }
 
         var argv: [String] = [context.contextPath]
-        var inlineTempURL: URL?
+        var inlineTempPath: String?
 
         // --build-arg (insertion order non-deterministic across `[String:String]`
         // iteration — same as the CLI builder). Bridge does NOT run env-var
@@ -677,11 +678,13 @@ extension BridgeContainerClientRuntime {
         // (parity with `ComposeBuild.buildService`, which prints a warning
         // for the same condition).
         if let inlineContent = context.dockerfileInline {
-            let tempURL = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString + ".Dockerfile")
+            let tempPath = FilePath(FileManager.default.temporaryDirectory.path(percentEncoded: false))
+                .appending(UUID().uuidString + ".Dockerfile")
+                .string
+            let tempURL = URL(filePath: tempPath, directoryHint: .notDirectory)
             try inlineContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            inlineTempURL = tempURL
-            argv.append(contentsOf: ["--file", tempURL.path])
+            inlineTempPath = tempPath
+            argv.append(contentsOf: ["--file", tempPath])
         } else {
             argv.append(contentsOf: ["--file", context.dockerfile ?? "Dockerfile"])
         }
@@ -721,7 +724,7 @@ extension BridgeContainerClientRuntime {
         let memoryLimit = context.memory ?? "2048MB"
         argv.append(contentsOf: ["--cpus", "\(cpuCount)", "--memory", memoryLimit])
 
-        return BuildArgvPlan(argv: argv, inlineTempURL: inlineTempURL)
+        return BuildArgvPlan(argv: argv, inlineTempPath: inlineTempPath)
     }
 }
 
