@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1440-port-runtime",
+  "commit": "8dce8509fd5353bd488e79c6b78dc0273a854ec6",
+  "short": "8dce850",
+  "target": "8dce850",
+  "message": "feat(compose): CHAOS-1440 port command \u2014 runtime listing + ProjectListing helper",
+  "published_at": "2026-05-07T13:11:50.961078+00:00"
+}
