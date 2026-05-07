@@ -767,8 +767,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         switch spec.kind {
         case .bindMount:
             // Bind mount: delegate filesystem-checking to VolumeMountFSChecker
-            // so the path-existence / auto-creation logic is unit-testable in
-            // isolation (CHAOS-1410).
+            // so the path-existence logic is unit-testable in isolation
+            // (CHAOS-1410, behaviour updated in CHAOS-1438).
             switch VolumeMountFSChecker.check(
                 source: source,
                 destination: destination,
@@ -777,13 +777,14 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             ) {
             case .mount(let args):
                 runCommandArgs.append(contentsOf: args)
-            case .skipFile(let src):
-                print("Warning: Volume mount source '\(src)' is a file. The 'container' tool does not support direct file mounts. Skipping this volume.")
-            case .created(let fullHostPath, let args):
-                print("Info: Created missing host directory for volume: \(fullHostPath)")
-                runCommandArgs.append(contentsOf: args)
-            case .skipCreateError(let fullHostPath, let underlyingError):
-                print("Error: Could not create host directory '\(fullHostPath)' for volume '\(resolvedVolume)': \(underlyingError). Skipping this volume.")
+            case .skipMissing(let src):
+                // CHAOS-1438: the checker no longer silently `mkdir`s missing
+                // sources (the previous behaviour silently materialised
+                // directories at file paths, breaking init-script binds).
+                // We surface the missing source as a warning and skip this
+                // single mount so one bad volume entry does not abort the
+                // whole project.
+                print("Warning: Volume mount source '\(src)' does not exist on host. Skipping this volume. Create the file or directory at the source path before running compose up if you intended to mount it.")
             }
 
         case .namedVolume:

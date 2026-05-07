@@ -19,16 +19,33 @@ import Foundation
 /// The result of `VolumeMountFSChecker.check(_:destination:cwd:)`.
 ///
 /// Callers turn `.mount` results into `-v source:destination` arguments and
-/// emit the messages in `.skip` / `.created` results to the user.
+/// emit a warning for `.skipMissing` so the user knows the mount was elided.
 internal enum VolumeMountFSResult: Equatable {
-    /// The source directory exists (or was just created). Mount it.
+    /// The host source path exists (file *or* directory). Mount it.
+    ///
+    /// CHAOS-1438: this case now covers both directories *and* regular files.
+    /// apple/container's bind-mount parser accepts file sources verbatim
+    /// (verified against apple/container 0.12.3), so single-file binds —
+    /// the most common Compose pattern for init scripts, configs, certs —
+    /// pass straight through.
     case mount(args: [String])
-    /// The source path is a regular file, not a directory. Skip.
-    case skipFile(source: String)
-    /// The source path did not exist and directory creation failed. Skip.
-    case skipCreateError(fullHostPath: String, underlyingError: String)
-    /// The source path did not exist but was created successfully. Mount it.
-    case created(fullHostPath: String, args: [String])
+
+    /// The host source path does not exist. Warn-and-skip.
+    ///
+    /// CHAOS-1438: previously the checker silently `mkdir`'d the source path
+    /// here, which (a) leaked empty directories into the host workspace
+    /// without consent and (b) corrupted file-mount intent — a user asking
+    /// for `./init.sql:/docker-entrypoint-initdb.d/init.sql` had `./init.sql`
+    /// materialised as an empty *directory*, so postgres saw a directory
+    /// where it expected a SQL file ("Is a directory" error).
+    ///
+    /// The new contract: `VolumeMountFSChecker` never mutates the host
+    /// filesystem. apple/container surfaces a missing source as a clear
+    /// runtime error; we choose the slightly softer policy of
+    /// warn-and-skip-this-mount so a single bad volume entry does not abort
+    /// the whole project. Users who want fail-fast can run with verbose
+    /// logging or check the warning output.
+    case skipMissing(source: String)
 }
 
 /// Pure filesystem-checking logic extracted from `ComposeUp.configVolume`'s
@@ -48,14 +65,18 @@ internal struct VolumeMountFSChecker {
     // MARK: - FileManager abstraction
 
     /// Minimal interface over `FileManager` operations used by the checker.
-    /// Keeping it narrow means tests only need to stub the two methods actually
+    /// Keeping it narrow means tests only need to stub the one method actually
     /// called, rather than the entire `FileManager` surface.
+    ///
+    /// CHAOS-1438: `createDirectory` was removed from this protocol because
+    /// the checker no longer auto-creates host-side paths. The previous
+    /// behaviour silently corrupted file mounts by materialising directories
+    /// at file paths.
     ///
     /// The `fileExists` signature uses `UnsafeMutablePointer<ObjCBool>?` to
     /// match `FileManager`'s existing Objective-C–bridged method signature.
     internal protocol FSOperations {
         func fileExists(atPath path: String, isDirectory: UnsafeMutablePointer<ObjCBool>?) -> Bool
-        func createDirectory(atPath path: String, withIntermediateDirectories: Bool, attributes: [FileAttributeKey: Any]?) throws
     }
 
     // MARK: - Core check
@@ -88,25 +109,20 @@ internal struct VolumeMountFSChecker {
 
         var isDirectory: ObjCBool = false
         if fileManager.fileExists(atPath: fullHostPath, isDirectory: &isDirectory) {
-            if isDirectory.boolValue {
-                // Path exists and is a directory: mount it.
-                return .mount(args: ["-v", "\(source):\(destination)"])
-            } else {
-                // Path exists but is a regular file: warn+skip.
-                return .skipFile(source: source)
-            }
+            // Path exists. Both files and directories are valid bind-mount
+            // sources for apple/container — emit the mount.
+            //
+            // CHAOS-1438: previously a regular file source was silently
+            // dropped here ("does not support direct file mounts"), but
+            // apple/container 0.12.3+ supports them and they are the most
+            // common Compose pattern (init scripts, configs, certs).
+            return .mount(args: ["-v", "\(source):\(destination)"])
         } else {
-            // Path does not exist: try to create it as a directory.
-            do {
-                try fileManager.createDirectory(
-                    atPath: fullHostPath,
-                    withIntermediateDirectories: true,
-                    attributes: nil
-                )
-                return .created(fullHostPath: fullHostPath, args: ["-v", "\(source):\(destination)"])
-            } catch {
-                return .skipCreateError(fullHostPath: fullHostPath, underlyingError: error.localizedDescription)
-            }
+            // Source does not exist. Warn-and-skip; never mkdir.
+            //
+            // CHAOS-1438: the previous auto-mkdir behaviour was the actual
+            // root cause of the file-mount-becomes-directory bug.
+            return .skipMissing(source: source)
         }
     }
 }
