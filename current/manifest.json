@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9cb7d1f4479723947e5502adbc1280f351fd5bba",
-  "short": "9cb7d1f",
+  "commit": "aaf0e2d8693f88ec576d27a04d0bd800734dc709",
+  "short": "aaf0e2d",
   "target": "current",
-  "message": "refactor: CHAOS-1443 migrate URL \\u2192 SystemPackage.FilePath for filesystem paths (#138)",
-  "published_at": "2026-05-07T13:25:31.415349+00:00"
+  "message": "feat(compose): CHAOS-1444 docker-compose-conventional short flag aliases (#141)",
+  "published_at": "2026-05-07T13:25:51.519161+00:00"
 }
