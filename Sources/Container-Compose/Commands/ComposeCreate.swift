@@ -379,23 +379,21 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
         let destination = components[1]
 
         if !isNamedVolumeSource(source) {
-            var isDirectory: ObjCBool = false
-            let fullHostPath = (source.starts(with: "/") || source.starts(with: "~")) ? source : (cwd + "/" + source)
-
-            if fileManager.fileExists(atPath: fullHostPath, isDirectory: &isDirectory) {
-                if isDirectory.boolValue {
-                    runCommandArgs.append(contentsOf: ["-v", "\(source):\(destination)"])
-                } else {
-                    print("Warning: Volume mount source '\(source)' is a file. Skipping.")
-                }
-            } else {
-                do {
-                    try fileManager.createDirectory(atPath: fullHostPath, withIntermediateDirectories: true, attributes: nil)
-                    print("Info: Created missing host directory for volume: \(fullHostPath)")
-                    runCommandArgs.append(contentsOf: ["-v", "\(source):\(destination)"])
-                } catch {
-                    print("Error: Could not create host directory '\(fullHostPath)': \(error.localizedDescription). Skipping.")
-                }
+            // CHAOS-1438: delegate to VolumeMountFSChecker so the bind-mount
+            // semantics stay in sync with ComposeUp.configVolume. Previously
+            // this branch had its own inline copy that (a) silently dropped
+            // file-source binds and (b) silently `mkdir`'d missing sources
+            // — both of which are fixed by the shared checker.
+            switch VolumeMountFSChecker.check(
+                source: source,
+                destination: destination,
+                cwd: cwd,
+                fileManager: fileManager
+            ) {
+            case .mount(let args):
+                runCommandArgs.append(contentsOf: args)
+            case .skipMissing(let src):
+                print("Warning: Volume mount source '\(src)' does not exist on host. Skipping this volume. Create the file or directory at the source path before running compose create if you intended to mount it.")
             }
         } else {
             guard let projectName else { return [] }
