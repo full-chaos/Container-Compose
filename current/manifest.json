@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "aaf0e2d8693f88ec576d27a04d0bd800734dc709",
-  "short": "aaf0e2d",
+  "commit": "6632ff25200a3a8627eb4dd161ec03572e3ab06e",
+  "short": "6632ff2",
   "target": "current",
-  "message": "feat(compose): CHAOS-1444 docker-compose-conventional short flag aliases (#141)",
-  "published_at": "2026-05-07T13:25:51.519161+00:00"
+  "message": "feat(compose): CHAOS-1440 port command \u2014 runtime listing + ProjectListing helper (#140)",
+  "published_at": "2026-05-07T13:26:12.748620+00:00"
 }
