@@ -29,6 +29,17 @@ Full documentation lives in [`docs/`](./docs/):
 - **Volume and network mapping:** Map data and networking as specified in Compose files to Apple Container equivalents.
 - **Extensible:** Designed for future extension and customization.
 
+## Known Limitations
+
+Container-Compose translates compose-spec to `apple/container`. Some Docker-specific features have no Apple equivalent yet.
+
+Most common pitfalls:
+
+- **Docker socket mounts** (Traefik / Watchtower / Portainer) do not work — there is no Docker daemon on the host.
+- **macOS 15 (Sequoia)** requires manual DNS setup; macOS 26 (Tahoe) is recommended.
+- **Many resource limits** (`shm_size`, `pids_limit`, `oom_*`, `cpuset`, `blkio_*`, etc.) are warn-skipped — only `cpus` and `memory` apply.
+
+See [Limitations and Gotchas](./docs/guides/limitations-and-gotchas.md) for the full list.
 ## Getting Started
 
 ### Prerequisites
