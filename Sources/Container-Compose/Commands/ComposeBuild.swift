@@ -90,8 +90,6 @@ public struct ComposeBuild: AsyncParsableCommand, ComposeCommand, @unchecked Sen
 
         let environmentVariables = loadEnvFile(path: envFilePath)
 
-        let projectName = resolveProjectName(for: dockerCompose)
-
         // Build the candidate list first (every service visible to this invocation),
         // then narrow down to those with a `build:` block. The candidate count is
         // the denominator we report in the verbose empty-output message.
