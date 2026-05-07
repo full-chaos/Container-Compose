@@ -7,6 +7,7 @@ Container-Compose is a Swift CLI that brings Docker Compose support to [Apple Co
 - [**Quickstart**](./quickstart.md) — Up and running in 2 minutes.
 - [**CLI Reference**](./cli-reference.md) — Every subcommand, every flag.
 - [**Tutorials**](./tutorials/) — End-to-end walkthroughs paired with working sample compose files.
+- [**Limitations & Gotchas**](./guides/limitations-and-gotchas.md) — What does not work today and practical workarounds.
 
 ## Reference & status
 
@@ -14,6 +15,7 @@ Container-Compose is a Swift CLI that brings Docker Compose support to [Apple Co
 - [**Feature Parity Inventory**](./feature-parity.md) — Tiered split of gaps: silent-failure bugs, wireable now, fork-patch path, upstream FR, won't-do.
 - [**Upstream / Fork Status**](./upstream-fork-status.md) — What we depend on from `full-chaos/container` and what's blocked on `apple/container`.
 - [**API Clients**](./cli/api-clients.md) — Generated SDK channels and install snippets for the daemon's OpenAPI surface.
+- [**Troubleshooting**](./guides/troubleshooting.md) — Symptom-to-fix reference for common problems.
 
 ## For contributors
 
