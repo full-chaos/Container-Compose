@@ -1,0 +1,8 @@
+{
+  "branch": "docs/mkdocs-site",
+  "commit": "852ff6e3fc0246f5adb7a1a1d468847bb075857d",
+  "short": "852ff6e",
+  "target": "852ff6e",
+  "message": "ci(gh-pages): redirect root to current/site/, move version listing to /versions/",
+  "published_at": "2026-05-07T16:37:12.274414+00:00"
+}
