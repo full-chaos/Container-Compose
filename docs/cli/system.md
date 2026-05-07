@@ -13,7 +13,7 @@ Report container-compose daemon liveness and runtime-state summary.
 
 ### Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system status [options]
 ```
 
@@ -31,7 +31,7 @@ container-compose system status [options]
 
 Verify if the daemon is running on the default socket.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system status
 ```
 
@@ -43,7 +43,7 @@ Generate a new API key for daemon Bearer-token auth.
 
 ### Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system generate-key [options]
 ```
 
@@ -60,7 +60,7 @@ container-compose system generate-key [options]
 
 Create a key named `my-app`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system generate-key --name my-app
 ```
 
@@ -72,7 +72,7 @@ Generate a self-signed TLS certificate and private key.
 
 ### Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system generate-cert [options]
 ```
 
@@ -93,7 +93,7 @@ container-compose system generate-cert [options]
 
 Create `cert.pem` and `key.pem` in the default directory.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system generate-cert
 ```
 
@@ -105,7 +105,7 @@ List API keys (NAME, HASH-PREFIX, CREATED).
 
 ### Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system list-keys [options]
 ```
 
@@ -123,7 +123,7 @@ Revoke an API key by name.
 
 ### Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose system revoke-key [options] <name>
 ```
 

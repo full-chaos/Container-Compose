@@ -9,7 +9,7 @@ Stream container lifecycle events for this Compose project.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose events [global-options] [options] [services...]
 ```
 
@@ -32,7 +32,7 @@ container-compose events [global-options] [options] [services...]
 
 Watch all container lifecycle events (create, start, stop, etc.) for the project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose events
 ```
 
@@ -40,7 +40,7 @@ container-compose events
 
 Useful for piping into other tools like `jq`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose events --json
 ```
 
@@ -48,7 +48,7 @@ container-compose events --json
 
 Only watch events for the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose events web
 ```
 

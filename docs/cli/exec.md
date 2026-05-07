@@ -9,7 +9,7 @@ Execute a command in a running service container.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose exec [global-options] [options] service command [args...]
 ```
 
@@ -38,7 +38,7 @@ container-compose exec [global-options] [options] service command [args...]
 
 Execute `sh` in the already running `web` container.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose exec web sh
 ```
 
@@ -46,7 +46,7 @@ container-compose exec web sh
 
 Run a database command as the `root` user.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose exec -u root db psql
 ```
 
@@ -54,7 +54,7 @@ container-compose exec -u root db psql
 
 Execute a command in the `/app/src` directory.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose exec -w /app/src web ls -l
 ```
 

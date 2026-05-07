@@ -9,7 +9,7 @@ View output from containers.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose logs [global-options] [options] [services...]
 ```
 
@@ -36,7 +36,7 @@ container-compose logs [global-options] [options] [services...]
 
 Stream logs from all containers in the project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose logs -f
 ```
 
@@ -44,7 +44,7 @@ container-compose logs -f
 
 Only show logs for the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose logs web
 ```
 
@@ -52,7 +52,7 @@ container-compose logs web
 
 Show the last 50 lines of logs and include timestamps.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose logs --tail 50 --timestamps
 ```
 
@@ -60,7 +60,7 @@ container-compose logs --tail 50 --timestamps
 
 Show logs from the last 5 minutes.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose logs --since 5m
 ```
 

@@ -24,7 +24,7 @@ Network isolation is a core feature of container orchestration. It allows you to
 
 The complete example lives at [`Sample Compose Files/Multi-network with aliases/docker-compose.yml`](../../Sample%20Compose%20Files/Multi-network%20with%20aliases/docker-compose.yml). Here's what it does:
 
-```yaml filename="docker-compose.yml"
+```yaml title="docker-compose.yml"
 # Demonstrates service-level networks in object form with aliases (Phase 3B).
 # Both list and map forms are accepted; this file uses the map form.
 
@@ -69,7 +69,7 @@ services:
 
 When you run the project, Container-Compose first creates the top-level networks defined in the `networks` section.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up -d
 ```
 
@@ -91,7 +91,7 @@ For more information on network feature parity, see the [Upstream/Fork Status](.
 
 You can verify that the networks were created and the containers are attached by using the Apple Container CLI.
 
-```bash filename="terminal"
+```bash title="terminal"
 container network ls
 container network inspect frontend
 ```
@@ -114,7 +114,7 @@ For service connections, it uses the `--network` flag during `container run`. Th
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

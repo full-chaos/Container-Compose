@@ -9,7 +9,7 @@ Display running processes in project containers.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose top [global-options] [options] [services...]
 ```
 
@@ -32,7 +32,7 @@ container-compose top [global-options] [options] [services...]
 
 List all processes running inside every active container in the project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose top
 ```
 
@@ -40,7 +40,7 @@ container-compose top
 
 Only list processes for the `db` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose top db
 ```
 

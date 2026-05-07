@@ -24,7 +24,7 @@ Ensuring that a service is not just running but actually ready to handle traffic
 
 The complete example lives at [`Sample Compose Files/Healthchecked Redis/docker-compose.yaml`](../../Sample%20Compose%20Files/Healthchecked%20Redis/docker-compose.yaml). Here's what it does:
 
-```yaml filename="docker-compose.yaml"
+```yaml title="docker-compose.yaml"
 services:
   redis:
     restart: always
@@ -43,7 +43,7 @@ services:
 
 Launch the Redis service using the `up` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up -d
 ```
 
@@ -53,7 +53,7 @@ The `-d` flag runs the service in detached mode, allowing you to continue using 
 
 Once the service is started, Container-Compose begins executing the healthcheck command inside the container every 5 seconds. You can check the current status of the service using the `ps` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps
 ```
 
@@ -70,7 +70,7 @@ The `healthcheck` section defines how the runtime determines if the container is
 
 You can also use the underlying Apple Container CLI to see the raw health data.
 
-```bash filename="terminal"
+```bash title="terminal"
 container inspect <container_id>
 ```
 
@@ -92,7 +92,7 @@ Container-Compose decodes the `healthcheck` block from your compose file. Per [C
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

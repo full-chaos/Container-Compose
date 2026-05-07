@@ -83,7 +83,7 @@ _ = client
 
 If you need to regenerate a client locally, start from `Resources/openapi.yaml` and use the language toolchain that matches the target package.
 
-```bash filename="terminal"
+```bash title="terminal"
 swift test --filter OpenAPIRouteTests
 
 # TypeScript

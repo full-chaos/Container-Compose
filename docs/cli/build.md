@@ -9,7 +9,7 @@ Build images from a compose file without starting containers.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose build [global-options] [options] [services...]
 ```
 
@@ -34,7 +34,7 @@ container-compose build [global-options] [options] [services...]
 
 Build all images defined with a `build` section in the compose file.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose build
 ```
 
@@ -42,7 +42,7 @@ container-compose build
 
 Only build the `api` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose build api
 ```
 
@@ -50,7 +50,7 @@ container-compose build api
 
 Force a fresh build of all images.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose build --no-cache
 ```
 

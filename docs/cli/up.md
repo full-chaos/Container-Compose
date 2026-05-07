@@ -9,7 +9,7 @@ Start containers with compose.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up [global-options] [options] [services...]
 ```
 
@@ -35,7 +35,7 @@ container-compose up [global-options] [options] [services...]
 
 Run all services defined in the compose file and detach from logs.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up -d
 ```
 
@@ -43,7 +43,7 @@ container-compose up -d
 
 Only start the `web` and `db` services.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up web db
 ```
 
@@ -51,7 +51,7 @@ container-compose up web db
 
 Specify a different compose file to use.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose -f stack.yaml up
 ```
 
@@ -59,7 +59,7 @@ container-compose -f stack.yaml up
 
 Only start services that belong to the `dev` profile.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up --profile dev
 ```
 

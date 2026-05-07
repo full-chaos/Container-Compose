@@ -1,0 +1,157 @@
+site_name: Container-Compose
+site_description: Limited Docker Compose support for Apple Container.
+site_author: Container-Compose contributors
+site_url: https://full-chaos.github.io/container-compose/current/site/
+
+repo_url: https://github.com/full-chaos/container-compose
+repo_name: full-chaos/container-compose
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: _site_mkdocs
+
+# Many docs intentionally live outside the rendered site (plans/, reviews/,
+# superpowers/, runtime/, the duplicated tutorial README). They still ship as
+# raw markdown via the gh-pages workflow's docs/ tree. Suppress nav warnings.
+not_in_nav: |
+  /plans/**
+  /reviews/**
+  /superpowers/**
+  /runtime/**
+  /tutorials/README.md
+
+# Many docs link to ../coverage.html, ../AGENTS.md, ../Sources/, and
+# ../Sample\ Compose\ Files/ which exist outside docs_dir but resolve correctly
+# in the published site (the workflow stages them at the per-version root). Suppress
+# noisy validation warnings for those out-of-tree references.
+validation:
+  nav:
+    omitted_files: ignore
+    not_found: warn
+    absolute_links: ignore
+  links:
+    not_found: ignore
+    absolute_links: ignore
+    unrecognized_links: ignore
+    anchors: ignore
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/full-chaos/container-compose
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - CLI Reference:
+    - Overview: cli-reference.md
+    - Lifecycle:
+      - up: cli/up.md
+      - down: cli/down.md
+      - start: cli/start.md
+      - stop: cli/stop.md
+      - restart: cli/restart.md
+      - create: cli/create.md
+      - kill: cli/kill.md
+      - rm: cli/rm.md
+    - Inspection:
+      - ps: cli/ps.md
+      - ls: cli/ls.md
+      - logs: cli/logs.md
+      - top: cli/top.md
+      - port: cli/port.md
+      - events: cli/events.md
+      - config: cli/config.md
+    - Build & Run:
+      - build: cli/build.md
+      - run: cli/run.md
+      - exec: cli/exec.md
+      - watch: cli/watch.md
+      - pull: cli/pull.md
+      - push: cli/push.md
+    - Daemon & System:
+      - serve: cli/serve.md
+      - system: cli/system.md
+      - version: cli/version.md
+      - API clients: cli/api-clients.md
+      - Short flag inventory: cli/short-flag-inventory.md
+  - Tutorials:
+    - Healthchecked Redis: tutorials/healthchecked-redis.md
+    - Healthchecked Web: tutorials/healthchecked-web.md
+    - Profiles: tutorials/profiles.md
+    - Resource limits: tutorials/resource-limits.md
+    - Configs and Secrets: tutorials/configs-and-secrets.md
+    - Multi-network with aliases: tutorials/multi-network-with-aliases.md
+    - Logging driver: tutorials/logging-driver.md
+    - Build with target: tutorials/build-with-target.md
+  - Guides:
+    - Migration from Docker Compose: guides/migration-from-docker-compose.md
+    - Limitations and Gotchas: guides/limitations-and-gotchas.md
+    - Troubleshooting: guides/troubleshooting.md
+    - Error codes: guides/error-codes.md
+    - Runtime protocol: guides/runtime-protocol.md
+  - Reference:
+    - Feature Parity: feature-parity.md
+    - Upstream / Fork Status: upstream-fork-status.md
+    - Compose-spec Coverage: coverage.md
+    - Documentation Standards: standards.md

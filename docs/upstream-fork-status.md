@@ -97,6 +97,46 @@ These are compatibility shims, not active fork feature work.
 
 ---
 
+## 5.1 Opt-in: `full-chaos/container#dev` for fork-forward features
+
+While the canonical roadmap routes new runtime work to `apple/container`, the
+`full-chaos/container` fork carries an active **`dev` branch** with additional
+compose-relevant features that have not yet landed upstream. Source-build users
+who want fork-forward functionality can swap the pin in `Package.swift`:
+
+```swift
+// Default (production-stable):
+.package(url: "https://github.com/full-chaos/container", branch: "tier2-fork-patches"),
+
+// Opt-in (fork-forward, requires source build):
+.package(url: "https://github.com/full-chaos/container", branch: "dev"),
+```
+
+**What `dev` adds vs. `tier2-fork-patches`:**
+
+- All features from §2 above (`ContainerSnapshot.health`, `lastExitCode`,
+  `--restart`, `ContainerLogOptions.{since, timestamps}`, `ContainerEvent`
+  streaming, `Flags.ProcessBase`).
+- **CHAOS-1334 — richer IPAM at network creation time.** Lifts the
+  network-level limitations called out in
+  [Limitations and Gotchas → Network features](./guides/limitations-and-gotchas.md#network-features).
+- Rebased onto newer `apple/containerization` (0.32.x line) plus mainline
+  `apple/container` improvements (TOML configuration defaults, CI changes).
+
+**Caveats:**
+
+- **Source build only.** The Homebrew bottle ships against `tier2-fork-patches`.
+  To use `dev`, clone the repo, edit `Package.swift`, and `make build && make install`.
+- **Not a stability target.** `dev` is the active development branch; expect
+  occasional churn. Pin to a specific commit if you need reproducibility.
+- **Same end state as `apple/container` upstream.** Every feature on `dev` is
+  also tracked as a CHAOS upstream-blocker ticket; using `dev` is a way to
+  exercise these features today rather than wait for `apple/container` parity.
+
+Branch reference: <https://github.com/full-chaos/container/tree/dev>
+
+---
+
 ## 6. References
 
 - Canonical parity inventory: [`docs/feature-parity.md`](./feature-parity.md)

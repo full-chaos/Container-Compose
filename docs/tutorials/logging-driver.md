@@ -23,7 +23,7 @@ Configuring how your containers handle logs is an important part of production r
 
 The complete example lives at [`Sample Compose Files/Logging driver/docker-compose.yml`](../../Sample%20Compose%20Files/Logging%20driver/docker-compose.yml). Here's what it does:
 
-```yaml filename="docker-compose.yml"
+```yaml title="docker-compose.yml"
 # Demonstrates service.logging driver/options pass-through (Phase 3C).
 # Apple `container` runtime may not support all log drivers; flags are
 # forwarded and the runtime decides.
@@ -55,7 +55,7 @@ services:
 
 Launch the project using the `up` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up
 ```
 
@@ -75,7 +75,7 @@ For more details on the implementation roadmap and current gaps, refer to the [U
 
 Even though custom drivers are not yet applied, you can still view the logs of your services using the standard `logs` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose logs app
 ```
 
@@ -95,7 +95,7 @@ Container-Compose uses a per-concern argument builder architecture. The logging 
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

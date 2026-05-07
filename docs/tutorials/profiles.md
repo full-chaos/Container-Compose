@@ -24,7 +24,7 @@ Service profiles allow you to define multiple environments (such as development,
 
 The complete example lives at [`Sample Compose Files/Profiles/docker-compose.yml`](../../Sample%20Compose%20Files/Profiles/docker-compose.yml). Here's what it does:
 
-```yaml filename="docker-compose.yml"
+```yaml title="docker-compose.yml"
 # Demonstrates service profiles (Phase 3A).
 # Run `compose up` with no profile flag → only services without profiles start (web).
 # Run `compose up --profile dev` → web + debugger.
@@ -57,13 +57,13 @@ services:
 
 By default, Container-Compose only starts services that do not have a `profiles` field defined.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up -d
 ```
 
 In this example, only the `web` service will start. You can verify this with `ps`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps
 ```
 
@@ -71,7 +71,7 @@ container-compose ps
 
 To enable services associated with a profile, use the `--profile` flag.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose --profile dev up -d
 ```
 
@@ -81,7 +81,7 @@ This command starts the `web` service (the default) plus the `debugger` and `ops
 
 You can also enable profiles using the `COMPOSE_PROFILES` environment variable. This is useful for CI/CD pipelines or persistent local configurations.
 
-```bash filename="terminal"
+```bash title="terminal"
 export COMPOSE_PROFILES=prod
 container-compose up -d
 ```
@@ -92,13 +92,13 @@ This will start the `web`, `monitoring`, and `ops-shell` services.
 
 You can list all active services and see which profiles are currently running.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps
 ```
 
 If you want to see which services *would* start for a given profile without actually launching them, use the `config` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose --profile dev config
 ```
 
@@ -122,7 +122,7 @@ Services that do not meet these criteria are excluded from the dependency graph 
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

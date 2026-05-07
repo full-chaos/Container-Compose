@@ -9,7 +9,7 @@ Force-stop project containers.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose kill [global-options] [options] [services...]
 ```
 
@@ -33,7 +33,7 @@ container-compose kill [global-options] [options] [services...]
 
 Send `SIGKILL` to all running containers in the project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose kill
 ```
 
@@ -41,7 +41,7 @@ container-compose kill
 
 Send `SIGTERM` instead of the default `SIGKILL`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose kill -s SIGTERM
 ```
 
@@ -49,7 +49,7 @@ container-compose kill -s SIGTERM
 
 Only kill the `worker` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose kill worker
 ```
 

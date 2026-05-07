@@ -19,11 +19,11 @@ Each entry below follows the pattern: **Symptom → Cause → Fix**. Start with 
 
 1. Install Apple Container from [github.com/apple/container/releases](https://github.com/apple/container/releases).
 2. Start the system daemon:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container system start
    ```
 3. Verify it is running:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container ls
    ```
 
@@ -52,13 +52,13 @@ See also: [Limitations and Gotchas — macOS 15 DNS](./limitations-and-gotchas.m
 
 **Fix:** Upgrade to the latest release:
 
-```bash filename="terminal"
+```bash title="terminal"
 brew upgrade container-compose
 ```
 
 Or rebuild from source:
 
-```bash filename="terminal"
+```bash title="terminal"
 make build && make install
 ```
 
@@ -75,11 +75,11 @@ For the full list of affected flags, see [Feature Parity — Tier 0](../feature-
 **Fix:**
 
 1. Check the service logs:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container-compose logs <service>
    ```
 2. Run the healthcheck command manually inside the container:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container exec <project>-<service> sh -c '<your healthcheck command>'
    ```
 3. Verify the command exits 0 inside the container, not just on the host. Path differences, missing binaries, and network timing are common culprits.
@@ -95,15 +95,15 @@ For the full list of affected flags, see [Feature Parity — Tier 0](../feature-
 **Fix:**
 
 1. Tear down any existing stack:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container-compose down
    ```
 2. Find what is holding the port:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    lsof -iTCP:<port> -sTCP:LISTEN
    ```
 3. Check for stale containers:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container ls -a
    ```
 
@@ -117,7 +117,7 @@ For the full list of affected flags, see [Feature Parity — Tier 0](../feature-
 
 **Fix:** Run from the compose file's directory, or pass `--project-directory` explicitly:
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose --project-directory /path/to/project up
 ```
 
@@ -133,13 +133,13 @@ The project directory defaults to the compose file's parent. Use `container-comp
 
 **Fix:** Pass the env file explicitly:
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose --env-file ./path/to/.env up
 ```
 
 Verify the resolved YAML before starting:
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose config
 ```
 
@@ -204,15 +204,15 @@ services:
 **Fix:**
 
 1. Check daemon status:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container-compose system status
    ```
 2. Start the daemon:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    container-compose serve
    ```
    Or, for Homebrew installs:
-   ```bash filename="terminal"
+   ```bash title="terminal"
    brew services start container-compose
    ```
 3. The default socket is `~/.container-compose/api.sock`. If you started with a custom `--socket` path, pass the same path to clients.

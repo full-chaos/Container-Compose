@@ -13,7 +13,7 @@ Documentation is structured by intent:
 
 - **Terse Imperative Voice**: Use "Run the command" instead of "You should run the command".
 - **Code-First**: Lead with examples. Explain the "why" after showing the "how".
-- **Terminal Annotations**: Use `filename="terminal"` on all shell code blocks.
+- **Terminal Annotations**: Use `title="terminal"` on all shell code blocks.
 - **Feature Linking**: Link every mention of a feature to its reference or concept page.
 - **No Filler**: Avoid words like "simply", "obviously", or "just".
 
@@ -34,7 +34,7 @@ Detailed description of the command's purpose and behavior.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose <command> [options] [args]
 ```
 
@@ -48,7 +48,7 @@ container-compose <command> [options] [args]
 
 ### Basic Usage
 Description of the example.
-```bash filename="terminal"
+```bash title="terminal"
 container-compose <command>
 ```
 
@@ -77,7 +77,7 @@ Introduction to the tutorial goals.
 ## Step 1: <Action>
 
 Description and code.
-```bash filename="terminal"
+```bash title="terminal"
 # code
 ```
 

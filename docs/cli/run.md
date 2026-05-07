@@ -9,7 +9,7 @@ Run a one-off command on a service.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose run [global-options] [options] service [command] [args...]
 ```
 
@@ -40,7 +40,7 @@ container-compose run [global-options] [options] service [command] [args...]
 
 Start a one-off container for the `web` service and run `sh`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose run --rm web sh
 ```
 
@@ -48,7 +48,7 @@ container-compose run --rm web sh
 
 Run a test command with a specific environment variable.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose run -e DEBUG=1 web npm test
 ```
 
@@ -56,7 +56,7 @@ container-compose run -e DEBUG=1 web npm test
 
 Start a one-off container in the background.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose run -d worker python process.py
 ```
 

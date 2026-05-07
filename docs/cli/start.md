@@ -9,7 +9,7 @@ Start existing stopped containers (without re-creating them).
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose start [global-options] [options] [services...]
 ```
 
@@ -32,7 +32,7 @@ container-compose start [global-options] [options] [services...]
 
 Start all containers that are currently stopped.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose start
 ```
 
@@ -40,7 +40,7 @@ container-compose start
 
 Only start the `db` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose start db
 ```
 
