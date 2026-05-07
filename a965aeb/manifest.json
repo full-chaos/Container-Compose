@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1442-align-stale-parsing-tests",
+  "commit": "a965aeb28f1038ed0c0a33dcb1fa1394dafc66cf",
+  "short": "a965aeb",
+  "target": "a965aeb",
+  "message": "test(parsing): align two stale tests with deliberate production behavior (CHAOS-1442)",
+  "published_at": "2026-05-07T11:17:16.698782+00:00"
+}
