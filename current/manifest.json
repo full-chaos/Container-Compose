@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "e11239c4e51c8246f5dc49e2b653ca743854faf2",
-  "short": "e11239c",
+  "commit": "c467e1e5c405b47b8e32fa0ca674b9654efcd51a",
+  "short": "c467e1e",
   "target": "current",
-  "message": "test(parsing): align two stale tests with deliberate production behavior (CHAOS-1442) (#136)",
-  "published_at": "2026-05-07T11:39:50.569189+00:00"
+  "message": "fix(compose): CHAOS-1438 support file binds + remove silent mkdir of missing sources (#137)",
+  "published_at": "2026-05-07T12:16:08.539474+00:00"
 }
