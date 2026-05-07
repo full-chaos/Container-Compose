@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "d86406d8416edd9bca0d86dafd1c4c501ae60fc4",
-  "short": "d86406d",
+  "commit": "e11239c4e51c8246f5dc49e2b653ca743854faf2",
+  "short": "e11239c",
   "target": "current",
-  "message": "fix(compose): CHAOS-1437 split shell tokens on newlines too (#134)",
-  "published_at": "2026-05-07T02:33:59.551669+00:00"
+  "message": "test(parsing): align two stale tests with deliberate production behavior (CHAOS-1442) (#136)",
+  "published_at": "2026-05-07T11:39:50.569189+00:00"
 }
