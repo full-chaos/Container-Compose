@@ -71,11 +71,18 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
             servicesArg: services
         ).reversed())
 
-        // When `-v` is passed, also remove containers — apple/container blocks
-        // volume removal while a container (even stopped) still references the
-        // volume, so we must delete the container before the volume cleanup.
-        // Without `-v`, preserve the historical "stop only" behavior.
-        try await stopOldStuff(services, remove: removeVolumes)
+        // CHAOS-1445: match `docker compose down` semantics. Containers and
+        // project-declared networks are torn down on every `down` (the
+        // ordering matters — `Application.NetworkDelete` refuses to remove a
+        // network that still has attached containers). `-v` adds named-volume
+        // removal on top.
+        try await stopOldStuff(services, remove: true)
+
+        await removeProjectNetworks(
+            from: dockerCompose,
+            targetedServiceNames: Set(services.map(\.serviceName)),
+            isFullProjectDown: self.services.isEmpty
+        )
 
         if removeVolumes {
             await removeNamedVolumes(
@@ -201,6 +208,77 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
         for (name, serviceOpt) in dockerCompose.services {
             guard let service = serviceOpt, predicate(name) else { continue }
             result.formUnion(service.referencedNamedVolumes())
+        }
+        return result
+    }
+
+    /// CHAOS-1445: Removes top-level networks declared in the compose file via
+    /// `RuntimeEnvironment.current.removeNetwork(id:)`. Externals are always
+    /// skipped (user-managed). On a partial-project down, a network is removed
+    /// only when it's exclusive to the targeted services — networks referenced
+    /// by sibling services outside the target are kept, and networks not
+    /// referenced by any targeted service are kept too. Removal errors other
+    /// than `.notFound` are logged but do not abort the down (consistent with
+    /// the volume and container cleanup paths).
+    private func removeProjectNetworks(
+        from dockerCompose: DockerCompose,
+        targetedServiceNames: Set<String>,
+        isFullProjectDown: Bool
+    ) async {
+        guard let networks = dockerCompose.networks, !networks.isEmpty else { return }
+
+        let outsideTargetNetworks: Set<String> = isFullProjectDown
+            ? []
+            : Self.networksReferenced(by: dockerCompose, matching: { !targetedServiceNames.contains($0) })
+        let insideTargetNetworks: Set<String> = isFullProjectDown
+            ? []
+            : Self.networksReferenced(by: dockerCompose, matching: { targetedServiceNames.contains($0) })
+
+        print("\n--- Removing Networks ---")
+        for (networkName, networkConfig) in networks {
+            if networkConfig?.external?.isExternal == true {
+                print("Skipping external network: \(networkName)")
+                continue
+            }
+
+            let actualNetworkName = networkConfig?.name ?? networkName
+
+            if !isFullProjectDown {
+                if outsideTargetNetworks.contains(networkName) {
+                    print("Skipping shared network '\(actualNetworkName)' (referenced by services outside the partial-down target)")
+                    continue
+                }
+                if !insideTargetNetworks.contains(networkName) {
+                    print("Skipping network '\(actualNetworkName)' (not referenced by any targeted service)")
+                    continue
+                }
+            }
+
+            do {
+                try await RuntimeEnvironment.current.removeNetwork(id: actualNetworkName)
+                print("Removed network: \(actualNetworkName)")
+            } catch RuntimeError.notFound {
+                // Already gone — idempotent.
+            } catch {
+                print("Error removing network '\(actualNetworkName)': \(error)")
+            }
+        }
+        print("--- Networks Removed ---\n")
+    }
+
+    /// Helper for `removeProjectNetworks`: collects all top-level network
+    /// names referenced across services whose name matches `predicate`.
+    /// Mirrors `namedVolumesReferenced`.
+    private static func networksReferenced(
+        by dockerCompose: DockerCompose,
+        matching predicate: (String) -> Bool
+    ) -> Set<String> {
+        var result: Set<String> = []
+        for (name, serviceOpt) in dockerCompose.services {
+            guard let service = serviceOpt, predicate(name) else { continue }
+            if let names = service.networks?.names {
+                result.formUnion(names)
+            }
         }
         return result
     }

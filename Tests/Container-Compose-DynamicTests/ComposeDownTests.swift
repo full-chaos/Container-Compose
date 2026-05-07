@@ -54,16 +54,15 @@ struct ComposeDownTests {
         var composeDown = try ComposeDown.parse(["--cwd", project.base.path(percentEncoded: false)])
         try await composeDown.run()
 
+        // CHAOS-1445: `down` now removes containers (matches `docker compose down`).
         containers = try await ContainerClient().list()
             .filter({
                 $0.configuration.id.contains(project.name)
             })
 
         #expect(
-            containers.count == 2,
-            "Expected 2 containers for \(project.name), found \(containers.count)")
-
-        #expect(containers.filter({ $0.status == .stopped}).count == 2, "Expected 2 stopped containers for \(project.name), found \(containers.filter({ $0.status == .stopped }).count)")
+            containers.isEmpty,
+            "Expected 0 containers for \(project.name) after down, found \(containers.count)")
     }
 
     @Test("What goes up must come down - container_name")
@@ -96,18 +95,15 @@ struct ComposeDownTests {
         var composeDown = try ComposeDown.parse(["--cwd", project.base.path(percentEncoded: false)])
         try await composeDown.run()
 
+        // CHAOS-1445: `down` now removes containers (matches `docker compose down`).
         containers = try await ContainerClient().list()
             .filter({
                 $0.configuration.id.contains(containerName)
             })
 
         #expect(
-            containers.count == 1,
-            "Expected 1 container with the name \(containerName), found \(containers.count)")
-        #expect(
-            containers.filter({ $0.status == .stopped }).count == 1,
-            "Expected container \(containerName) to be stopped, found status: \(containers.map(\.status))"
-        )
+            containers.isEmpty,
+            "Expected container \(containerName) to be removed after down, found \(containers.count)")
     }
 
     enum Errors: Error {

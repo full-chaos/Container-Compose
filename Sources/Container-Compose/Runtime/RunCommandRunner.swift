@@ -271,6 +271,10 @@ public struct ProductionRunner: RunCommandRunner {
         case "NetworkCreate":
             let cmd = try Application.NetworkCreate.parse(argv)
             try await cmd.run()
+        case "NetworkDelete":
+            var cmd = try Application.NetworkDelete.parse(argv)
+            try cmd.validate()
+            try await cmd.run()
         case "BuildCommand":
             var cmd = try Application.BuildCommand.parse(argv)
             try cmd.validate()
