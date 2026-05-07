@@ -80,6 +80,24 @@ Or, build it from source:
    make install
    ```
 
+### Source build with extended features (opt-in)
+
+The default `Package.swift` pin (`full-chaos/container#tier2-fork-patches`) carries
+the runtime surface needed for production use. Source-build users who want
+**fork-forward features** still pending in `apple/container` upstream can swap the
+pin to the active development branch:
+
+```swift
+.package(url: "https://github.com/full-chaos/container", branch: "dev"),
+```
+
+What `dev` adds: richer network IPAM (CHAOS-1334), rebased onto newer
+`apple/containerization`, plus the same fork-only feature set. Not distributed via
+Homebrew — source build only. Branch:
+<https://github.com/full-chaos/container/tree/dev>. See
+[Upstream / Fork Status](./docs/upstream-fork-status.md#51-opt-in-full-chaoscontainerdev-for-fork-forward-features)
+for the complete tradeoff matrix.
+
 ### Usage
 
 After installation, simply run:

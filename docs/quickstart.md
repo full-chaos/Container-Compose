@@ -7,11 +7,11 @@ Get a multi-container application running on Apple Container in 2 minutes.
 - **Apple Silicon Mac**: Required for the native container runtime.
 - **macOS 26 (Tahoe)**: Recommended for the best experience.
 - **Apple Container**: Installed and running.
-  ```bash filename="terminal"
+  ```bash title="terminal"
   container system start
   ```
 - **Container-Compose**: Installed via Homebrew.
-  ```bash filename="terminal"
+  ```bash title="terminal"
   brew install container-compose
   ```
 
@@ -19,14 +19,14 @@ Get a multi-container application running on Apple Container in 2 minutes.
 
 Create a new directory and a minimal `compose.yaml` file.
 
-```bash filename="terminal"
+```bash title="terminal"
 mkdir my-app && cd my-app
 touch compose.yaml
 ```
 
 Add the following content to `compose.yaml`:
 
-```yaml filename="compose.yaml"
+```yaml title="compose.yaml"
 services:
   web:
     image: nginx:alpine
@@ -38,7 +38,7 @@ services:
 
 Launch your services in detached mode.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up -d
 ```
 
@@ -46,7 +46,7 @@ container-compose up -d
 
 Check that your container is running.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps
 ```
 
@@ -54,7 +54,7 @@ container-compose ps
 
 Verify the Nginx server is responding on the mapped port.
 
-```bash filename="terminal"
+```bash title="terminal"
 curl localhost:8080
 ```
 
@@ -62,7 +62,7 @@ curl localhost:8080
 
 Stop and remove the containers when you are finished.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 
@@ -70,14 +70,14 @@ container-compose down
 
 Create a `.env` file in the same directory as your compose file:
 
-```bash filename=".env"
+```bash title=".env"
 IMAGE_TAG=alpine
 HOST_PORT=8080
 ```
 
 Reference the variables in `compose.yaml`:
 
-```yaml filename="compose.yaml"
+```yaml title="compose.yaml"
 services:
   web:
     image: nginx:${IMAGE_TAG}
@@ -87,13 +87,13 @@ services:
 
 Container-Compose loads `./.env` by default. Pass a different file with `--env-file`:
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose --env-file ./config/prod.env up -d
 ```
 
 Verify substitution before starting:
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose config
 ```
 
@@ -101,7 +101,7 @@ container-compose config
 
 This example starts a web service only after Redis passes its healthcheck.
 
-```yaml filename="compose.yaml"
+```yaml title="compose.yaml"
 services:
   web:
     image: nginx:alpine

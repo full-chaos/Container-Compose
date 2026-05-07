@@ -24,7 +24,7 @@ Managing resource consumption is essential for maintaining host stability and en
 
 The complete example lives at [`Sample Compose Files/Resource limits/docker-compose.yml`](../../Sample%20Compose%20Files/Resource%20limits/docker-compose.yml). Here's what it does:
 
-```yaml filename="docker-compose.yml"
+```yaml title="docker-compose.yml"
 # Demonstrates resource limits via top-level Service properties (Phase 2B).
 # These are the new top-level fields from Phase 1.2 (parsed) wired through
 # ResourceArgs in Phase 2B. They override deploy.resources.limits when present.
@@ -85,7 +85,7 @@ The `ulimits` section allows you to tune system-level constraints for the contai
 
 Start the services and then inspect the running container to verify that the limits are active.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up -d
 container inspect <container_id>
 ```
@@ -108,7 +108,7 @@ These values are passed to the `ResourceArgs.build` function, which generates th
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

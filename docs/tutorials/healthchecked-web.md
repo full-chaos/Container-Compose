@@ -24,7 +24,7 @@ In complex applications, services often depend on each other. For example, a web
 
 The complete example lives at [`Sample Compose Files/Healthchecked Web/docker-compose.yml`](../../Sample%20Compose%20Files/Healthchecked%20Web/docker-compose.yml). Here's what it does:
 
-```yaml filename="docker-compose.yml"
+```yaml title="docker-compose.yml"
 # Demonstrates the depends_on object form (compose-spec L277-L310).
 # `app` only starts after `db` is healthy, with restart-on-failure semantics.
 
@@ -65,7 +65,7 @@ services:
 
 Launch the entire stack using the `up` command.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose up
 ```
 
@@ -86,7 +86,7 @@ The `db` dependency also specifies `restart: true`. This means that if the `db` 
 
 Check the status of all services to see them transition from `starting` to `healthy`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose ps
 ```
 
@@ -108,7 +108,7 @@ Following the implementation of CHAOS-1319 and CHAOS-1320, Container-Compose rea
 
 ## Cleanup
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 

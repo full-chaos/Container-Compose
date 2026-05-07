@@ -9,7 +9,7 @@ Restart running containers without re-creating them.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose restart [global-options] [options] [services...]
 ```
 
@@ -32,7 +32,7 @@ container-compose restart [global-options] [options] [services...]
 
 Restart all containers for the project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose restart
 ```
 
@@ -40,7 +40,7 @@ container-compose restart
 
 Only restart the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose restart web
 ```
 

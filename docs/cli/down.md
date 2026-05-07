@@ -9,7 +9,7 @@ Stop containers with compose.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down [global-options] [options] [services...]
 ```
 
@@ -33,7 +33,7 @@ container-compose down [global-options] [options] [services...]
 
 Stop and remove all containers for the current project.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down
 ```
 
@@ -41,7 +41,7 @@ container-compose down
 
 Only stop the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose down web
 ```
 

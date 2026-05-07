@@ -9,7 +9,7 @@ Display the version information.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose version
 ```
 
@@ -19,6 +19,6 @@ container-compose version
 
 Print the current version of `container-compose`.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose version
 ```

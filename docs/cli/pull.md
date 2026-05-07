@@ -9,7 +9,7 @@ Pull service images.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose pull [global-options] [options] [services...]
 ```
 
@@ -35,7 +35,7 @@ container-compose pull [global-options] [options] [services...]
 
 Pull all images defined in the compose file.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose pull
 ```
 
@@ -43,7 +43,7 @@ container-compose pull
 
 Only pull the image for the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose pull web
 ```
 
@@ -51,7 +51,7 @@ container-compose pull web
 
 Pull the `web` service and all services it depends on.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose pull --include-deps web
 ```
 

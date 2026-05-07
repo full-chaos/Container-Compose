@@ -76,19 +76,45 @@ jobs:
           [ -f AGENTS.md ]     && cp AGENTS.md     "$out/"
           [ -d docs ]          && cp -r docs       "$out/"
 
-          # Each per-version directory gets a tiny landing page that
-          # redirects to coverage.html (the most useful artifact).
+          # Build the rendered MkDocs Material site (only on main, only if
+          # mkdocs.yml is present). The site lands at $out/site/ and reuses
+          # the same per-version layout. The per-version index.html below is
+          # rewritten to point at site/ instead of coverage.html when the site exists.
+          if [ "$TARGET_DIR" = "current" ] && [ -f mkdocs.yml ]; then
+            echo "--- building mkdocs site for $TARGET_DIR ---"
+            # docs/coverage.html is gitignored; mirror it so the iframe in
+            # docs/coverage.md resolves at build time.
+            cp coverage.html docs/coverage.html
+            python3 -m pip install --quiet mkdocs-material==9.6.* pymdown-extensions
+            python3 -m mkdocs build --site-dir "$out/site"
+            rm -f docs/coverage.html
+            site_built=1
+          else
+            site_built=0
+          fi
+
+          # Each per-version directory gets a tiny landing page. When the
+          # mkdocs site is present it redirects there; otherwise it falls back
+          # to coverage.html (the legacy behavior for branch builds).
+          if [ "$site_built" = "1" ]; then
+            redirect_target="site/"
+          else
+            redirect_target="coverage.html"
+          fi
           {
             echo '<!doctype html>'
             echo '<html lang="en"><head>'
             echo '<meta charset="utf-8">'
-            echo '<meta http-equiv="refresh" content="0; url=coverage.html">'
+            printf '<meta http-equiv="refresh" content="0; url=%s">\n' "$redirect_target"
             printf '<title>Container-Compose · %s</title>\n' "$TARGET_DIR"
             echo '</head><body>'
-            printf '<p>Redirecting to <a href="coverage.html">coverage.html</a> &mdash; '
+            printf '<p>Redirecting to <a href="%s">%s</a> &mdash; ' "$redirect_target" "$redirect_target"
             printf 'branch <code>%s</code>, commit <code>%s</code>.</p>\n' "$BRANCH_NAME" "${COMMIT_SHA:0:7}"
+            if [ "$site_built" = "1" ]; then
+              echo '<p><a href="coverage.html">Compose-spec coverage report</a></p>'
+            fi
             echo '<p><a href="AGENTS.md">AGENTS.md</a></p>'
-            echo '<p><a href="docs/">docs/</a></p>'
+            echo '<p><a href="docs/">Raw docs/ markdown</a></p>'
             echo '</body></html>'
           } > "$out/index.html"
 

@@ -9,7 +9,7 @@ Monitor file changes and update services.
 
 ## Synopsis
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose watch [global-options] [options] [services...]
 ```
 
@@ -34,7 +34,7 @@ container-compose watch [global-options] [options] [services...]
 
 Monitor all services that have `develop.watch` rules defined.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose watch
 ```
 
@@ -42,7 +42,7 @@ container-compose watch
 
 Only monitor changes for the `web` service.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose watch web
 ```
 
@@ -50,7 +50,7 @@ container-compose watch web
 
 See what actions would be taken when files change without actually executing them.
 
-```bash filename="terminal"
+```bash title="terminal"
 container-compose watch --dry-run
 ```
 
