@@ -237,20 +237,22 @@ struct ComposeParsingEdgeCaseTests {
         }
     }
 
-    @Test("Service with neither image nor build still decodes (validation is separate from decoding)")
-    func serviceWithNeitherImageNorBuildDecodes() throws {
-        // Service.init(from:) does NOT throw for missing image/build — that is
-        // enforced by DockerCompose.validate(), not by the decoder.
-        // This test pins that contract: decoding succeeds, validation throws.
+    @Test("Service with none of image/build/provider/extends fails to decode (eager init validation, CHAOS-1442)")
+    func serviceWithNeitherImageNorBuildFailsDecode() throws {
+        // Service.init(from:) eagerly rejects services that declare none of
+        // `image`, `build`, `provider`, or `extends` — surfacing the error at
+        // decode time gives the user a DecodingError with file/line context,
+        // which is a better UX than waiting for DockerCompose.validate() to
+        // produce a service-name-only error. CHAOS-1316 (cf49916) extended the
+        // accepted set to include `provider:` and `extends:`.
         let yaml = """
         services:
           orphan:
             restart: always
         """
-        let dc = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
-        let orphan = try #require(dc.services["orphan"] as? Service)
-        #expect(orphan.image == nil)
-        #expect(orphan.build == nil)
+        #expect(throws: (any Error).self) {
+            _ = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        }
     }
 
     // MARK: - Conflicting field combinations: image + build
@@ -270,10 +272,15 @@ struct ComposeParsingEdgeCaseTests {
         #expect(app.build != nil)
     }
 
-    @Test("Service with both image and build passes validate()")
-    func imageAndBuildPassesValidation() throws {
-        // compose-spec permits image+build: build tags the resulting image with
-        // the given name. Validation should NOT reject this combination.
+    @Test("Service with both image and build is rejected by validate() (CHAOS-1417, CHAOS-1442)")
+    func imageAndBuildRejectedByValidation() throws {
+        // Container-Compose deliberately rejects the image+build combination
+        // even though compose-spec permits it (with `image` acting as the tag
+        // for the built image). Rationale per Errors.swift:114 — this combo
+        // often masks user mistakes, so we surface it as an error to make
+        // intent explicit. Pinning tests for this contract live in
+        // ComposeValidationTests.swift:209-255 (CHAOS-1417 / PR #101); this
+        // test exists as cross-coverage in the parsing edge-case suite.
         let yaml = """
         services:
           app:
@@ -281,7 +288,9 @@ struct ComposeParsingEdgeCaseTests {
             build: ./app
         """
         let dc = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
-        #expect(throws: Never.self) { try dc.validate() }
+        #expect(throws: ComposeValidationError.imageBuildConflict(serviceName: "app")) {
+            try dc.validate()
+        }
     }
 
     // MARK: - Variable interpolation edge cases
