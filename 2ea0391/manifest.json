@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1444-flag-shortcuts",
+  "commit": "2ea039123702cdb9c270a0f45d0a0201d7e90ee7",
+  "short": "2ea0391",
+  "target": "2ea0391",
+  "message": "feat(compose): CHAOS-1444 add docker-compose-conventional short flag aliases",
+  "published_at": "2026-05-07T13:11:59.757201+00:00"
+}
