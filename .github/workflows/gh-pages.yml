@@ -241,7 +241,11 @@ jobs:
           </style>
           </head><body>
           <h1>Container-Compose &middot; published versions</h1>
-          <div class="sub">Branch <code>main</code> publishes to <code>current/</code>; every other branch publishes to its short SHA.</div>
+          <div class="sub">
+            <a href="../">&larr; back to docs</a> &middot;
+            Branch <code>main</code> publishes to <code>current/</code>;
+            every other branch publishes to its short SHA.
+          </div>
           <table>
             <thead><tr><th>Path</th><th>Branch</th><th>Commit</th><th>Message</th><th>Published</th></tr></thead>
             <tbody>__ROWS__</tbody>
@@ -249,12 +253,42 @@ jobs:
           </body></html>
           """.replace("__ROWS__", "\n".join(rows))
 
-          with open("_index.tmp", "w") as f:
+          # Write the version listing into versions/index.html (was: root index.html).
+          os.makedirs("versions", exist_ok=True)
+          with open("versions/index.html", "w") as f:
               f.write(html_out)
-          print(f"wrote {len(versions)} versions to index")
+          print(f"wrote {len(versions)} versions to versions/index.html")
+
+          # Build the root index.html. If the rendered docs site exists at
+          # current/site/ (i.e. the latest main build wrote it), redirect there.
+          # Otherwise fall back to inlining the version listing at root.
+          if Path("current/site/index.html").exists():
+              root = (
+                  '<!doctype html>'
+                  '<html lang="en"><head>'
+                  '<meta charset="utf-8">'
+                  '<meta http-equiv="refresh" content="0; url=current/site/">'
+                  '<link rel="canonical" href="current/site/">'
+                  '<title>Container-Compose Documentation</title>'
+                  '</head><body>'
+                  '<p>Redirecting to the <a href="current/site/">Container-Compose documentation</a>.</p>'
+                  '<p>Looking for older versions? See the '
+                  '<a href="versions/">version listing</a>.</p>'
+                  '</body></html>'
+              )
+              with open("index.html", "w") as f:
+                  f.write(root)
+              print("wrote redirect index.html -> current/site/")
+          else:
+              # Fallback: site not built yet, keep the listing at root.
+              with open("index.html", "w") as f:
+                  f.write(html_out)
+              print("current/site/ missing; root index.html falls back to version listing")
           PY
 
-          mv _index.tmp index.html
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html versions/index.html
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
