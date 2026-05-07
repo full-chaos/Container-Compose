@@ -1,0 +1,8 @@
+{
+  "branch": "fix/chaos-1437-tokenize-newlines",
+  "commit": "c682d9ccc9173da3f71b56bdd1533d5e9d3fa25d",
+  "short": "c682d9c",
+  "target": "c682d9c",
+  "message": "fix(compose): CHAOS-1437 split shell tokens on newlines too",
+  "published_at": "2026-05-07T02:32:26.994463+00:00"
+}
