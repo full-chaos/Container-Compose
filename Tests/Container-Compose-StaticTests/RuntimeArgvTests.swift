@@ -820,6 +820,69 @@ struct RuntimeArgvTests {
         #expect(!argv.contains("--cache-from"), "Apple container BuildCommand rejects --cache-from; full argv: \(argv)")
     }
 
+    /// Regression: per compose-spec (build.md), `dockerfile` "is resolved from
+    /// the build context". When `context` is a subdirectory and `dockerfile` is
+    /// itself a relative path (e.g. user-reported scenario `context: ./ops,
+    /// dockerfile: docker/Dockerfile`), the emitted `--file` argv MUST land at
+    /// `<context>/<dockerfile>`, NOT at `<compose-dir>/<dockerfile>`.
+    ///
+    /// Pre-fix this test fails because `Compose+BuildService.swift` rebases the
+    /// dockerfile onto `effectiveProjectDirectory` (the compose-file dir)
+    /// instead of onto `buildContextPath`, producing
+    /// `<compose-dir>/docker/Dockerfile` (which does not exist), and Apple's
+    /// `BuildCommand.validate()` then throws `dockerfile does not exist <path>`.
+    @Test("build: dockerfile path is resolved relative to context (not compose dir)")
+    func build_dockerfile_resolves_relative_to_context() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Layout mirrors the user-reported scenario:
+        //   <dir>/docker-compose.yml          ← compose file
+        //   <dir>/ops/                        ← build context
+        //   <dir>/ops/docker/Dockerfile       ← actual Dockerfile, nested under context
+        let dockerfileDir = dir.appendingPathComponent("ops/docker")
+        try FileManager.default.createDirectory(
+            at: dockerfileDir, withIntermediateDirectories: true
+        )
+        let dockerfile = dockerfileDir.appendingPathComponent("Dockerfile")
+        try "FROM alpine:latest\n".write(to: dockerfile, atomically: true, encoding: .utf8)
+
+        let yaml = """
+        services:
+          api:
+            build:
+              context: ./ops
+              dockerfile: docker/Dockerfile
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let argv = try await recordedBuildCommandArgv {
+            try ComposeBuild.parse(["-f", compose.path])
+        }
+
+        // Locate the --file flag in argv.
+        let fileIdx = try #require(
+            argv.firstIndex(of: "--file"),
+            "expected a --file flag in BuildCommand argv (got: \(argv))"
+        )
+        #expect(fileIdx + 1 < argv.count, "--file flag missing its value (argv: \(argv))")
+        let actualDockerfile = argv[fileIdx + 1]
+
+        // Per compose-spec: `dockerfile` is "resolved from the build context".
+        // The emitted path MUST end with `/ops/docker/Dockerfile` (rebased onto
+        // context), NOT `/docker/Dockerfile` (the buggy form, rebased onto
+        // compose dir).
+        #expect(
+            actualDockerfile.hasSuffix("/ops/docker/Dockerfile"),
+            "expected --file path to end with /ops/docker/Dockerfile (dockerfile rebased onto build context). got: \(actualDockerfile). full argv: \(argv)"
+        )
+    }
+
     @Test("up: inline BuildCommand argv skips unsupported build flags")
     func up_build_skips_unsupported_build_flags() async throws {
         let dir = FileManager.default.temporaryDirectory

@@ -73,7 +73,13 @@ extension ComposeCommand {
             inlineTempURL = tempURL
             commands.append(contentsOf: ["--file", tempURL.path])
         } else {
-            let dockerfilePath = FilePath(effectiveProjectDirectory)
+            // Per compose-spec (build.md), `dockerfile` is "resolved from the
+            // build context", NOT from the compose-file directory. Anchor the
+            // emitted `--file` path to `buildContextPath` so a compose like
+            //   build: { context: ./ops, dockerfile: docker/Dockerfile }
+            // resolves to <project>/ops/docker/Dockerfile (the path Apple's
+            // BuildCommand will then validate via FileManager.fileExists).
+            let dockerfilePath = FilePath(buildContextPath)
                 .pushing(FilePath(buildConfig.dockerfile ?? "Dockerfile"))
                 .lexicallyNormalized()
                 .string
