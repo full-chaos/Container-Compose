@@ -294,8 +294,13 @@ public struct ComposeRun: AsyncParsableCommand, ComposeCommand, @unchecked Senda
         // `ProductionRunner` falls back to `print` / `fputs(_:stderr)` when
         // the stdout/stderr closures are nil (see plan §10 Q5), preserving
         // the deleted `streamCommand`'s direct-stdio semantics.
+        // CHAOS-1441: dispatch interactive (`-i -t`) one-off runs through
+        // the dedicated `.streamingInteractive` runner kind so the child
+        // inherits the parent's TTY directly. Sibling fix to CHAOS-1439
+        // (compose exec); same root cause in `ProductionRunner.spawnStreaming`.
+        let useInteractive = (service.stdin_open == true) && (service.tty == true)
         let request = RunRequest(
-            kind: .streaming,
+            kind: useInteractive ? .streamingInteractive : .streaming,
             argv: ["container", "run"] + runArgs,
             cwd: cwd
         )
