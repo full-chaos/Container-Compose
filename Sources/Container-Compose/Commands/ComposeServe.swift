@@ -24,6 +24,7 @@ import Metrics
 import NIOSSL
 import Prometheus
 import ServiceLifecycle
+import SystemPackage
 
 #if canImport(Darwin)
 import Darwin
@@ -169,7 +170,7 @@ public struct ComposeServe: AsyncParsableCommand {
             resolvedKeyPath  = kp
 
             if let clientCAPath {
-                let expanded = (clientCAPath as NSString).expandingTildeInPath
+                let expanded = FilePath((clientCAPath as NSString).expandingTildeInPath).lexicallyNormalized().string
                 guard FileManager.default.isReadableFile(atPath: expanded) else {
                     throw ValidationError("--client-ca file not found: \(expanded)")
                 }
@@ -226,40 +227,41 @@ public enum ServeDaemon {
     /// daemon state lives in one user-owned directory — easier to debug,
     /// easier to reset (`rm -rf ~/.container-compose`).
     public static var defaultSocketPath: String {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".container-compose")
-            .appending(path: "api.sock")
-            .path
+        FilePath(FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false))
+            .pushing(FilePath(".container-compose"))
+            .pushing(FilePath("api.sock"))
+            .string
     }
 
     /// Default TLS certificate path (auto-detected by `serve --listen tls://...`).
     public static var defaultTLSCertPath: String {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".container-compose")
-            .appending(path: "cert.pem")
-            .path
+        FilePath(FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false))
+            .pushing(FilePath(".container-compose"))
+            .pushing(FilePath("cert.pem"))
+            .string
     }
 
     /// Default TLS key path (auto-detected by `serve --listen tls://...`).
     public static var defaultTLSKeyPath: String {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".container-compose")
-            .appending(path: "key.pem")
-            .path
+        FilePath(FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false))
+            .pushing(FilePath(".container-compose"))
+            .pushing(FilePath("key.pem"))
+            .string
     }
 
     /// Default auth store path for bearer-token records.
     public static var defaultAuthFilePath: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".container-compose")
-            .appending(path: "auth.json")
+        URL(filePath: FilePath(FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false))
+            .pushing(FilePath(".container-compose"))
+            .pushing(FilePath("auth.json"))
+            .string)
     }
 
     public static func resolveSocketPath(override: String?) -> String {
         guard let override, !override.isEmpty else {
             return defaultSocketPath
         }
-        return (override as NSString).expandingTildeInPath
+        return FilePath((override as NSString).expandingTildeInPath).lexicallyNormalized().string
     }
 
     // MARK: - Idempotence + stale-socket detection
@@ -305,9 +307,9 @@ public enum ServeDaemon {
     }
 
     public static func ensureParentDirectory(for socketPath: String) throws {
-        let dir = (socketPath as NSString).deletingLastPathComponent
+        let dir = FilePath(socketPath).removingLastComponent().string
         try FileManager.default.createDirectory(
-            atPath: dir,
+            at: URL(filePath: dir, directoryHint: .isDirectory),
             withIntermediateDirectories: true
         )
     }

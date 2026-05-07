@@ -24,6 +24,7 @@
 import ArgumentParser
 import ContainerAPIClient
 import Foundation
+import SystemPackage
 import Yams
 
 // MARK: - PathSnapshot
@@ -64,7 +65,7 @@ public func snapshotPath(_ path: String) -> PathSnapshot {
     }
 
     for case let relativePath as String in enumerator {
-        let fullPath = (path as NSString).appendingPathComponent(relativePath)
+        let fullPath = FilePath(path).appending(relativePath).string
         guard let attrs = try? fm.attributesOfItem(atPath: fullPath) else { continue }
         let mtime = (attrs[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
         if mtime > latestMtime { latestMtime = mtime }
@@ -348,8 +349,8 @@ actor WatchLoop {
     }
 
     private func path(_ eventPath: String, isInsideOrEqualTo watchedPath: String) -> Bool {
-        let normalizedEventPath = URL(fileURLWithPath: eventPath).standardized.path
-        let normalizedWatchedPath = URL(fileURLWithPath: watchedPath).standardized.path
+        let normalizedEventPath = FilePath(eventPath).lexicallyNormalized().string
+        let normalizedWatchedPath = FilePath(watchedPath).lexicallyNormalized().string
         return normalizedEventPath == normalizedWatchedPath ||
             normalizedEventPath.hasPrefix(normalizedWatchedPath + "/")
     }
@@ -455,10 +456,9 @@ public struct ComposeWatch: AsyncParsableCommand, ComposeCommand, @unchecked Sen
         let resolvedRules: [(serviceName: String, rule: WatchRule)] = watchRules.map { serviceName, rule in
             let resolvedPath: String
             if rule.path.hasPrefix("/") {
-                resolvedPath = rule.path
+                resolvedPath = FilePath(rule.path).lexicallyNormalized().string
             } else {
-                resolvedPath = URL(fileURLWithPath: rule.path, relativeTo: URL(fileURLWithPath: composeDir))
-                    .standardized.path
+                resolvedPath = FilePath(composeDir).pushing(FilePath(rule.path)).lexicallyNormalized().string
             }
             let resolvedRule = WatchRule(
                 path: resolvedPath,

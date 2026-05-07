@@ -51,7 +51,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
-        return resolvedPath(for: envFile, relativeTo: cwdURL)
+        return resolvedPath(for: envFile, relativeTo: cwd)
     }
 
     @Flag(name: [.customShort("b"), .customLong("build")])

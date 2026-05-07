@@ -146,30 +146,30 @@ struct VolumeMountValidationTests {
     @Test("Tilde in bind-mount source expands to home directory")
     func tildeExpandsToHome() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let baseURL = URL(fileURLWithPath: "/tmp/project")
-        let resolved = resolvedPath(for: "~/data", relativeTo: baseURL)
+        let base = "/tmp/project"
+        let resolved = resolvedPath(for: "~/data", relativeTo: base)
         #expect(resolved.hasPrefix(home), "~ must expand to home directory, got: \(resolved)")
         #expect(resolved.hasSuffix("/data"))
     }
 
     @Test("Relative ./data path resolves against base URL")
     func relativeDotPathResolvesAgainstBase() {
-        let baseURL = URL(fileURLWithPath: "/tmp/project")
-        let resolved = resolvedPath(for: "./data", relativeTo: baseURL)
+        let base = "/tmp/project"
+        let resolved = resolvedPath(for: "./data", relativeTo: base)
         #expect(resolved == "/tmp/project/data")
     }
 
     @Test("Relative ../sibling path resolves against base URL")
     func relativeDotDotPathResolvesAgainstBase() {
-        let baseURL = URL(fileURLWithPath: "/tmp/project/compose")
-        let resolved = resolvedPath(for: "../shared", relativeTo: baseURL)
+        let base = "/tmp/project/compose"
+        let resolved = resolvedPath(for: "../shared", relativeTo: base)
         #expect(resolved == "/tmp/project/shared")
     }
 
     @Test("Absolute path is returned unchanged by resolvedPath")
     func absolutePathReturnedUnchanged() {
-        let baseURL = URL(fileURLWithPath: "/tmp/project")
-        let resolved = resolvedPath(for: "/var/data", relativeTo: baseURL)
+        let base = "/tmp/project"
+        let resolved = resolvedPath(for: "/var/data", relativeTo: base)
         #expect(resolved == "/var/data")
     }
 

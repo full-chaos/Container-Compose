@@ -20,6 +20,7 @@
 //
 
 import Foundation
+import SystemPackage
 
 /// Shared boilerplate for Compose subcommands that load a compose file.
 ///
@@ -33,7 +34,7 @@ import Foundation
 ///
 /// Phase 2 migration template:
 /// 1. Add `ComposeCommand` conformance to the command struct.
-/// 2. Remove the local `supportedComposeFilenames`, `cwdURL`, `composePath`,
+/// 2. Remove the local `supportedComposeFilenames`, `composePath`,
 ///    and project-directory helpers when their shapes match these defaults.
 /// 3. Replace `DockerCompose.loadAndMerge(...).resolvingExtends()` with
 ///    `loadAndResolve()` unless the command deliberately needs the unresolved
@@ -71,8 +72,6 @@ extension ComposeCommand {
         ]
     }
 
-    /// URL form of `cwd`, shared by path-oriented defaults.
-    var cwdURL: URL { URL(fileURLWithPath: cwd) }
 
     /// Effective compose-file path.
     ///
@@ -82,17 +81,22 @@ extension ComposeCommand {
     /// downstream loader emits the same file-not-found error shape as today.
     var composePath: String {
         if let composeFilename {
-            return resolvedPath(for: composeFilename, relativeTo: cwdURL)
+            return resolvedPath(for: composeFilename, relativeTo: cwd)
         }
 
+        // CHAOS-1443: build candidate paths via FilePath instead of URL to
+        // eliminate the `URL(fileURLWithPath:).appending(path:).path` chain
+        // (which would otherwise carry the same isDirectory-introspection
+        // footgun as the resolvedPath bug).
+        let cwdFP = FilePath(cwd)
         for filename in Self.supportedComposeFilenames {
-            let candidate = cwdURL.appending(path: filename).path
+            let candidate = cwdFP.appending(filename).string
             if FileManager.default.fileExists(atPath: candidate) {
                 return candidate
             }
         }
 
-        return cwdURL.appending(path: Self.supportedComposeFilenames[0]).path
+        return cwdFP.appending(Self.supportedComposeFilenames[0]).string
     }
 
     /// Project root for outside-container relative-path resolution.

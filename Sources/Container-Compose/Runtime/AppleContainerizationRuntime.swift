@@ -18,6 +18,7 @@
 
 import Containerization
 import Foundation
+import SystemPackage
 
 // MARK: - AppleContainerizationRuntime
 
@@ -493,9 +494,12 @@ public actor AppleContainerizationRuntime: Runtime {
                 reason: "kernelURL not configured — pass kernelURL to AppleContainerizationRuntime.init"
             )
         }
-        guard FileManager.default.isReadableFile(atPath: url.path) else {
+        let kernelPath = FilePath(url.path(percentEncoded: false))
+            .lexicallyNormalized()
+            .string
+        guard FileManager.default.isReadableFile(atPath: kernelPath) else {
             throw RuntimeError.kernelUnavailable(
-                reason: "vmlinux not readable at \(url.path)"
+                reason: "vmlinux not readable at \(kernelPath)"
             )
         }
 

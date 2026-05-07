@@ -385,7 +385,7 @@ struct MakeBuildArgvTests {
         #expect(argv.contains("2"))
         #expect(argv.contains("--memory"))
         #expect(argv.contains("2048MB"))
-        #expect(plan.inlineTempURL == nil, "no tempfile for non-inline path")
+        #expect(plan.inlineTempPath == nil, "no tempfile for non-inline path")
     }
 
     // MARK: - Single-field expansions
@@ -526,18 +526,18 @@ struct MakeBuildArgvTests {
         )
         let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
 
-        guard let tempURL = plan.inlineTempURL else {
-            Issue.record("expected non-nil inlineTempURL for dockerfile_inline path")
+        guard let tempPath = plan.inlineTempPath else {
+            Issue.record("expected non-nil inlineTempPath for dockerfile_inline path")
             return
         }
-        defer { try? FileManager.default.removeItem(at: tempURL) }
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
-        // The argv contains --file <tempURL.path>, NOT a literal "Dockerfile".
+        // The argv contains --file <tempPath>, NOT a literal "Dockerfile".
         let pairs = zip(plan.argv, plan.argv.dropFirst())
-        #expect(pairs.contains(where: { $0.0 == "--file" && $0.1 == tempURL.path }))
+        #expect(pairs.contains(where: { $0.0 == "--file" && $0.1 == tempPath }))
 
         // Tempfile contents match.
-        let written = try String(contentsOf: tempURL, encoding: .utf8)
+        let written = try String(contentsOf: URL(filePath: tempPath), encoding: .utf8)
         #expect(written == inlineContent)
     }
 
@@ -549,11 +549,11 @@ struct MakeBuildArgvTests {
             dockerfileInline: "FROM alpine:3\n"
         )
         let plan = try BridgeContainerClientRuntime.makeBuildArgv(spec: Self.bareSpec, context: context)
-        defer { plan.inlineTempURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
+        defer { plan.inlineTempPath.flatMap { try? FileManager.default.removeItem(atPath: $0) } }
 
         // Dockerfile.dev should NOT appear — inline path wins.
         #expect(!plan.argv.contains("Dockerfile.dev"))
-        #expect(plan.inlineTempURL != nil)
+        #expect(plan.inlineTempPath != nil)
     }
 
     // MARK: - Image tag resolution

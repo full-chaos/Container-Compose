@@ -64,7 +64,7 @@ public struct ComposeBuild: AsyncParsableCommand, ComposeCommand, @unchecked Sen
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
-        return resolvedPath(for: envFile, relativeTo: cwdURL)
+        return resolvedPath(for: envFile, relativeTo: cwd)
     }
 
     /// Lines printed when the build invocation has no services to build.

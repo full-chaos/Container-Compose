@@ -24,6 +24,7 @@ import ContainerCommands
 import ContainerAPIClient
 import ContainerizationExtras
 import Foundation
+import SystemPackage
 @preconcurrency import Rainbow
 import Yams
 
@@ -70,7 +71,7 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
 
     private var envFilePath: String {
         let envFile = process.envFile.first ?? ".env"
-        return resolvedPath(for: envFile, relativeTo: cwdURL)
+        return resolvedPath(for: envFile, relativeTo: cwd)
     }
 
     private var fileManager: FileManager { FileManager.default }
@@ -180,8 +181,10 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
     private func createVolumeHardLink(name volumeName: String, config volumeConfig: Volume) async {
         guard let projectName else { return }
         let actualVolumeName = volumeConfig.name ?? volumeName
-        let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(actualVolumeName)")
-        let volumePath = volumeUrl.path(percentEncoded: false)
+        let volumePath = FilePath(NSHomeDirectory())
+            .pushing(FilePath(".containers/Volumes/\(projectName)/\(actualVolumeName)"))
+            .lexicallyNormalized()
+            .string
         print("Warning: Volume '\(actualVolumeName)' is a named volume. Linking to \(volumePath).")
         try? fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)
     }
@@ -397,8 +400,10 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
             }
         } else {
             guard let projectName else { return [] }
-            let volumeUrl = URL.homeDirectory.appending(path: ".containers/Volumes/\(projectName)/\(source)")
-            let volumePath = volumeUrl.path(percentEncoded: false)
+            let volumePath = FilePath(NSHomeDirectory())
+                .pushing(FilePath(".containers/Volumes/\(projectName)/\(source)"))
+                .lexicallyNormalized()
+                .string
 
             print("Warning: Volume source '\(source)' is a named volume. Linking to \(volumePath).")
             try fileManager.createDirectory(atPath: volumePath, withIntermediateDirectories: true)

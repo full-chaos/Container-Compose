@@ -143,7 +143,7 @@ extension ComposeUp {
 
         static func supportsBlkioFlags(for command: String) async -> Bool {
             let probe = Process()
-            probe.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            probe.executableURL = URL(filePath: "/usr/bin/env")
             probe.arguments = ["container", command, "--blkio-weight", "500", "--help"]
             probe.standardOutput = Pipe()
             probe.standardError = Pipe()

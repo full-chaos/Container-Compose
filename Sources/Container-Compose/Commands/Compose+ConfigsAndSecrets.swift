@@ -16,6 +16,7 @@
 
 import CryptoKit
 import Foundation
+import SystemPackage
 
 extension ComposeUp {
     /// Builds bind-mount argv for service-level configs and secrets.
@@ -100,7 +101,7 @@ extension ComposeUp {
 
         private static func resolveConfigSource(_ topLevel: Config, sourceName: String, ctx: ArgsContext) -> String? {
             if let sourceFile = topLevel.file {
-                let expandedPath = (sourceFile as NSString).expandingTildeInPath
+                let expandedPath = resolvedSourcePath(sourceFile, ctx: ctx)
                 return materializeTemplateIfNeeded(
                     templateDriver: topLevel.templateDriver,
                     rawSourcePath: expandedPath,
@@ -143,7 +144,7 @@ extension ComposeUp {
 
         private static func resolveSecretSource(_ topLevel: Secret, sourceName: String, ctx: ArgsContext) -> String? {
             if let sourceFile = topLevel.file {
-                let expandedPath = (sourceFile as NSString).expandingTildeInPath
+                let expandedPath = resolvedSourcePath(sourceFile, ctx: ctx)
                 return materializeTemplateIfNeeded(
                     templateDriver: topLevel.templateDriver,
                     rawSourcePath: expandedPath,
@@ -171,6 +172,20 @@ extension ComposeUp {
 
             print("Warning: Secret '\(sourceName)' has no 'file:' source; skipping.")
             return nil
+        }
+
+        private static func resolvedSourcePath(_ path: String, ctx: ArgsContext) -> String {
+            let expandedPath = (path as NSString).expandingTildeInPath
+            if expandedPath.hasPrefix("/") {
+                return FilePath(expandedPath).lexicallyNormalized().string
+            }
+
+            let basePath = ctx.composeFilename.map { FilePath($0).removingLastComponent().string }
+                ?? FileManager.default.currentDirectoryPath
+            return FilePath(basePath)
+                .pushing(FilePath(expandedPath))
+                .lexicallyNormalized()
+                .string
         }
 
         private static func materializeTemplateIfNeeded(
@@ -264,8 +279,11 @@ extension ComposeUp {
             let hashPrefix = digest.map { String(format: "%02x", $0) }.joined().prefix(12)
             let safeProjectName = sanitizedHostPathComponent(projectName)
             let safeSourceName = sanitizedHostPathComponent(sourceName)
-            let directoryURL = FileManager.default.homeDirectoryForCurrentUser
-                .appending(path: ".containers/Compose/\(safeProjectName)/configs-secrets", directoryHint: .isDirectory)
+            let directoryPath = FilePath(FileManager.default.homeDirectoryForCurrentUser.path)
+                .pushing(FilePath(".containers/Compose/\(safeProjectName)/configs-secrets"))
+                .lexicallyNormalized()
+                .string
+            let directoryURL = URL(filePath: directoryPath, directoryHint: .isDirectory)
             try FileManager.default.createDirectory(
                 at: directoryURL,
                 withIntermediateDirectories: true,
@@ -278,16 +296,17 @@ extension ComposeUp {
             // setAttributes — mitigated in practice by the project-scoped, hash-
             // suffixed naming that makes opportunistic file creation by another
             // local process implausible.
-            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryURL.path)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directoryPath)
 
             let fileName = "\(kind)-\(safeSourceName)-\(hashPrefix)"
-            let fileURL = directoryURL.appending(path: fileName)
-            if !FileManager.default.fileExists(atPath: fileURL.path) {
+            let filePath = FilePath(directoryPath).appending(fileName).string
+            let fileURL = URL(filePath: filePath)
+            if !FileManager.default.fileExists(atPath: filePath) {
                 try content.write(to: fileURL, options: .atomic)
             }
-            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: filePath)
 
-            return fileURL.path
+            return filePath
         }
 
         private static func sanitizedHostPathComponent(_ value: String) -> String {
