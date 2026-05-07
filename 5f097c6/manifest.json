@@ -1,0 +1,8 @@
+{
+  "branch": "docs/mkdocs-site",
+  "commit": "5f097c64324b50ee56f4064ba860b178162ded60",
+  "short": "5f097c6",
+  "target": "5f097c6",
+  "message": "docs: render docs/ as MkDocs Material site, embed coverage, document fork#dev",
+  "published_at": "2026-05-07T16:28:14.131604+00:00"
+}
