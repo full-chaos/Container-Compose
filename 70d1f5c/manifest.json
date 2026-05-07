@@ -1,0 +1,8 @@
+{
+  "branch": "ci/gh-pages-root-redirect",
+  "commit": "70d1f5c4177d6bca1d0179ea2cfcbdd3d5a5820b",
+  "short": "70d1f5c",
+  "target": "70d1f5c",
+  "message": "ci(gh-pages): redirect root to current/site/, move version listing to /versions/",
+  "published_at": "2026-05-07T16:38:29.670804+00:00"
+}
