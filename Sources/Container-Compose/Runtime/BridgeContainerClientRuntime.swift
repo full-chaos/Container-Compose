@@ -860,21 +860,31 @@ extension BridgeContainerClientRuntime {
         )
     }
 
-    /// Remove a network by id using `Application.NetworkRemove` via the
-    /// `RunnerEnvironment` seam.
+    /// Remove a network by id by delegating to `Application.NetworkDelete`
+    /// in-process via the `RunnerEnvironment` seam (mirrors `createNetwork`).
     ///
-    /// Note: `apple/container`'s network remove command does not expose a
-    /// programmatic Swift API as of Phase 8; this path continues to throw
-    /// `.notSupported` until `ContainerCommands` gains a `NetworkRemove`
-    /// type or a `NetworkClient.delete(id:)` method is available.
+    /// `Application.NetworkDelete` (an `AsyncLoggableCommand` wrapping
+    /// `NetworkClient.delete(id:)`) is in scope via `ContainerCommands`,
+    /// so we piggyback on it rather than building a custom XPC client. This
+    /// keeps call sites on the `Runtime` abstraction instead of constructing
+    /// argv manually.
     ///
-    /// Documented as abstraction leak in `docs/plans/runtime-abstraction-leaks.md`
-    /// (Leak #9 — remove path only).
+    /// Error translation:
+    /// - `Application.NetworkDelete` throws `ContainerizationError(.notFound)`
+    ///   when the named network is missing; `RuntimeErrorMapper` translates
+    ///   that to `RuntimeError.notFound(id:)` so call sites (e.g.
+    ///   `ComposeDown.removeProjectNetworks`) can be idempotent.
+    /// - Other backend failures map to `RuntimeError.backendFailure`.
     public func removeNetwork(id: String) async throws {
-        throw RuntimeError.notSupported(
-            operation: "removeNetwork",
-            conformer: "BridgeContainerClientRuntime"
-        )
+        do {
+            _ = try await RunnerEnvironment.current.run(
+                RunRequest(kind: .swiftAPI(name: "NetworkDelete"), argv: [id], cwd: nil),
+                onStdout: nil,
+                onStderr: nil
+            )
+        } catch {
+            throw RuntimeErrorMapper.map(error, id: id)
+        }
     }
 
     // MARK: Volumes

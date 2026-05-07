@@ -495,20 +495,23 @@ struct NetworkRuntimeOperationsTests {
                 "bridge must dispatch through RunnerEnvironment for createNetwork; got no runner calls")
     }
 
-    /// Confirms that the current `BridgeContainerClientRuntime` conformer
-    /// still throws `.notSupported` for `removeNetwork` (remove path is not yet
-    /// wired — CHAOS-1409 territory).
-    @Test("BridgeContainerClientRuntime.removeNetwork throws notSupported (known gap)")
-    func bridgeRemoveNetworkIsNotSupported() async throws {
+    /// Confirms that `BridgeContainerClientRuntime.removeNetwork` now dispatches
+    /// through `RunnerEnvironment` (CHAOS-1445) rather than throwing
+    /// `.notSupported`. Mirrors the `createNetwork` contract test above.
+    ///
+    /// A `RecordingRunner` is bound so the test never invokes the real
+    /// `container` binary or opens an XPC connection.
+    @Test("BridgeContainerClientRuntime.removeNetwork succeeds via RunnerEnvironment (CHAOS-1445)")
+    func bridgeRemoveNetworkSucceedsViaBridgeRunner() async throws {
         let bridge = BridgeContainerClientRuntime()
+        let runner = RecordingRunner()
 
-        await #expect(
-            throws: RuntimeError.notSupported(
-                operation: "removeNetwork",
-                conformer: "BridgeContainerClientRuntime"
-            )
-        ) {
+        try await RunnerEnvironment.$current.withValue(runner) {
             try await bridge.removeNetwork(id: "any-id")
         }
+
+        let recorded = await runner.recordedRequests()
+        #expect(!recorded.isEmpty,
+                "bridge must dispatch through RunnerEnvironment for removeNetwork; got no runner calls")
     }
 }
