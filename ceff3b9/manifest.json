@@ -1,0 +1,8 @@
+{
+  "branch": "fix-composebuild-unused-projectname",
+  "commit": "ceff3b91baf4ec9d9c5f51d074bec57fbc52faf9",
+  "short": "ceff3b9",
+  "target": "ceff3b9",
+  "message": "refactor(compose): drop orphan projectName in ComposeBuild.run()",
+  "published_at": "2026-05-07T02:42:00.114091+00:00"
+}
