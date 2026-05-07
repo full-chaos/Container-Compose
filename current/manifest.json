@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "0cb02aece711bb0436018f8af64505ce695f3241",
-  "short": "0cb02ae",
+  "commit": "d86406d8416edd9bca0d86dafd1c4c501ae60fc4",
+  "short": "d86406d",
   "target": "current",
-  "message": "Complete Phase 1 runtime guarded wiring (#125)",
-  "published_at": "2026-05-06T23:48:17.529586+00:00"
+  "message": "fix(compose): CHAOS-1437 split shell tokens on newlines too (#134)",
+  "published_at": "2026-05-07T02:33:59.551669+00:00"
 }
