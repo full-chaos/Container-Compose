@@ -101,4 +101,45 @@ struct ShellTokenizeTests {
             try posixShellTokenize("echo hello\\")
         }
     }
+
+    // MARK: - CHAOS-1437 — newline handling
+
+    /// Repro for CHAOS-1437. A YAML folded scalar (`command: > ...`) decodes
+    /// with a trailing real newline. Without newline-as-separator handling,
+    /// that `\n` rides along on the last argv token, producing
+    /// `allkeys-lru\n` which valkey rejects:
+    ///
+    ///     valkey: >>> 'maxmemory-policy "allkeys-lru\n"'
+    ///
+    /// POSIX shells split on `IFS = <space><tab><newline>` by default, so the
+    /// tokenizer must do the same.
+    @Test("CHAOS-1437: trailing newline does not bleed into last token")
+    func trailingNewlineDoesNotBleedIntoLastToken() throws {
+        #expect(
+            try posixShellTokenize("valkey-server --maxmemory-policy allkeys-lru\n")
+                == ["valkey-server", "--maxmemory-policy", "allkeys-lru"]
+        )
+    }
+
+    @Test("CHAOS-1437: newline splits tokens like space/tab")
+    func newlineSplitsTokensLikeSpaceOrTab() throws {
+        #expect(try posixShellTokenize("a\nb\nc") == ["a", "b", "c"])
+    }
+
+    @Test("CHAOS-1437: mixed newline and space whitespace collapses")
+    func mixedNewlineAndSpaceWhitespaceCollapses() throws {
+        #expect(try posixShellTokenize("a \n b\t\nc") == ["a", "b", "c"])
+    }
+
+    @Test("CHAOS-1437: carriage-return is also a token separator")
+    func carriageReturnIsAlsoATokenSeparator() throws {
+        #expect(try posixShellTokenize("a\r\nb") == ["a", "b"])
+    }
+
+    @Test("CHAOS-1437: single-quoted newline is preserved literally")
+    func singleQuotedNewlineIsPreservedLiterally() throws {
+        // Single-quotes preserve newlines as-is — same as POSIX shells.
+        // Round-trip check: the embedded newline survives quoting.
+        #expect(try posixShellTokenize("echo 'line1\nline2'") == ["echo", "line1\nline2"])
+    }
 }

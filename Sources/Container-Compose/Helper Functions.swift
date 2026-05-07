@@ -95,7 +95,12 @@ func parseComposeMemoryBytes(_ rawValue: String) throws -> UInt64 {
 /// the string form of compose `command:` / `entrypoint:` into argv.
 ///
 /// Behavior:
-/// - Whitespace (space, tab) splits tokens. Multiple whitespace chars collapse.
+/// - Whitespace (space, tab, newline, carriage return) splits tokens. Multiple
+///   whitespace chars collapse. Newlines are split-only outside quotes —
+///   matching POSIX `IFS=<space><tab><newline>`. This is load-bearing: YAML
+///   folded scalars (`command: > ...`) decode with a trailing newline, and
+///   without newline splitting that newline rides along on the last argv
+///   token. (CHAOS-1437.)
 /// - Single-quoted strings ('...') preserve contents literally; quotes are stripped.
 /// - Double-quoted strings ("...") preserve contents literally; quotes are stripped.
 ///   (Env-var expansion happens upstream in `resolveVariable(_:with:)` — this
@@ -124,11 +129,17 @@ internal func posixShellTokenize(_ input: String) throws -> [String] {
         }
     }
 
-    for character in input {
+    // Iterate by Unicode scalar rather than Character so individual whitespace
+    // control bytes (CR, LF) are visible even when adjacent — `\r\n` is a single
+    // Extended Grapheme Cluster and would otherwise reach this loop as one
+    // Character that doesn't match any single-scalar separator. POSIX
+    // tokenization is a byte-level operation, not a grapheme-level one.
+    for scalar in input.unicodeScalars {
+        let character = Character(scalar)
         switch state {
         case .normal:
             switch character {
-            case " ", "\t":
+            case " ", "\t", "\n", "\r":
                 finishToken()
             case "'":
                 hasTokenContent = true

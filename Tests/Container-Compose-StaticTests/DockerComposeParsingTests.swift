@@ -514,4 +514,38 @@ struct DockerComposeParsingTests {
         #expect(cacheIndex < apiIndex)
         #expect(apiIndex < frontendIndex)
     }
+
+    /// End-to-end repro for CHAOS-1437. Lifted verbatim from a real failing
+    /// compose file (`dev-health/compose.yml`) — `command: >` (folded scalar)
+    /// for `valkey-server`. YAML correctly appends a trailing newline; the
+    /// tokenizer must drop it instead of letting it stick to the last argv
+    /// element.
+    @Test("CHAOS-1437: folded-scalar command tokenizes without trailing-newline contamination")
+    func foldedScalarCommandDoesNotLeakNewlineIntoLastArg() throws {
+        let yaml = """
+        services:
+          valkey:
+            image: valkey/valkey:9-alpine
+            command: >
+              valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+        """
+
+        let dc = try DockerCompose.from(yaml: yaml)
+        let service = try #require(dc.services["valkey"] ?? nil)
+        let command = try #require(service.command)
+
+        #expect(command == [
+            "valkey-server",
+            "--appendonly", "yes",
+            "--maxmemory", "256mb",
+            "--maxmemory-policy", "allkeys-lru",
+        ])
+        // Belt-and-suspenders — the historical failure mode was a trailing `\n`
+        // riding along on the last token. Keep this guard distinct from the
+        // equality check above so a regression has an unmistakable signal.
+        for arg in command {
+            #expect(!arg.contains("\n"), "argv element should not contain a newline: \(arg.debugDescription)")
+            #expect(!arg.contains("\r"))
+        }
+    }
 }
