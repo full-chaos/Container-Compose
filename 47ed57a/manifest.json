@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1438-volume-file-binds",
+  "commit": "47ed57a4c79992ae3b0155821b21169d48ef5d30",
+  "short": "47ed57a",
+  "target": "47ed57a",
+  "message": "fix(compose): CHAOS-1438 support file binds + remove silent mkdir of missing sources",
+  "published_at": "2026-05-07T12:00:45.709327+00:00"
+}
