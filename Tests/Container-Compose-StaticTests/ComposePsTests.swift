@@ -48,6 +48,13 @@ struct ComposePsParsingTests {
         #expect(cmd.all == true)
     }
 
+    // CHAOS-1444: short alias for --all (matches docker-compose `ps -a`).
+    @Test("-a short flag parses as all")
+    func shortAFlagParsesAsAll() throws {
+        let cmd = try ComposePs.parse(["-a"])
+        #expect(cmd.all == true)
+    }
+
     @Test("--profile dev parses")
     func profileDevParses() throws {
         let cmd = try ComposePs.parse(["--profile", "dev"])

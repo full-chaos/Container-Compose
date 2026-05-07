@@ -53,6 +53,13 @@ struct ComposeRunExecTests {
         #expect(cmd.detach == true)
     }
 
+    // CHAOS-1444: short alias for --detach (matches docker-compose `run -d`).
+    @Test("ComposeRun parses -d short flag as detach")
+    func composeRunParsesDetachShort() throws {
+        let cmd = try ComposeRun.parse(["-d", "web"])
+        #expect(cmd.detach == true)
+    }
+
     @Test("ComposeRun parses --rm flag")
     func composeRunParsesRm() throws {
         let cmd = try ComposeRun.parse(["--rm", "web"])

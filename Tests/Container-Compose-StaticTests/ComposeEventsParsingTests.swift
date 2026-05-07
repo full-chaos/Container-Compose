@@ -36,6 +36,16 @@ struct ComposeEventsParsingTests {
         #expect(cmd.services.isEmpty)
     }
 
+    // CHAOS-1444: short alias for --json (project-ergonomic; docker-compose
+    // upstream is long-only, but the project commits to this short for parity
+    // with other CLIs that use `-j` for JSON output).
+    @Test("-j short flag parses as json")
+    func shortJFlagParsesAsJson() throws {
+        let cmd = try ComposeEvents.parse(["-j"])
+        #expect(cmd.json == true)
+        #expect(cmd.services.isEmpty)
+    }
+
     @Test("single service argument parses")
     func singleServiceArgumentParses() throws {
         let cmd = try ComposeEvents.parse(["web"])
