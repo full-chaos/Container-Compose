@@ -66,11 +66,68 @@ Stop and remove the containers when you are finished.
 container-compose down
 ```
 
+## Using a `.env` file
+
+Create a `.env` file in the same directory as your compose file:
+
+```bash filename=".env"
+IMAGE_TAG=alpine
+HOST_PORT=8080
+```
+
+Reference the variables in `compose.yaml`:
+
+```yaml filename="compose.yaml"
+services:
+  web:
+    image: nginx:${IMAGE_TAG}
+    ports:
+      - "${HOST_PORT}:80"
+```
+
+Container-Compose loads `./.env` by default. Pass a different file with `--env-file`:
+
+```bash filename="terminal"
+container-compose --env-file ./config/prod.env up -d
+```
+
+Verify substitution before starting:
+
+```bash filename="terminal"
+container-compose config
+```
+
+## Multi-service with `depends_on`
+
+This example starts a web service only after Redis passes its healthcheck.
+
+```yaml filename="compose.yaml"
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+```
+
+Container-Compose enforces the ordering: `redis` must reach a healthy state before `web` starts. If `redis` has no `healthcheck` block, the condition falls back to `service_started` (running state). See [Troubleshooting — depends_on with service_healthy](./guides/troubleshooting.md#depends_on-with-condition-service_healthy-doesnt-wait) if the wait does not behave as expected.
+
 ## What's Next
 
 - Explore the [CLI Reference](./cli-reference.md) for advanced flags.
 - Check out [Tutorials](./tutorials/) for complex architecture examples.
-
+- Read [Limitations and Gotchas](./guides/limitations-and-gotchas.md) before dropping in an existing stack.
+- See [Troubleshooting](./guides/troubleshooting.md) if something is not working.
 ## Essential Commands
 
 | Command | Description |
