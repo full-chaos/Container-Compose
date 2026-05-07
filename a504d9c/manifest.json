@@ -1,0 +1,8 @@
+{
+  "branch": "audit-coverage-accuracy",
+  "commit": "a504d9ca75ccffe23d572f6119057978d6f2af8b",
+  "short": "a504d9c",
+  "target": "a504d9c",
+  "message": "docs(coverage): audit + correct accuracy, flag fork#dev requirements",
+  "published_at": "2026-05-07T16:58:15.488315+00:00"
+}
