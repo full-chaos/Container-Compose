@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-resolvedpath-isdir",
+  "commit": "6ea28d90cc3f03cfc0b7909f4207159d63b11999",
+  "short": "6ea28d9",
+  "target": "6ea28d9",
+  "message": "refactor: CHAOS-1443 migrate URL \\u2192 SystemPackage.FilePath for filesystem paths",
+  "published_at": "2026-05-07T12:55:42.229871+00:00"
+}
