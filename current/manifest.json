@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "7fd615bd1eb862d7261e788c06f3c45edd74403d",
-  "short": "7fd615b",
+  "commit": "80bf01f739ff3568d4f5797ec6304b6cf4f4d798",
+  "short": "80bf01f",
   "target": "current",
-  "message": "fix(compose): CHAOS-1488 gate --restart emission behind runtime capability probe (#151)",
-  "published_at": "2026-05-08T16:15:05.443641+00:00"
+  "message": "fix(compose): CHAOS-1491 honor service.container_name in waitForCondition (#152)",
+  "published_at": "2026-05-08T18:00:08.654413+00:00"
 }
