@@ -424,6 +424,7 @@ struct ContainerCreateRouteTests {
             throw Self.unsupported("createVolume")
         }
         func removeVolume(name: String) async throws { throw Self.unsupported("removeVolume") }
+        func inspectVolume(name: String) async throws -> RuntimeVolume { throw Self.unsupported("inspectVolume") }
         func listSecrets() async throws -> [RuntimeSecret] { throw Self.unsupported("listSecrets") }
         func createSecret(spec: RuntimeCreateSecretSpec) async throws -> RuntimeSecret {
             throw Self.unsupported("createSecret")

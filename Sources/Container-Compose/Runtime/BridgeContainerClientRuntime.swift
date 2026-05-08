@@ -901,6 +901,10 @@ extension BridgeContainerClientRuntime {
         try await RuntimeVolumeClient.remove(name: name)
     }
 
+    public func inspectVolume(name: String) async throws -> RuntimeVolume {
+        try await RuntimeVolumeClient.inspectRuntime(name: name)
+    }
+
     // MARK: Secrets
 
     /// The `apple/container` XPC client has no secret management API surface.
