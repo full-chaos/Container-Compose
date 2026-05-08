@@ -60,6 +60,12 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     @Flag(name: .long, help: "Do not use cache")
     var noCache: Bool = false
 
+    /// CHAOS-1492: opt-in flag to recreate every project container even when
+    /// its existing snapshot matches the compose spec. Mirrors
+    /// `docker compose up --force-recreate`.
+    @Flag(name: .long, help: "Recreate containers even if their configuration matches.")
+    var forceRecreate: Bool = false
+
     @Option(name: [.long], help: "Specify a profile to enable. Can be specified multiple times.")
     var profile: [String] = []
 
@@ -94,6 +100,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// retaining metadata for config-drift warnings.
     var existingNamedVolumeRegistryCache: [String: RuntimeVolume] = [:]
     var existingNamedVolumeRegistryCacheLoaded: Bool = false
+
+    /// CHAOS-1492: per-service adoption decisions, populated by
+    /// `resolveAdoption(_:)` at the top of `run()`. Consulted by
+    /// `configService(...)` to short-circuit the spawn step for adopted
+    /// services (they're already running; we just rebuild env / DNS state).
+    /// `internal` so the static suite can populate fixtures directly.
+    var adoptionDecisions: [String: AdoptionDecision] = [:]
 
     private static let availableContainerConsoleColors: Set<NamedColor> = [
         .blue, .cyan, .magenta, .lightBlack, .lightBlue, .lightCyan, .lightYellow, .yellow, .lightGreen, .green,
@@ -132,8 +145,16 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             return
         }
 
-        // Stop Services
-        try await stopOldStuff(services, remove: true)
+        // CHAOS-1492: adopt-by-default. Probe each service's effective
+        // container name; only stop+delete containers flagged for
+        // recreation (image divergence v1 or `--force-recreate`).
+        // Adopted containers are reused as-is, then polled via
+        // `waitUntilServiceIsRunning` and re-registered for env / DNS
+        // resolution. The `stopOldStuff` helper is preserved for callers
+        // that genuinely want a teardown sweep (e.g. recovery paths in
+        // `Compose+VolumeMigration.swift`).
+        adoptionDecisions = try await resolveAdoption(services)
+        try await applyRecreations(services, decisions: adoptionDecisions)
 
         // Process top-level networks
         // This creates named networks defined in the docker-compose.yml
@@ -545,10 +566,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             return
         }
 
-        let imageToRun = try await resolveServiceImage(service, serviceName: serviceName)
-
-        printDeployDiagnostic(service: service, serviceName: serviceName)
-
+        // CHAOS-1492: containerName resolution must happen before the
+        // adoption gate so it's available to the wait/IP/DNS rebuild path
+        // for adopted services as well as the spawn path for create /
+        // recreate.
         let containerName: String
         if let explicitContainerName = service.container_name {
             containerName = explicitContainerName
@@ -557,18 +578,31 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             containerName = "\(projectName)-\(serviceName)"
         }
 
-        let runCommandArgs = try await assembleRunArgs(
-            service: service,
-            serviceName: serviceName,
-            containerName: containerName,
-            imageToRun: imageToRun,
-            projectName: projectName,
-            from: dockerCompose
-        )
+        // CHAOS-1492: skip the spawn for adopted services. Their existing
+        // process is already running; we just need to rebuild downstream
+        // env-var and DNS-zone state so peer services can resolve them.
+        // `waitUntilServiceIsRunning` runs in both branches; on an
+        // already-running container its first poll returns immediately.
+        let isAdopting = (adoptionDecisions[serviceName] == .adopt)
 
-        printNetworksDiagnostic(service: service, serviceName: serviceName)
+        if !isAdopting {
+            let imageToRun = try await resolveServiceImage(service, serviceName: serviceName)
 
-        launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
+            printDeployDiagnostic(service: service, serviceName: serviceName)
+
+            let runCommandArgs = try await assembleRunArgs(
+                service: service,
+                serviceName: serviceName,
+                containerName: containerName,
+                imageToRun: imageToRun,
+                projectName: projectName,
+                from: dockerCompose
+            )
+
+            printNetworksDiagnostic(service: service, serviceName: serviceName)
+
+            launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
+        }
 
         let resolvedIP: String?
         do {
