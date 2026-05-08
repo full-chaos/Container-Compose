@@ -1,0 +1,8 @@
+{
+  "branch": "chris/cc-test-prefix-sweep",
+  "commit": "1b11feb006a65d98666970db9f8c6618f44b4bce",
+  "short": "1b11feb",
+  "target": "1b11feb",
+  "message": "fix(tests): sweep cc-test- prefix + RunnerEnvironment wrap across 4 ComposeDown integration suites",
+  "published_at": "2026-05-08T18:41:41.482109+00:00"
+}
