@@ -137,12 +137,16 @@ public enum EmbeddedDNSSidecar {
 
     /// Provision and launch the per-project CoreDNS sidecar.
     ///
-    /// 1. Computes `configRoot = ~/.container-compose/<project>/dns/` and
+    /// 1. CHAOS-1490: probe the runtime for a pre-existing sidecar with the same
+    ///    name (e.g. one orphaned by a previous failed `up`); if found, stop +
+    ///    delete it before relaunching so apple/container's `container run` does
+    ///    not error out with `already exists`. Mirrors `ComposeUp.stopOldStuff`.
+    /// 2. Computes `configRoot = ~/.container-compose/<project>/dns/` and
     ///    `zones/` underneath.
-    /// 2. Writes the initial `Corefile` and an empty `<project>.zone` via
+    /// 3. Writes the initial `Corefile` and an empty `<project>.zone` via
     ///    `CoreDNSConfig`. Both writes are atomic (tmp + rename).
-    /// 3. Issues the `container run` argv via the supplied `runner`.
-    /// 4. Polls `clientProvider.get(id:)` until the snapshot is `.running`
+    /// 4. Issues the `container run` argv via the supplied `runner`.
+    /// 5. Polls `clientProvider.get(id:)` until the snapshot is `.running`
     ///    AND every requested network has an attachment (30 s timeout, 0.5 s
     ///    poll — matches `ComposeUp.waitUntilServiceIsRunning` cadence).
     public static func start(
@@ -157,6 +161,27 @@ public enum EmbeddedDNSSidecar {
         }
 
         let containerName = sidecarContainerName(for: projectName)
+
+        // CHAOS-1490: idempotent create. apple/container's `container run --name <id>`
+        // does not adopt — it errors with `container with id <id> already exists`. A
+        // sidecar orphaned by a previous failed `up` (no `--rm` cleanup ran because
+        // the parent process aborted) blocks every subsequent `up` until the user
+        // manually deletes it. Mirror `ComposeUp.stopOldStuff` here: probe, then
+        // stop + delete (best-effort) before relaunching.
+        if let existing = try? await clientProvider.get(id: containerName) {
+            print("Found existing sidecar '\(containerName)' — replacing")
+            do {
+                try await clientProvider.stop(id: existing.id, opts: .default)
+            } catch {
+                print("Error stopping existing sidecar: \(error)")
+            }
+            do {
+                try await clientProvider.delete(id: existing.id, force: false)
+            } catch {
+                print("Error deleting existing sidecar: \(error)")
+            }
+        }
+
         let configRoot = configRootPath(for: projectName)
         let zonesDir = zonesDirectory(within: configRoot)
         let corefilePath = corefilePath(within: configRoot)
