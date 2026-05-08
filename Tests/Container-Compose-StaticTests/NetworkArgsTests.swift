@@ -315,7 +315,7 @@ struct NetworkArgsTests {
         let (result, output) = try captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--hostname"))
         #expect(!result.contains("myhostname"))
-        #expect(output.contains("Note: 'hostname' is parsed but not supported by Apple container; ignored."))
+        #expect(output.contains("Note: 'hostname' is parsed but not yet implemented (CHAOS-1474). The container's runtime --name remains the only locally-set hostname."))
     }
 
     @Test("Regression: nil fields produce no args")

@@ -78,6 +78,8 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
         // removal on top.
         try await stopOldStuff(services, remove: true)
 
+        await stopEmbeddedDNSResolverIfFullProjectDown()
+
         await removeProjectNetworks(
             from: dockerCompose,
             targetedServiceNames: Set(services.map(\.serviceName)),
@@ -296,6 +298,23 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
                 .string
             let secretsDir = URL(filePath: secretsDirPath, directoryHint: .isDirectory)
             try? FileManager.default.removeItem(at: secretsDir)
+        }
+    }
+
+    private func stopEmbeddedDNSResolverIfFullProjectDown() async {
+        guard self.services.isEmpty, let projectName else { return }
+        let handle = SidecarHandle.forCleanup(projectName: projectName)
+        guard (try? await ContainerClientEnvironment.current.get(id: handle.containerName)) != nil else {
+            return
+        }
+        do {
+            try await EmbeddedDNSSidecar.stop(
+                handle: handle,
+                runner: RunnerEnvironment.current
+            )
+            print("Stopped embedded DNS resolver: \(handle.containerName)")
+        } catch {
+            print("Error stopping embedded DNS resolver: \(error)")
         }
     }
 

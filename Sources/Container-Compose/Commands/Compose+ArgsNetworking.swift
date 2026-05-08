@@ -17,10 +17,9 @@
 import Foundation
 
 extension ComposeUp {
-    /// Networking, DNS, and host/port flags: ports, networks (string list
-    /// form), hostname. Phase 2C / 3B add dns / dns_opt / dns_search /
-    /// extra_hosts / domainname / expose / mac_address / network_mode / ipc /
-    /// pid / uts and the service-level networks object form with aliases.
+    /// Networking, DNS, and host/port flags: ports, service networks, embedded
+    /// resolver DNS injection, and runtime-supported DNS flags. Hostname,
+    /// extra_hosts, and several Linux namespace flags remain warn-skipped.
     enum NetworkingArgs {
         static func build(_ ctx: ArgsContext) -> [String] {
             var args: [String] = []
@@ -34,20 +33,18 @@ extension ComposeUp {
             }
 
             // --network … (list or map form of service-level networks)
+            var embeddedDNSArgs: [String] = []
             if let serviceNetworks = ctx.service.networks {
                 for (name, config) in serviceNetworks.entries {
                     let resolved = resolveVariable(name, with: ctx.environmentVariables)
                     // Prefer the explicit name from the top-level definition if set.
                     let networkToConnect = ctx.dockerCompose.networks?[name]??.name ?? resolved
                     args.append(contentsOf: ["--network", networkToConnect])
-                    // Aliases: parsed, but Apple container does not expose --alias
-                    // on `container run`.
-                    if let aliases = config.aliases, !aliases.isEmpty {
-                        warnUnsupportedRuntimeFieldOnce(
-                            "service.networks.aliases",
-                            "Note: 'networks.<name>.aliases' for service networks is parsed but not supported by Apple container; ignored."
-                        )
+
+                    if let sidecarIP = ctx.dnsSidecar?.perNetworkIPs[networkToConnect] {
+                        embeddedDNSArgs.append(contentsOf: ["--dns", sidecarIP])
                     }
+
                     // ipv4_address: parsed, but Apple container does not expose
                     // standalone --ip on `container run`.
                     if config.ipv4_address != nil {
@@ -61,11 +58,16 @@ extension ComposeUp {
                 }
             }
 
+            if !embeddedDNSArgs.isEmpty, let dnsSidecar = ctx.dnsSidecar {
+                args.append(contentsOf: embeddedDNSArgs)
+                args.append(contentsOf: ["--dns-search", dnsSidecar.searchDomain])
+            }
+
             // apple/container does not accept --hostname (verified Tier 0 R2 audit).
             if ctx.service.hostname != nil {
                 warnUnsupportedRuntimeFieldOnce(
                     "service.hostname",
-                    "Note: 'hostname' is parsed but not supported by Apple container; ignored."
+                    "Note: 'hostname' is parsed but not yet implemented (CHAOS-1474). The container's runtime --name remains the only locally-set hostname."
                 )
             }
 
@@ -99,7 +101,7 @@ extension ComposeUp {
                 if !extraHosts.isEmpty {
                     warnUnsupportedRuntimeFieldOnce(
                         "service.extra_hosts",
-                        "Note: 'extra_hosts' is parsed but not supported by Apple container; ignored."
+                        "Note: 'extra_hosts' is parsed but not yet implemented (CHAOS-1474). Use service.networks.<net>.aliases for project-internal name binding."
                     )
                 }
             }
