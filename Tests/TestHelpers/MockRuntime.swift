@@ -498,6 +498,13 @@ extension MockRuntime {
         volumes.removeValue(forKey: name)
     }
 
+    public func inspectVolume(name: String) async throws -> RuntimeVolume {
+        guard let volume = volumes[name] else {
+            throw RuntimeError.notFound(id: name)
+        }
+        return volume
+    }
+
     // MARK: Secrets
 
     public func listSecrets() async throws -> [RuntimeSecret] {

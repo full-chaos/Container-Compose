@@ -58,6 +58,10 @@ enum RuntimeVolumeClient {
         }
     }
 
+    static func inspectRuntime(name: String) async throws -> RuntimeVolume {
+        translate(try await inspect(name: name))
+    }
+
     private static func translate(_ volume: ContainerResource.Volume) -> RuntimeVolume {
         RuntimeVolume(
             name: volume.name,

@@ -318,6 +318,11 @@ public struct RemoteRuntime: Runtime, Sendable {
         _ = try await requestNoContent(.delete, path: "/volumes/\(name)")
     }
 
+    public func inspectVolume(name: String) async throws -> RuntimeVolume {
+        let response: APIVolumeSummary = try await requestJSON(.get, path: "/volumes/\(name)")
+        return RuntimeVolume(name: response.name, driver: response.driver, labels: response.labels, createdAt: response.createdAt)
+    }
+
     public func listSecrets() async throws -> [RuntimeSecret] {
         let response: [APISecretSummary] = try await requestJSON(.get, path: "/secrets")
         return response.map { RuntimeSecret(name: $0.name, labels: $0.labels, createdAt: $0.createdAt) }

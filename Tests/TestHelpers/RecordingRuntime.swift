@@ -50,6 +50,7 @@ public actor RecordingRuntime: Runtime {
         case listVolumes
         case createVolume(name: String)
         case removeVolume(name: String)
+        case inspectVolume(name: String)
         case listSecrets
         case createSecret(name: String)
         case removeSecret(name: String)
@@ -334,6 +335,14 @@ public actor RecordingRuntime: Runtime {
         guard stubbedVolumes.contains(where: { $0.name == name }) else {
             throw RuntimeError.notFound(id: name)
         }
+    }
+
+    public func inspectVolume(name: String) async throws -> RuntimeVolume {
+        entries.append(.inspectVolume(name: name))
+        guard let volume = stubbedVolumes.first(where: { $0.name == name }) else {
+            throw RuntimeError.notFound(id: name)
+        }
+        return volume
     }
 
     public func listSecrets() async throws -> [RuntimeSecret] {

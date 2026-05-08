@@ -106,6 +106,9 @@ extension ComposeUp {
         let runtimeVolumeSource = if let overrideRuntimeVolumeSource = ProcessInfo.processInfo.environment[Self.testNamedVolumeSourceOverrideEnv], !overrideRuntimeVolumeSource.isEmpty {
             overrideRuntimeVolumeSource
         } else {
+            // Direct RuntimeVolumeClient call (not RuntimeEnvironment) — uses
+            // ContainerResource.Volume.source for filesystem-path migration which
+            // is intentionally outside the runtime-neutral RuntimeVolume abstraction.
             try await RuntimeVolumeClient.inspect(name: actualVolumeName).source
         }
 
@@ -162,7 +165,7 @@ extension ComposeUp {
         if preparedNamedVolumes.insert(volumeKey).inserted {
             if volumeConfig?.external?.isExternal == true {
                 do {
-                    _ = try await RuntimeVolumeClient.inspect(name: actualVolumeName)
+                    _ = try await RuntimeEnvironment.current.inspectVolume(name: actualVolumeName)
                 } catch RuntimeError.notFound {
                     throw ComposeError.externalVolumeNotFound(actualVolumeName)
                 }

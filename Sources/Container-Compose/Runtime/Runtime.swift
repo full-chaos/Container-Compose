@@ -181,6 +181,12 @@ public protocol Runtime: Sendable {
     /// no volume with that name exists.
     func removeVolume(name: String) async throws
 
+    /// Inspect a single volume by name. Conformers throw `RuntimeError.notFound(id:)`
+    /// if no volume with that name exists. Used by external-volume verification
+    /// (compose `volumes.<name>.external: true`) to confirm the volume already
+    /// exists outside compose's lifecycle.
+    func inspectVolume(name: String) async throws -> RuntimeVolume
+
     // MARK: Secrets
 
     /// Return all secret metadata visible to this runtime. Secret values are
