@@ -1,0 +1,2778 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
+      
+      
+        <meta name="author" content="Container-Compose contributors">
+      
+      
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/upstream-proposals/network-alias-dns/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.23">
+    
+    
+      
+        <title>[Request]: Per-network DNS aliases for container run (--network <net>,alias=<name>) - Container-Compose</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.84d31ad4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#request-per-network-dns-aliases-for-container-run-network-netaliasname" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Container-Compose" class="md-header__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Container-Compose
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              [Request]: Per-network DNS aliases for container run (--network &lt;net&gt;,alias=&lt;name&gt;)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../quickstart/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Quickstart
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli-reference/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  CLI Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../tutorials/healthchecked-redis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../feature-parity/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Container-Compose" class="md-nav__button md-logo" aria-label="Container-Compose" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Container-Compose
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/full-chaos/container-compose" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    full-chaos/container-compose
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    CLI Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            CLI Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lifecycle
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Lifecycle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/up/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    up
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/down/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    down
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/stop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    stop
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/restart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    restart
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/create/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    create
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/kill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    kill
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/rm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    rm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Inspection
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Inspection
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ps
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/ls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ls
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    logs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/top/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    top
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/port/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    port
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    events
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    config
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Build & Run
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Build & Run
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    build
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/exec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    exec
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    watch
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    pull
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    push
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Daemon & System
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Daemon & System
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    serve
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/api-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API clients
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/short-flag-inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Short flag inventory
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tutorials
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Tutorials
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-redis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Redis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/healthchecked-web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Healthchecked Web
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Profiles
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/resource-limits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Resource limits
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/configs-and-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configs and Secrets
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/multi-network-with-aliases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Multi-network with aliases
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/logging-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging driver
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/build-with-target/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Build with target
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guides
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migration from Docker Compose
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Limitations and Gotchas
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/error-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Error codes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runtime protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../feature-parity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Feature Parity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upstream-fork-status/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upstream / Fork Status
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Compose-spec Coverage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Documentation Standards
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Motivation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#current-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Current Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#probe-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      Probe transcript
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposed-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      Proposed Surface
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposed Surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cli-grammar" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI grammar
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation rules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-runtime-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      API / runtime change
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API / runtime change">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allocator-many-to-many-name-ip" class="md-nav__link">
+    <span class="md-ellipsis">
+      Allocator: many-to-many name ↔ IP
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dns-resolver-conditional-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      DNS resolver: conditional change
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ipv6-nodata-preservation" class="md-nav__link">
+    <span class="md-ellipsis">
+      IPv6 / NODATA preservation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cli-flag-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      CLI flag parser
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Observability
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproduction-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reproduction Steps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      Test Plan
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backward-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backward Compatibility
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trailing-dot-fqdn-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      Trailing-dot / FQDN Handling
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compose-field-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compose-Field Mapping
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#out-of-scope-for-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Out of Scope for v1
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternatives-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      Alternatives Considered
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#downstream-consumer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Downstream Consumer
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      References
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/upstream-proposals/network-alias-dns.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="request-per-network-dns-aliases-for-container-run-network-netaliasname">[Request]: Per-network DNS aliases for <code>container run</code> (<code>--network &lt;net&gt;,alias=&lt;name&gt;</code>)<a class="headerlink" href="#request-per-network-dns-aliases-for-container-run-network-netaliasname" title="Permanent link">&para;</a></h1>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p><code>container run</code> currently registers exactly one DNS name per container: the value
+passed to <code>--name</code>. There is no way to attach additional DNS aliases to a container
+on a specific network at launch time. This makes it impossible for orchestration
+tools that follow the <a href="https://github.com/compose-spec/compose-spec/blob/master/spec.md#networking">Compose spec</a>
+to provide correct peer-name DNS resolution without colliding on the globally-unique
+<code>--name</code> namespace.</p>
+<p>This request proposes extending the existing <code>--network</code> comma-suboption grammar
+(which already accepts <code>mac=</code> and <code>mtu=</code>) with a repeatable <code>alias=&lt;name&gt;</code> suboption.
+The change is additive: no existing flag changes meaning, no new top-level flag is
+introduced, and the DNS resolution path in <code>ContainerDNSHandler</code> requires no
+modification because it already resolves by queried name string.</p>
+<hr />
+<h2 id="motivation">Motivation<a class="headerlink" href="#motivation" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://github.com/compose-spec/compose-spec/blob/master/spec.md#networking">Compose spec</a>
+defines <code>services.&lt;svc&gt;.networks.&lt;net&gt;.aliases[]</code> as an array of additional DNS names
+a container answers to on a specific network attachment. This is a core primitive for
+service discovery: a <code>postgres</code> container should be reachable as <code>postgres</code> from any
+peer on the same project network, regardless of what the runtime calls the container
+internally.</p>
+<p>Today, <code>apple/container</code> has no mechanism to register a second DNS name for a
+container. The only registered name is the runtime <code>--name</code>. Orchestrators that
+need to expose a service under a logical name (e.g. <code>postgres</code>, <code>redis</code>, <code>api</code>)
+while keeping the runtime name unique across all projects (e.g.
+<code>myproject-postgres-1</code>) are stuck: they cannot satisfy both constraints
+simultaneously.</p>
+<p>This gap blocks full Compose interoperability on macOS. Docker Compose treats
+per-network aliases as a first-class networking primitive, and the Compose
+spec requires them. Implementing alias support in <code>apple/container</code> would
+unblock this for any Compose-compatible tool targeting
+the runtime.</p>
+<hr />
+<h2 id="current-behavior">Current Behavior<a class="headerlink" href="#current-behavior" title="Permanent link">&para;</a></h2>
+<p>Verified against <code>container CLI 0.12.3-38-g58d5d32</code>.</p>
+<p>The recent peer-name DNS fix in this build correctly resolves a container's
+<code>--name</code> as <code>&lt;name&gt;.&lt;dns-domain&gt;</code> (default domain: <code>test</code>). That fix is the
+foundation this request extends.</p>
+<h3 id="probe-transcript">Probe transcript<a class="headerlink" href="#probe-transcript" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Create a shared network</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>container<span class="w"> </span>network<span class="w"> </span>create<span class="w"> </span>--subnet<span class="w"> </span><span class="m">10</span>.99.99.0/24<span class="w"> </span>cc-net
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Start a container named &quot;alpha&quot; — no alias registered for &quot;postgres&quot;</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>alpha<span class="w"> </span>--network<span class="w"> </span>cc-net<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>docker.io/library/alpine:latest<span class="w"> </span>sleep<span class="w"> </span><span class="m">100</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># Query from a peer on the same network</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>--name<span class="w"> </span>probe<span class="w"> </span>--network<span class="w"> </span>cc-net<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span>docker.io/library/alpine:latest<span class="w"> </span>getent<span class="w"> </span>hosts<span class="w"> </span>postgres
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Result: NXDOMAIN — &quot;postgres&quot; is not registered</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="c1">#         &quot;alpha.test&quot; resolves correctly (PROBE 1 ✅)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1">#         &quot;postgres&quot; does not (PROBE 2 ❌)</span>
+</span></code></pre></div>
+<p><strong>Additional probes (all against <code>0.12.3-38-g58d5d32</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Probe</th>
+<th style="text-align: left;">Approach</th>
+<th style="text-align: left;">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">Peer lookup by <code>--name</code> (<code>alpha.test</code>)</td>
+<td style="text-align: left;">✅ A + AAAA answered</td>
+</tr>
+<tr>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">Bare service name (<code>postgres</code>) from peer</td>
+<td style="text-align: left;">❌ NXDOMAIN</td>
+</tr>
+<tr>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;"><code>--dns-domain compose.local</code> on querying container</td>
+<td style="text-align: left;">❌ Even <code>alpha.test</code> fails — observed behavior is consistent with the resolver appending the client's search domain and not retrying the bare label (see <a href="#trailing-dot--fqdn-handling">Trailing-dot / FQDN handling</a>)</td>
+</tr>
+<tr>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;"><code>--aux-address HOSTNAME=IPV4</code> on <code>network create</code></td>
+<td style="text-align: left;">❌ IP reservation only; does NOT register DNS</td>
+</tr>
+<tr>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;"><code>--name postgres</code> (rename to bare service name)</td>
+<td style="text-align: left;">✅ DNS works, but <code>--name</code> is globally unique → second project collides: <code>Error: container with id postgres already exists</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="proposed-surface">Proposed Surface<a class="headerlink" href="#proposed-surface" title="Permanent link">&para;</a></h2>
+<h3 id="cli-grammar">CLI grammar<a class="headerlink" href="#cli-grammar" title="Permanent link">&para;</a></h3>
+<p>Extend the existing <code>--network</code> comma-suboption grammar with a repeatable
+<code>alias=&lt;name&gt;</code> key. The grammar already accepts <code>mac=</code> and <code>mtu=</code>; this adds
+one more optional key.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>--network &lt;name&gt;[,mac=&lt;addr&gt;][,mtu=&lt;bytes&gt;][,alias=&lt;name&gt;]...
+</span></code></pre></div>
+<p><code>alias=</code> is repeatable. A container attached to two networks can carry different
+aliases on each:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--name<span class="w"> </span>myproject-postgres-1<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--network<span class="w"> </span>frontend,alias<span class="o">=</span>postgres<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--network<span class="w"> </span>backend,alias<span class="o">=</span>postgres,alias<span class="o">=</span>db<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>docker.io/library/postgres:16
+</span></code></pre></div>
+<p>This registers:
+- <code>postgres</code> on <code>frontend</code> (resolves to the container's IP on that network)
+- <code>postgres</code> and <code>db</code> on <code>backend</code> (resolves to the container's IP on that network)
+- <code>myproject-postgres-1.test</code> globally (existing behavior, unchanged)</p>
+<h3 id="validation-rules">Validation rules<a class="headerlink" href="#validation-rules" title="Permanent link">&para;</a></h3>
+<p>Alias values are validated at CLI parse time:</p>
+<ul>
+<li><strong>Non-empty</strong>: <code>--network cc-net,alias=</code> is rejected with <code>alias value must not be empty</code>.</li>
+<li><strong>DNS-label format</strong>: 1-63 octets per label, total ≤ 253 octets, RFC 1035 character set (letters, digits, hyphens; dots only between labels for internal qualification).</li>
+<li><strong>Reserved characters</strong>: alias values must not contain <code>,</code> or <code>=</code> (these would conflict with the comma-suboption grammar).</li>
+</ul>
+<p>Duplication semantics:</p>
+<ul>
+<li><strong>Same alias twice on one attachment</strong> (<code>alias=foo,alias=foo</code>) is silently de-duplicated to one registration.</li>
+<li><strong>Same alias from two attachments on the same network</strong> is intentional — this is how Compose models scaled services; both attachments register and DNS returns multi-A.</li>
+<li><strong>Duplicate primary <code>--name</code></strong> collisions remain rejected exactly as today; the runtime's existing global <code>--name</code> invariant is unchanged.</li>
+</ul>
+<h3 id="api-runtime-change">API / runtime change<a class="headerlink" href="#api-runtime-change" title="Permanent link">&para;</a></h3>
+<p>The change touches three layers, with the bulk of the complexity in the
+name-registration data model.</p>
+<h4 id="allocator-many-to-many-name-ip">Allocator: many-to-many name ↔ IP<a class="headerlink" href="#allocator-many-to-many-name-ip" title="Permanent link">&para;</a></h4>
+<p><a href="https://github.com/apple/container/blob/main/Sources/Services/ContainerNetworkService/Server/AttachmentAllocator.swift#L20-L42"><code>AttachmentAllocator</code></a>
+today stores a single <code>private var hostnames: [String: UInt32]</code> map (one IP
+index per registered name; the same name on a duplicate <code>allocate(hostname:)</code>
+call returns the existing index). The Compose alias contract requires a
+strictly more expressive shape: <strong>many-to-many DNS registration</strong> — each IP
+index can have multiple registered names (one container with
+<code>--network mynet,alias=postgres,alias=db</code>), <strong>and</strong> each name can resolve to
+multiple IP indices (three replicas all registering <code>alias=worker</code>). The
+latter direction is what produces multi-A answers for scaled Compose
+deployments.</p>
+<p>Concretely, the registration table (or whatever per-network structure
+replaces the current allocator state) needs to support:</p>
+<ol>
+<li>Accepting an <code>aliases: [String]</code> parameter alongside <code>hostname: String</code> at
+   allocation time, scoped to a specific network attachment.</li>
+<li>Storing both directions: <code>name -&gt; set&lt;index&gt;</code> and <code>index -&gt; set&lt;name&gt;</code>.</li>
+<li>On deallocation, removing only the exiting attachment's <code>(name, index)</code>
+   memberships and leaving any name registered while at least one other index
+   still references it. <strong>Critical for the scaled-service case:</strong> when one
+   <code>worker</code> replica exits, peers must keep resolving <code>worker</code> to the surviving
+   replicas.</li>
+<li>Per-network scoping: <code>alias=postgres</code> on <code>frontend</code> and <code>alias=postgres</code>
+   on <code>backend</code> are distinct registrations stored in distinct per-network
+   tables; they never cross-leak.</li>
+</ol>
+<h4 id="dns-resolver-conditional-change">DNS resolver: conditional change<a class="headerlink" href="#dns-resolver-conditional-change" title="Permanent link">&para;</a></h4>
+<p><a href="https://github.com/apple/container/blob/main/Sources/APIServer/ContainerDNSHandler.swift#L78-L81"><code>ContainerDNSHandler.answerHost</code></a>
+calls <code>networkService.lookup(hostname: question.name)</code> and returns a single
+<code>ResourceRecord</code>. For <strong>single-target aliases</strong> (one <code>alias=&lt;name&gt;</code> mapped to
+exactly one IP), this path needs no change — the existing string-keyed lookup
+finds the registration and answers exactly as for a primary <code>--name</code>. For
+<strong>shared aliases</strong> (the scaled-service case), the resolver is extended to
+return one A record per registered IP: <code>lookup(hostname:)</code> returns a
+collection of indices and <code>answerHost</code> (plus <code>answerHost6</code> for AAAA) emits one
+resource record per address. No record-rotation policy is needed — standard
+glibc/musl resolvers already round-robin multi-A answers. Alias TTLs follow
+the same default the existing handler uses for <code>--name</code> answers.</p>
+<h4 id="ipv6-nodata-preservation">IPv6 / NODATA preservation<a class="headerlink" href="#ipv6-nodata-preservation" title="Permanent link">&para;</a></h4>
+<p>A and AAAA registrations share the same name table; the <code>hostnameExists</code>
+check used by <a href="https://github.com/apple/container/blob/main/Sources/APIServer/ContainerDNSHandler.swift#L41-L52"><code>answerHost6</code></a>
+consults the same table the alias path writes to. The existing musl-libc
+NODATA-on-AAAA contract is therefore preserved without alias-specific logic.</p>
+<h4 id="cli-flag-parser">CLI flag parser<a class="headerlink" href="#cli-flag-parser" title="Permanent link">&para;</a></h4>
+<p>The <code>--network</code> value parser (the code that already accepts <code>mac=…,mtu=…</code>)
+gains a repeatable <code>alias=&lt;name&gt;</code> key. The proposal specifies the wire
+grammar; concrete placement of the parser is up to maintainers and lives
+somewhere under
+<a href="https://github.com/apple/container/tree/main/Sources/Services/ContainerAPIService/Client"><code>Sources/Services/ContainerAPIService/Client/</code></a>.</p>
+<h4 id="observability">Observability<a class="headerlink" href="#observability" title="Permanent link">&para;</a></h4>
+<p>A passing implementation extends the per-network-attachment view in
+<code>container inspect</code> to list registered aliases alongside the existing
+<code>hostname</code> field. This makes alias state debuggable without reading internal
+runtime data.</p>
+<hr />
+<h2 id="reproduction-steps">Reproduction Steps<a class="headerlink" href="#reproduction-steps" title="Permanent link">&para;</a></h2>
+<p>Paste these commands on any macOS host with <code>container CLI 0.12.3-38-g58d5d32</code>
+(or later) to confirm the current gap:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Setup</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># (idempotent cleanup of any prior probe artifacts; safe to ignore errors)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>container<span class="w"> </span>stop<span class="w"> </span>alpha<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>container<span class="w"> </span>delete<span class="w"> </span>alpha<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>container<span class="w"> </span>network<span class="w"> </span>delete<span class="w"> </span>cc-net<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">true</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>container<span class="w"> </span>network<span class="w"> </span>create<span class="w"> </span>--subnet<span class="w"> </span><span class="m">10</span>.99.99.0/24<span class="w"> </span>cc-net
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1"># Start a container — no alias for &quot;postgres&quot; exists</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">  </span>--name<span class="w"> </span>alpha<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">  </span>--network<span class="w"> </span>cc-net<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">  </span>docker.io/library/alpine:latest<span class="w"> </span>sleep<span class="w"> </span><span class="m">100</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="c1"># Confirm gap: &quot;postgres&quot; is NXDOMAIN</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">  </span>--name<span class="w"> </span>probe<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">  </span>--network<span class="w"> </span>cc-net<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="w">  </span>docker.io/library/alpine:latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="w">  </span>getent<span class="w"> </span>hosts<span class="w"> </span>postgres
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="c1"># Expected today: exit 2, no output (NXDOMAIN)</span>
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="c1"># Cleanup</span>
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>container<span class="w"> </span>stop<span class="w"> </span>alpha
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>container<span class="w"> </span>network<span class="w"> </span>delete<span class="w"> </span>cc-net
+</span></code></pre></div>
+<p>After this FR lands, the same workflow with the proposed flag:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>container<span class="w"> </span>network<span class="w"> </span>create<span class="w"> </span>--subnet<span class="w"> </span><span class="m">10</span>.99.99.0/24<span class="w"> </span>cc-net
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--name<span class="w"> </span>alpha<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>--network<span class="w"> </span>cc-net,alias<span class="o">=</span>postgres<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span>docker.io/library/alpine:latest<span class="w"> </span>sleep<span class="w"> </span><span class="m">100</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>container<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">  </span>--name<span class="w"> </span>probe<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">  </span>--network<span class="w"> </span>cc-net<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">  </span>docker.io/library/alpine:latest<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span>getent<span class="w"> </span>hosts<span class="w"> </span>postgres
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># Expected after FR: exit 0, an address in 10.99.99.0/24 returned for `postgres`</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>container<span class="w"> </span>stop<span class="w"> </span>alpha
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>container<span class="w"> </span>network<span class="w"> </span>delete<span class="w"> </span>cc-net
+</span></code></pre></div>
+<hr />
+<h2 id="test-plan">Test Plan<a class="headerlink" href="#test-plan" title="Permanent link">&para;</a></h2>
+<p>A passing implementation would be covered by tests like the following (suite layout and conventions are left to maintainers):</p>
+<ol>
+<li>
+<p><strong>Unit — <code>AttachmentAllocator</code> multi-alias registration</strong>
+   <code>allocate(hostname: "alpha", aliases: ["postgres", "db"])</code> registers all three
+   names against this attachment's index. At the allocator/registration level,
+   <code>AttachmentAllocator.lookup(hostname:)</code> (or whatever public surface the
+   allocator exposes) returns the same index for <code>"alpha"</code>, <code>"postgres"</code>, and <code>"db"</code>.</p>
+</li>
+<li>
+<p><strong>Unit — CLI flag parsing</strong>
+   <code>--network cc-net,alias=foo,alias=bar</code> parses into a network attachment with
+   <code>name = "cc-net"</code> and <code>aliases = ["foo", "bar"]</code>. Single <code>alias=</code> and absent
+   <code>alias=</code> are also covered.</p>
+</li>
+<li>
+<p><strong>Integration — peer resolution via alias</strong>
+   Two containers on a shared network. Container A launched with
+   <code>--network cc-net,alias=postgres</code>. Container B's <code>getent hosts postgres</code>
+   resolves to container A's IP on <code>cc-net</code>.</p>
+</li>
+<li>
+<p><strong>Integration — per-network alias scoping</strong>
+   Container A attached to <code>net1</code> with <code>alias=svc</code> and to <code>net2</code> with
+   <code>alias=backend</code>. A peer on <code>net1</code> resolves <code>svc</code> to A's <code>net1</code> IP. A peer
+   on <code>net2</code> resolves <code>backend</code> to A's <code>net2</code> IP. Neither alias leaks across
+   networks.</p>
+</li>
+<li>
+<p><strong>Integration — multi-container same alias (scale case)</strong>
+   Three containers each launched with <code>--network cc-net,alias=worker</code>. A DNS
+   query for <code>worker</code> from a peer returns multiple A records, one per container.
+   This validates the 1:N IP-per-alias direction (multiple containers sharing
+   one alias name).</p>
+</li>
+<li>
+<p><strong>Integration — musl libc NODATA preservation for aliases</strong>
+   Container A launched with <code>--network cc-net,alias=postgres</code>. From an Alpine
+   (musl libc) peer, query <code>postgres</code> for AAAA: if the alias has no IPv6
+   address, the response must be NODATA (return code <code>noError</code>, empty answers),
+   NOT NXDOMAIN. This preserves the existing behavior at
+   <a href="https://github.com/apple/container/blob/main/Sources/APIServer/ContainerDNSHandler.swift#L41-L52"><code>ContainerDNSHandler.swift</code> L41-L52</a>,
+   which the file's own comment notes is required because "musl treats NXDOMAIN
+   on AAAA as 'domain doesn't exist' and fails DNS resolution entirely." Compose
+   stacks heavily use Alpine-based images (<code>postgres:alpine</code>, <code>valkey/valkey:9-alpine</code>,
+   etc.), so a regression here would be very visible.</p>
+</li>
+</ol>
+<hr />
+<h2 id="backward-compatibility">Backward Compatibility<a class="headerlink" href="#backward-compatibility" title="Permanent link">&para;</a></h2>
+<p>This change is strictly additive:</p>
+<ul>
+<li>All existing <code>--network &lt;name&gt;</code> invocations continue to behave exactly as today.
+  No alias is registered unless <code>alias=</code> is explicitly provided.</li>
+<li>The default <code>--dns-domain test</code> behavior is unchanged.</li>
+<li>Containers launched without <code>alias=</code> register exactly one hostname (the <code>--name</code>
+  value), preserving today's behavior in full.</li>
+<li>No new dependencies on libnetwork, vmnet plugin variants, or any external resolver are introduced.</li>
+<li>The change is localized to the per-network registration table, the CLI flag
+  parser, and — only when shared aliases are supported — the multi-A response
+  shape in <code>lookup</code>/<code>answerHost</code>. No other subsystems are touched.</li>
+<li>The <code>mac=</code> and <code>mtu=</code> suboptions are unaffected.</li>
+<li>The existing musl libc NODATA-on-AAAA contract at
+  <a href="https://github.com/apple/container/blob/main/Sources/APIServer/ContainerDNSHandler.swift#L41-L52"><code>ContainerDNSHandler.swift</code> L41-L52</a>
+  is preserved by routing alias presence checks through the same name table
+  used by <code>answerHost</code> and <code>answerHost6</code>. If shared-alias support changes the
+  multi-record return shape of <code>lookup</code>, the AAAA <code>hostnameExists</code> check must
+  consult the same shared table to keep returning NODATA (not NXDOMAIN) when an
+  alias has an A record but no AAAA.</li>
+</ul>
+<hr />
+<h2 id="trailing-dot-fqdn-handling">Trailing-dot / FQDN Handling<a class="headerlink" href="#trailing-dot-fqdn-handling" title="Permanent link">&para;</a></h2>
+<p><strong>Open design question — input from the apple/container team is needed here.</strong></p>
+<p>Probe 3 (above) revealed a subtle interaction: when the querying container is
+launched with <code>--dns-domain compose.local</code> (a domain other than the registration
+domain <code>test</code>), even the registered <code>--name</code> fails to resolve. The resolver
+appends the client's search domain and never tries the bare label without a
+suffix. Only <code>&lt;name&gt;.test</code> (the canonical FQDN) resolves from a client whose
+<code>--dns-domain</code> matches the registration domain.</p>
+<p>This means aliases registered under the short form (e.g. <code>postgres</code>) may silently
+fail to resolve from containers whose <code>--dns-domain</code> differs from the server's
+registration domain. Three approaches exist; the right answer depends on
+apple/container's DNS architecture:</p>
+<p><strong>Option A — Register both short and FQDN forms.</strong>
+When <code>alias=postgres</code> is requested on a network whose registration domain is
+<code>test</code>, register both <code>postgres</code> and <code>postgres.test</code>. Clients querying either
+form get an answer. Downside: doubles the registration entries; may interact
+unexpectedly with search-domain appending.</p>
+<p><strong>Option B — Server-side query canonicalization.</strong>
+The DNS handler normalizes incoming queries before lookup: strip a single
+trailing dot, and when the query's suffix matches the network DNS domain
+(default <code>.test</code>), also try the bare label. A client whose resolver expands
+<code>postgres</code> to <code>postgres.test</code> (default search domain on the same network) gets
+a hit because the bare label resolves through canonicalization. A client whose
+resolver expands <code>postgres</code> to a different suffix (<code>postgres.compose.local</code>)
+still misses unless the runtime canonicalizes against alternate suffixes,
+which it cannot do without knowing the client's domain. Downside: server-side
+complexity; the canonicalization rules need clear documentation.</p>
+<p><strong>Option C — Document the constraint.</strong>
+Aliases are registered under the short form only. The runtime documents that
+alias resolution assumes the querying container's <code>--dns-domain</code> matches the
+registration domain. Orchestrators that need cross-domain resolution must
+configure <code>--dns-search</code> explicitly. Downside: silent failure for users who
+mix <code>--dns-domain</code> values.</p>
+<p>This FR does not prescribe which option to adopt. The apple/container team is
+better positioned to evaluate the DNS architecture implications. Whichever
+option is chosen, the behavior should be documented in the flag's help text.
+The Test Plan above assumes short-form-only resolution (Option C); if Apple
+chooses A or B, parallel tests for the FQDN/canonicalized form should accompany
+the change.</p>
+<hr />
+<h2 id="compose-field-mapping">Compose-Field Mapping<a class="headerlink" href="#compose-field-mapping" title="Permanent link">&para;</a></h2>
+<p>How this FR maps to Compose spec fields, and what changes in container-compose
+once the flag lands:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Compose field</th>
+<th style="text-align: left;">Today (warn-skipped)</th>
+<th style="text-align: left;">After this FR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Service name (implicit)</td>
+<td style="text-align: left;">Not registered as DNS alias</td>
+<td style="text-align: left;"><code>--network &lt;net&gt;,alias=&lt;service&gt;</code> per attachment</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>networks.&lt;net&gt;.aliases[]</code></td>
+<td style="text-align: left;">Parsed in <code>ServiceNetworkConfig.aliases</code>; warn-skipped</td>
+<td style="text-align: left;"><code>--network &lt;net&gt;,alias=&lt;a1&gt;,alias=&lt;a2&gt;</code> per attachment</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hostname</code></td>
+<td style="text-align: left;">Warn-skipped</td>
+<td style="text-align: left;">Unchanged — out of scope; local-only per Compose spec</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>extra_hosts</code></td>
+<td style="text-align: left;">Warn-skipped</td>
+<td style="text-align: left;">Unchanged — separate FR (<code>--add-host</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>container_name</code></td>
+<td style="text-align: left;">Honored as <code>--name</code></td>
+<td style="text-align: left;">Unchanged</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>scale: N</code> (multiple replicas)</td>
+<td style="text-align: left;">Each replica gets a unique <code>--name</code></td>
+<td style="text-align: left;">Each replica also gets <code>--network &lt;net&gt;,alias=&lt;service&gt;</code> → multiple A records</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="out-of-scope-for-v1">Out of Scope for v1<a class="headerlink" href="#out-of-scope-for-v1" title="Permanent link">&para;</a></h2>
+<p>The following are related but intentionally excluded from this request:</p>
+<ul>
+<li><strong><code>--add-host</code> / <code>extra_hosts</code></strong> — injects static host entries into
+  <code>/etc/hosts</code>. Different mechanism, different use case. File separately.</li>
+<li><strong><code>--hostname</code></strong> — sets the container's own hostname (visible inside the
+  container). Per the Compose spec, <code>hostname</code> "does not affect how other
+  containers see this container." No peer-DNS implication; separate concern.</li>
+<li><strong><code>--ip</code> / <code>--ip6</code> (static addresses)</strong> — static IP assignment per network
+  attachment. Related to IPAM, not DNS alias registration. File separately.</li>
+<li><strong><code>--mac-address</code></strong> — MAC address assignment. Already tracked separately.</li>
+<li><strong>Reverse DNS (PTR records)</strong> — interesting extension, not required for
+  Compose interop. Can be added later without breaking this proposal.</li>
+<li><strong>Service object semantics, load balancing, health-check-aware DNS</strong> —
+  apple/container is a single-host runtime. Swarm-style VIP/DNSRR modes are
+  out of scope.</li>
+</ul>
+<hr />
+<h2 id="alternatives-considered">Alternatives Considered<a class="headerlink" href="#alternatives-considered" title="Permanent link">&para;</a></h2>
+<p><strong>Separate <code>--network-alias &lt;name&gt;</code> flag (Docker classic style)</strong></p>
+<p>Docker's <code>docker run --network-alias &lt;name&gt;</code> attaches an alias to the network
+specified by the first <code>--network</code> flag. This was rejected because it doesn't
+compose well with multiple network attachments: there's no way to express
+"alias <code>foo</code> on <code>net1</code> but alias <code>bar</code> on <code>net2</code>" without per-network
+scoping. The comma-suboption form (<code>--network net1,alias=foo</code>) is more
+expressive and consistent with apple/container's existing <code>mac=</code>/<code>mtu=</code>
+grammar.</p>
+<p><strong><code>--add-host</code> / <code>/etc/hosts</code> injection</strong></p>
+<p>Static host entries in <code>/etc/hosts</code> are per-container, not per-attachment.
+They don't survive container scale (each replica would need its own entry
+in every peer's hostfile), and they're not scoped to a network. This
+approach doesn't satisfy the Compose alias contract.</p>
+<p><strong><code>--aux-address HOSTNAME=IPV4</code> on <code>network create</code></strong></p>
+<p>Probe 4 verified this does not register DNS. It reserves an IP address
+within the network's IPAM pool but does not inject any name into the DNS
+server. The CLI help text could be read as DNS-related, but the observed behavior is IP reservation only. Not a viable
+workaround.</p>
+<p><strong>Renaming containers to bare service names (<code>--name postgres</code>)</strong></p>
+<p>Probe 5 confirmed this works for DNS but breaks multi-project isolation.
+<code>--name</code> is globally unique to the runtime: a second project with a
+<code>postgres</code> service fails with <code>Error: container with id postgres already
+exists</code>. Orchestrators that manage multiple independent projects cannot
+use this approach.</p>
+<p><strong>Configuring <code>--dns-domain</code> / <code>--dns-search</code> per service</strong></p>
+<p>Probe 3 confirmed the resolver does not synthesize aliases from search
+domains. Even if every container in a project shared the same <code>--dns-domain</code>,
+that would only affect how the querying container appends suffixes — it
+would not cause the runtime to register additional names for the target
+container. This approach does not work.</p>
+<hr />
+<h2 id="downstream-consumer">Downstream Consumer<a class="headerlink" href="#downstream-consumer" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/full-chaos/container-compose">container-compose</a> is a
+Swift CLI that brings Compose spec support to apple/container on macOS. It
+already parses <code>ServiceNetworkConfig.aliases</code> from the Compose YAML and
+warn-skips the field today (see
+<a href="https://github.com/full-chaos/container-compose/blob/main/Sources/Container-Compose/Commands/Compose%2BArgsNetworking.swift#L45-L50"><code>Compose+ArgsNetworking.swift</code> L45-50</a>).
+When the <code>alias=</code> suboption lands in apple/container, container-compose can
+wire it through with a one-file change in the argv builder: replace the
+<code>warnUnsupportedRuntimeFieldOnce</code> call with a loop that appends
+<code>,alias=&lt;name&gt;</code> to the <code>--network</code> argument for each alias in the array.
+This work is tracked at CHAOS-1473 (Phase 11.2: Wire container-compose DNS
+aliases when runtime support exists). Runtime alias support is the remaining
+prerequisite.</p>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>container-compose Phase 11.0 rebaseline (downstream tracking;
+  full probe transcripts are inlined above in this proposal)</li>
+<li><a href="https://github.com/full-chaos/container-compose/blob/main/docs/feature-parity.md">container-compose <code>docs/feature-parity.md</code> — Tier 3 section</a>
+  (classifies network aliases as Tier 3: needs upstream apple/container engineering)</li>
+<li><a href="https://github.com/compose-spec/compose-spec/blob/master/spec.md#networking">Compose spec — Networking</a></li>
+<li><a href="https://github.com/compose-spec/compose-spec/blob/master/spec.md#aliases">Compose spec — <code>networks.&lt;name&gt;.aliases</code></a></li>
+<li><a href="https://docs.docker.com/reference/cli/docker/container/run/">Docker <code>container run --network-alias</code></a>
+  (prior art for per-network alias at run time)</li>
+<li><a href="https://github.com/moby/libnetwork/blob/v0.5.6/endpoint.go#L61">libnetwork <code>endpoint.myAliases</code></a>
+  (canonical precedent: aliases stored at the endpoint level, scoped to the network attachment)</li>
+<li><a href="https://github.com/apple/container/blob/main/.github/ISSUE_TEMPLATE/02-feature.yml">apple/container feature request template <code>02-feature.yml</code></a></li>
+<li><a href="https://github.com/apple/container/blob/main/Sources/Services/ContainerNetworkService/Server/AttachmentAllocator.swift#L20-L42"><code>AttachmentAllocator.swift</code> — DNS name registration</a>
+  (the actor where alias registration would land)</li>
+<li><a href="https://github.com/apple/container/blob/main/Sources/APIServer/ContainerDNSHandler.swift#L78-L81"><code>ContainerDNSHandler.swift</code> — DNS query resolution</a>
+  (resolves by queried name string; no change required)</li>
+<li><a href="https://github.com/apple/container/blob/main/Sources/Services/ContainerAPIService/Client/Flags.swift"><code>Flags.swift</code> — CLI flag surface</a>
+  (where <code>--network</code> comma-suboption parsing lives; <code>alias=</code> would be added here)</li>
+</ul>
+<blockquote>
+<p><strong>Note on fork dependency:</strong> container-compose currently builds against
+<code>full-chaos/container</code>, a transitional fork that is now frozen. Per
+<a href="https://github.com/full-chaos/container-compose/blob/main/docs/upstream-fork-status.md"><code>docs/upstream-fork-status.md</code></a>:
+"apple/container is the only canonical remote." This FR is filed against
+the upstream directly; the fork is not involved.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/full-chaos/container-compose" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.indexes", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "content.action.edit", "content.tabs.link", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

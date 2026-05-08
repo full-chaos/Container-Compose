@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "2ca95ecbf5e9cbc955fd8eb9108789fff200c8f8",
-  "short": "2ca95ec",
+  "commit": "9e6673e598d7572850c8c042f5cbfe17c7f76251",
+  "short": "9e6673e",
   "target": "current",
-  "message": "Add missing docs (#150)",
-  "published_at": "2026-05-08T13:23:16.096159+00:00"
+  "message": "docs(upstream): CHAOS-1476 draft FR for apple/container network alias DNS (#148)",
+  "published_at": "2026-05-08T16:14:32.121707+00:00"
 }

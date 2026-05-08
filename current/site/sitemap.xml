@@ -296,4 +296,8 @@
          <loc>https://full-chaos.github.io/container-compose/current/site/tutorials/resource-limits/</loc>
          <lastmod>2026-05-08</lastmod>
     </url>
+    <url>
+         <loc>https://full-chaos.github.io/container-compose/current/site/upstream-proposals/network-alias-dns/</loc>
+         <lastmod>2026-05-08</lastmod>
+    </url>
 </urlset>
