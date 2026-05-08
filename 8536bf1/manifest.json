@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1476-upstream-fr",
+  "commit": "8536bf12abc4565fe1438f9e4a01dc72d3d859ac",
+  "short": "8536bf1",
+  "target": "8536bf1",
+  "message": "docs(upstream): CHAOS-1476 draft FR for apple/container network alias DNS",
+  "published_at": "2026-05-08T01:14:26.521850+00:00"
+}
