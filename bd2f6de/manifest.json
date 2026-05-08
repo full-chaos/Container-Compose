@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1488-restart-probe-gate",
+  "commit": "bd2f6de6d9071d4cdd0bb04aa689e721934941c6",
+  "short": "bd2f6de",
+  "target": "bd2f6de",
+  "message": "fix(compose): CHAOS-1488 gate --restart emission behind runtime capability probe",
+  "published_at": "2026-05-08T16:02:43.793720+00:00"
+}
