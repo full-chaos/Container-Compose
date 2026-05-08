@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "80bf01f739ff3568d4f5797ec6304b6cf4f4d798",
-  "short": "80bf01f",
+  "commit": "b63336ed4a66873c92fd02326943203761d9297c",
+  "short": "b63336e",
   "target": "current",
-  "message": "fix(compose): CHAOS-1491 honor service.container_name in waitForCondition (#152)",
-  "published_at": "2026-05-08T18:00:08.654413+00:00"
+  "message": "fix(tests): close RunnerEnvironment leak + add cc-test- marker convention in VolumeMountIntegrationTests (#153)",
+  "published_at": "2026-05-08T18:26:13.964760+00:00"
 }
