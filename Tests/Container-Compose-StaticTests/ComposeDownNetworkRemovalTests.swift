@@ -43,7 +43,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Full down removes every top-level project network (no -v needed)")
     func fullDownRemovesAllNetworks() async throws {
-        let projectName = "net-test-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-net-test-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -62,8 +62,10 @@ struct ComposeDownNetworkRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
+                    try await command.run()
+                }
             }
         }
 
@@ -76,7 +78,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Full down -v removes networks AND named volumes")
     func fullDownWithFlagRemovesNetworksAndVolumes() async throws {
-        let projectName = "net-vol-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-net-vol-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -98,8 +100,10 @@ struct ComposeDownNetworkRemovalTests {
         )
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -112,7 +116,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Full down skips external networks")
     func fullDownSkipsExternals() async throws {
-        let projectName = "net-ext-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-net-ext-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -132,8 +136,10 @@ struct ComposeDownNetworkRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
+                    try await command.run()
+                }
             }
         }
 
@@ -146,7 +152,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Full down with no networks declared makes no removeNetwork calls")
     func fullDownWithNoNetworksIsNoOp() async throws {
-        let projectName = "no-nets-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-no-nets-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -158,8 +164,10 @@ struct ComposeDownNetworkRemovalTests {
         let runtime = RecordingRuntime()
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
+                    try await command.run()
+                }
             }
         }
 
@@ -175,7 +183,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Partial down removes networks exclusive to targeted services")
     func partialDownRemovesExclusiveNetworks() async throws {
-        let projectName = "part-excl-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-part-excl-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -197,8 +205,10 @@ struct ComposeDownNetworkRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "api"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "api"])
+                    try await command.run()
+                }
             }
         }
 
@@ -211,7 +221,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Partial down skips networks shared with services outside the target")
     func partialDownSkipsSharedNetworks() async throws {
-        let projectName = "part-shared-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-part-shared-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -231,8 +241,10 @@ struct ComposeDownNetworkRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "api"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "api"])
+                    try await command.run()
+                }
             }
         }
 
@@ -245,7 +257,7 @@ struct ComposeDownNetworkRemovalTests {
 
     @Test("Down tolerates already-removed networks (notFound)")
     func downToleratesNotFound() async throws {
-        let projectName = "tol-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-tol-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -262,8 +274,10 @@ struct ComposeDownNetworkRemovalTests {
 
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
+                    try await command.run()
+                }
             }
         }
 
