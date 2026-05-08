@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1492-adopt-running-containers",
+  "commit": "b66ff6c2d7bf9de370cad013f6352b51706c79e7",
+  "short": "b66ff6c",
+  "target": "b66ff6c",
+  "message": "feat(compose): CHAOS-1492 adopt existing project containers on up; preserve on exit",
+  "published_at": "2026-05-08T20:00:30.442445+00:00"
+}
