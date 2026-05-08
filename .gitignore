@@ -23,3 +23,4 @@ coverage.json
 # Build-time mirror so local `mkdocs serve` can iframe coverage.html.
 # The CI workflow regenerates this from the canonical coverage.html at repo root.
 /docs/coverage.html
+.sisyphus/run**/**
