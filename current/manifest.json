@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "c6ef9d06ca977f8d60d02a0f869a5e4ff8ea1d8a",
-  "short": "c6ef9d0",
+  "commit": "5dd1a9f847cbb9f7cf52123fbc75ed1e64910d28",
+  "short": "5dd1a9f",
   "target": "current",
-  "message": "feat(compose): CHAOS-1492 adopt existing project containers on up; preserve on exit (#157)",
-  "published_at": "2026-05-08T20:07:37.869507+00:00"
+  "message": "fix(compose): CHAOS-1493 stable DNS for adopted services \u2014 sidecar adoption + DNS-divergence service recreate + extended specDivergenceReason (#158)",
+  "published_at": "2026-05-08T22:00:29.656587+00:00"
 }
