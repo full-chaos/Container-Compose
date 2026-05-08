@@ -386,6 +386,50 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
 /// expansions attempted before giving up on further inner substitutions.
 internal let resolveVariable_maxNestingDepth = 4
 
+/// CHAOS-1495: canonical resolution for a service-level network reference key.
+///
+/// `services.<svc>.networks: [<key>]` may reference a network via its raw
+/// top-level YAML key, an env-var (`${PROJECT_NET}`), or a top-level entry that
+/// renames itself with `name:` (e.g. `networks: { foo: { name: bar } }`).
+/// Apple/container only knows the post-resolution name (`bar` in the alias case,
+/// the env-substituted value otherwise). Five sites must therefore agree on the
+/// SAME canonical string for the divergence detector and DNS sidecar to work:
+///
+///   1. `LabelsArgs.build` — `compose.dns.resolvers.<canonical>` label key.
+///   2. `NetworkingArgs.build` — `--network <canonical>` argv + `--dns` lookup
+///      against `dnsSidecar.perNetworkIPs[canonical]`.
+///   3. `ComposeUp.expectedNetworkNamesForService` — divergence-read set for
+///      network attachments.
+///   4. `ComposeUp.dnsDivergenceReason` — label-read + sidecar-IP lookup for
+///      DNS resolver drift.
+///   5. `EmbeddedDNSSidecar.start.networkNames` — the keys of
+///      `SidecarHandle.perNetworkIPs` (sourced from `projectNetworkNames` —
+///      see asymmetry note there).
+///
+/// Resolution rules (compose-spec §6.2):
+///   1. If a top-level network entry exists at this key AND has a `name:`
+///      override, use the override (`{ foo: { name: bar } }` → `bar`). External
+///      networks honor the same `name:` override.
+///   2. Otherwise env-substitute the YAML key via `resolveVariable`.
+///
+/// - Parameters:
+///   - serviceNetworkKey: The raw key as it appears in `services.<svc>.networks`.
+///   - dockerCompose: The decoded compose document, used to look up top-level
+///     `networks.<key>.name` overrides. May be nil (e.g. minimal callers in
+///     tests); falls through to env-only resolution.
+///   - environmentVariables: Variable map passed to `resolveVariable`.
+/// - Returns: The canonical network name. Always non-empty for valid input.
+public func resolveCanonicalNetworkName(
+    _ serviceNetworkKey: String,
+    dockerCompose: DockerCompose?,
+    environmentVariables: [String: String]
+) -> String {
+    if let override = dockerCompose?.networks?[serviceNetworkKey]??.name {
+        return override
+    }
+    return resolveVariable(serviceNetworkKey, with: environmentVariables)
+}
+
 /// Renders a minimal subset of Go text/template syntax against the supplied environment.
 ///
 /// Supported syntax:

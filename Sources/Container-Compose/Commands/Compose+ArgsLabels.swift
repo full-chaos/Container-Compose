@@ -27,9 +27,9 @@ extension ComposeUp {
     /// was created against, per network attachment. `specDivergenceReason`
     /// reads these on a subsequent `up` to detect sidecar-IP drift and force a
     /// service recreate so `/etc/resolv.conf` doesn't end up pointing at a dead
-    /// resolver. Network names mirror `NetworkingArgs.build`'s resolution
-    /// (env-substitution + top-level `name:` override) so label keys and
-    /// `dnsSidecar.perNetworkIPs` keys agree.
+    /// resolver. Network names route through `resolveCanonicalNetworkName(_:dockerCompose:environmentVariables:)`
+    /// (CHAOS-1495) so label keys, `--dns` lookup, divergence-read sets, and the
+    /// sidecar's `perNetworkIPs` keys all agree on the same canonical string.
     enum LabelsArgs {
         static func build(_ ctx: ArgsContext) -> [String] {
             var args: [String] = []
@@ -41,8 +41,14 @@ extension ComposeUp {
             if let dnsSidecar = ctx.dnsSidecar, let serviceNetworks = ctx.service.networks {
                 var dnsLabels: [(network: String, ip: String)] = []
                 for (name, _) in serviceNetworks.entries {
-                    let resolved = resolveVariable(name, with: ctx.environmentVariables)
-                    let networkToConnect = ctx.dockerCompose.networks?[name]??.name ?? resolved
+                    // CHAOS-1495: route through the shared canonical resolver so
+                    // label keys agree with `--dns` lookup, divergence-read sets,
+                    // and the sidecar's `perNetworkIPs` keys.
+                    let networkToConnect = resolveCanonicalNetworkName(
+                        name,
+                        dockerCompose: ctx.dockerCompose,
+                        environmentVariables: ctx.environmentVariables
+                    )
                     if let sidecarIP = dnsSidecar.perNetworkIPs[networkToConnect] {
                         dnsLabels.append((networkToConnect, sidecarIP))
                     }
