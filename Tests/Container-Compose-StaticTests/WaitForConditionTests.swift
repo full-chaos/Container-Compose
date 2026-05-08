@@ -56,8 +56,8 @@ struct WaitForConditionTests {
     func waitForConditionSignatureCompiles() {
         // Use a closure to reference the method without calling it; this is
         // enough for the compiler to verify the signature at build time.
-        let _: (ComposeUp) -> (String, DependsOnCondition, TimeInterval, TimeInterval) async throws -> Void
-            = { composeUp in composeUp.waitForCondition(_:condition:timeout:interval:) }
+        let _: (ComposeUp) -> (String, String?, DependsOnCondition, TimeInterval, TimeInterval) async throws -> Void
+            = { composeUp in composeUp.waitForCondition(_:explicitContainerName:condition:timeout:interval:) }
 
         // If this file compiles, the signature test passes.
     }
@@ -84,12 +84,14 @@ struct WaitForConditionTests {
     @Test("ComposeWaitError.timeout has a localized description")
     func composeWaitErrorDescription() {
         let error = ComposeWaitError.timeout(
+            serviceName: "db",
             containerName: "test-project-db",
             condition: .serviceStarted,
             seconds: 60
         )
         #expect(error.errorDescription?.isEmpty == false)
         #expect(error.errorDescription?.contains("test-project-db") == true)
+        #expect(error.errorDescription?.contains("db") == true)
     }
 
     // MARK: Runtime-gated test
@@ -121,5 +123,50 @@ struct WaitForConditionTests {
                 interval: 0.2
             )
         }
+    }
+
+    // MARK: container_name override tests
+
+    @Test(
+        "waitForCondition uses effectiveContainerName when no override is set (default path)",
+        .enabled(if: RuntimeAvailability.isAvailable(), "Apple container runtime not available")
+    )
+    func waitForConditionDefaultContainerName() async throws {
+        var composeUp = ComposeUp()
+        composeUp.projectName = "myproj"
+
+        let error = await #expect(throws: ComposeWaitError.self) {
+            try await composeUp.waitForCondition(
+                "svc",
+                explicitContainerName: nil,
+                condition: .serviceStarted,
+                timeout: 0.3,
+                interval: 0.1
+            )
+        }
+        let desc = error?.errorDescription ?? ""
+        #expect(desc.contains("myproj-svc"))
+    }
+
+    @Test(
+        "waitForCondition honors container_name override",
+        .enabled(if: RuntimeAvailability.isAvailable(), "Apple container runtime not available")
+    )
+    func waitForConditionHonorsContainerNameOverride() async throws {
+        var composeUp = ComposeUp()
+        composeUp.projectName = "myproj"
+
+        let error = await #expect(throws: ComposeWaitError.self) {
+            try await composeUp.waitForCondition(
+                "svc",
+                explicitContainerName: "custom-name",
+                condition: .serviceStarted,
+                timeout: 0.3,
+                interval: 0.1
+            )
+        }
+        let desc = error?.errorDescription ?? ""
+        #expect(desc.contains("custom-name"))
+        #expect(!desc.contains("myproj-svc"))
     }
 }
