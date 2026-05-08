@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1475-embedded-resolver",
+  "commit": "a4f83096331beb3780a016d9eed67896075a705d",
+  "short": "a4f8309",
+  "target": "a4f8309",
+  "message": "feat(compose): CHAOS-1475 embedded DNS resolver via CoreDNS sidecar",
+  "published_at": "2026-05-08T02:50:54.572438+00:00"
+}
