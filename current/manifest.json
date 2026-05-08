@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "d9fef12eef672c28942574919f3fccb87df85907",
-  "short": "d9fef12",
+  "commit": "577e2c0bb24e2e672024528f25429d97e0b53062",
+  "short": "577e2c0",
   "target": "current",
-  "message": "fix(tests): sweep cc-test- prefix + RunnerEnvironment wrap across 4 ComposeDown integration suites (#154)",
-  "published_at": "2026-05-08T18:50:22.337416+00:00"
+  "message": "fix(compose): CHAOS-1490 idempotent DNS sidecar create + tear-down on up failure (#156)",
+  "published_at": "2026-05-08T19:55:59.153184+00:00"
 }
