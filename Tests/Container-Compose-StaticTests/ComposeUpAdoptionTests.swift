@@ -170,12 +170,13 @@ struct ComposeUpAdoptionTests {
         labels: [String: String] = [:],
         dnsNameservers: [String]? = nil,
         environment: [String] = [],
+        executable: String = "/bin/sh",
         arguments: [String] = [],
         publishedPorts: [PublishPort] = [],
         networks: [AttachmentConfiguration] = []
     ) -> ContainerSnapshot {
         let process = ProcessConfiguration(
-            executable: "/bin/sh",
+            executable: executable,
             arguments: arguments,
             environment: environment,
             workingDirectory: "/"
@@ -574,6 +575,87 @@ struct ComposeUpAdoptionTests {
             expectedCommand: service.command
         )
         #expect(reason == nil, "nil service.command must not trigger spurious divergence")
+    }
+
+    // CHAOS-1493 post-QA regression: apple/container splits the launch command
+    // into `executable: String` + `arguments: [String]`. For `container run
+    // image sh -c "…"` the snapshot stores `executable="sh"`,
+    // `arguments=["-c", "…"]`. Comparing compose `service.command` (full
+    // list) against just `existing.arguments` always spurious-recreated.
+    // Fix reconstructs `existing` as `[executable] + arguments` (or just
+    // `arguments` when compose specified `entrypoint:`).
+
+    @Test("specDivergenceReason adopts when no entrypoint and existing executable+arguments matches expected command")
+    func divergenceCommandNoEntrypointAdoption() async throws {
+        // Real-world repro from /tmp/cc-test-1493-qa: a service with
+        // `command: ["sh", "-c", "..."]` and no entrypoint. apple/container
+        // launches `sh` with args `["-c", "..."]`.
+        let service = Service(
+            image: "alpine:latest",
+            command: ["sh", "-c", "while true; do sleep 30; done"]
+        )
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            executable: "sh",
+            arguments: ["-c", "while true; do sleep 30; done"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedCommand: service.command
+        )
+        #expect(reason == nil, "matching reconstructed command must allow adoption")
+    }
+
+    @Test("specDivergenceReason adopts when entrypoint is set and existing arguments matches expected command")
+    func divergenceCommandWithEntrypointAdoption() async throws {
+        // When compose specifies `entrypoint:`, the runtime's `executable`
+        // came from the override and is OUT of band; existing command is
+        // just `arguments`.
+        let service = Service(
+            image: "alpine:latest",
+            command: ["-c", "while true; do sleep 30; done"],
+            entrypoint: ["/custom"]
+        )
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            executable: "/custom",
+            arguments: ["-c", "while true; do sleep 30; done"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedCommand: service.command
+        )
+        #expect(reason == nil, "entrypoint-set branch must adopt when arguments match expected command")
+    }
+
+    @Test("specDivergenceReason recreates when no entrypoint and reconstructed existing command diverges from expected")
+    func divergenceCommandNoEntrypointDivergence() async throws {
+        // Sanity check: after the post-QA fix, real divergence is still detected.
+        let service = Service(
+            image: "alpine:latest",
+            command: ["sh", "-c", "new"]
+        )
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            executable: "sh",
+            arguments: ["-c", "old"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedCommand: service.command
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("command diverged") == true)
+        // Verify the reconstructed existing list is what we think it is
+        // ("sh" + ["-c", "old"] = ["sh", "-c", "old"]).
+        #expect(reason?.contains("\"sh\", \"-c\", \"old\"") == true,
+                "reconstructed existing command must include executable")
     }
 
     @Test("applyRecreations stops+deletes only services flagged .recreate")

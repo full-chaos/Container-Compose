@@ -273,7 +273,8 @@ extension ComposeUp {
         // 6. Command (CHAOS-1493 wave 3)
         if let reason = commandDivergenceReason(
             existing: existing,
-            expectedCommand: expectedCommand
+            expectedCommand: expectedCommand,
+            expectedEntrypoint: expected.entrypoint
         ) {
             return reason
         }
@@ -479,15 +480,33 @@ extension ComposeUp {
     ///
     /// Only checks when `service.command` is explicitly set in the compose file.
     /// When nil, the user is implicitly accepting the image's CMD/ENTRYPOINT,
-    /// and comparing against the existing container's `arguments` (which holds
-    /// the image-default CMD) would always show spurious divergence.
-    /// When set, exact-list equality against `existing.configuration.initProcess.arguments`.
+    /// and comparing against the existing container would always show spurious
+    /// divergence (existing reflects the image default).
+    ///
+    /// CHAOS-1493 post-QA fix: apple/container's `ContainerConfiguration.initProcess`
+    /// splits the launch command into `executable: String` + `arguments: [String]`.
+    /// For `container run image sh -c "…"`, the snapshot stores
+    /// `executable="sh"` and `arguments=["-c", "…"]`. Comparing the compose
+    /// `service.command` (full list) against just `existing.arguments` (the
+    /// rest, sans executable) always spurious-recreated services with a
+    /// `command:` field. Reconstruct the existing command correctly:
+    ///   - When compose specifies `service.entrypoint`, the runtime's
+    ///     `executable` came from the entrypoint override and is OUT of band;
+    ///     the existing command corresponds to `arguments` ONLY.
+    ///   - Otherwise the runtime's `executable` came from the image's CMD/ENTRYPOINT
+    ///     parsing of the full compose `command:` list; the existing command
+    ///     corresponds to `[executable] + arguments`.
     private static func commandDivergenceReason(
         existing: ContainerSnapshot,
-        expectedCommand: [String]?
+        expectedCommand: [String]?,
+        expectedEntrypoint: [String]?
     ) -> String? {
         guard let expectedCommand else { return nil }
-        let existingCommand = existing.configuration.initProcess.arguments
+        let existingExec = existing.configuration.initProcess.executable
+        let existingArgs = existing.configuration.initProcess.arguments
+        let existingCommand: [String] = expectedEntrypoint != nil
+            ? existingArgs
+            : [existingExec] + existingArgs
         if existingCommand != expectedCommand {
             return "command diverged: existing=\(existingCommand) expected=\(expectedCommand)"
         }
