@@ -166,7 +166,13 @@ struct ComposeUpSidecarTeardownTests {
             digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
             size: 0
         )
-        let image = ImageDescription(reference: "docker.io/coredns/coredns:1.11.1", descriptor: descriptor)
+        // CHAOS-1493: non-matching image so the new probe-then-ADOPT-or-replace
+        // logic rejects adoption (wasAdopted=false) and the catch block tears the
+        // sidecar down on failure. With a matching image, the sidecar would be
+        // adopted (wasAdopted=true) and the catch correctly leaves it alone, but
+        // this test verifies the teardown contract for sidecars launched by
+        // THIS `up` — not for adopted ones.
+        let image = ImageDescription(reference: "docker.io/coredns/coredns:1.10.0", descriptor: descriptor)
         let process = ProcessConfiguration(
             executable: "/coredns",
             arguments: ["-conf", "/etc/coredns/Corefile"],

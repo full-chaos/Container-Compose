@@ -508,7 +508,12 @@ struct EmbeddedDNSSidecarArgvTests {
             digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
             size: 0
         )
-        let image = ImageDescription(reference: EmbeddedDNSSidecar.image, descriptor: descriptor)
+        // CHAOS-1493: use a non-matching image (older tag) so the new
+        // probe-then-ADOPT-or-replace logic in start() rejects adoption and
+        // takes the recreate path that emits `container run` argv. These tests
+        // assert argv shape, not adoption decision; forcing the recreate path
+        // preserves their original purpose.
+        let image = ImageDescription(reference: "docker.io/coredns/coredns:1.10.0", descriptor: descriptor)
         let process = ProcessConfiguration(
             executable: "/coredns",
             arguments: ["-conf", "/etc/coredns/Corefile"],

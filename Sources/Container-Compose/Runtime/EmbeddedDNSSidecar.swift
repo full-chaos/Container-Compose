@@ -51,16 +51,27 @@ public struct SidecarHandle: Sendable, Codable {
     /// services as `--dns <ip>` per attachment.
     public let perNetworkIPs: [String: String]
 
+    /// CHAOS-1493: true when this handle was reconstructed from an existing
+    /// running sidecar (probe-then-adopt path), false when `start(...)` actually
+    /// launched the sidecar in this process. Drives asymmetric teardown in
+    /// `ComposeUp.run()`'s catch block: an adopted sidecar belongs to whoever
+    /// originally launched it (it predates this `up`), so tearing it down on a
+    /// mid-flight failure would kill DNS for ANY services from prior runs that
+    /// are still legitimately running and not in this `up`'s service set.
+    public let wasAdopted: Bool
+
     public init(
         projectName: String,
         containerName: String,
         configRoot: FilePath,
-        perNetworkIPs: [String: String]
+        perNetworkIPs: [String: String],
+        wasAdopted: Bool = false
     ) {
         self.projectName = projectName
         self.containerName = containerName
         self.configRoot = configRoot
         self.perNetworkIPs = perNetworkIPs
+        self.wasAdopted = wasAdopted
     }
 
     /// Domain served by the sidecar for this project: `<dns-label>.test`,
@@ -161,15 +172,37 @@ public enum EmbeddedDNSSidecar {
         }
 
         let containerName = sidecarContainerName(for: projectName)
+        let configRoot = configRootPath(for: projectName)
 
-        // CHAOS-1490: idempotent create. apple/container's `container run --name <id>`
-        // does not adopt — it errors with `container with id <id> already exists`. A
-        // sidecar orphaned by a previous failed `up` (no `--rm` cleanup ran because
-        // the parent process aborted) blocks every subsequent `up` until the user
-        // manually deletes it. Mirror `ComposeUp.stopOldStuff` here: probe, then
-        // stop + delete (best-effort) before relaunching.
+        // CHAOS-1490 / CHAOS-1493: probe-then-ADOPT-or-replace.
+        //
+        // CHAOS-1490 originally added unconditional stop+delete+recreate to recover
+        // from sidecars orphaned by a previous failed `up`. CHAOS-1492's
+        // adoption-by-default keeps service containers alive across `up`
+        // invocations, but their `/etc/resolv.conf` is set at original launch via
+        // `--dns <ip>` argv — there is no way to inject a new DNS IP into a running
+        // container. So if CHAOS-1490 recreates the sidecar with a new IP, adopted
+        // services point at a dead resolver. CHAOS-1493 closes this by adopting the
+        // existing sidecar when its config matches what we'd launch (image + every
+        // expected network present + running), keeping the IP stable. Diverging or
+        // non-running sidecars still get stop+delete+recreate via the orphan-recovery
+        // path that mirrors `ComposeUp.stopOldStuff`.
         if let existing = try? await clientProvider.get(id: containerName) {
-            print("Found existing sidecar '\(containerName)' — replacing")
+            if let adopted = adoptIfMatching(
+                existing: existing,
+                projectName: projectName,
+                containerName: containerName,
+                configRoot: configRoot,
+                expectedNetworks: networks
+            ) {
+                print("Adopting existing sidecar '\(containerName)'")
+                // Return early: the on-disk Corefile + zone files are correct for
+                // currently-adopted services. Rewriting the empty zone here would
+                // briefly drop their records before `configService` re-adds them —
+                // race risk for downstream resolvers. Skip writes on the adoption path.
+                return adopted
+            }
+            print("Found existing sidecar '\(containerName)' — replacing (spec divergence)")
             do {
                 try await clientProvider.stop(id: existing.id, opts: .default)
             } catch {
@@ -182,7 +215,6 @@ public enum EmbeddedDNSSidecar {
             }
         }
 
-        let configRoot = configRootPath(for: projectName)
         let zonesDir = zonesDirectory(within: configRoot)
         let corefilePath = corefilePath(within: configRoot)
         let zonePath = zoneFilePath(within: configRoot, projectName: projectName)
@@ -192,17 +224,26 @@ public enum EmbeddedDNSSidecar {
             withIntermediateDirectories: true
         )
 
-        // Initial config: Corefile + empty zone (no service records yet).
-        let corefile = try CoreDNSConfig.makeCorefile(projectName: projectName)
-        try writeAtomically(corefile, to: corefilePath)
-
-        let initialSerial = Int64(Date().timeIntervalSince1970)
-        let emptyZone = try CoreDNSConfig.makeZone(
-            projectName: projectName,
-            services: [],
-            serial: initialSerial
-        )
-        try writeAtomically(emptyZone, to: zonePath)
+        // CHAOS-1493: only write the empty Corefile/zone when they don't already
+        // exist. The host config root persists across sidecar restarts, and the
+        // existing zone records are still correct for adopted services until
+        // `configService` calls `refreshZone` per-service. Unconditionally wiping
+        // here causes a transient NXDOMAIN window between sidecar relaunch and
+        // `refreshZone` that downstream resolvers can observe (Oracle Q1 #2).
+        let fileManager = FileManager.default
+        if !fileManager.fileExists(atPath: corefilePath.string) {
+            let corefile = try CoreDNSConfig.makeCorefile(projectName: projectName)
+            try writeAtomically(corefile, to: corefilePath)
+        }
+        if !fileManager.fileExists(atPath: zonePath.string) {
+            let initialSerial = Int64(Date().timeIntervalSince1970)
+            let emptyZone = try CoreDNSConfig.makeZone(
+                projectName: projectName,
+                services: [],
+                serial: initialSerial
+            )
+            try writeAtomically(emptyZone, to: zonePath)
+        }
 
         // Launch.
         let argv = runArgv(
@@ -408,6 +449,40 @@ extension EmbeddedDNSSidecar {
             result[attachment.network] = attachment.ipv4Address.address.description
         }
         return result
+    }
+
+    /// CHAOS-1493: decide whether the existing sidecar can be adopted as-is.
+    ///
+    /// v1 acceptance criteria:
+    ///   - container is `.running`
+    ///   - container's image reference matches `EmbeddedDNSSidecar.image`
+    ///   - container has an IPv4 attachment for every expected network
+    ///
+    /// On a hit, returns a `SidecarHandle` reconstructed from the snapshot —
+    /// caller returns early without writing config files or relaunching, so the
+    /// sidecar's IPs stay stable for already-launched services whose
+    /// `/etc/resolv.conf` was burned in at create time.
+    ///
+    /// On a miss (any criterion fails), returns nil and caller falls through to
+    /// stop+delete+recreate.
+    private static func adoptIfMatching(
+        existing: ContainerSnapshot,
+        projectName: String,
+        containerName: String,
+        configRoot: FilePath,
+        expectedNetworks: [String]
+    ) -> SidecarHandle? {
+        guard existing.status == .running else { return nil }
+        guard existing.configuration.image.reference == EmbeddedDNSSidecar.image else { return nil }
+        let ips = perNetworkIPs(from: existing, expected: expectedNetworks)
+        guard expectedNetworks.allSatisfy({ ips[$0] != nil }) else { return nil }
+        return SidecarHandle(
+            projectName: projectName,
+            containerName: containerName,
+            configRoot: configRoot,
+            perNetworkIPs: ips,
+            wasAdopted: true
+        )
     }
 
     /// Atomic write: write to a sibling `.tmp` file, then `rename(2)` on top
