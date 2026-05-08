@@ -17,6 +17,9 @@
 import Testing
 import Foundation
 import Yams
+import ContainerAPIClient
+import ContainerResource
+import ContainerizationOCI
 @testable import ContainerComposeCore
 import TestHelpers
 
@@ -49,6 +52,67 @@ import TestHelpers
 @Suite("Volume Mount Integration", .serialized)
 struct VolumeMountIntegrationTests {
 
+    // MARK: - Local test helpers
+
+    /// Wraps `RecordingContainerClientProvider` and overrides `get(id:)` to
+    /// return a `.running` snapshot so `waitUntilServiceIsRunning` resolves
+    /// immediately instead of burning the 30-second timeout.
+    private actor RunningContainerProvider: ContainerClientProvider {
+        private let inner: RecordingContainerClientProvider
+        init(_ inner: RecordingContainerClientProvider) { self.inner = inner }
+
+        func create(id: String, configuration: RuntimeCreateConfiguration) async throws -> ContainerSnapshot {
+            try await inner.create(id: id, configuration: configuration)
+        }
+        func list(filters: ContainerListFilters) async throws -> [ContainerSnapshot] {
+            try await inner.list(filters: filters)
+        }
+        func get(id: String) async throws -> ContainerSnapshot {
+            // Return a minimal running snapshot so waitUntilServiceIsRunning
+            // exits on the first poll rather than timing out after 30 s.
+            let process = ProcessConfiguration(executable: "/bin/sh", arguments: [], environment: [String](), workingDirectory: "/")
+            let config = ContainerConfiguration(
+                id: id,
+                image: ImageDescription(reference: "stub", descriptor: Descriptor(mediaType: "application/vnd.oci.image.index.v1+json", digest: "sha256:\(String(repeating: "0", count: 64))", size: 0)),
+                process: process
+            )
+            return ContainerSnapshot(configuration: config, status: .running, networks: [])
+        }
+        func stop(id: String, opts: ContainerStopOptions) async throws {
+            try await inner.stop(id: id, opts: opts)
+        }
+        func delete(id: String, force: Bool) async throws {
+            try await inner.delete(id: id, force: force)
+        }
+        func logs(id: String) async throws -> [FileHandle] {
+            try await inner.logs(id: id)
+        }
+        func logs(id: String, options: ContainerLogOptions) async throws -> [FileHandle] {
+            try await inner.logs(id: id, options: options)
+        }
+        func networkGet(id: String) async throws -> NetworkState {
+            try await inner.networkGet(id: id)
+        }
+        func imageList() async throws -> [ClientImage] {
+            try await inner.imageList()
+        }
+        func events() async throws -> [ContainerEvent] {
+            try await inner.events()
+        }
+        func stats(id: String) async throws -> ContainerStats {
+            try await inner.stats(id: id)
+        }
+        func kill(id: String, signal: Int32) async throws {
+            try await inner.kill(id: id, signal: signal)
+        }
+        func start(id: String) async throws {
+            try await inner.start(id: id)
+        }
+        func entriesSnapshot() async -> [RecordingContainerClientProvider.Entry] {
+            await inner.entriesSnapshot()
+        }
+    }
+
     // MARK: - Helpers
 
     private static func makeProject(yaml: String) throws -> URL {
@@ -63,7 +127,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Named volume is registered on compose up")
     func namedVolumeRegisteredOnUp() async throws {
-        let projectName = "vol-up-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-vol-up-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -77,10 +141,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime()
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 
@@ -94,7 +161,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Named volume removed on compose down -v")
     func namedVolumeRemovedOnDownWithFlag() async throws {
-        let projectName = "vol-down-v-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-vol-down-v-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -108,10 +175,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime(stubbedVolumes: [RuntimeVolume(name: "appdata")])
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -122,7 +192,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Named volume NOT removed on compose down without -v")
     func namedVolumeNotRemovedOnDownWithoutFlag() async throws {
-        let projectName = "vol-down-noflag-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-vol-down-noflag-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -136,10 +206,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime(stubbedVolumes: [RuntimeVolume(name: "appdata")])
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
+                    try await command.run()
+                }
             }
         }
 
@@ -155,7 +228,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Multiple named volumes in a single service are all registered on up")
     func multipleNamedVolumesRegisteredOnUp() async throws {
-        let projectName = "multi-vols-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-multi-vols-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               db:
@@ -173,10 +246,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime()
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 
@@ -192,7 +268,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Multiple named volumes removed on compose down -v")
     func multipleNamedVolumesRemovedOnDownWithFlag() async throws {
-        let projectName = "multi-down-v-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-multi-down-v-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               db:
@@ -211,10 +287,13 @@ struct VolumeMountIntegrationTests {
             RuntimeVolume(name: "db_data"),
             RuntimeVolume(name: "db_logs"),
         ])
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -227,7 +306,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Bind mounts in service volumes do not appear as named volume createVolume calls")
     func bindMountsDoNotTriggerCreateVolume() async throws {
-        let projectName = "bind-vol-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-bind-vol-\(UUID().uuidString.lowercased())"
         // Create a real bind-mount source directory so configVolume doesn't skip it.
         let bindSourceDir = FileManager.default.temporaryDirectory
             .appending(path: "bind-src-\(UUID().uuidString)")
@@ -245,10 +324,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime()
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 
@@ -265,7 +347,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Child service inheriting volumes from parent via extends results in those volumes being registered on up")
     func volumeInheritanceViaExtendsRegistersVolumes() async throws {
-        let projectName = "extends-vol-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-extends-vol-\(UUID().uuidString.lowercased())"
         // child_db extends base_db and inherits its volumes.
         // top-level volumes section declares db_data so compose up will create it.
         let directory = try Self.makeProject(yaml: """
@@ -286,10 +368,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime()
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 
@@ -305,7 +390,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Volume inheritance: down -v on project with extended service removes inherited volumes")
     func volumeInheritanceDownRemovesVolumes() async throws {
-        let projectName = "ext-down-v-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-ext-down-v-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               base_worker:
@@ -324,10 +409,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime(stubbedVolumes: [RuntimeVolume(name: "worker_state")])
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -340,7 +428,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("External volumes are NOT created by compose up")
     func externalVolumeNotCreatedByUp() async throws {
-        let projectName = "ext-skip-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-ext-skip-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -357,10 +445,13 @@ struct VolumeMountIntegrationTests {
         // up doesn't error on externalVolumeNotFound.
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime(stubbedVolumes: [RuntimeVolume(name: "shared_data")])
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 
@@ -375,7 +466,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("External volumes are NOT removed by compose down -v")
     func externalVolumeNotRemovedByDownWithFlag() async throws {
-        let projectName = "ext-noremove-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-ext-noremove-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -395,10 +486,13 @@ struct VolumeMountIntegrationTests {
             RuntimeVolume(name: "shared_data"),
             RuntimeVolume(name: "local_data"),
         ])
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -421,7 +515,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Named volume with a deeply nested container path decodes and registers correctly")
     func deepNestedContainerPathNamedVolume() async throws {
-        let projectName = "deep-path-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-deep-path-\(UUID().uuidString.lowercased())"
         // A long container destination path should survive YAML decode and reach
         // createVolume without being truncated or mangled.
         let directory = try Self.makeProject(yaml: """
@@ -437,10 +531,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime()
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 
@@ -454,7 +551,7 @@ struct VolumeMountIntegrationTests {
 
     @Test("Service volumes with mixed bind and named mounts: only named volumes get createVolume")
     func mixedBindAndNamedVolumesOnlyNamedGetCreated() async throws {
-        let projectName = "mixed-vols-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-mixed-vols-\(UUID().uuidString.lowercased())"
         // Create a real bind-mount source directory.
         let bindDir = FileManager.default.temporaryDirectory
             .appending(path: "bind-mixed-\(UUID().uuidString)")
@@ -475,10 +572,13 @@ struct VolumeMountIntegrationTests {
 
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime()
-        try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+        let runner = RecordingRunner()
+        try await ContainerClientEnvironment.$current.withValue(RunningContainerProvider(containerProvider)) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeUp.parse(["--cwd", directory.path, "-p", projectName, "-d"])
+                    try await command.run()
+                }
             }
         }
 

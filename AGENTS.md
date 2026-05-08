@@ -404,13 +404,7 @@ automation) is parsing results. From the [Makefile](./Makefile):
   on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
 - Exit codes: `0` = all passed, `1` = any failed, `2` = no events emitted.
 
-**Known trap:** `Tests/Container-Compose-StaticTests/VolumeMountIntegrationTests.swift`
-performs real `registry-1.docker.io` pulls despite living in the static
-target. On hosts without Docker Hub credentials it `401`s and burns
-agent bash timeouts. If your change doesn't touch volume code, narrow
-further to the suites you actually exercise — e.g. `swift test --filter
-LifecycleArgsTests`. `make test-json` itself does NOT skip this test;
-configure registry auth or filter narrowly.
+Previously, `VolumeMountIntegrationTests` could leak real Docker Hub pulls when its environment wraps missed `RunnerEnvironment.$current`. Fixed by wrapping `RecordingRunner()` in every test. All test `projectName` values are now prefixed `cc-test-` (e.g. `cc-test-vol-up-<uuid>`) to make test-originated container names unambiguous. When sweeping this convention to other static-suite test files, use the same `cc-test-` prefix. Leaving this note as a defensive reminder.
 
 
 ### Resolved CI flake
