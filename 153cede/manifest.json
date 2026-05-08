@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1490-dns-sidecar-idempotent",
+  "commit": "153cedeeadab163a81aee2f3df8d1b956b0c4c6d",
+  "short": "153cede",
+  "target": "153cede",
+  "message": "fix(compose): CHAOS-1490 idempotent DNS sidecar create + tear-down on up failure",
+  "published_at": "2026-05-08T19:43:32.189552+00:00"
+}
