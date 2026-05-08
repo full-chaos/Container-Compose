@@ -63,9 +63,20 @@ public struct SidecarHandle: Sendable, Codable {
         self.perNetworkIPs = perNetworkIPs
     }
 
-    /// Domain served by the sidecar for this project: `<projectName>.test`.
-    /// Compose injects this as `--dns-search` on every project container.
-    public var searchDomain: String { "\(projectName).test" }
+    /// Domain served by the sidecar for this project: `<dns-label>.test`,
+    /// where `<dns-label>` is the DNS-safe transformation of `projectName`
+    /// (CHAOS-1475: project names with `_`/`.`/uppercase no longer hard-fail).
+    /// Compose injects this as `--dns-search` on every project container so it
+    /// matches the zone CoreDNS actually serves.
+    public var searchDomain: String {
+        // Fallback to a raw form is unreachable under normal operation: every
+        // path that constructs a SidecarHandle (`start(...)`, `forCleanup(...)`)
+        // has either already validated the project name or accepts whatever
+        // string the caller supplies for cleanup-only use. The fallback exists
+        // so this property remains non-throwing.
+        (try? CoreDNSConfig.dnsZoneLabel(for: projectName)).map { "\($0).test" }
+            ?? "\(projectName).test"
+    }
 
     /// Synthesize a handle for cleanup paths (`ComposeDown`) where no `start()`
     /// call has run in the current process and there is therefore no live

@@ -37,19 +37,70 @@ public enum CoreDNSConfig {
         }
     }
 
+    /// Derive a DNS-safe zone label from a compose project name (CHAOS-1475).
+    ///
+    /// Compose project names allow `[a-z0-9_-]` (with underscores), but DNS
+    /// labels per RFC 1035 §2.3.1 only accept `[A-Za-z0-9-]` with no leading or
+    /// trailing hyphen and at most 63 characters. This routine maps:
+    ///   - non-allowed scalars → `-`
+    ///   - lowercases the result (DNS labels are case-insensitive; lowercase is
+    ///     the canonical zone-file form)
+    ///   - collapses runs of `-` into a single `-`
+    ///   - strips leading and trailing `-`
+    ///   - clamps to 63 chars (re-stripping any trailing `-` exposed by the cut)
+    ///
+    /// Throws `invalidProjectName` only when the input contains zero
+    /// characters that survive the mapping (e.g. "", "___", "...").
+    public static func dnsZoneLabel(for projectName: String) throws -> String {
+        var scalars = String.UnicodeScalarView()
+        scalars.reserveCapacity(projectName.unicodeScalars.count)
+        let hyphen: Unicode.Scalar = "-"
+        for scalar in projectName.unicodeScalars {
+            let v = scalar.value
+            let isDigit = v >= 0x30 && v <= 0x39 // 0-9
+            let isUpper = v >= 0x41 && v <= 0x5A // A-Z
+            let isLower = v >= 0x61 && v <= 0x7A // a-z
+            let isHyphen = v == 0x2D            // -
+            scalars.append((isDigit || isUpper || isLower || isHyphen) ? scalar : hyphen)
+        }
+        var label = String(scalars).lowercased()
+        while label.contains("--") {
+            label = label.replacingOccurrences(of: "--", with: "-")
+        }
+        while label.hasPrefix("-") { label.removeFirst() }
+        while label.hasSuffix("-") { label.removeLast() }
+        if label.count > 63 {
+            label = String(label.prefix(63))
+            while label.hasSuffix("-") { label.removeLast() }
+        }
+        guard !label.isEmpty else {
+            throw CoreDNSConfigError.invalidProjectName(projectName)
+        }
+        return label
+    }
+
+    /// Validate that `projectName` can produce a non-empty DNS-safe zone label.
+    ///
+    /// Permissive: accepts underscores, dots, slashes, mixed case — anything
+    /// the compose project-name pipeline emits. Rejects only inputs that have
+    /// no surviving alphanumerics (e.g. "", "___", "...").
     public static func validateProjectName(_ projectName: String) throws {
-        try validateLabel(projectName, error: .invalidProjectName(projectName))
+        _ = try dnsZoneLabel(for: projectName)
     }
 
     public static func makeCorefile(projectName: String, upstreamDNS: [String] = ["8.8.8.8", "1.1.1.1"]) throws -> String {
-        try validateProjectName(projectName)
+        let zoneLabel = try dnsZoneLabel(for: projectName)
         for ip in upstreamDNS {
             try validateIPv4(ip)
         }
 
-        let zoneName = zoneDomain(for: projectName)
+        let zoneName = "\(zoneLabel).test"
         let upstream = upstreamDNS.joined(separator: " ")
 
+        // Note: the on-disk zone file path keeps the raw compose project name
+        // (`<projectName>.zone`) so the host filesystem layout matches what
+        // EmbeddedDNSSidecar writes. The DNS-safe label only governs the zone
+        // domain that CoreDNS serves and that other services resolve against.
         return [
             ". {",
             "    forward . \(upstream)",
@@ -70,9 +121,9 @@ public enum CoreDNSConfig {
     }
 
     public static func makeZone(projectName: String, services: [ServiceRecord], serial: Int64) throws -> String {
-        try validateProjectName(projectName)
+        let zoneLabel = try dnsZoneLabel(for: projectName)
 
-        let zoneName = zoneDomain(for: projectName)
+        let zoneName = "\(zoneLabel).test"
         var lines = [
             "$ORIGIN \(zoneName).",
             "$TTL 60",
@@ -94,8 +145,11 @@ public enum CoreDNSConfig {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    private static func zoneDomain(for projectName: String) -> String {
-        "\(projectName).test"
+    /// Returns the zone domain (`<dns-label>.test`) served by CoreDNS for the
+    /// given compose project. Throws if the project name has no usable scalars.
+    public static func zoneDomain(for projectName: String) throws -> String {
+        let label = try dnsZoneLabel(for: projectName)
+        return "\(label).test"
     }
 
     private static func recordLine(name: String, ip: String, comment: String? = nil) -> String {
