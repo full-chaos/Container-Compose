@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1475-embedded-resolver",
+  "commit": "3840e4b357991c7d3a1200f65d666d08c6f0f0fb",
+  "short": "3840e4b",
+  "target": "3840e4b",
+  "message": "fix(compose): CHAOS-1475 MUST-FIX #3 \u2014 derive DNS-safe zone label so projects with underscores work",
+  "published_at": "2026-05-08T12:54:50.608360+00:00"
+}
