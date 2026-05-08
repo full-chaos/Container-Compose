@@ -1,0 +1,8 @@
+{
+  "branch": "chris/route-volume-inspect-through-runtime",
+  "commit": "f4dd7dff0da3e8e4c7a8e3140aef81ed7adbdb88",
+  "short": "f4dd7df",
+  "target": "f4dd7df",
+  "message": "fix(runtime): route RuntimeVolumeClient.inspect through Runtime.inspectVolume seam for test-mockability",
+  "published_at": "2026-05-08T18:42:01.841468+00:00"
+}
