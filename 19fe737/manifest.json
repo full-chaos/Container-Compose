@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1493-sidecar-adoption",
+  "commit": "19fe7376f2f8e667ffbbee0c328609b09992ed38",
+  "short": "19fe737",
+  "target": "19fe737",
+  "message": "fix(compose): CHAOS-1493 post-QA: reconstruct existing command as [executable]+arguments in commandDivergenceReason",
+  "published_at": "2026-05-08T21:52:48.908460+00:00"
+}
