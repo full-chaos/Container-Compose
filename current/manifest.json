@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "9e6673e598d7572850c8c042f5cbfe17c7f76251",
-  "short": "9e6673e",
+  "commit": "7fd615bd1eb862d7261e788c06f3c45edd74403d",
+  "short": "7fd615b",
   "target": "current",
-  "message": "docs(upstream): CHAOS-1476 draft FR for apple/container network alias DNS (#148)",
-  "published_at": "2026-05-08T16:14:32.121707+00:00"
+  "message": "fix(compose): CHAOS-1488 gate --restart emission behind runtime capability probe (#151)",
+  "published_at": "2026-05-08T16:15:05.443641+00:00"
 }
