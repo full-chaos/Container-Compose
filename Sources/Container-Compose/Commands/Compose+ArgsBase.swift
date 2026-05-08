@@ -36,6 +36,7 @@ extension ComposeUp {
         let environmentVariables: [String: String]
         let dockerCompose: DockerCompose
         let composeFilename: String?
+        let dnsSidecar: SidecarHandle?
 
         let supportsHealthcheckFlags: Bool
         let supportsBlkioFlags: Bool
@@ -49,6 +50,7 @@ extension ComposeUp {
             environmentVariables: [String: String],
             dockerCompose: DockerCompose,
             composeFilename: String?,
+            dnsSidecar: SidecarHandle? = nil,
             supportsHealthcheckFlags: Bool = true,
             supportsBlkioFlags: Bool = false
         ) {
@@ -60,6 +62,7 @@ extension ComposeUp {
             self.environmentVariables = environmentVariables
             self.dockerCompose = dockerCompose
             self.composeFilename = composeFilename
+            self.dnsSidecar = dnsSidecar
             self.supportsHealthcheckFlags = supportsHealthcheckFlags
             self.supportsBlkioFlags = supportsBlkioFlags
         }

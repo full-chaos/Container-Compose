@@ -78,6 +78,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     var projectName: String?
     private var environmentVariables: [String: String] = [:]
     private var containerIps: [String: String] = [:]
+    private var dnsSidecar: SidecarHandle?
+    private var dnsZoneServices: [CoreDNSConfig.ServiceRecord] = []
     private var containerConsoleColors: [String: NamedColor] = [:]
     private var didWarnServiceModelsUnsupported = false
     private var didWarnServiceProviderUnsupported = false
@@ -141,6 +143,18 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 try await setupNetwork(name: networkName, config: networkConfig)
             }
             print("--- Networks Processed ---\n")
+        }
+
+        let projectNetworks = projectNetworkNames(from: dockerCompose)
+        if !projectNetworks.isEmpty {
+            print("\n--- Starting Embedded DNS Resolver ---")
+            dnsSidecar = try await EmbeddedDNSSidecar.start(
+                projectName: resolvedName,
+                networkNames: projectNetworks,
+                runner: RunnerEnvironment.current,
+                clientProvider: ContainerClientEnvironment.current
+            )
+            print("--- Embedded DNS Resolver Started ---\n")
         }
 
         // Process top-level volumes
@@ -295,7 +309,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         fatalError("unreachable")
     }
 
-    private func getIPForRunningService(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
+    /// Look up the per-attachment IPv4 address for the named service's container.
+    /// `internal` (not private) so CHAOS-1475 regression tests in
+    /// `Container-Compose-StaticTests` can pin the gateway-vs-address contract.
+    internal func getIPForRunningService(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
         guard let projectName else { return nil }
 
         let containerName = effectiveContainerName(
@@ -306,7 +323,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
         let provider = ContainerClientEnvironment.current
         let container = try await provider.get(id: containerName)
-        let ip = container.networks.compactMap { $0.ipv4Gateway.description }.first
+        // CHAOS-1475 MUST-FIX #1: use the per-attachment container IP, NOT the
+        // network gateway IP. Service-name DNS A records and env-var
+        // substitution must point at the container itself.
+        let ip = container.networks.compactMap { $0.ipv4Address.address.description }.first
 
         return ip
     }
@@ -375,12 +395,48 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     // MARK: Compose Top Level Functions
 
-    private mutating func updateEnvironmentWithServiceIP(_ serviceName: String, explicitContainerName: String?) async throws {
+    private mutating func updateEnvironmentWithServiceIP(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
         let ip = try await getIPForRunningService(serviceName, explicitContainerName: explicitContainerName)
         self.containerIps[serviceName] = ip
         for (key, value) in environmentVariables.map({ ($0, $1) }) where value == serviceName {
             self.environmentVariables[key] = ip ?? value
         }
+        return ip
+    }
+
+    private func projectNetworkNames(from dockerCompose: DockerCompose) -> [String] {
+        guard let networks = dockerCompose.networks else { return [] }
+        return networks.keys.sorted().map { networkName in
+            networks[networkName]??.name ?? networkName
+        }
+    }
+
+    private mutating func updateEmbeddedDNSZone(service: Service, serviceName: String, ip: String?) throws {
+        guard let dnsSidecar, let ip else { return }
+        dnsZoneServices.removeAll { $0.name == serviceName }
+        dnsZoneServices.append(CoreDNSConfig.ServiceRecord(
+            name: serviceName,
+            ip: ip,
+            aliases: dnsAliases(for: service)
+        ))
+
+        try EmbeddedDNSSidecar.refreshZone(
+            handle: dnsSidecar,
+            services: dnsZoneServices
+        )
+    }
+
+    private func dnsAliases(for service: Service) -> [String] {
+        guard let serviceNetworks = service.networks else { return [] }
+        var aliases: [String] = []
+        var seen: Set<String> = []
+        for entry in serviceNetworks.entries {
+            for alias in entry.config.aliases ?? [] where !seen.contains(alias) {
+                seen.insert(alias)
+                aliases.append(alias)
+            }
+        }
+        return aliases
     }
 
     /// Maps a compose `networks.<name>.driver` value to the argv fragment for
@@ -514,11 +570,28 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
         launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
 
+        let resolvedIP: String?
         do {
             try await waitUntilServiceIsRunning(serviceName, explicitContainerName: service.container_name)
-            try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
+            resolvedIP = try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
         } catch {
+            // Container readiness/IP-resolution failures are surfaced but do not
+            // halt the project — other services may still come up successfully.
             print(error)
+            return
+        }
+
+        // CHAOS-1475 MUST-FIX #2: do NOT swallow embedded-DNS-zone refresh
+        // failures. Service-name resolution is downstream of these writes,
+        // so a silent failure here would produce stale zone data and broken
+        // service discovery. Log to stderr with a clear prefix and rethrow.
+        do {
+            try updateEmbeddedDNSZone(service: service, serviceName: serviceName, ip: resolvedIP)
+        } catch {
+            FileHandle.standardError.write(Data(
+                "Error: failed to refresh embedded DNS resolver zone for service '\(serviceName)': \(error)\n".utf8
+            ))
+            throw error
         }
     }
 
@@ -619,6 +692,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             environmentVariables: environmentVariables,
             dockerCompose: dockerCompose,
             composeFilename: composeFilename,
+            dnsSidecar: dnsSidecar,
             supportsHealthcheckFlags: supportsHealthcheckFlags,
             supportsBlkioFlags: supportsBlkioFlags
         )
