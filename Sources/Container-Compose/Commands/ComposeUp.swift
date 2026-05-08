@@ -146,34 +146,58 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
 
         let projectNetworks = projectNetworkNames(from: dockerCompose)
-        if !projectNetworks.isEmpty {
-            print("\n--- Starting Embedded DNS Resolver ---")
-            dnsSidecar = try await EmbeddedDNSSidecar.start(
-                projectName: resolvedName,
-                networkNames: projectNetworks,
-                runner: RunnerEnvironment.current,
-                clientProvider: ContainerClientEnvironment.current
-            )
-            print("--- Embedded DNS Resolver Started ---\n")
-        }
 
-        // Process top-level volumes
-        // This creates named volumes defined in the docker-compose.yml
-        if let volumes = dockerCompose.volumes {
-            print("\n--- Processing Volumes ---")
-            for (volumeName, volumeConfig) in volumes {
-                guard volumeConfig != nil else { continue }
-                _ = try await prepareNamedVolumeSource(named: volumeName, from: dockerCompose)
+        // CHAOS-1490: wrap sidecar-onward body so any thrown error tears down
+        // the DNS sidecar before propagating. The `--rm` flag on the sidecar's
+        // `container run` only fires when the container exits cleanly — a wait
+        // timeout / image pull failure / etc. would otherwise orphan the sidecar
+        // and block the next `up`. The normal exit path (detach return or
+        // `waitForever`) is OUTSIDE the do-catch, so successful runs leave the
+        // sidecar running for the project's lifetime alongside its services.
+        do {
+            if !projectNetworks.isEmpty {
+                print("\n--- Starting Embedded DNS Resolver ---")
+                dnsSidecar = try await EmbeddedDNSSidecar.start(
+                    projectName: resolvedName,
+                    networkNames: projectNetworks,
+                    runner: RunnerEnvironment.current,
+                    clientProvider: ContainerClientEnvironment.current
+                )
+                print("--- Embedded DNS Resolver Started ---\n")
             }
-            print("--- Volumes Processed ---\n")
-        }
 
-        // Process each service defined in the docker-compose.yml
-        print("\n--- Processing Services ---")
+            // Process top-level volumes
+            // This creates named volumes defined in the docker-compose.yml
+            if let volumes = dockerCompose.volumes {
+                print("\n--- Processing Volumes ---")
+                for (volumeName, volumeConfig) in volumes {
+                    guard volumeConfig != nil else { continue }
+                    _ = try await prepareNamedVolumeSource(named: volumeName, from: dockerCompose)
+                }
+                print("--- Volumes Processed ---\n")
+            }
 
-        print(services.map(\.serviceName))
-        for (serviceName, service) in services {
-            try await configService(service, serviceName: serviceName, from: dockerCompose)
+            // Process each service defined in the docker-compose.yml
+            print("\n--- Processing Services ---")
+
+            print(services.map(\.serviceName))
+            for (serviceName, service) in services {
+                try await configService(service, serviceName: serviceName, from: dockerCompose)
+            }
+        } catch {
+            // Best-effort sidecar teardown. Read `self.dnsSidecar` at catch time
+            // (not via prior capture) so we see whatever value `start(...)` left
+            // before throwing. `EmbeddedDNSSidecar.stop` is idempotent on the
+            // `container stop` / `container delete` invocations — "already gone"
+            // is treated as success.
+            if let handle = self.dnsSidecar {
+                print("--- Tearing down Embedded DNS Resolver (up failed) ---")
+                try? await EmbeddedDNSSidecar.stop(
+                    handle: handle,
+                    runner: RunnerEnvironment.current
+                )
+            }
+            throw error
         }
 
         if !detach {
