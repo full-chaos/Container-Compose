@@ -187,7 +187,7 @@ struct ComposeDownOrphanRecoveryTests {
             """
         try yaml.write(to: projectDir.appending(path: "compose.yml"), atomically: true, encoding: .utf8)
 
-        let projectName = "orphan-int-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-orphan-int-\(UUID().uuidString.lowercased())"
 
         // Runtime has NO volumes registered (orphan state)
         let runtime = RecordingRuntime(stubbedVolumes: [])
@@ -230,14 +230,16 @@ struct ComposeDownOrphanRecoveryTests {
             """)
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let projectName = "no-orphan-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-no-orphan-\(UUID().uuidString.lowercased())"
         let containerProvider = RecordingContainerClientProvider()
         let runtime = RecordingRuntime(stubbedVolumes: [RuntimeVolume(name: "data")])
 
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 

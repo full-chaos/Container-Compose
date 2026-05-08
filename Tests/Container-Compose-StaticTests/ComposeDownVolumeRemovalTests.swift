@@ -91,7 +91,7 @@ struct ComposeDownVolumeRemovalTests {
 
     @Test("Full down -v calls removeVolume for each top-level named volume")
     func fullDownRemovesAllNamedVolumes() async throws {
-        let projectName = "vol-test-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-vol-test-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -112,8 +112,10 @@ struct ComposeDownVolumeRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -124,7 +126,7 @@ struct ComposeDownVolumeRemovalTests {
 
     @Test("Full down -v skips external volumes")
     func fullDownSkipsExternals() async throws {
-        let projectName = "vol-ext-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-vol-ext-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -146,8 +148,10 @@ struct ComposeDownVolumeRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 
@@ -158,7 +162,7 @@ struct ComposeDownVolumeRemovalTests {
 
     @Test("Down without -v does NOT call removeVolume")
     func downWithoutFlagSkipsVolumes() async throws {
-        let projectName = "no-flag-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-no-flag-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -174,8 +178,10 @@ struct ComposeDownVolumeRemovalTests {
         let runtime = RecordingRuntime(stubbedVolumes: [RuntimeVolume(name: "data")])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName])
+                    try await command.run()
+                }
             }
         }
 
@@ -191,7 +197,7 @@ struct ComposeDownVolumeRemovalTests {
 
     @Test("Partial down -v removes volumes exclusive to targeted services")
     func partialDownRemovesExclusiveVolumes() async throws {
-        let projectName = "partial-excl-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-partial-excl-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -215,8 +221,10 @@ struct ComposeDownVolumeRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v", "api"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v", "api"])
+                    try await command.run()
+                }
             }
         }
 
@@ -227,7 +235,7 @@ struct ComposeDownVolumeRemovalTests {
 
     @Test("Partial down -v skips volumes shared with services outside the target")
     func partialDownSkipsSharedVolumes() async throws {
-        let projectName = "partial-shared-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-partial-shared-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -249,8 +257,10 @@ struct ComposeDownVolumeRemovalTests {
         ])
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v", "api"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v", "api"])
+                    try await command.run()
+                }
             }
         }
 
@@ -261,7 +271,7 @@ struct ComposeDownVolumeRemovalTests {
 
     @Test("Down -v tolerates already-removed volumes (notFound)")
     func downToleratesNotFound() async throws {
-        let projectName = "tolerate-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-tolerate-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
               api:
@@ -279,8 +289,10 @@ struct ComposeDownVolumeRemovalTests {
 
         try await ContainerClientEnvironment.$current.withValue(containerProvider) {
             try await RuntimeEnvironment.$current.withValue(runtime) {
-                var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
-                try await command.run()
+                try await RunnerEnvironment.$current.withValue(RecordingRunner()) {
+                    var command = try ComposeDown.parse(["--cwd", directory.path, "-p", projectName, "-v"])
+                    try await command.run()
+                }
             }
         }
 

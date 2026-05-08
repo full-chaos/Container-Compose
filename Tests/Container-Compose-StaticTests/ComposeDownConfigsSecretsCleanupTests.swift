@@ -46,7 +46,7 @@ struct ComposeDownConfigsSecretsCleanupTests {
 
     @Test("Full-project down removes configs-secrets temp directory")
     func fullProjectDownRemovesConfigsSecretsDirectory() async throws {
-        let projectName = "phase3-down-full-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-phase3-down-full-\(UUID().uuidString.lowercased())"
         let tempProject = try makeTempComposeProject()
         defer { try? FileManager.default.removeItem(at: tempProject) }
         let secretsDir = configsSecretsDir(projectName: projectName)
@@ -55,9 +55,15 @@ struct ComposeDownConfigsSecretsCleanupTests {
         defer { try? FileManager.default.removeItem(at: secretsDir) }
 
         let provider = RecordingContainerClientProvider()
+        let runtime = RecordingRuntime()
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(provider) {
-            var command = try ComposeDown.parse(["--cwd", tempProject.path, "-p", projectName])
-            try await command.run()
+            try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", tempProject.path, "-p", projectName])
+                    try await command.run()
+                }
+            }
         }
 
         #expect(!FileManager.default.fileExists(atPath: secretsDir.path))
@@ -65,7 +71,7 @@ struct ComposeDownConfigsSecretsCleanupTests {
 
     @Test("Partial down leaves configs-secrets temp directory intact")
     func partialDownLeavesConfigsSecretsDirectoryIntact() async throws {
-        let projectName = "phase3-down-partial-\(UUID().uuidString.lowercased())"
+        let projectName = "cc-test-phase3-down-partial-\(UUID().uuidString.lowercased())"
         let tempProject = try makeTempComposeProject()
         defer { try? FileManager.default.removeItem(at: tempProject) }
         let secretsDir = configsSecretsDir(projectName: projectName)
@@ -74,9 +80,15 @@ struct ComposeDownConfigsSecretsCleanupTests {
         defer { try? FileManager.default.removeItem(at: secretsDir) }
 
         let provider = RecordingContainerClientProvider()
+        let runtime = RecordingRuntime()
+        let runner = RecordingRunner()
         try await ContainerClientEnvironment.$current.withValue(provider) {
-            var command = try ComposeDown.parse(["--cwd", tempProject.path, "-p", projectName, "web"])
-            try await command.run()
+            try await RuntimeEnvironment.$current.withValue(runtime) {
+                try await RunnerEnvironment.$current.withValue(runner) {
+                    var command = try ComposeDown.parse(["--cwd", tempProject.path, "-p", projectName, "web"])
+                    try await command.run()
+                }
+            }
         }
 
         #expect(FileManager.default.fileExists(atPath: secretsDir.path))
