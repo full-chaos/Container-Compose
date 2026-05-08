@@ -19,6 +19,7 @@ import Foundation
 import Yams
 import ContainerAPIClient
 import ContainerResource
+import ContainerizationExtras
 import ContainerizationOCI
 @testable import ContainerComposeCore
 import TestHelpers
@@ -156,6 +157,47 @@ struct ComposeUpAdoptionTests {
             ),
             process: process
         )
+        return ContainerSnapshot(configuration: config, status: .running, networks: [])
+    }
+
+    /// CHAOS-1493: extended snapshot factory for divergence tests — covers
+    /// labels, DNS resolver IPs, environment, command arguments, published
+    /// ports, and network attachments. All params default to empty so existing
+    /// callers stay unchanged.
+    private static func makeSnapshotWith(
+        id: String,
+        imageReference: String,
+        labels: [String: String] = [:],
+        dnsNameservers: [String]? = nil,
+        environment: [String] = [],
+        arguments: [String] = [],
+        publishedPorts: [PublishPort] = [],
+        networks: [AttachmentConfiguration] = []
+    ) -> ContainerSnapshot {
+        let process = ProcessConfiguration(
+            executable: "/bin/sh",
+            arguments: arguments,
+            environment: environment,
+            workingDirectory: "/"
+        )
+        var config = ContainerConfiguration(
+            id: id,
+            image: ImageDescription(
+                reference: imageReference,
+                descriptor: Descriptor(
+                    mediaType: "application/vnd.oci.image.index.v1+json",
+                    digest: "sha256:\(String(repeating: "0", count: 64))",
+                    size: 0
+                )
+            ),
+            process: process
+        )
+        config.labels = labels
+        config.publishedPorts = publishedPorts
+        config.networks = networks
+        if let dnsNameservers {
+            config.dns = ContainerConfiguration.DNSConfiguration(nameservers: dnsNameservers)
+        }
         return ContainerSnapshot(configuration: config, status: .running, networks: [])
     }
 
@@ -315,6 +357,223 @@ struct ComposeUpAdoptionTests {
             imageReference: "docker.io/library/alpine:latest"
         )
         #expect(ComposeUp.specDivergenceReason(existing: snapshot, expected: service) == nil)
+    }
+
+    // MARK: - CHAOS-1493 divergence (DNS / networks / ports / env / command)
+
+    @Test("specDivergenceReason recreates when DNS resolver label diverges from current sidecar IP")
+    func divergenceDNSLabelChanged() async throws {
+        let service = Service(image: "alpine:latest", networks: ServiceNetworks.list(["app-net"]))
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            labels: ["compose.dns.resolvers.app-net": "10.0.0.5"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedSidecarIPs: ["app-net": "10.0.0.9"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("DNS resolver IP") == true)
+        #expect(reason?.contains("10.0.0.5") == true)
+        #expect(reason?.contains("10.0.0.9") == true)
+    }
+
+    @Test("specDivergenceReason adopts when DNS resolver label matches current sidecar IP")
+    func divergenceDNSLabelMatches() async throws {
+        let service = Service(image: "alpine:latest", networks: ServiceNetworks.list(["app-net"]))
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            labels: ["compose.dns.resolvers.app-net": "10.0.0.5"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedSidecarIPs: ["app-net": "10.0.0.5"]
+        )
+        #expect(reason == nil, "matching label must allow adoption")
+    }
+
+    @Test("specDivergenceReason recreates via snapshot.dns SET-membership when label is missing")
+    func divergenceDNSSnapshotMissingExpectedIP() async throws {
+        let service = Service(image: "alpine:latest", networks: ServiceNetworks.list(["app-net"]))
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            dnsNameservers: ["10.0.0.99"] // current sidecar 10.0.0.5 NOT in this set
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedSidecarIPs: ["app-net": "10.0.0.5"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("not in container's nameservers") == true)
+    }
+
+    @Test("specDivergenceReason adopts via snapshot.dns SET-membership when label is missing but expected IP present")
+    func divergenceDNSSnapshotContainsExpectedIP() async throws {
+        let service = Service(image: "alpine:latest", networks: ServiceNetworks.list(["app-net"]))
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            dnsNameservers: ["10.0.0.5", "10.0.0.6"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedSidecarIPs: ["app-net": "10.0.0.5"]
+        )
+        #expect(reason == nil, "snapshot dns containing the expected IP must allow adoption")
+    }
+
+    @Test("specDivergenceReason recreates with pre-CHAOS-1493 message when both label and snapshot.dns are missing")
+    func divergenceDNSConservativeFallback() async throws {
+        let service = Service(image: "alpine:latest", networks: ServiceNetworks.list(["app-net"]))
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest"
+            // no labels, no dns — simulates a pre-CHAOS-1493 container.
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedSidecarIPs: ["app-net": "10.0.0.5"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("upgrading from pre-CHAOS-1493") == true,
+                "reason must explicitly mention pre-CHAOS-1493 upgrade context")
+    }
+
+    @Test("specDivergenceReason recreates when network attachments diverge")
+    func divergenceNetworkAttachments() async throws {
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            networks: [
+                AttachmentConfiguration(network: "old-net", options: AttachmentOptions(hostname: "x"))
+            ]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedNetworkNames: ["new-net"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("network attachments diverged") == true)
+        #expect(reason?.contains("new-net") == true)
+        #expect(reason?.contains("old-net") == true)
+    }
+
+    @Test("specDivergenceReason recreates when published ports diverge")
+    func divergencePublishedPorts() async throws {
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            publishedPorts: [
+                PublishPort(
+                    hostAddress: try IPAddress("0.0.0.0"),
+                    hostPort: 8080,
+                    containerPort: 80,
+                    proto: .tcp,
+                    count: 1
+                )
+            ]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedPublishedPorts: ["0.0.0.0:9090:80"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("published ports diverged") == true)
+    }
+
+    @Test("specDivergenceReason recreates when an expected env key value mismatches")
+    func divergenceEnvValueMismatch() async throws {
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            environment: ["FOO=old", "PATH=/usr/bin"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedEnvironment: ["FOO": "new"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("env key 'FOO' diverged") == true)
+    }
+
+    @Test("specDivergenceReason recreates when an expected env key is missing from existing")
+    func divergenceEnvKeyMissing() async throws {
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            environment: ["PATH=/usr/bin"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedEnvironment: ["FOO": "bar"]
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("env key 'FOO' missing") == true)
+    }
+
+    @Test("specDivergenceReason adopts when expected env subset is satisfied (image-injected vars ignored)")
+    func divergenceEnvSubsetOK() async throws {
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            environment: ["FOO=bar", "PATH=/usr/bin", "HOME=/root", "LANG=C.UTF-8"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedEnvironment: ["FOO": "bar"]
+        )
+        #expect(reason == nil, "image-injected env (PATH/HOME/LANG) must not trigger divergence")
+    }
+
+    @Test("specDivergenceReason recreates when service.command is set and diverges")
+    func divergenceCommandMismatch() async throws {
+        let service = Service(image: "alpine:latest", command: ["sh", "-c", "new"])
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            arguments: ["sh", "-c", "old"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedCommand: service.command
+        )
+        #expect(reason != nil)
+        #expect(reason?.contains("command diverged") == true)
+    }
+
+    @Test("specDivergenceReason adopts when service.command is nil regardless of existing arguments")
+    func divergenceCommandNilSkipsCheck() async throws {
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            arguments: ["whatever", "the", "image", "defaulted", "to"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedCommand: service.command
+        )
+        #expect(reason == nil, "nil service.command must not trigger spurious divergence")
     }
 
     @Test("applyRecreations stops+deletes only services flagged .recreate")

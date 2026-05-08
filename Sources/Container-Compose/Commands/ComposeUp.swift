@@ -82,9 +82,14 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     private var fileManager: FileManager { FileManager.default }
     var projectName: String?
-    private var environmentVariables: [String: String] = [:]
+    /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
+    /// extension can read it for the divergence-check expected-value computations.
+    var environmentVariables: [String: String] = [:]
     private var containerIps: [String: String] = [:]
-    private var dnsSidecar: SidecarHandle?
+    /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
+    /// extension can read it for DNS-divergence checks. Mutated only from inside
+    /// `ComposeUp.run()` per the existing CHAOS-1490 lifecycle contract.
+    var dnsSidecar: SidecarHandle?
     private var dnsZoneServices: [CoreDNSConfig.ServiceRecord] = []
     private var containerConsoleColors: [String: NamedColor] = [:]
     private var didWarnServiceModelsUnsupported = false
@@ -145,19 +150,11 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             return
         }
 
-        // CHAOS-1492: adopt-by-default. Probe each service's effective
-        // container name; only stop+delete containers flagged for
-        // recreation (image divergence v1 or `--force-recreate`).
-        // Adopted containers are reused as-is, then polled via
-        // `waitUntilServiceIsRunning` and re-registered for env / DNS
-        // resolution. The `stopOldStuff` helper is preserved for callers
-        // that genuinely want a teardown sweep (e.g. recovery paths in
-        // `Compose+VolumeMigration.swift`).
-        adoptionDecisions = try await resolveAdoption(services)
-        try await applyRecreations(services, decisions: adoptionDecisions)
+        // Process top-level networks BEFORE adoption + sidecar so the sidecar
+        // launch (which `--network`-attaches to project networks) sees them.
+        // Network create is idempotent — BridgeContainerClientRuntime.createNetwork
+        // catches `RuntimeError.alreadyExists` so re-runs no-op cleanly.
 
-        // Process top-level networks
-        // This creates named networks defined in the docker-compose.yml
         if let networks = dockerCompose.networks {
             print("\n--- Processing Networks ---")
             for (networkName, networkConfig) in networks {
@@ -167,6 +164,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
 
         let projectNetworks = projectNetworkNames(from: dockerCompose)
+
+        // CHAOS-1492 / 1493: adoption is decided AFTER the sidecar launches so
+        // `specDivergenceReason` can compare each service's recorded DNS labels
+        // / `dns.nameservers` against the current `dnsSidecar.perNetworkIPs`.
+        // CHAOS-1492 originally placed adoption at the top of `run()`; CHAOS-1493
+        // moves it inside the sidecar-onward do-catch so `dnsSidecar` is
+        // populated when `resolveAdoption` runs.
 
         // CHAOS-1490: wrap sidecar-onward body so any thrown error tears down
         // the DNS sidecar before propagating. The `--rm` flag on the sidecar's
@@ -186,6 +190,11 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 )
                 print("--- Embedded DNS Resolver Started ---\n")
             }
+
+            // Adoption + recreation sweep (was previously at the top of run()).
+            adoptionDecisions = try await resolveAdoption(services, dockerCompose: dockerCompose)
+            try await applyRecreations(services, decisions: adoptionDecisions)
+
 
             // Process top-level volumes
             // This creates named volumes defined in the docker-compose.yml
@@ -211,7 +220,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             // before throwing. `EmbeddedDNSSidecar.stop` is idempotent on the
             // `container stop` / `container delete` invocations — "already gone"
             // is treated as success.
-            if let handle = self.dnsSidecar {
+            //
+            // CHAOS-1493: ASYMMETRIC teardown. Only tear down sidecars THIS `up`
+            // launched. Adopted sidecars (probe-then-adopt path) belong to whoever
+            // originally launched them and may still be serving DNS for prior-run
+            // services that are NOT in this `up`'s service set; killing them would
+            // be worse than the original orphan-leak bug.
+            if let handle = self.dnsSidecar, !handle.wasAdopted {
                 print("--- Tearing down Embedded DNS Resolver (up failed) ---")
                 try? await EmbeddedDNSSidecar.stop(
                     handle: handle,
@@ -781,7 +796,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     /// Builds the merged env: .env files → service env_file paths → service
     /// environment map → ${VAR} substitution → service-name → IP rewrite.
-    private func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
+    /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
+    /// extension can compute the expected env for service-level divergence checks.
+    func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
         var combinedEnv = mergeServiceEnvironment(
             baseline: environmentVariables,
             serviceEnvFile: service.env_file,
