@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "232687ec6d99ca6fe9750d9a4ec43d7415eaec88",
-  "short": "232687e",
+  "commit": "893bf791d524257049d24228287709c98bc4c553",
+  "short": "893bf79",
   "target": "current",
-  "message": "docs(coverage): audit + correct accuracy, flag fork#dev requirements (#147)",
-  "published_at": "2026-05-07T17:00:19.544420+00:00"
+  "message": "feat(compose): CHAOS-1475 embedded DNS resolver via CoreDNS sidecar (#149)",
+  "published_at": "2026-05-08T13:17:38.755286+00:00"
 }
