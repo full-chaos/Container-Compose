@@ -388,6 +388,31 @@ Dynamic tests self-skip on hosts without the Apple `container` runtime
 run in CI. Verify locally with the runtime installed before committing
 schema changes that ripple into `up`/`down`/`build`.
 
+### Agent-friendly test invocations
+
+Prefer `make test-json` over raw `swift test` when an agent (or any
+automation) is parsing results. From the [Makefile](./Makefile):
+
+- Routes the static suite through swift-testing's event stream and emits
+  structured JSON via `swift run test-report` — agent-parseable, no
+  `tail -N` truncation games.
+- Skips `Container-Compose-DynamicTests` automatically (equivalent to
+  `--filter Container-Compose-StaticTests` but with the right tooling).
+- Forbids `--parallel`. Several static suites (`LifecycleArgsTests`,
+  `ResourceArgsTests`, `GpusBlkioTests`) `dup2` global `STDOUT_FILENO`
+  to a `Pipe` to capture printed warnings; under `--parallel` they race
+  on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
+- Exit codes: `0` = all passed, `1` = any failed, `2` = no events emitted.
+
+**Known trap:** `Tests/Container-Compose-StaticTests/VolumeMountIntegrationTests.swift`
+performs real `registry-1.docker.io` pulls despite living in the static
+target. On hosts without Docker Hub credentials it `401`s and burns
+agent bash timeouts. If your change doesn't touch volume code, narrow
+further to the suites you actually exercise — e.g. `swift test --filter
+LifecycleArgsTests`. `make test-json` itself does NOT skip this test;
+configure registry auth or filter narrowly.
+
+
 ### Resolved CI flake
 
 CHAOS-1326 isolated the `swiftpm-testing-helper` signal-10/SIGBUS flake
@@ -423,15 +448,18 @@ the broad `--no-parallel` workaround from CHAOS-1314.
 - **Don't break the topo sort.** `Service.topoSortConfiguredServices` is on
   the hot path of `up`. Cycle detection there must keep throwing.
 - **Commits.** Small, focused commits. Rebuild with `make build` and run
-  `swift test` before pushing.
+  `make test-json` (or full `swift test` if your change touches dynamics)
+  before pushing.
 - **Background agents for long-running tasks.** Always dispatch test runs
-  (`swift test`, especially with `--no-parallel`), full builds, large
-  multi-file searches, and anything with a timeout/loop to a background
-  agent (`task(... run_in_background=true ...)`). The agent absorbs the
-  verbose output; only a structured pass/fail summary comes back to the
-  orchestrator. Reserve direct `swift test` calls in the main context for
-  single-suite, sub-30-second runs. Don't poll `background_output` — wait
-  for the `<system-reminder>`.
+  (prefer `make test-json` for structured, agent-parseable output; raw
+  `swift test` only when you need the full run including
+  `Container-Compose-DynamicTests`), full builds, large multi-file
+  searches, and anything with a timeout/loop to a background agent
+  (`task(... run_in_background=true ...)`). The agent absorbs the verbose
+  output; only a structured pass/fail summary comes back to the
+  orchestrator. Reserve direct `swift test --filter <Suite>` calls in the
+  main context for single-suite, sub-30-second runs. Don't poll
+  `background_output` — wait for the `<system-reminder>`.
 
 ### High-leverage open work
 
@@ -481,8 +509,9 @@ make build           # release config, copies binary to .build/release/
 make install         # symlinks into /usr/local/bin (sudo may be required)
 
 # Run tests
-swift test                                  # both targets
-swift test --filter Container-Compose-StaticTests  # parsing only
+make test-json                                     # static suite, structured JSON (preferred for agents)
+swift test                                         # full run including Container-Compose-DynamicTests
+swift test --filter LifecycleArgsTests             # single suite (replace with target)
 
 # Use locally
 .build/release/container-compose up -f path/to/docker-compose.yml
