@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1493-sidecar-adoption",
+  "commit": "f9c1a6d4ead39c34acf84089f986e6187679c6e6",
+  "short": "f9c1a6d",
+  "target": "f9c1a6d",
+  "message": "fix(compose): CHAOS-1493 stable DNS for adopted services \u2014 sidecar adoption + DNS-divergence service recreate + extended specDivergenceReason",
+  "published_at": "2026-05-08T21:40:48.197983+00:00"
+}
