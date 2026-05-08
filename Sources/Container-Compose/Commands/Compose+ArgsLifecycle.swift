@@ -52,7 +52,14 @@ extension ComposeUp {
             }
 
             if let restart = ctx.service.restart {
-                args.append(contentsOf: ["--restart", restart])
+                if ctx.supportsRestartFlag {
+                    args.append(contentsOf: ["--restart", restart])
+                } else {
+                    warnUnsupportedRuntimeFieldOnce(
+                        "service.restart",
+                        "Note: 'restart' is parsed but not supported by Apple container; ignored. (CHAOS-1321 tracks upstream support.)"
+                    )
+                }
             }
 
             args.append(contentsOf: healthcheckArgs(
@@ -139,6 +146,23 @@ extension ComposeUp {
             let request = RunRequest(
                 kind: .probe,
                 argv: ["container", command, "--health-cmd", "true", "--help"]
+            )
+            do {
+                let result = try await RunnerEnvironment.current.run(
+                    request,
+                    onStdout: nil,
+                    onStderr: nil
+                )
+                return result.probeAvailable
+            } catch {
+                return false
+            }
+        }
+
+        static func supportsRestartFlag(for command: String) async -> Bool {
+            let request = RunRequest(
+                kind: .probe,
+                argv: ["container", command, "--restart", "unless-stopped", "--help"]
             )
             do {
                 let result = try await RunnerEnvironment.current.run(

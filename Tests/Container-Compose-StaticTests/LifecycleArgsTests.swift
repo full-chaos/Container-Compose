@@ -54,7 +54,8 @@ struct LifecycleArgsTests {
     private func makeContext(
         service: Service,
         detach: Bool = false,
-        supportsHealthcheckFlags: Bool = true
+        supportsHealthcheckFlags: Bool = true,
+        supportsRestartFlag: Bool = false
     ) -> ComposeUp.ArgsContext {
         ComposeUp.ArgsContext(
             service: service,
@@ -65,13 +66,15 @@ struct LifecycleArgsTests {
             environmentVariables: [:],
             dockerCompose: makeDockerCompose(),
             composeFilename: nil,
-            supportsHealthcheckFlags: supportsHealthcheckFlags
+            supportsHealthcheckFlags: supportsHealthcheckFlags,
+            supportsRestartFlag: supportsRestartFlag
         )
     }
 
     private func capturedArgs(
         _ service: Service,
-        supportsHealthcheckFlags: Bool = true
+        supportsHealthcheckFlags: Bool = true,
+        supportsRestartFlag: Bool = false
     ) throws -> (output: String, args: [String]) {
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
@@ -83,7 +86,8 @@ struct LifecycleArgsTests {
 
         let result = ComposeUp.LifecycleArgs.build(makeContext(
             service: service,
-            supportsHealthcheckFlags: supportsHealthcheckFlags
+            supportsHealthcheckFlags: supportsHealthcheckFlags,
+            supportsRestartFlag: supportsRestartFlag
         ))
         fflush(stdout)
         restoreStandardOutput(original: original, pipe: pipe)
@@ -237,7 +241,7 @@ struct LifecycleArgsTests {
     @Test("restart present emits --restart flag with value")
     func restartEmitsFlag() {
         let svc = Service(image: "alpine", restart: "always")
-        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc, supportsRestartFlag: true))
         #expect(args.contains("--restart"))
         if let idx = args.firstIndex(of: "--restart") {
             #expect(args[args.index(after: idx)] == "always")
@@ -247,7 +251,7 @@ struct LifecycleArgsTests {
     @Test("restart on-failure emits correct value")
     func restartOnFailure() {
         let svc = Service(image: "alpine", restart: "on-failure")
-        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc, supportsRestartFlag: true))
         if let idx = args.firstIndex(of: "--restart") {
             #expect(args[args.index(after: idx)] == "on-failure")
         } else {
@@ -258,8 +262,30 @@ struct LifecycleArgsTests {
     @Test("restart absent does not emit --restart flag")
     func restartAbsentNoFlag() {
         let svc = Service(image: "alpine")
-        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc, supportsRestartFlag: true))
         #expect(!args.contains("--restart"))
+    }
+
+    // MARK: - restart: supportsRestartFlag gate
+
+    @Test("restart unless-stopped emits --restart when gate is open")
+    func restartUnlessStopped_whenSupported() {
+        let svc = Service(image: "alpine", restart: "unless-stopped")
+        let args = ComposeUp.LifecycleArgs.build(makeContext(service: svc, supportsRestartFlag: true))
+        #expect(args.contains("--restart"))
+        if let idx = args.firstIndex(of: "--restart") {
+            #expect(args[args.index(after: idx)] == "unless-stopped")
+        } else {
+            Issue.record("--restart flag not found")
+        }
+    }
+
+    @Test("restart gated off when supportsRestartFlag is false: no --restart, warn emitted")
+    func restartGatedWhenFlagUnsupported() throws {
+        let svc = Service(image: "alpine", restart: "unless-stopped")
+        let captured = try capturedArgs(svc, supportsRestartFlag: false)
+        #expect(!captured.args.contains("--restart"))
+        #expect(captured.output.contains("Note: 'restart' is parsed but not supported by Apple container; ignored. (CHAOS-1321 tracks upstream support.)"))
     }
 
     // MARK: - healthcheck

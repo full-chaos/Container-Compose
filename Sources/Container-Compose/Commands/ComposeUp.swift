@@ -682,6 +682,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         let supportsBlkioFlags = service.blkio_config == nil
             ? false
             : await ResourceArgs.supportsBlkioFlags(for: "run")
+        let supportsRestartFlag = service.restart == nil
+            ? false
+            : await LifecycleArgs.supportsRestartFlag(for: "run")
 
         let ctx = ArgsContext(
             service: service,
@@ -694,7 +697,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             composeFilename: composeFilename,
             dnsSidecar: dnsSidecar,
             supportsHealthcheckFlags: supportsHealthcheckFlags,
-            supportsBlkioFlags: supportsBlkioFlags
+            supportsBlkioFlags: supportsBlkioFlags,
+            supportsRestartFlag: supportsRestartFlag
         )
         runCommandArgs.append(contentsOf: LifecycleArgs.build(ctx))
         runCommandArgs.append(contentsOf: SecurityArgs.build(ctx))

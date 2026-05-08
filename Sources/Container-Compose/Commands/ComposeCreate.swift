@@ -279,6 +279,9 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
         let supportsBlkioFlags = service.blkio_config == nil
             ? false
             : await ComposeUp.ResourceArgs.supportsBlkioFlags(for: "create")
+        let supportsRestartFlag = service.restart == nil
+            ? false
+            : await ComposeUp.LifecycleArgs.supportsRestartFlag(for: "create")
 
         let ctx = ComposeUp.ArgsContext(
             service: service,
@@ -290,7 +293,8 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
             dockerCompose: dockerCompose,
             composeFilename: composeFilename,
             supportsHealthcheckFlags: supportsHealthcheckFlags,
-            supportsBlkioFlags: supportsBlkioFlags
+            supportsBlkioFlags: supportsBlkioFlags,
+            supportsRestartFlag: supportsRestartFlag
         )
         createArgs.append(contentsOf: ComposeUp.LifecycleArgs.build(ctx))
         createArgs.append(contentsOf: ComposeUp.SecurityArgs.build(ctx))

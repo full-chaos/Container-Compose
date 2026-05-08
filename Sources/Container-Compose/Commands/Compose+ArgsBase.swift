@@ -41,6 +41,8 @@ extension ComposeUp {
         let supportsHealthcheckFlags: Bool
         let supportsBlkioFlags: Bool
 
+        let supportsRestartFlag: Bool
+
         init(
             service: Service,
             serviceName: String,
@@ -52,7 +54,8 @@ extension ComposeUp {
             composeFilename: String?,
             dnsSidecar: SidecarHandle? = nil,
             supportsHealthcheckFlags: Bool = true,
-            supportsBlkioFlags: Bool = false
+            supportsBlkioFlags: Bool = false,
+            supportsRestartFlag: Bool = false
         ) {
             self.service = service
             self.serviceName = serviceName
@@ -65,6 +68,7 @@ extension ComposeUp {
             self.dnsSidecar = dnsSidecar
             self.supportsHealthcheckFlags = supportsHealthcheckFlags
             self.supportsBlkioFlags = supportsBlkioFlags
+            self.supportsRestartFlag = supportsRestartFlag
         }
     }
 }
