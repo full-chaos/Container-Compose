@@ -309,7 +309,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         fatalError("unreachable")
     }
 
-    private func getIPForRunningService(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
+    /// Look up the per-attachment IPv4 address for the named service's container.
+    /// `internal` (not private) so CHAOS-1475 regression tests in
+    /// `Container-Compose-StaticTests` can pin the gateway-vs-address contract.
+    internal func getIPForRunningService(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
         guard let projectName else { return nil }
 
         let containerName = effectiveContainerName(
@@ -320,7 +323,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
         let provider = ContainerClientEnvironment.current
         let container = try await provider.get(id: containerName)
-        let ip = container.networks.compactMap { $0.ipv4Gateway.description }.first
+        // CHAOS-1475 MUST-FIX #1: use the per-attachment container IP, NOT the
+        // network gateway IP. Service-name DNS A records and env-var
+        // substitution must point at the container itself.
+        let ip = container.networks.compactMap { $0.ipv4Address.address.description }.first
 
         return ip
     }
@@ -564,12 +570,28 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
         launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
 
+        let resolvedIP: String?
         do {
             try await waitUntilServiceIsRunning(serviceName, explicitContainerName: service.container_name)
-            let ip = try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
-            try updateEmbeddedDNSZone(service: service, serviceName: serviceName, ip: ip)
+            resolvedIP = try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
         } catch {
+            // Container readiness/IP-resolution failures are surfaced but do not
+            // halt the project — other services may still come up successfully.
             print(error)
+            return
+        }
+
+        // CHAOS-1475 MUST-FIX #2: do NOT swallow embedded-DNS-zone refresh
+        // failures. Service-name resolution is downstream of these writes,
+        // so a silent failure here would produce stale zone data and broken
+        // service discovery. Log to stderr with a clear prefix and rethrow.
+        do {
+            try updateEmbeddedDNSZone(service: service, serviceName: serviceName, ip: resolvedIP)
+        } catch {
+            FileHandle.standardError.write(Data(
+                "Error: failed to refresh embedded DNS resolver zone for service '\(serviceName)': \(error)\n".utf8
+            ))
+            throw error
         }
     }
 

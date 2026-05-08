@@ -520,7 +520,13 @@ struct EmbeddedDNSSidecarArgvTests {
                 network: network.name,
                 hostname: id,
                 ipv4Address: try CIDRv4("\(network.ip)/24"),
-                ipv4Gateway: try IPv4Address(network.ip),
+                // CHAOS-1475 MUST-FIX #1 regression guard: gateway is
+                // intentionally a SENTINEL distinct from the host's
+                // ipv4Address (the .1 of the per-attachment /24). Any
+                // production code path that confuses gateway-vs-address
+                // will surface here as a test failure rather than a
+                // misrouted DNS A record.
+                ipv4Gateway: try IPv4Address("\(Self.gatewayPrefix(of: network.ip)).1"),
                 ipv6Address: nil,
                 macAddress: nil
             )
@@ -530,6 +536,15 @@ struct EmbeddedDNSSidecarArgvTests {
             status: .running,
             networks: attachments
         )
+    }
+
+    /// Derive the `/24` subnet prefix of an IPv4 dotted-quad string for use as
+    /// a gateway sentinel. `"192.168.65.10"` -> `"192.168.65"`. Crashes the
+    /// test (intentionally) if the input isn't a four-octet IPv4 string.
+    private static func gatewayPrefix(of ip: String) -> String {
+        let parts = ip.split(separator: ".")
+        precondition(parts.count == 4, "expected dotted-quad IPv4, got \(ip)")
+        return parts.prefix(3).joined(separator: ".")
     }
 }
 
