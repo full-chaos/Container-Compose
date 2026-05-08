@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1491-wait-container-name",
+  "commit": "d63da3396c3f793dc3b3bfa2dbdbffba55f38a53",
+  "short": "d63da33",
+  "target": "d63da33",
+  "message": "fix(compose): CHAOS-1491 honor service.container_name in waitForCondition",
+  "published_at": "2026-05-08T17:47:56.753033+00:00"
+}
