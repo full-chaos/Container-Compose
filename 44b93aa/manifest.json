@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1495-network-name-audit",
+  "commit": "44b93aa926f7a465561290be975dfb000afe0f10",
+  "short": "44b93aa",
+  "target": "44b93aa",
+  "message": "fix(compose): CHAOS-1495 network-name key alignment \u2014 env-substituted / aliased / external network audit + tests",
+  "published_at": "2026-05-08T23:13:36.096942+00:00"
+}
