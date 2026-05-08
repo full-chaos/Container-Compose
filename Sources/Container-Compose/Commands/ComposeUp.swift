@@ -525,7 +525,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     private mutating func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
-        try await waitForServiceDependencies(service, serviceName: serviceName)
+        try await waitForServiceDependencies(service, serviceName: serviceName, from: dockerCompose)
 
         // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
         warnUnsupportedContainerParityFields(service)
@@ -601,11 +601,12 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// dependency reaches the declared state before starting this service.
     /// List-form depends_on (implicit `condition: service_started`) is also
     /// honored here; the wait is a no-op once the dep is running.
-    private func waitForServiceDependencies(_ service: Service, serviceName: String) async throws {
+    private func waitForServiceDependencies(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let dependencies = service.dependsOn?.entries, !dependencies.isEmpty else { return }
         for (depName, entry) in dependencies {
             do {
-                try await waitForCondition(depName, condition: entry.condition)
+                let depContainerName: String? = (dockerCompose.services[depName] ?? nil)?.container_name ?? nil
+                try await waitForCondition(depName, explicitContainerName: depContainerName, condition: entry.condition)
             } catch {
                 if entry.required {
                     throw error

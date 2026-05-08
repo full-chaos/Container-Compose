@@ -21,6 +21,7 @@ import Foundation
 extension ComposeUp {
     func waitForCondition(
         _ serviceName: String,
+        explicitContainerName: String? = nil,
         condition: DependsOnCondition,
         timeout: TimeInterval = 60,
         interval: TimeInterval = 0.5
@@ -29,7 +30,11 @@ extension ComposeUp {
             return
         }
 
-        let containerName = "\(projectName)-\(serviceName)"
+        let containerName = effectiveContainerName(
+            projectName: projectName,
+            serviceName: serviceName,
+            explicit: explicitContainerName
+        )
         let deadline = Date().addingTimeInterval(timeout)
         let provider = ContainerClientEnvironment.current
 
@@ -72,7 +77,7 @@ extension ComposeUp {
             }
         }
 
-        throw ComposeWaitError.timeout(containerName: containerName, condition: condition, seconds: timeout)
+        throw ComposeWaitError.timeout(serviceName: serviceName, containerName: containerName, condition: condition, seconds: timeout)
     }
 }
 
@@ -81,7 +86,7 @@ extension ComposeUp {
 /// Errors that can be thrown by `waitForCondition`.
 public enum ComposeWaitError: Error, LocalizedError {
     /// The container did not satisfy the required condition within the allotted time.
-    case timeout(containerName: String, condition: DependsOnCondition, seconds: TimeInterval)
+    case timeout(serviceName: String, containerName: String, condition: DependsOnCondition, seconds: TimeInterval)
 
     /// The container reached `.stopped` state with a non-zero exit code while waiting
     /// on `service_completed_successfully`.
@@ -89,10 +94,10 @@ public enum ComposeWaitError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case let .timeout(name, condition, seconds):
+        case let .timeout(serviceName, containerName, condition, seconds):
             return
-                "Timed out after \(Int(seconds))s waiting for container '\(name)' " +
-                "to satisfy condition '\(condition.rawValue)'."
+                "Timed out after \(Int(seconds))s waiting for container '\(containerName)' " +
+                "(service '\(serviceName)') to satisfy condition '\(condition.rawValue)'."
         case let .nonZeroExitCode(name, exitCode):
             return
                 "Container '\(name)' exited with non-zero status \(exitCode); " +
