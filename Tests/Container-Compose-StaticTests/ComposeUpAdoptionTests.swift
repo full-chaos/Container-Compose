@@ -182,6 +182,7 @@ struct ComposeUpAdoptionTests {
         id: String,
         imageReference: String,
         labels: [String: String] = [:],
+        bootstrapped: Bool = true,
         dnsNameservers: [String]? = nil,
         environment: [String] = [],
         executable: String = "/bin/sh",
@@ -207,7 +208,15 @@ struct ComposeUpAdoptionTests {
             ),
             process: process
         )
-        config.labels = labels
+        // CHAOS-1499: post-1499 containers carry the bootstrap sentinel.
+        // `bootstrapped: false` opts out so a test can model a pre-1499
+        // container (no sentinel → SUBSET env check is skipped per the
+        // CHAOS-1499 gate in `envDivergenceReason`).
+        var mergedLabels = labels
+        if bootstrapped {
+            mergedLabels["compose.spec.bootstrapped"] = "true"
+        }
+        config.labels = mergedLabels
         config.publishedPorts = publishedPorts
         config.networks = networks
         if let dnsNameservers {
@@ -540,6 +549,59 @@ struct ComposeUpAdoptionTests {
         )
         #expect(reason != nil)
         #expect(reason?.contains("env key 'FOO' missing") == true)
+    }
+
+    @Test("CHAOS-1499: specDivergenceReason ADOPTS pre-1499 container without bootstrap sentinel even when env value mismatches")
+    func chaos1499GateSkipsEnvSubsetForPre1499Container() async throws {
+        // Acceptance fixture from the CHAOS-1499 ticket: a pre-1499 container
+        // has its env baked at create-time on a prior `up` (when containerIps
+        // was populated mid-flight). The peer-name env var resolved to a
+        // peer-service IP, e.g. `DB_HOST=192.168.66.4`. On the next up the
+        // expected env at adoption time has containerIps empty so it
+        // recomputes as `DB_HOST=postgres`. The naive SUBSET check would
+        // fire spurious recreate. CHAOS-1499 gates the SUBSET check on the
+        // bootstrap sentinel: pre-1499 containers (no sentinel) skip the
+        // check; the first non-env divergence forces a benign one-time
+        // recreate that produces a post-1499 container with the sentinel.
+        let service = Service(image: "alpine:latest")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:latest",
+            bootstrapped: false,  // pre-1499 — no sentinel
+            environment: ["DB_HOST=192.168.66.4", "PATH=/usr/bin"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedEnvironment: ["DB_HOST": "postgres"]
+        )
+        #expect(reason == nil,
+                "pre-1499 container must adopt cleanly when only env diverges — the sentinel gate skips the SUBSET check so peer-IP-vs-name asymmetry doesn't trigger spurious recreate")
+    }
+
+    @Test("CHAOS-1499: specDivergenceReason still recreates pre-1499 container when a NON-env divergence (image label mismatch) fires")
+    func chaos1499NonEnvDivergenceStillRecreatesPre1499() async throws {
+        // Companion to the gate test: pre-1499 containers don't get a free
+        // pass overall — only the env SUBSET check is gated. Other
+        // divergences (image, ports, command, networks, dns) still fire,
+        // forcing the one-time benign recreate that brings the container
+        // under the post-1499 scheme.
+        let service = Service(image: "alpine:NEW")
+        let snapshot = Self.makeSnapshotWith(
+            id: "x",
+            imageReference: "docker.io/library/alpine:OLD",
+            labels: ["compose.spec.image": "alpine:OLD"],
+            bootstrapped: false,  // pre-1499
+            environment: ["DB_HOST=192.168.66.4"]
+        )
+        let reason = ComposeUp.specDivergenceReason(
+            existing: snapshot,
+            expected: service,
+            expectedEnvironment: ["DB_HOST": "postgres"],  // would diverge under pre-1499 SUBSET, but gate skips
+            expectedImageLabel: "alpine:NEW"
+        )
+        #expect(reason?.contains("compose.spec.image") == true,
+                "image-label mismatch on a pre-1499 container must still recreate — the env-subset gate is the ONLY check CHAOS-1499 relaxes")
     }
 
     @Test("specDivergenceReason adopts when expected env subset is satisfied (image-injected vars ignored)")

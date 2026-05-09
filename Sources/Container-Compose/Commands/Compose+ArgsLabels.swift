@@ -140,6 +140,29 @@ extension ComposeUp {
             var args: [String] = []
             let svc = ctx.service
 
+            // 0. CHAOS-1499 bootstrap sentinel — unconditional. Written for
+            // every container that goes through fingerprintLabels (i.e.
+            // every post-CHAOS-1499 container). Consumed by
+            // `envDivergenceReason` in `Compose+Adoption.swift` to gate the
+            // snapshot-fallback SUBSET env check. Pre-1499 containers
+            // (including all pre-1496 ones) lack this sentinel; their
+            // baked env may include peer-IP values resolved at create-time
+            // on a prior `up` (when `containerIps` was populated mid-flight
+            // by the `configService` loop AFTER each service launched).
+            // The expected env at adoption time has `containerIps` empty,
+            // so peer-name env vars expand to the unrewritten name. Without
+            // this gate the SUBSET check would spurious-recreate every
+            // pre-1499 container with peer-name env vars (e.g.
+            // `DB_HOST: postgres` resolves at create-time to
+            // `DB_HOST=192.168.66.4`, then the next `up` recomputes
+            // expected as `DB_HOST=postgres` and the SUBSET fails). The
+            // first non-env divergence (image, ports, command, networks,
+            // dns) forces a benign recreate that produces a post-1499
+            // container with the sentinel; from then on
+            // `envHashDivergence` (label-primary, byte-equal hash) is the
+            // source of truth.
+            args.append(contentsOf: ["--label", "compose.spec.bootstrapped=true"])
+
             // 1. compose.spec.image — resolved image reference. Skip for
             // build-only services where `service.image` is nil; the
             // post-build image reference comes from the build pipeline and

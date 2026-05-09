@@ -79,13 +79,21 @@ extension ComposeUp {
         /// resulting argv shape stays clean for services with no env.
         ///
         /// Caller-side note: `mergedEnv` MUST be the output of
-        /// `ComposeUp.mergeAndExpandServiceEnv(_:)` (which folds in
-        /// project-level baseline env, env_file, service.environment, and
-        /// containerIps cross-references). The exact-string hash semantics
-        /// of the corresponding `envHashDivergence` check rely on the create-
-        /// time merge order matching the adoption-time merge order byte-for-
-        /// byte; the existing `envDivergenceReason` (with subset semantics)
-        /// remains as snapshot-fallback for pre-CHAOS-1496 containers.
+        /// `ComposeUp.mergeServiceEnvForFingerprint(_:)` — the (a)-only form
+        /// that folds in project-level baseline env, env_file, and
+        /// `service.environment` with `${VAR}` substitution but DOES NOT apply
+        /// the (b)-layer `containerIps[value] ?? value` rewrite. `containerIps`
+        /// is empty at `resolveAdoption` time (populated only by the
+        /// per-service `configService` loop that runs AFTER adoption), so
+        /// hashing the (a+b) form would spurious-diverge every service whose
+        /// env references a peer service by name. The exact-string hash
+        /// semantics of the corresponding `envHashDivergence` check rely on
+        /// the create-time merge order matching the adoption-time merge order
+        /// byte-for-byte. The SUBSET-semantics `envDivergenceReason` remains
+        /// as snapshot fallback for pre-CHAOS-1496 containers, gated behind
+        /// the CHAOS-1499 `compose.spec.bootstrapped` sentinel so it no
+        /// longer fires spuriously on pre-1499 containers with peer-IP env
+        /// values baked at create-time on a prior `up`.
         static func canonicalEnvHash(_ env: [String: String]) -> String {
             let lines = env
                 .sorted { $0.key < $1.key }
