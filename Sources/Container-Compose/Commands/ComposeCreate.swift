@@ -190,7 +190,10 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
     }
 
     private func setupNetwork(name networkName: String, config networkConfig: Network?) async throws {
-        let actualNetworkName = networkConfig?.name ?? networkName
+        // CHAOS-1497: also honor deprecated `external: { name: ... }` form.
+        let actualNetworkName = networkConfig?.name
+            ?? networkConfig?.external?.name
+            ?? networkName
 
         if let externalNetwork = networkConfig?.external, externalNetwork.isExternal {
             print("Info: Network '\(networkName)' is declared as external, skipping creation.")

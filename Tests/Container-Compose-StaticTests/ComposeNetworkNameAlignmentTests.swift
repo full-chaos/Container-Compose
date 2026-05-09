@@ -491,6 +491,73 @@ struct ComposeNetworkNameAlignmentTests {
         #expect(reason?.contains("'bar'") == true)
     }
 
+    // MARK: - Case 3c (CHAOS-1497): deprecated nested form `external: { name: bar }`
+
+    @Test("Case 3c (external.name nested form, CHAOS-1497): four-site agreement, drift detected")
+    func case3cExternalNameInsideDict() throws {
+        // The DEPRECATED compose-spec form where the rename lives INSIDE
+        // `external` rather than at top-level `name:`. The model layer decodes
+        // it correctly (`ExternalNetwork.name`), but every read site historically
+        // looked at `network.name` only, never `network.external?.name`.
+        // Result: sidecar tries `--network foo` while apple/container has the
+        // network as `bar` → `waitForRunningSidecar` times out.
+        //
+        // Fix: 3-tier fallback `network.name ?? network.external?.name ?? networkKey`
+        // at every name-resolution site (helper + 4 use sites).
+        let cc = try decode(yaml: """
+            services:
+              svc:
+                image: alpine:latest
+                networks:
+                  - foo
+            networks:
+              foo:
+                external:
+                  name: bar
+            """)
+        let svc = try #require(cc.services["svc"] ?? nil)
+        let sidecarIP = "10.0.0.17"
+        let sh = sidecar(perNetworkIPs: ["bar": sidecarIP])
+
+        // Site A — label key uses the nested-external alias `bar`, never `foo`.
+        let labelArgs = ComposeUp.LabelsArgs.build(
+            ctx(service: svc, dockerCompose: cc, dnsSidecar: sh)
+        )
+        #expect(labelArgs.contains("compose.dns.resolvers.bar=\(sidecarIP)"))
+        #expect(!labelArgs.contains(where: { $0.hasPrefix("compose.dns.resolvers.foo") }),
+                "label key must NOT use the raw YAML key when external.name is set")
+
+        // Site B — argv uses the alias.
+        let netArgs = ComposeUp.NetworkingArgs.build(
+            ctx(service: svc, dockerCompose: cc, dnsSidecar: sh)
+        )
+        #expect(adjacentValues(in: netArgs, after: "--network") == ["bar"])
+        #expect(adjacentValues(in: netArgs, after: "--dns") == [sidecarIP])
+
+        // Site C — divergence set uses the alias.
+        var cmd = try ComposeUp.parse([])
+        cmd.projectName = "cc-test-1497-c3c"
+        #expect(cmd.expectedNetworkNamesForService(svc, dockerCompose: cc) == Set(["bar"]))
+
+        // Site D regression — drift on the canonical name MUST be detected.
+        let stale = snapshot(
+            id: "cc-test-1497-c3c-svc",
+            imageReference: "docker.io/library/alpine:latest",
+            labels: ["compose.dns.resolvers.bar": "10.0.0.99"]
+        )
+        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc)
+        #expect(canonicalMap == ["foo": "bar"])
+        let reason = ComposeUp.specDivergenceReason(
+            existing: stale,
+            expected: svc,
+            expectedSidecarIPs: ["bar": sidecarIP],
+            serviceNetworkCanonicalNames: canonicalMap
+        )
+        #expect(reason != nil, "DNS divergence MUST be detected for nested-external-name networks (CHAOS-1497)")
+        #expect(reason?.contains("'bar'") == true,
+                "reason MUST reference the canonical name `bar`, not the raw key `foo`")
+    }
+
     // MARK: - Helper utilities
 
     /// Returns each value immediately following `flag` in a flag-then-value
