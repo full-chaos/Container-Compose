@@ -1,0 +1,8 @@
+{
+  "branch": "worktree-chaos-1499-bootstrap-sentinel-gate",
+  "commit": "dc9346fb57b393ad998ecadb0c6d120d168c3bd2",
+  "short": "dc9346f",
+  "target": "dc9346f",
+  "message": "fix(compose): CHAOS-1499 bootstrap-sentinel gate for envDivergenceReason \u2014 pre-1499 containers no longer spurious-recreate from peer-IP env values",
+  "published_at": "2026-05-09T13:10:50.952464+00:00"
+}
