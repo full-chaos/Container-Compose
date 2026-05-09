@@ -30,6 +30,9 @@ concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Two suites run on parallel macOS runners so a slow or flaky dynamic
   # suite cannot pin the wall-clock time for fast static feedback.
