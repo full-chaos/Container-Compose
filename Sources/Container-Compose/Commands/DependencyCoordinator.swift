@@ -23,17 +23,35 @@ import Foundation
 /// values so each `depends_on` edge maps cleanly to one milestone.
 ///
 /// Precedence (which milestone publications satisfy which awaits):
-/// - Publishing `.started` satisfies waits for `.started` only.
-/// - Publishing `.healthy` satisfies waits for `.healthy` AND `.started`
-///   (a service cannot be healthy without first being started).
+/// - Publishing `.created` satisfies waits for `.created` only.
+/// - Publishing `.started` satisfies waits for `.started` AND `.created`
+///   (a service cannot be started without first being created).
+/// - Publishing `.healthy` satisfies waits for `.healthy`, `.started`,
+///   AND `.created` (a service cannot be healthy without first being
+///   started, hence created).
 /// - Publishing `.completedSuccessfully` satisfies waits for
-///   `.completedSuccessfully` AND `.started` (a service cannot have
-///   completed without first starting). It does NOT satisfy `.healthy`
-///   waits — a service may exit `0` without ever passing a healthcheck.
+///   `.completedSuccessfully`, `.started`, AND `.created` (a service
+///   cannot have completed without first starting). It does NOT satisfy
+///   `.healthy` waits — a service may exit `0` without ever passing a
+///   healthcheck.
+/// - Publishing `.stopped` satisfies waits for `.stopped`, `.started`,
+///   AND `.created` (a service cannot be stopped without first having
+///   been started). It does NOT satisfy `.healthy` or
+///   `.completedSuccessfully` waits — stopping is orthogonal to those
+///   transitional / terminal states.
+///
+/// CHAOS-1446 Phase 3 added `.created` and `.stopped` cases. The forward-
+/// implication tower (`.created` < `.started` < higher tiers) gives
+/// `compose create`'s DAG-ordered create phase a clean dependency-gating
+/// milestone, while `.stopped` is the milestone the reverse-DAG
+/// `compose stop` publishes per-service so dependencies can wait for their
+/// dependents to stop before stopping themselves.
 public enum ServiceMilestone: Sendable, Hashable {
+    case created
     case started
     case healthy
     case completedSuccessfully
+    case stopped
 }
 
 // MARK: - DependencyCoordinator
@@ -210,12 +228,29 @@ public actor DependencyCoordinator {
         return reached.contains(where: { satisfies(published: $0, waited: milestone) })
     }
 
-    /// Per `ServiceMilestone` precedence: `started` is implied by
-    /// `healthy` and `completedSuccessfully`; nothing else is implied
-    /// across milestones.
+    /// Per `ServiceMilestone` precedence (see enum docstring):
+    /// - `.created` is implied by EVERY other milestone (any post-create
+    ///   publication confirms the container existed).
+    /// - `.started` is implied by `.healthy`, `.completedSuccessfully`,
+    ///   `.stopped` (each requires the service to have been started).
+    /// - `.healthy`, `.completedSuccessfully`, `.stopped` are only
+    ///   satisfied by themselves.
     private func satisfies(published: ServiceMilestone, waited: ServiceMilestone) -> Bool {
         if published == waited { return true }
-        return waited == .started && (published == .healthy || published == .completedSuccessfully)
+
+        // .created: implied by ANY other milestone.
+        if waited == .created { return true }
+
+        // .started: implied by .healthy, .completedSuccessfully, .stopped.
+        if waited == .started {
+            switch published {
+            case .healthy, .completedSuccessfully, .stopped: return true
+            default: return false
+            }
+        }
+
+        // .healthy / .completedSuccessfully / .stopped: only themselves.
+        return false
     }
 
     // MARK: - Test affordances

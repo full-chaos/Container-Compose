@@ -63,91 +63,130 @@ public struct ComposeStart: AsyncParsableCommand, ComposeCommand {
             servicesArg: services
         )
 
-        try await startServices(resolvedServices, projectName: projectName)
+        try await startServices(resolvedServices, projectName: projectName, cwd: cwd)
     }
 
     // NOTE: ContainerClient does not expose a `start(id:)` method; it only
     // provides `bootstrap(id:stdio:)` which requires complex IO setup.
     // We shell out to `container start --detach <name>` instead, which is
     // the same mechanism the container CLI uses internally.
-    func startServices(_ services: [(serviceName: String, service: Service)], projectName: String) async throws {
-        if RuntimeExecutionMode.isRemote {
-            let runtime = RuntimeEnvironment.current
+    //
+    // CHAOS-1446 Phase 3: starts run in PARALLEL, gated by the forward
+    // `depends_on` DAG via `DependencyCoordinator`. Each service awaits
+    // every dependency's `.started` milestone before issuing its own
+    // start. After a successful start (or non-throwing skip) the service
+    // publishes its own `.started` so dependents may proceed. Per Lead
+    // Decision D4, ComposeStart MUST NOT acquire `@unchecked Sendable`;
+    // the per-service work is therefore extracted into a `static` helper
+    // that captures only Sendable parameters — no `self` capture inside
+    // the @Sendable child task closure.
+    func startServices(_ services: [(serviceName: String, service: Service)], projectName: String, cwd: String) async throws {
+        let coord = DependencyCoordinator()
+        let forwardGraph = buildForwardDependencyGraph(services: services)
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
             for (serviceName, service) in services {
-                let containerName = effectiveContainerName(
-                    projectName: projectName,
-                    serviceName: serviceName,
-                    explicit: service.container_name
-                )
+                group.addTask {
+                    // Wait for every selected dependency to publish .started.
+                    // Edges to non-selected services are pre-filtered out by
+                    // buildForwardDependencyGraph, so this loop only awaits
+                    // services that will actually run.
+                    for dep in forwardGraph[serviceName] ?? [] {
+                        try await coord.awaitMilestone(for: dep, milestone: .started)
+                    }
 
-                guard let container = try? await runtime.get(id: containerName) else {
-                    print("Warning: Container '\(containerName)' not found, skipping.")
-                    continue
-                }
+                    // Issue the start. Errors are swallowed and logged (matching
+                    // the pre-Phase-3 serial behavior); the .started milestone
+                    // is published unconditionally so dependents are not
+                    // permanently blocked by a single failure.
+                    await Self.performSingleStart(
+                        serviceName: serviceName,
+                        service: service,
+                        projectName: projectName,
+                        cwd: cwd
+                    )
 
-                if container.status == .running {
-                    print("Info: Container '\(containerName)' is already running, skipping.")
-                    continue
-                }
-
-                print("Starting container: \(containerName)")
-                do {
-                    try await runtime.start(id: container.id)
-                    print("Successfully started container: \(containerName)")
-                } catch {
-                    print("Error starting container '\(containerName)': \(error)")
+                    await coord.publishMilestone(.started, for: serviceName)
                 }
             }
-            return
+            try await group.waitForAll()
         }
+    }
 
-        for (serviceName, service) in services {
-            let containerName = effectiveContainerName(
-                projectName: projectName,
-                serviceName: serviceName,
-                explicit: service.container_name
-            )
+    /// Per-service start, extracted out of `startServices` so the parallel
+    /// child closure does not need to capture `self` (Lead Decision D4 —
+    /// ComposeStart must not become @unchecked Sendable). All inputs are
+    /// Sendable value types or task-local-bound singletons
+    /// (RuntimeEnvironment / RunnerEnvironment / ContainerClientEnvironment).
+    private static func performSingleStart(
+        serviceName: String,
+        service: Service,
+        projectName: String,
+        cwd: String
+    ) async {
+        let containerName = effectiveContainerName(
+            projectName: projectName,
+            serviceName: serviceName,
+            explicit: service.container_name
+        )
 
-            guard let container = try? await ContainerClientEnvironment.current.get(id: containerName) else {
+        if RuntimeExecutionMode.isRemote {
+            let runtime = RuntimeEnvironment.current
+
+            guard let container = try? await runtime.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")
-                continue
+                return
             }
 
             if container.status == .running {
                 print("Info: Container '\(containerName)' is already running, skipping.")
-                continue
+                return
             }
 
             print("Starting container: \(containerName)")
             do {
-                // Route through the RunCommandRunner seam (PR-5 of the
-                // recorder migration; see docs/plans/PLAN-recorder-seam.md
-                // §7 / §9 PR-5 / §10 Q4). The previous `shellStart` helper
-                // was deleted; `ProductionRunner` preserves the same
-                // `Process()` semantics byte-for-byte, and caller-side error
-                // translation keeps the original `NSError(domain: "ComposeStart", ...)`
-                // shape.
-                let request = RunRequest(
-                    kind: .awaitOnly,
-                    argv: ["container", "start", "--detach", containerName],
-                    cwd: cwd
-                )
-                let result = try await RunnerEnvironment.current.run(
-                    request,
-                    onStdout: nil,
-                    onStderr: nil
-                )
-                guard result.exitCode == 0 else {
-                    throw NSError(
-                        domain: "ComposeStart",
-                        code: Int(result.exitCode),
-                        userInfo: [NSLocalizedDescriptionKey: "container start exited with status \(result.exitCode)"]
-                    )
-                }
+                try await runtime.start(id: container.id)
                 print("Successfully started container: \(containerName)")
             } catch {
                 print("Error starting container '\(containerName)': \(error)")
             }
+            return
+        }
+
+        guard let container = try? await ContainerClientEnvironment.current.get(id: containerName) else {
+            print("Warning: Container '\(containerName)' not found, skipping.")
+            return
+        }
+
+        if container.status == .running {
+            print("Info: Container '\(containerName)' is already running, skipping.")
+            return
+        }
+
+        print("Starting container: \(containerName)")
+        do {
+            // Route through the RunCommandRunner seam (PR-5 of the recorder
+            // migration; see docs/plans/PLAN-recorder-seam.md §7 / §10 Q4).
+            let request = RunRequest(
+                kind: .awaitOnly,
+                argv: ["container", "start", "--detach", containerName],
+                cwd: cwd
+            )
+            let result = try await RunnerEnvironment.current.run(
+                request,
+                onStdout: nil,
+                onStderr: nil
+            )
+            guard result.exitCode == 0 else {
+                throw NSError(
+                    domain: "ComposeStart",
+                    code: Int(result.exitCode),
+                    userInfo: [NSLocalizedDescriptionKey: "container start exited with status \(result.exitCode)"]
+                )
+            }
+            print("Successfully started container: \(containerName)")
+        } catch {
+            print("Error starting container '\(containerName)': \(error)")
         }
     }
 }

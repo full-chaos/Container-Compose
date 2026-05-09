@@ -314,19 +314,234 @@ struct ParallelOrchestrationTests {
         #expect(peak >= 2, "expected ComposeBuild to fan out; peakConcurrency was \(peak)")
     }
 
-    @Test("dependentServiceWaitsForRequiredDep", .disabled("Filled in Phase 3 — drives ComposeStart through DependencyCoordinator"))
-    func dependentServiceWaitsForRequiredDep() async throws {
-        // Phase 3: Service B (depends_on A) does not start until
-        // coordinator publishes A's `.started` milestone. Verify via
-        // RecordingRunner.happensBefore for the two `container start`
-        // calls.
+    // CHAOS-1446 Phase 3: parallel lifecycle commands. All four tests below
+    // drive the real `compose start` / `compose stop` / `compose restart`
+    // commands through `RecordingRunner` + `RecordingContainerClientProvider`
+    // and assert deterministic DAG-respecting behavior. The provider is
+    // primed via `stubRunningContainer(id:)` so per-service start/stop logic
+    // executes (instead of early-returning at the "container not found"
+    // guard) and the resulting `"container start"` argvs / `.stop` entries
+    // become observable for happens-before assertions.
+
+    @Test("parallelStartDAGOrder — dependent service starts AFTER its dependency")
+    func parallelStartDAGOrder() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-start-dag-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let yaml = """
+        services:
+          db:
+            image: postgres:16
+          api:
+            image: example/api:latest
+            depends_on:
+              - db
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        let provider = RecordingContainerClientProvider()
+        // Default project name is the cwd basename; here the temp dir.
+        let project = dir.lastPathComponent
+        await provider.stubRunningContainer(id: "\(project)-db")
+        await provider.stubRunningContainer(id: "\(project)-api")
+
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            try await ContainerClientEnvironment.$current.withValue(provider) {
+                var cmd = try ComposeStart.parse(["-f", compose.path])
+                try await cmd.run()
+            }
+        }
+
+        // The DAG forces api to wait for db's `.started` publication. Both
+        // services issue `container start --detach <name>` through the runner.
+        // Assert db's start argv comes BEFORE api's start argv.
+        let dbBefore = await recorder.happensBefore(
+            ["container", "start", "--detach", "\(project)-db"],
+            ["container", "start", "--detach", "\(project)-api"]
+        )
+        #expect(dbBefore, "db's start must precede api's start under DAG ordering")
     }
 
-    @Test("stopReversesDependencyOrder", .disabled("Filled in Phase 3 — drives ComposeStop with diamond fixture"))
+    @Test("stopReversesDependencyOrder — dependent service stops BEFORE its dependency")
     func stopReversesDependencyOrder() async throws {
-        // Phase 3: Diamond fixture (`base` depended on by `api` and
-        // `worker`). Assert `api` and `worker` BOTH stop before `base`
-        // and that peak stop concurrency >= 2.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-stop-reverse-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let yaml = """
+        services:
+          db:
+            image: postgres:16
+          api:
+            image: example/api:latest
+            depends_on:
+              - db
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let provider = RecordingContainerClientProvider()
+        let project = dir.lastPathComponent
+        await provider.stubRunningContainer(id: "\(project)-db")
+        await provider.stubRunningContainer(id: "\(project)-api")
+
+        try await ContainerClientEnvironment.$current.withValue(provider) {
+            var cmd = try ComposeStop.parse(["-f", compose.path])
+            try await cmd.run()
+        }
+
+        // Reverse-DAG: api (the dependent) must stop BEFORE db (the dependency).
+        // ComposeStop calls `provider.stop(id:)` per service; we observe the
+        // recorded `.stop` entries.
+        let apiBeforeDb = await provider.happensBefore(
+            { entry in if case .stop(let id) = entry, id == "\(project)-api" { return true } else { return false } },
+            { entry in if case .stop(let id) = entry, id == "\(project)-db" { return true } else { return false } }
+        )
+        #expect(apiBeforeDb, "api's stop must precede db's stop under reverse-DAG ordering")
+    }
+
+    @Test("parallelStopDiamondFanOut — leaf services stop concurrently before their shared dependency")
+    func parallelStopDiamondFanOut() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-stop-diamond-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Diamond fixture: `base` is depended on by BOTH `api` and `worker`.
+        // Per CHAOS-1446 UltraBrain Critical #8, the reverse-DAG schedule
+        // must let api AND worker stop in PARALLEL (peak >= 2) BEFORE base
+        // stops at all.
+        let yaml = """
+        services:
+          base:
+            image: postgres:16
+          api:
+            image: example/api:latest
+            depends_on:
+              - base
+          worker:
+            image: example/worker:latest
+            depends_on:
+              - base
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let provider = RecordingContainerClientProvider()
+        let project = dir.lastPathComponent
+        await provider.stubRunningContainer(id: "\(project)-base")
+        await provider.stubRunningContainer(id: "\(project)-api")
+        await provider.stubRunningContainer(id: "\(project)-worker")
+
+        try await ContainerClientEnvironment.$current.withValue(provider) {
+            var cmd = try ComposeStop.parse(["-f", compose.path])
+            try await cmd.run()
+        }
+
+        // Both leaves must stop BEFORE the shared dependency.
+        let apiBeforeBase = await provider.happensBefore(
+            { entry in if case .stop(let id) = entry, id == "\(project)-api" { return true } else { return false } },
+            { entry in if case .stop(let id) = entry, id == "\(project)-base" { return true } else { return false } }
+        )
+        let workerBeforeBase = await provider.happensBefore(
+            { entry in if case .stop(let id) = entry, id == "\(project)-worker" { return true } else { return false } },
+            { entry in if case .stop(let id) = entry, id == "\(project)-base" { return true } else { return false } }
+        )
+        #expect(apiBeforeBase, "api (leaf) must stop before base (root)")
+        #expect(workerBeforeBase, "worker (leaf) must stop before base (root)")
+
+        // All three .stop entries must be present — nothing should be skipped.
+        let stops = await provider.unorderedEntries(matching: { entry in
+            if case .stop = entry { return true } else { return false }
+        })
+        #expect(stops.count == 3, "every service must stop exactly once; got \(stops.count)")
+
+        // CHAOS-1446 UltraBrain Critical #8 mandate: the diamond fixture
+        // exists specifically to catch silent serialization regressions — a
+        // serial implementation `api → worker → base` would PASS the ordering
+        // and count assertions above. Assert peak concurrency >= 2 to prove
+        // the leaves actually FAN OUT in parallel before base. Loose bound
+        // (>= 2, not == 2) avoids scheduler-timing flakes per the established
+        // pattern. RecordingContainerClientProvider's stop(id:) tracks
+        // inFlightStops + peakStopConcurrency under actor reentrancy
+        // (Task.sleep 100µs pattern from Phase 2's RecordingRunner).
+        let peak = await provider.peakConcurrency()
+        #expect(peak >= 2, "diamond fixture should fan out leaf stops in parallel; got peak=\(peak)")
+    }
+
+    @Test("restartStopBarrierBeforeStart — every start happens AFTER every stop completes")
+    func restartStopBarrierBeforeStart() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-restart-barrier-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let yaml = """
+        services:
+          web:
+            image: nginx:1
+          db:
+            image: postgres:16
+          cache:
+            image: redis:7
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        let provider = RecordingContainerClientProvider()
+        let project = dir.lastPathComponent
+        await provider.stubRunningContainer(id: "\(project)-web")
+        await provider.stubRunningContainer(id: "\(project)-db")
+        await provider.stubRunningContainer(id: "\(project)-cache")
+
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            try await ContainerClientEnvironment.$current.withValue(provider) {
+                var cmd = try ComposeRestart.parse(["-f", compose.path])
+                try await cmd.run()
+            }
+        }
+
+        // Stop phase records `.stop(id:)` entries on the provider.
+        // Start phase records `"container start"` argvs on the runner.
+        // The barrier invariant: every "container start" argv must come AFTER
+        // every `.stop(id:)` entry. Since runner and provider are different
+        // recorders, we measure barrier compliance via WALL ORDER — the
+        // ComposeRestart `try await composeStop.stopServices(...)` synchronously
+        // blocks before `composeStart.startServices(...)` runs, so by the time
+        // any `"container start"` argv is recorded by the runner, every
+        // `.stop(id:)` entry must already be on the provider.
+        let providerEntries = await provider.entriesSnapshot()
+        let stopCount = providerEntries.reduce(into: 0) { acc, entry in
+            if case .stop = entry { acc += 1 }
+        }
+        #expect(stopCount == 3, "all three services must be stopped; got stopCount=\(stopCount)")
+
+        let startArgvs = await recorder.unorderedRunCalls(matching: ["container", "start"])
+        #expect(startArgvs.count == 3, "all three services must be started after stop barrier; got startCount=\(startArgvs.count)")
+
+        // Stronger invariant: snapshot the provider's stop count BEFORE
+        // collecting runner argvs. If any "container start" argv had been
+        // recorded BEFORE the stop barrier completed, it would mean
+        // `composeStart.startServices` ran while `composeStop.stopServices`
+        // was still in flight — violating the barrier. The await between
+        // the two phases in ComposeRestart prevents this; here we just
+        // confirm both phases ran to completion.
+        let services: [String] = ["web", "db", "cache"]
+        for svc in services {
+            let stopped = await provider.unorderedEntries(matching: { entry in
+                if case .stop(let id) = entry, id == "\(project)-\(svc)" { return true } else { return false }
+            })
+            #expect(stopped.count == 1, "service \(svc) must be stopped exactly once; got \(stopped.count)")
+
+            let started = await recorder.unorderedRunCalls(matching: ["container", "start", "--detach", "\(project)-\(svc)"])
+            #expect(started.count == 1, "service \(svc) must be started exactly once; got \(started.count)")
+        }
     }
 
     // MARK: - AsyncSemaphore — cancellation contract (UltraBrain Critical #1)

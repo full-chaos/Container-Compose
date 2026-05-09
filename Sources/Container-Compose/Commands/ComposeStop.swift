@@ -63,56 +63,99 @@ public struct ComposeStop: AsyncParsableCommand, ComposeCommand {
             servicesArg: services
         )
 
-        // Stop in REVERSE topo-sort order: dependents before dependencies.
-        try await stopServices(resolvedServices.reversed(), projectName: projectName)
+        // CHAOS-1446 Phase 3: stop runs in PARALLEL, gated by the REVERSE
+        // dependency DAG. Forward-order input is preserved — the reverse-DAG
+        // adjacency is computed inside stopServices(). Pre-Phase-3 callers
+        // passed `.reversed()` here; that's now redundant.
+        try await stopServices(resolvedServices, projectName: projectName)
     }
 
-    func stopServices(_ services: some Sequence<(serviceName: String, service: Service)>, projectName: String) async throws {
+    // CHAOS-1446 Phase 3: stops run in PARALLEL, gated by the REVERSE
+    // dependency DAG via `DependencyCoordinator`. Each service awaits
+    // every DEPENDENT (services that depend on it) to publish `.stopped`
+    // before issuing its own stop — leaves stop first, roots stop last.
+    // The reverse adjacency is built from each service's
+    // `dependsOn.serviceNames` (NOT from `Service.dependedBy`, which
+    // UltraBrain MEDIUM #2 flagged as unreliable). Per Lead Decision D4,
+    // ComposeStop MUST NOT acquire `@unchecked Sendable`; per-service work
+    // is therefore extracted into a `static` helper that captures only
+    // Sendable parameters — no `self` capture inside the @Sendable child
+    // task closure.
+    func stopServices(_ services: [(serviceName: String, service: Service)], projectName: String) async throws {
+        let coord = DependencyCoordinator()
+        let reverseGraph = buildReverseDependencyGraph(services: services)
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (serviceName, service) in services {
+                group.addTask {
+                    // Wait for every selected DEPENDENT to publish .stopped
+                    // before this service stops. Leaves (no dependents) clear
+                    // this loop immediately.
+                    for dependent in reverseGraph[serviceName] ?? [] {
+                        try await coord.awaitMilestone(for: dependent, milestone: .stopped)
+                    }
+
+                    // Issue the stop. Errors are swallowed and logged (matching
+                    // the pre-Phase-3 serial behavior); the .stopped milestone
+                    // is published unconditionally so dependencies are not
+                    // permanently blocked by a single failure.
+                    await Self.performSingleStop(
+                        serviceName: serviceName,
+                        service: service,
+                        projectName: projectName
+                    )
+
+                    await coord.publishMilestone(.stopped, for: serviceName)
+                }
+            }
+            try await group.waitForAll()
+        }
+    }
+
+    /// Per-service stop, extracted out of `stopServices` so the parallel
+    /// child closure does not need to capture `self` (Lead Decision D4 —
+    /// ComposeStop must not become @unchecked Sendable). All inputs are
+    /// Sendable value types or task-local-bound singletons
+    /// (RuntimeEnvironment / ContainerClientEnvironment).
+    private static func performSingleStop(
+        serviceName: String,
+        service: Service,
+        projectName: String
+    ) async {
+        let containerName = effectiveContainerName(
+            projectName: projectName,
+            serviceName: serviceName,
+            explicit: service.container_name
+        )
+
         if RuntimeExecutionMode.isRemote {
             let runtime = RuntimeEnvironment.current
-            for (serviceName, service) in services {
-                let containerName = effectiveContainerName(
-                    projectName: projectName,
-                    serviceName: serviceName,
-                    explicit: service.container_name
-                )
-
-                guard let container = try? await runtime.get(id: containerName) else {
-                    print("Warning: Container '\(containerName)' not found, skipping.")
-                    continue
-                }
-
-                print("Stopping container: \(containerName)")
-                do {
-                    try await runtime.stop(id: container.id, options: .default)
-                    print("Successfully stopped container: \(containerName)")
-                } catch {
-                    print("Error stopping container '\(containerName)': \(error)")
-                }
-            }
-            return
-        }
-
-        for (serviceName, service) in services {
-            let containerName = effectiveContainerName(
-                projectName: projectName,
-                serviceName: serviceName,
-                explicit: service.container_name
-            )
-
-            let provider = ContainerClientEnvironment.current
-            guard let container = try? await provider.get(id: containerName) else {
+            guard let container = try? await runtime.get(id: containerName) else {
                 print("Warning: Container '\(containerName)' not found, skipping.")
-                continue
+                return
             }
-
             print("Stopping container: \(containerName)")
             do {
-                try await provider.stop(id: container.id, opts: .default)
+                try await runtime.stop(id: container.id, options: .default)
                 print("Successfully stopped container: \(containerName)")
             } catch {
                 print("Error stopping container '\(containerName)': \(error)")
             }
+            return
+        }
+
+        let provider = ContainerClientEnvironment.current
+        guard let container = try? await provider.get(id: containerName) else {
+            print("Warning: Container '\(containerName)' not found, skipping.")
+            return
+        }
+
+        print("Stopping container: \(containerName)")
+        do {
+            try await provider.stop(id: container.id, opts: .default)
+            print("Successfully stopped container: \(containerName)")
+        } catch {
+            print("Error stopping container '\(containerName)': \(error)")
         }
     }
 }

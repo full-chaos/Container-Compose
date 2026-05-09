@@ -41,7 +41,8 @@ struct ComposeStartStopContainerNameTests {
         try await ContainerClientEnvironment.$current.withValue(provider) {
             try await cmd.startServices(
                 [(serviceName: "web", service: service)],
-                projectName: "test-proj"
+                projectName: "test-proj",
+                cwd: cmd.cwd
             )
         }
 
@@ -61,7 +62,8 @@ struct ComposeStartStopContainerNameTests {
         try await ContainerClientEnvironment.$current.withValue(provider) {
             try await cmd.startServices(
                 [(serviceName: "web", service: service)],
-                projectName: "test-proj"
+                projectName: "test-proj",
+                cwd: cmd.cwd
             )
         }
 
@@ -79,7 +81,8 @@ struct ComposeStartStopContainerNameTests {
         try await ContainerClientEnvironment.$current.withValue(provider) {
             try await cmd.startServices(
                 [(serviceName: "web", service: service)],
-                projectName: "test-proj"
+                projectName: "test-proj",
+                cwd: cmd.cwd
             )
         }
 

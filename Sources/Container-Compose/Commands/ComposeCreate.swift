@@ -28,6 +28,17 @@ import SystemPackage
 @preconcurrency import Rainbow
 import Yams
 
+// CHAOS-1446 Phase 3: ComposeCreate's DAG-ordered create phase captures the
+// resolved `DockerCompose` value into per-service @Sendable child task
+// closures so each service's `createService(...)` call sees the same
+// model. DockerCompose is a value-type Codable container with all-immutable
+// stored properties; @unchecked Sendable is the smallest correct expression
+// of that invariant (Swift 6 strict-concurrency cannot synthesize plain
+// Sendable for Codable structs without explicit declaration). Mirrors the
+// same conformance pattern Phase 2 added for Service / Build in
+// Compose+BuildService.swift.
+extension DockerCompose: @unchecked Sendable {}
+
 /// Provisions containers (pull/build images, create networks/volumes, create containers)
 /// without starting them. Mirrors `compose up` but replaces `container run` with
 /// `container create`. If Apple `container` does not support the `create` sub-command
@@ -123,10 +134,75 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
             print("--- Volumes Processed ---\n")
         }
 
-        // Provision each service
+        // CHAOS-1446 Phase 3: provision in two phases.
+        //
+        // Phase A — PARALLEL image preparation. Pull or build every service's
+        // image up-front via `runBoundedThrowingFanOut` (same pattern as
+        // Phase 2's compose pull/build). When the DAG-ordered create phase
+        // runs next, each service's `pullImage`/`buildService` call inside
+        // `createService` short-circuits because the image is already
+        // present. Bounded by the shared `--parallel` flag (default 16).
+        //
+        // Phase B — DAG-ordered `container create`. Each service waits for
+        // every dependency to publish `.created` via DependencyCoordinator
+        // before issuing its own create. Honors `depends_on` for downstream
+        // tooling that expects dep ordering even at create time. ComposeCreate
+        // is `@unchecked Sendable` so capturing `self` by value (`createCtx`)
+        // is permitted under the @Sendable closure boundary.
+        let parallelLimit = try ParallelLimitResolver.resolved(cli: projectFlags.parallel)
+        let createCtx = self
+        let envSnapshot = environmentVariables
+        let rebuildSnapshot = rebuild
+        let noCacheSnapshot = noCache
+        let pullSnapshot = pull
+        let loggingArgs = logging.passThroughCommands()
+
+        print("\n--- Preparing Images ---")
+        let imagePrepItems = resolvedServices.map { (key: $0.serviceName, value: $0.service) }
+        _ = try await runBoundedThrowingFanOut(items: imagePrepItems, limit: parallelLimit) { name, service in
+            if let buildConfig = service.build {
+                _ = try await createCtx.buildService(
+                    buildConfig,
+                    for: service,
+                    serviceName: name,
+                    environmentVariables: envSnapshot,
+                    rebuild: rebuildSnapshot,
+                    noCache: noCacheSnapshot,
+                    passThroughCommands: loggingArgs
+                )
+            } else if let img = service.image {
+                let qualifiedImage = ComposeUp.qualifyImageReference(img)
+                let effectivePolicy = pullSnapshot ? "always" : service.pull_policy
+                try await pullImage(
+                    image: qualifiedImage,
+                    policy: effectivePolicy,
+                    platform: service.platform,
+                    loggingArguments: loggingArgs
+                )
+            }
+            // Service has neither `image` nor `build`: createService below
+            // throws ComposeError.imageNotFound. Skip image prep here.
+        }
+        print("--- Images Prepared ---\n")
+
         print("\n--- Creating Containers ---")
-        for (serviceName, service) in resolvedServices {
-            try await createService(service, serviceName: serviceName, from: dockerCompose)
+        let coord = DependencyCoordinator()
+        let forwardGraph = buildForwardDependencyGraph(services: resolvedServices)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (serviceName, service) in resolvedServices {
+                group.addTask {
+                    for dep in forwardGraph[serviceName] ?? [] {
+                        try await coord.awaitMilestone(for: dep, milestone: .created)
+                    }
+                    try await createCtx.createService(
+                        service,
+                        serviceName: serviceName,
+                        from: dockerCompose
+                    )
+                    await coord.publishMilestone(.created, for: serviceName)
+                }
+            }
+            try await group.waitForAll()
         }
         print("--- Containers Created ---\n")
     }
@@ -212,7 +288,7 @@ public struct ComposeCreate: AsyncParsableCommand, ComposeCommand, @unchecked Se
 
     // MARK: - Service creation
 
-    private mutating func createService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
+    private func createService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
         var imageToRun: String
