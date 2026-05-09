@@ -83,47 +83,102 @@ public struct ComposePull: AsyncParsableCommand, ComposeCommand, @unchecked Send
 
         let allServices = try selectedServices(in: dockerCompose)
 
-        print("Pulling images...")
-        var failedPulls: [(name: String, error: Error)] = []
-
+        // Pre-filter: skip build-only services (no `image:` field). Doing this
+        // BEFORE the parallel fan-out keeps the per-service Sendable closure
+        // body small (no need to thread `service.build != nil` checks
+        // through the worker) and surfaces all skip messages up-front in a
+        // deterministic order — critical when subsequent per-service output
+        // interleaves under the parallel scheduler.
+        var pullables: [(serviceName: String, image: String, platform: String?, pullPolicy: String?)] = []
         for (serviceName, service) in allServices {
-            // Skip build-only services (no image field) unless --include-deps is set.
-            // If the service has a build config but no image field, skip it.
             guard let imageName = service.image else {
                 if service.build != nil {
                     print("Skipping build-only service '\(serviceName)' (no image field)")
                 }
                 continue
             }
-
-            // Determine effective pull policy:
-            // --policy flag > service.pull_policy > "missing"
-            let effectivePolicy = policy ?? service.pull_policy ?? "missing"
-
-            do {
-                try await pullImage(
-                    image: imageName,
-                    policy: effectivePolicy,
-                    platform: service.platform,
-                    loggingArguments: logging.passThroughCommands()
-                )
-            } catch {
-                if ignorePullFailures {
-                    print("Warning: Failed to pull image '\(imageName)' for service '\(serviceName)': \(error.localizedDescription)")
-                    failedPulls.append((name: serviceName, error: error))
-                } else {
-                    throw error
-                }
-            }
+            pullables.append((serviceName: serviceName, image: imageName, platform: service.platform, pullPolicy: service.pull_policy))
         }
 
-        if failedPulls.isEmpty {
-            print("All images pulled successfully.")
-        } else {
-            print("Pull completed with \(failedPulls.count) failure(s):")
-            for failed in failedPulls {
-                print("  - \(failed.name): \(failed.error.localizedDescription)")
+        if pullables.isEmpty {
+            print("No services with images to pull.")
+            return
+        }
+
+        // Resolve the parallel concurrency cap from CLI > env > default.
+        // CHAOS-1446 Phase 2 + Lead Decision D1: --parallel lives on
+        // ProjectFlags; the resolver throws ValidationError on invalid
+        // values so misconfiguration surfaces here, not silently mid-pull.
+        let parallelLimit = try ParallelLimitResolver.resolved(cli: projectFlags.parallel)
+
+        // Snapshot non-Sendable instance state into local lets so the parallel
+        // body closures don't capture `self`. The per-call values (image,
+        // platform, pullPolicy) ride on the fan-out helper's per-item value.
+        let policyOverride = self.policy
+        let loggingArgs = self.logging.passThroughCommands()
+
+        print("Pulling images...")
+
+        // Fan-out items: keyed by service name so error tagging from
+        // ServiceTaggedError preserves the offending service.
+        let items = pullables.map { tup -> (key: String, value: (image: String, platform: String?, pullPolicy: String?)) in
+            (key: tup.serviceName, value: (image: tup.image, platform: tup.platform, pullPolicy: tup.pullPolicy))
+        }
+
+        if ignorePullFailures {
+            // Collecting variant: every body runs to completion, failures are
+            // captured into the result map, NO sibling cancellation. Matches
+            // the pre-existing serial behavior of — print warning per
+            // failure, continue, and report a summary at the end.
+            let results = await runBoundedCollectingFanOut(items: items, limit: parallelLimit) { serviceName, params in
+                do {
+                    let effectivePolicy = policyOverride ?? params.pullPolicy ?? "missing"
+                    try await pullImage(
+                        image: params.image,
+                        policy: effectivePolicy,
+                        platform: params.platform,
+                        loggingArguments: loggingArgs
+                    )
+                    return .success(())
+                } catch {
+                    return .failure(error)
+                }
             }
+
+            // Walk items in input order so failure messages print in a stable,
+            // user-visible sequence (the dictionary itself is unordered).
+            var failedPulls: [(name: String, error: Error)] = []
+            for item in items {
+                guard case .failure(let err) = results[item.key] else { continue }
+                let displayImage = item.value.image
+                print("Warning: Failed to pull image '\(displayImage)' for service '\(item.key)': \(err.localizedDescription)")
+                failedPulls.append((name: item.key, error: err))
+            }
+
+            if failedPulls.isEmpty {
+                print("All images pulled successfully.")
+            } else {
+                print("Pull completed with \(failedPulls.count) failure(s):")
+                for failed in failedPulls {
+                    print("  - \(failed.name): \(failed.error.localizedDescription)")
+                }
+            }
+        } else {
+            // Throwing variant: first failure cancels in-flight siblings via
+            // withThrowingTaskGroup's automatic cancellation. The thrown
+            // ServiceTaggedError preserves the offending service name so the
+            // user sees WHICH image failed (the bare error message would lose
+            // the service context under fan-out).
+            _ = try await runBoundedThrowingFanOut(items: items, limit: parallelLimit) { _, params in
+                let effectivePolicy = policyOverride ?? params.pullPolicy ?? "missing"
+                try await pullImage(
+                    image: params.image,
+                    policy: effectivePolicy,
+                    platform: params.platform,
+                    loggingArguments: loggingArgs
+                )
+            }
+            print("All images pulled successfully.")
         }
     }
 

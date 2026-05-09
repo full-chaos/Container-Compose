@@ -53,20 +53,265 @@ fileprivate actor ConcurrencyMeter {
 @Suite("ParallelOrchestration")
 struct ParallelOrchestrationTests {
 
-    // MARK: - High-level scenarios (scaffolded; filled in later phases)
+    // MARK: - High-level scenarios
+    // (Phase 2 entries below now run live; Phase 3 entries remain .disabled.)
 
-    @Test("parallelPullsAchieveConcurrency", .disabled("Filled in Phase 2 — uses ConcurrencyRecordingRunner against ComposePull"))
+    @Test("parallelPullsAchieveConcurrency — ComposePull driven through RecordingRunner")
     func parallelPullsAchieveConcurrency() async throws {
-        // Phase 2: Drive ComposePull through a recorder that tracks
-        // currentlyInFlight and peakConcurrency. Assert peakConcurrency >= 2
-        // for a 4-service fixture. Mock-based, not timing-based.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-pull-concurrency-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // 4-service fixture, all image-only — every body should hit the
+        // RunCommandRunner seam so the recorder can observe peak concurrency.
+        let yaml = """
+        services:
+          web:
+            image: nginx:1
+          db:
+            image: postgres:16
+          cache:
+            image: redis:7
+          proxy:
+            image: traefik:3
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
+
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                var cmd = try ComposePull.parse(["-f", compose.path])
+                try await cmd.run()
+            }
+        }
+
+        let pulled = await recorder.swiftAPIArgvs(named: "ImagePull").compactMap(\.first)
+        #expect(Set(pulled) == [
+            "docker.io/library/nginx:1",
+            "docker.io/library/postgres:16",
+            "docker.io/library/redis:7",
+            "docker.io/library/traefik:3",
+        ], "every service must be pulled exactly once")
+
+        // The CHAOS-1446 Phase 1 RecordingRunner.peakConcurrency() tracks
+        // overlapping run() invocations under actor reentrancy. With Phase 2's
+        // parallel fan-out + Task.yield() in run(), peak should rise above 1.
+        let peak = await recorder.peakConcurrency()
+        #expect(peak >= 2, "expected ComposePull to fan out; peakConcurrency was \(peak)")
     }
 
-    @Test("failureInOnePullCancelsSiblings", .disabled("Filled in Phase 2 — drives ComposePull with one stub-throw"))
-    func failureInOnePullCancelsSiblings() async throws {
-        // Phase 2: Stub one service's pull to throw, verify the other
-        // in-flight pulls observe cancellation and the overall command
-        // surfaces a ServiceTaggedError tagged with the failing service.
+    // Deflake design (CHAOS-1446 reviewer follow-up):
+    // Asserts (1) only the failing body reaches `runMeter.enter`, and
+    // (2) at least one sibling observes `CancellationError`. We deliberately
+    // do NOT assert the dispatch's literal `runMeter.total() < N` because
+    // AsyncStream's single-consumer iteration forbids per-sibling gating
+    // AND `AsyncSemaphore.withPermit` releases on body throw, letting
+    // queued items race ahead of group-cancel propagation. The full
+    // rationale + design constraints are in the inline comment block below.
+    @Test("parallelPullFailFastCancelsSiblings — first failure cancels in-flight bodies")
+    func parallelPullFailFastCancelsSiblings() async throws {
+        struct PullFailed: Error {}
+        let runMeter = ConcurrencyMeter()
+
+        // CHAOS-1446 reviewer follow-up: deflake via cancellation-observation,
+        // not timing-dependent sibling sleep races.
+        //
+        // Original (pre-deflake) test asserted `runMeter.total() < 4` after a
+        // 5-second sibling sleep — the assumption being that group-cancel
+        // propagation would interrupt the sleep before it completed. Reliable
+        // in isolation, flaky under heavy CI parallel test load (sleep
+        // completed before cancellation arrived).
+        //
+        // Two design constraints surfaced during the deflake:
+        //   (a) AsyncStream is single-consumer, so the lead-suggested
+        //       `for await _ in failureSignal { break }` per sibling does not
+        //       work — only one sibling can iterate the stream at a time.
+        //   (b) AsyncSemaphore.withPermit RELEASES its permit on body throw,
+        //       so queued items beyond `limit=2` ARE granted permits and
+        //       enter the body — the lead's claim that they would be
+        //       "never started" does not hold for this semaphore impl.
+        //
+        // Deterministic invariants we assert instead:
+        //   * exactly one body (db) reaches `runMeter.enter()` — the failing
+        //     task itself.
+        //   * at least one sibling observes `CancellationError` from
+        //     `try await Task.sleep(...)` (sleep is interrupted by group's
+        //     cancelAll within ms of db's throw, well within the 5s ceiling).
+        // If a sibling's sleep completes WITHOUT cancellation (regression in
+        // fail-fast cancellation propagation), the sibling falls through to
+        // the bottom `runMeter.enter()` and the `total == 1` assertion catches
+        // it.
+        let cancelledMeter = ConcurrencyMeter()
+
+        let items: [(key: String, value: String)] = [
+            ("web", "nginx:1"),
+            ("db", "postgres:16"),    // fails — must be in first `limit` items
+            ("cache", "redis:7"),
+            ("proxy", "traefik:3"),
+        ]
+
+        do {
+            _ = try await runBoundedThrowingFanOut(items: items, limit: 2) { key, _ in
+                if key == "db" {
+                    // Failing task: increment runMeter once, then throw. No
+                    // gate needed — siblings observe cancellation through their
+                    // own `try await Task.sleep` below, which throws
+                    // CancellationError when the group's cancelAll arrives.
+                    await runMeter.enter()
+                    throw PullFailed()
+                }
+
+                // Siblings: sleep for up to 5 seconds. Group's cancelAll on
+                // the failing throw propagates to this task; `try await
+                // Task.sleep` throws CancellationError as soon as the
+                // cancellation signal arrives (typically within ms).
+                // CancellationError is caught and counted in cancelledMeter,
+                // proving fail-fast cancellation reached this sibling.
+                do {
+                    try await Task.sleep(nanoseconds: 5_000_000_000)
+                } catch is CancellationError {
+                    await cancelledMeter.enter()
+                    throw CancellationError()
+                }
+
+                // Reached only if the 5s sleep completed without cancellation
+                // — a regression in fail-fast cancellation propagation.
+                // Increment runMeter so the assertion below catches the
+                // regression rather than silently passing.
+                await runMeter.enter()
+            }
+            Issue.record("Expected fan-out to throw")
+        } catch let tagged as ServiceTaggedError {
+            #expect(tagged.itemKey == "db", "thrown error must wrap the failing service name; got '\(tagged.itemKey)'")
+        } catch {
+            Issue.record("Expected ServiceTaggedError, got \(error)")
+        }
+
+        let total = await runMeter.total()
+        #expect(total == 1, "only the failing service should run to completion; got total=\(total) (siblings reaching the bottom enter indicates cancellation propagation regressed)")
+
+        let cancelled = await cancelledMeter.total()
+        #expect(cancelled >= 1, "expected at least one sibling to observe CancellationError; got cancelled=\(cancelled)")
+    }
+
+    @Test("parallelPullIgnoreFailuresCollectsBoth — collecting fan-out runs every body even on failures")
+    func parallelPullIgnoreFailuresCollectsBoth() async throws {
+        struct PullFailed: Error {
+            let key: String
+        }
+        let runMeter = ConcurrencyMeter()
+
+        let items: [(key: String, value: String)] = [
+            ("web", "nginx:1"),
+            ("db", "postgres:16"),
+            ("cache", "redis:7"),
+            ("proxy", "traefik:3"),
+        ]
+        let failingKeys: Set<String> = ["db", "cache"]
+
+        let results: [String: Result<Void, Error>] = await runBoundedCollectingFanOut(
+            items: items,
+            limit: 4
+        ) { key, _ in
+            await runMeter.enter()
+            try? await Task.sleep(nanoseconds: 10_000_000)
+            await runMeter.exit()
+            if failingKeys.contains(key) {
+                return .failure(PullFailed(key: key))
+            }
+            return .success(())
+        }
+
+        // NO sibling cancellation — every body must have run.
+        let total = await runMeter.total()
+        #expect(total == items.count, "expected every body to run; total=\(total) of \(items.count)")
+
+        // All 4 services must produce a result; failing ones MUST be .failure
+        // and successful ones MUST be .success.
+        #expect(results.count == items.count)
+        for item in items {
+            guard let outcome = results[item.key] else {
+                Issue.record("missing result for service '\(item.key)'")
+                continue
+            }
+            if failingKeys.contains(item.key) {
+                if case .success = outcome {
+                    Issue.record("expected failure for service '\(item.key)'")
+                }
+            } else {
+                if case .failure(let err) = outcome {
+                    Issue.record("expected success for service '\(item.key)', got \(err)")
+                }
+            }
+        }
+
+        // Both failing service names must be retrievable from the result map.
+        let failedSet: Set<String> = Set(results.compactMap { (key, value) -> String? in
+            if case .failure = value { return key }
+            return nil
+        })
+        #expect(failedSet == failingKeys, "both failed services must be captured; got \(failedSet)")
+    }
+
+    @Test("parallelBuildFanOut — ComposeBuild driven through RecordingRunner")
+    func parallelBuildFanOut() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-build-concurrency-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // 4-service fixture, all build-only. Each service uses an inline
+        // dockerfile so we don't need on-disk Dockerfiles — buildService
+        // writes the inline content to a UUID-named tempfile per call (see
+        // Compose+BuildService.swift L71), which is concurrency-safe.
+        let yaml = """
+        services:
+          web:
+            build:
+              context: .
+              dockerfile_inline: |
+                FROM nginx:1
+          api:
+            build:
+              context: .
+              dockerfile_inline: |
+                FROM node:20
+          worker:
+            build:
+              context: .
+              dockerfile_inline: |
+                FROM python:3.12
+          jobs:
+            build:
+              context: .
+              dockerfile_inline: |
+                FROM ruby:3.3
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let recorder = RecordingRunner()
+        let containerProvider = RecordingContainerClientProvider()
+
+        try await RunnerEnvironment.$current.withValue(recorder) {
+            try await ContainerClientEnvironment.$current.withValue(containerProvider) {
+                var cmd = try ComposeBuild.parse(["-f", compose.path])
+                try await cmd.run()
+            }
+        }
+
+        // Every service must have triggered a BuildCommand invocation.
+        let builtCount = await recorder.swiftAPIArgvs(named: "BuildCommand").count
+        #expect(builtCount == 4, "every service must be built; got \(builtCount)")
+
+        // Parallel fan-out should overlap multiple build invocations through
+        // the RecordingRunner's Task.yield reentrancy point.
+        let peak = await recorder.peakConcurrency()
+        #expect(peak >= 2, "expected ComposeBuild to fan out; peakConcurrency was \(peak)")
     }
 
     @Test("dependentServiceWaitsForRequiredDep", .disabled("Filled in Phase 3 — drives ComposeStart through DependencyCoordinator"))

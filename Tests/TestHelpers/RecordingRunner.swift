@@ -138,14 +138,18 @@ public actor RecordingRunner: RunCommandRunner {
         peakConcurrencyValue = max(peakConcurrencyValue, inFlightCount)
         defer { inFlightCount -= 1 }
 
-        // Explicit suspension to enable actor reentrancy. Without this the
-        // actor would process every run(...) message strictly serially and
-        // peakConcurrencyValue would always be 1 — making
-        // `parallelPullsAchieveConcurrency`-style assertions impossible.
-        // Task.yield() does not throw; existing single-shot tests (one
-        // task awaiting one run() call at a time) are unaffected because
-        // there is no other queued message to interleave with.
-        await Task.yield()
+        // Brief explicit suspension to enable actor reentrancy. A bare
+        // `Task.yield()` is sufficient when callers invoke `run(...)`
+        // directly (Phase 1's `recordingRunnerTracksPeakConcurrency`), but
+        // when callers chain async hops BEFORE reaching `run(...)` (Phase 2's
+        // pull/build paths go through semaphore acquire + provider imageList
+        // first), arrivals at this actor are staggered enough that yield-resume
+        // happens before the next `run(...)` lands in the mailbox. A 100µs sleep
+        // keeps the actor occupied just long enough that fan-out arrivals
+        // observe each other under reentrancy. Sleep is `try?`-wrapped so
+        // CancellationError is not surfaced from the recorder — cancellation
+        // is observed at the next real await in the caller's path.
+        try? await Task.sleep(nanoseconds: 100_000)
 
         let entry = Entry(
             request: request,

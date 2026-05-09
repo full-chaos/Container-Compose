@@ -183,6 +183,17 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func imageList() async throws -> [ClientImage] {
         entries.append(.imageList)
+
+        // CHAOS-1446 Phase 2: yield once before returning so concurrent
+        // imageList() invocations from racing pull/build bodies can interleave
+        // under actor reentrancy. Without this yield, the recorder serializes
+        // every imageList() to completion (no awaits inside), which staggers
+        // the downstream `runner.run(...)` calls in `pullImage` and prevents
+        // tests like `parallelPullsAchieveConcurrency` from observing
+        // peakConcurrency >= 2 at the runner. Mirrors the same reentrancy
+        // pattern Phase 1 added to `RecordingRunner.run(...)`.
+        await Task.yield()
+
         return imageReferences.map { reference in
             ClientImage(description: ImageDescription(
                 reference: reference,

@@ -43,4 +43,17 @@ public struct ProjectFlags: ParsableArguments {
         help: "Project root directory for resolving relative paths (defaults to the compose file's directory)."
     )
     public var projectDirectory: String?
+
+    /// CHAOS-1446: bounded concurrency cap for image pull/build fan-out
+    /// (`compose pull`, `compose build`, and the image-prep phase of
+    /// `compose up`/`compose create`). When omitted, falls back to the
+    /// `COMPOSE_PARALLEL_LIMIT` env var, then to
+    /// `ParallelLimitResolver.defaultLimit` (16). Resolution is centralized
+    /// in `ParallelLimitResolver.resolved(cli:env:)` so every call site
+    /// applies the same precedence and validation.
+    @Option(
+        name: .customLong("parallel"),
+        help: "Maximum concurrent image pulls/builds (default \(ParallelLimitResolver.defaultLimit), or COMPOSE_PARALLEL_LIMIT env var). Honored by pull/build/up/create; ignored elsewhere."
+    )
+    public var parallel: Int?
 }
