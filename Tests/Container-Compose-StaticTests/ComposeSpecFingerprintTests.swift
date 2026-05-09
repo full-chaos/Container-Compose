@@ -286,13 +286,39 @@ struct ComposeSpecFingerprintTests {
 
     // MARK: - Layer 2: LabelsArgs.fingerprintLabels argv-shape
 
-    @Test("fingerprint emits only compose.spec.image for trivial image-only service")
+    @Test("fingerprint emits only compose.spec.image plus the CHAOS-1499 bootstrap sentinel for trivial image-only service")
     func emitsOnlyImageForTrivialService() {
         let svc = Service(image: "alpine:latest")
         let args = ComposeUp.LabelsArgs.fingerprintLabels(makeContext(service: svc))
         let map = fingerprintMap(args)
-        #expect(map.keys.sorted() == ["compose.spec.image"])
+        // CHAOS-1499: `compose.spec.bootstrapped=true` is unconditional —
+        // every post-CHAOS-1499 container that goes through fingerprintLabels
+        // gets it. Trivial image-only services still emit nothing else.
+        #expect(map.keys.sorted() == ["compose.spec.bootstrapped", "compose.spec.image"])
         #expect(map["compose.spec.image"] == "alpine:latest")
+        #expect(map["compose.spec.bootstrapped"] == "true")
+    }
+
+    @Test("fingerprint emits compose.spec.bootstrapped=true unconditionally — even for build-only services with no other compose.spec.* labels (CHAOS-1499)")
+    func emitsBootstrapSentinelUnconditionally() throws {
+        // CHAOS-1499: The bootstrap sentinel MUST be present on every post-1499
+        // container's labels, regardless of whether other compose.spec.* labels
+        // apply. A build-only service with no env, ports, networks, command,
+        // or entrypoint emits zero conditional labels — only the sentinel.
+        let yaml = """
+        services:
+          svc:
+            build:
+              context: .
+        """
+        let dc = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
+        let svc = try #require(dc.services["svc"] ?? nil)
+        let args = ComposeUp.LabelsArgs.fingerprintLabels(makeContext(service: svc))
+        let map = fingerprintMap(args)
+        #expect(map["compose.spec.bootstrapped"] == "true",
+                "sentinel must be emitted even for the most trivial service shape")
+        #expect(map.keys.sorted() == ["compose.spec.bootstrapped"],
+                "build-only service with no other compose-spec content should ONLY emit the sentinel")
     }
 
     @Test("fingerprint omits compose.spec.image for build-only services (no image:)")
@@ -647,10 +673,17 @@ struct ComposeSpecFingerprintTests {
         #expect(reason == nil)
     }
 
-    @Test("specDivergenceReason: missing env hash label falls through to subset-semantics fallback")
+    @Test("specDivergenceReason: missing env hash label falls through to subset-semantics fallback (sentinel-bearing post-1499 container)")
     func backwardsCompatEnvHashAbsent() {
+        // CHAOS-1499: SUBSET fallback is gated on the
+        // `compose.spec.bootstrapped` sentinel. To keep this test exercising
+        // the SUBSET semantics (rather than the new gate that would skip
+        // them), include the sentinel on the existing fixture. Pre-1499
+        // containers without the sentinel are covered separately by the
+        // CHAOS-1499 gate tests.
         let existing = makeSnapshot(
             id: "cc-test-fp-svc",
+            labels: ["compose.spec.bootstrapped": "true"],
             environment: ["LOG_LEVEL=info", "PATH=/usr/bin"]
         )
         let svc = Service(image: "alpine")

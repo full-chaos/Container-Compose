@@ -600,11 +600,26 @@ extension ComposeUp {
     /// us. Equality would always show divergence. Right semantic: for every key
     /// WE intend to set (post-merge+expand), assert it exists in the existing
     /// env with the same value. Other existing keys are ignored.
+    ///
+    /// CHAOS-1499: Gated behind the `compose.spec.bootstrapped` sentinel so
+    /// pre-1499 containers (which may have peer-IP env values baked at
+    /// create-time on a prior `up` when `containerIps` was mid-flight) are
+    /// adopted instead of spurious-recreated. The SUBSET check assumes the
+    /// existing-env merge order matches the adoption-time merge order, which
+    /// only holds for containers created post-CHAOS-1499. See
+    /// `LabelsArgs.fingerprintLabels` for the sentinel write site and the
+    /// rationale for letting pre-1499 containers migrate organically on
+    /// their first non-env divergence.
     private static func envDivergenceReason(
         existing: ContainerSnapshot,
         expectedEnvironment: [String: String]
     ) -> String? {
         guard !expectedEnvironment.isEmpty else { return nil }
+        // CHAOS-1499 bootstrap-sentinel gate. See doc comment + the write
+        // site in `LabelsArgs.fingerprintLabels`.
+        guard existing.configuration.labels["compose.spec.bootstrapped"] == "true" else {
+            return nil
+        }
         let existingEnv = parseEnvList(existing.configuration.initProcess.environment)
         for (key, expectedValue) in expectedEnvironment {
             guard let existingValue = existingEnv[key] else {
