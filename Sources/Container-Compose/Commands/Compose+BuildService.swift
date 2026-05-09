@@ -23,14 +23,19 @@ import SystemPackage
 // to cross task boundaries via `runBoundedThrowingFanOut`'s `Value: Sendable`
 // constraint. Both are value-type structs whose stored properties are either
 // immutable `let`s or simple Sendable scalars (Strings, Ints, [String: String]).
-// The lone `var` on `Service` is `dependedBy: [String]`, which is mutated
-// EXCLUSIVELY by `Service.topoSortConfiguredServices(...)` BEFORE the
-// parallel fan-out begins. After topo-sort returns, no code path mutates
-// `Service.dependedBy`, so the per-task snapshots used inside the fan-out
-// closures observe a stable graph. `@unchecked Sendable` is the smallest
-// correct expression of this invariant — documented here so future readers
-// know which fragile assumption they would be breaking by re-introducing
-// post-topo-sort mutation.
+// The lone `var` on `Service` is `dependedBy: [String]`, which is mutated by
+// `Service.topoSortConfiguredServices(...)`. Phase 2 follow-up made the
+// invariant strictly true: NO fan-out closure AND NO command-side reader
+// (formerly `filterServices` + `ComposeUp.selectServices`) reads
+// `Service.dependedBy` anymore — every transitive-dependent computation now
+// goes through `buildReverseDependencyGraph` in DependencyGraph.swift, which
+// inverts forward `dependsOn.serviceNames` edges deterministically. So the
+// per-task snapshots used inside the fan-out closures observe a stable graph
+// AND no parallel reader observes the field that topoSort racily mutates.
+// `@unchecked Sendable` is the smallest correct expression of this invariant
+// — documented here so future readers know which fragile assumption they
+// would be breaking by re-introducing post-topoSort mutation OR a parallel
+// reader of `Service.dependedBy`.
 extension Service: @unchecked Sendable {}
 extension Build: @unchecked Sendable {}
 

@@ -304,9 +304,16 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         services = expanded
 
         if !self.services.isEmpty {
-            services = services.filter({ serviceName, service in
-                self.services.contains(where: { $0 == serviceName }) || self.services.contains(where: { service.dependedBy.contains($0) })
-            })
+            // CHAOS-1446 Phase 2 follow-up: read transitive dependents from a
+            // forward-edge inversion of `dependsOn.serviceNames` rather than
+            // `Service.dependedBy`. See ComposeCommand.swift `filterServices`
+            // for the full root-cause writeup; same fix shape applied here.
+            let requested = Set(self.services)
+            let reverseGraph = buildReverseDependencyGraph(services: services)
+            services = services.filter { serviceName, _ in
+                requested.contains(serviceName)
+                    || (reverseGraph[serviceName] ?? []).contains(where: requested.contains)
+            }
         }
 
         return services
