@@ -464,6 +464,17 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         return ip
     }
 
+    /// CHAOS-1495 note: this iterates **top-level** network keys, not service-level
+    /// references, so env-substitution does NOT happen here — a top-level YAML
+    /// key like `${PROJECT_NET}` would be passed to apple/container literally.
+    /// `setupNetwork` has the same limitation (creates a network named
+    /// `"${PROJECT_NET}"` literal). The `name:` override IS honored, matching
+    /// `setupNetwork`'s `actualNetworkName` formula. Service-level references
+    /// route through `resolveCanonicalNetworkName`, which DOES env-substitute,
+    /// so service `networks: [${PROJECT_NET}]` against a top-level `default-net:`
+    /// resolves correctly via the env. Env-substituting top-level keys would
+    /// require coordinated changes in `setupNetwork`'s `actualNetworkName`
+    /// derivation; deferred.
     private func projectNetworkNames(from dockerCompose: DockerCompose) -> [String] {
         guard let networks = dockerCompose.networks else { return [] }
         return networks.keys.sorted().map { networkName in

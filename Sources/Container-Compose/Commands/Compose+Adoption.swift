@@ -86,9 +86,13 @@ extension ComposeUp {
                 continue
             }
 
-            // CHAOS-1493 wave 3: precompute expected values for the extended
-            // divergence checks so `specDivergenceReason` stays pure.
-            let expectedNetworkNames = expectedNetworkNamesForService(service, dockerCompose: dockerCompose)
+            // CHAOS-1493 wave 3 / CHAOS-1495: precompute expected values for the
+            // extended divergence checks so `specDivergenceReason` stays pure.
+            // The canonical-name map is the source of truth — we derive the
+            // network-name SET from it instead of iterating `service.networks`
+            // twice with the same resolution rules.
+            let serviceNetworkCanonicalNames = serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose)
+            let expectedNetworkNames = Set(serviceNetworkCanonicalNames.values)
             let expectedPublishedPorts = expectedPublishedPortsForService(service)
             let expectedEnvironment = expectedEnvironmentForService(service)
             let expectedCommand = service.command
@@ -100,7 +104,8 @@ extension ComposeUp {
                 expectedNetworkNames: expectedNetworkNames,
                 expectedPublishedPorts: expectedPublishedPorts,
                 expectedEnvironment: expectedEnvironment,
-                expectedCommand: expectedCommand
+                expectedCommand: expectedCommand,
+                serviceNetworkCanonicalNames: serviceNetworkCanonicalNames
             ) {
                 decisions[serviceName] = .recreate(reason: reason)
                 continue
@@ -113,24 +118,44 @@ extension ComposeUp {
         return decisions
     }
 
-    /// CHAOS-1493: Resolves the SET of network names this service is expected
-    /// to attach to. Mirrors `NetworkingArgs.build` / `LabelsArgs.build`'s
-    /// resolution: env-substitute the YAML key, then prefer the top-level
-    /// network's explicit `name:` override if present. Returns an empty set when
-    /// `service.networks` is nil (no service-level network attachments) so the
-    /// downstream check skips silently.
-    private func expectedNetworkNamesForService(
+    /// CHAOS-1495: Resolves the SET of network names this service is expected
+    /// to attach to. Mirrors all other `service.networks`-resolution sites by
+    /// routing through `resolveCanonicalNetworkName(_:dockerCompose:environmentVariables:)`.
+    /// Returns an empty set when `service.networks` is nil so the downstream
+    /// check skips silently.
+    ///
+    /// Internal but kept for the unit tests in `ComposeUpAdoptionTests`. Real
+    /// callers in `resolveAdoption` go through `serviceNetworkCanonicalNamesMap`
+    /// and derive the set from `.values` to avoid iterating twice.
+    internal func expectedNetworkNamesForService(
         _ service: Service,
         dockerCompose: DockerCompose?
     ) -> Set<String> {
-        guard let serviceNetworks = service.networks else { return [] }
-        var names: Set<String> = []
+        Set(serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose).values)
+    }
+
+    /// CHAOS-1495: Builds the per-service canonical-name map that downstream
+    /// divergence checks (DNS in particular) use to look up sidecar IPs and
+    /// label keys. Maps each raw `services.<svc>.networks` key to the canonical
+    /// network name that apple/container, the sidecar, the label-write path,
+    /// and the `--network` argv all agree on.
+    ///
+    /// Returns an empty map when `service.networks` is nil. Callers treat the
+    /// empty map as "no DNS divergence check possible for this service."
+    internal func serviceNetworkCanonicalNamesMap(
+        _ service: Service,
+        dockerCompose: DockerCompose?
+    ) -> [String: String] {
+        guard let serviceNetworks = service.networks else { return [:] }
+        var map: [String: String] = [:]
         for (name, _) in serviceNetworks.entries {
-            let resolved = resolveVariable(name, with: environmentVariables)
-            let networkToConnect = dockerCompose?.networks?[name]??.name ?? resolved
-            names.insert(networkToConnect)
+            map[name] = resolveCanonicalNetworkName(
+                name,
+                dockerCompose: dockerCompose,
+                environmentVariables: environmentVariables
+            )
         }
-        return names
+        return map
     }
 
     /// CHAOS-1493: Canonicalize each compose-spec port string (`service.ports[i]`)
@@ -215,10 +240,21 @@ extension ComposeUp {
     /// compose file. They still get the other drift checks below.
     ///
     /// `expectedSidecarIPs` is the current sidecar's per-network resolver
-    /// IP map (`SidecarHandle.perNetworkIPs`). Pass an empty map (the default)
-    /// when no embedded DNS sidecar is in play this `up` — the DNS check is
-    /// then skipped silently. Existing CHAOS-1492 unit tests of this function
-    /// rely on the default and stay backward-compatible.
+    /// IP map (`SidecarHandle.perNetworkIPs`), keyed by the canonical network
+    /// name. Pass an empty map (the default) when no embedded DNS sidecar is
+    /// in play this `up` — the DNS check is then skipped silently. Existing
+    /// CHAOS-1492 unit tests of this function rely on the default and stay
+    /// backward-compatible.
+    ///
+    /// `serviceNetworkCanonicalNames` (CHAOS-1495) maps each raw service-level
+    /// network reference to its canonical name (the one used as the label-key
+    /// suffix and as the `expectedSidecarIPs` lookup key). Real callers in
+    /// `resolveAdoption` precompute this via `serviceNetworkCanonicalNamesMap`
+    /// so env-substituted (`${PROJECT_NET}`) and aliased (`name:`) networks
+    /// resolve correctly. Empty map (the default) falls back to identity
+    /// resolution — raw key == canonical — which preserves the pre-CHAOS-1495
+    /// behavior of CHAOS-1492/1493 tests that use simple network names without
+    /// env or alias indirection.
     internal static func specDivergenceReason(
         existing: ContainerSnapshot,
         expected: Service,
@@ -226,7 +262,8 @@ extension ComposeUp {
         expectedNetworkNames: Set<String> = [],
         expectedPublishedPorts: Set<String> = [],
         expectedEnvironment: [String: String] = [:],
-        expectedCommand: [String]? = nil
+        expectedCommand: [String]? = nil,
+        serviceNetworkCanonicalNames: [String: String] = [:]
     ) -> String? {
         // 1. Image
         if let expectedRaw = expected.image {
@@ -237,11 +274,12 @@ extension ComposeUp {
             }
         }
 
-        // 2. DNS resolver drift (CHAOS-1493 v1 fix)
+        // 2. DNS resolver drift (CHAOS-1493 v1 fix; CHAOS-1495 canonical-name plumbing)
         if let reason = dnsDivergenceReason(
             existing: existing,
             expected: expected,
-            expectedSidecarIPs: expectedSidecarIPs
+            expectedSidecarIPs: expectedSidecarIPs,
+            serviceNetworkCanonicalNames: serviceNetworkCanonicalNames
         ) {
             return reason
         }
@@ -282,12 +320,12 @@ extension ComposeUp {
         return nil
     }
 
-    /// CHAOS-1493 DNS divergence helper.
+    /// CHAOS-1493 / CHAOS-1495 DNS divergence helper.
     ///
     /// For each network the service is attached to that has a sidecar IP
-    /// (`expectedSidecarIPs[network]` non-nil), verify the existing container's
+    /// (`expectedSidecarIPs[canonical]` non-nil), verify the existing container's
     /// recorded resolver agrees with the current sidecar IP. Sources, in order:
-    ///   1. Per-network label `compose.dns.resolvers.<network>` written by
+    ///   1. Per-network label `compose.dns.resolvers.<canonical>` written by
     ///      `LabelsArgs.build` at create time. Authoritative — disambiguates
     ///      multi-network projects where the flat snapshot `dns.nameservers`
     ///      array can't tell us which IP belongs to which network.
@@ -300,10 +338,21 @@ extension ComposeUp {
     ///      available, force a one-time recreate so the next `up` has labels
     ///      to compare against. Only fires for containers created before this
     ///      fix landed.
+    ///
+    /// CHAOS-1495: `serviceNetworkCanonicalNames` is the caller-supplied raw→canonical
+    /// mapping. The previous implementation iterated `service.networks.entries`
+    /// and looked up `expectedSidecarIPs[rawNetworkName]` directly, which silently
+    /// missed for env-substituted (`${PROJECT_NET}`) or aliased
+    /// (`networks: { foo: { name: bar } }`) networks because those sites resolve
+    /// to a different canonical key than the raw YAML key. Empty map falls back
+    /// to identity (raw==canonical) for legacy callers — safe whenever no env or
+    /// alias indirection is in play, which is the assumption of the existing
+    /// CHAOS-1492/1493 unit tests.
     private static func dnsDivergenceReason(
         existing: ContainerSnapshot,
         expected: Service,
-        expectedSidecarIPs: [String: String]
+        expectedSidecarIPs: [String: String],
+        serviceNetworkCanonicalNames: [String: String]
     ) -> String? {
         guard !expectedSidecarIPs.isEmpty else { return nil }
         guard let serviceNetworks = expected.networks else { return nil }
@@ -312,38 +361,17 @@ extension ComposeUp {
         let snapshotNameservers = existing.configuration.dns?.nameservers ?? []
         let snapshotNameserverSet = Set(snapshotNameservers)
 
-        // Networks the service expects to be attached to that have a sidecar IP.
-        // We only validate networks the sidecar is actually serving — a service
-        // attached to a non-sidecar network has no expected DNS for that network.
-        var verifiedAny = false
+        for (rawNetworkName, _) in serviceNetworks.entries {
+            // CHAOS-1495: prefer the caller-supplied canonical mapping; fall back
+            // to identity (raw==canonical) for legacy callers that never went
+            // through `serviceNetworkCanonicalNamesMap` (the existing
+            // CHAOS-1492/1493 unit tests, which use simple network names).
+            let canonical = serviceNetworkCanonicalNames[rawNetworkName] ?? rawNetworkName
 
-        for (networkName, _) in serviceNetworks.entries {
-            // Network-name resolution must mirror `LabelsArgs.build`. We don't
-            // have access to dockerCompose / environmentVariables here, so the
-            // caller is responsible for providing canonical names in
-            // `expectedSidecarIPs`. The label key uses the same canonical name.
-            // Try both the raw and resolved keys to handle the simple case.
-            let candidates = [networkName]
-            var expectedIP: String? = nil
-            var canonical: String = networkName
-            for candidate in candidates {
-                if let ip = expectedSidecarIPs[candidate] {
-                    expectedIP = ip
-                    canonical = candidate
-                    break
-                }
-            }
-            // Fall back: any sidecar IP whose key matches a substring of the
-            // network name (handles env-substituted / overridden names without
-            // needing the resolution context here).
-            if expectedIP == nil {
-                for (key, ip) in expectedSidecarIPs where key == networkName {
-                    expectedIP = ip
-                    canonical = key
-                    break
-                }
-            }
-            guard let expectedIP else { continue }
+            // Sidecar only serves networks it actually attached to; if no IP is
+            // recorded for this canonical name, the network is out of scope for
+            // DNS divergence (e.g. service attached to a non-sidecar network).
+            guard let expectedIP = expectedSidecarIPs[canonical] else { continue }
 
             // 1. Per-network label — authoritative.
             let labelKey = "compose.dns.resolvers.\(canonical)"
@@ -351,7 +379,6 @@ extension ComposeUp {
                 if labelIP != expectedIP {
                     return "DNS resolver IP for network '\(canonical)' changed: \(labelIP) -> \(expectedIP)"
                 }
-                verifiedAny = true
                 continue
             }
 
@@ -360,7 +387,6 @@ extension ComposeUp {
                 if !snapshotNameserverSet.contains(expectedIP) {
                     return "DNS resolver IP for network '\(canonical)' (\(expectedIP)) not in container's nameservers \(snapshotNameservers.sorted())"
                 }
-                verifiedAny = true
                 continue
             }
 
@@ -368,7 +394,6 @@ extension ComposeUp {
             return "upgrading from pre-CHAOS-1493 container — recreating to attach DNS resolver metadata for network '\(canonical)'"
         }
 
-        _ = verifiedAny
         return nil
     }
 

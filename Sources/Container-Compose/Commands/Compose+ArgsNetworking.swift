@@ -36,9 +36,15 @@ extension ComposeUp {
             var embeddedDNSArgs: [String] = []
             if let serviceNetworks = ctx.service.networks {
                 for (name, config) in serviceNetworks.entries {
-                    let resolved = resolveVariable(name, with: ctx.environmentVariables)
-                    // Prefer the explicit name from the top-level definition if set.
-                    let networkToConnect = ctx.dockerCompose.networks?[name]??.name ?? resolved
+                    // CHAOS-1495: shared canonical resolver — keeps `--network`,
+                    // `--dns` lookup, label keys, divergence sets, and sidecar
+                    // `perNetworkIPs` keys aligned across env-substituted /
+                    // aliased / external network references.
+                    let networkToConnect = resolveCanonicalNetworkName(
+                        name,
+                        dockerCompose: ctx.dockerCompose,
+                        environmentVariables: ctx.environmentVariables
+                    )
                     args.append(contentsOf: ["--network", networkToConnect])
 
                     if let sidecarIP = ctx.dnsSidecar?.perNetworkIPs[networkToConnect] {
