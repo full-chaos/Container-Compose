@@ -51,20 +51,49 @@ struct LabelsArgsTests {
         ComposeUp.LabelsArgs.build(makeContext(service: service))
     }
 
+    /// Returns ONLY the user-declared `--label` entries from a build output,
+    /// stripping the synthetic `compose.dns.resolvers.*` (CHAOS-1493) and
+    /// `compose.spec.*` (CHAOS-1496) labels. The synthetic labels are
+    /// covered by their own dedicated suites:
+    ///   - `ComposeUpDNSStabilityTests` (DNS resolver labels)
+    ///   - `ComposeSpecFingerprintTests` (spec fingerprint labels)
+    /// Tests below use this helper so their assertions stay focused on
+    /// user-label semantics without coupling to the additive synthetic-label
+    /// emission rules.
+    private func userLabels(_ service: Service) -> [String] {
+        let all = build(service)
+        var filtered: [String] = []
+        var i = 0
+        while i + 1 < all.count {
+            if all[i] == "--label" {
+                let value = all[i + 1]
+                if !value.hasPrefix("compose.dns.") && !value.hasPrefix("compose.spec.") {
+                    filtered.append("--label")
+                    filtered.append(value)
+                }
+                i += 2
+            } else {
+                filtered.append(all[i])
+                i += 1
+            }
+        }
+        return filtered
+    }
+
     // MARK: - nil labels → no flags
 
-    @Test("nil labels produces no args")
+    @Test("nil labels produces no user args")
     func nilLabelsProducesNoArgs() {
         let svc = Service(image: "alpine", labels: nil)
-        #expect(build(svc).isEmpty)
+        #expect(userLabels(svc).isEmpty)
     }
 
     // MARK: - single label
 
-    @Test("single label emits one --label flag pair")
+    @Test("single user label emits one --label flag pair")
     func singleLabelEmitsFlag() {
         let svc = Service(image: "alpine", labels: ["com.example.version": "1.0"])
-        let args = build(svc)
+        let args = userLabels(svc)
         #expect(args.count == 2)
         #expect(args[0] == "--label")
         #expect(args[1] == "com.example.version=1.0")
@@ -79,8 +108,8 @@ struct LabelsArgsTests {
             "a.key": "first",
             "m.key": "middle",
         ])
-        let args = build(svc)
-        // Expect 3 pairs = 6 elements
+        let args = userLabels(svc)
+        // Expect 3 user-label pairs = 6 elements (synthetic labels filtered)
         #expect(args.count == 6)
         // Extract the values of each --label pair
         let pairs: [(String, String)] = stride(from: 0, to: args.count - 1, by: 2).map { i in
@@ -95,10 +124,10 @@ struct LabelsArgsTests {
 
     // MARK: - empty labels dictionary → no flags
 
-    @Test("empty labels dictionary produces no args")
+    @Test("empty labels dictionary produces no user args")
     func emptyLabelsDictionaryProducesNoArgs() {
         let svc = Service(image: "alpine", labels: [:])
-        #expect(build(svc).isEmpty)
+        #expect(userLabels(svc).isEmpty)
     }
 
     // MARK: - combo: labels + stop_signal
@@ -108,15 +137,17 @@ struct LabelsArgsTests {
         let svc = Service(image: "alpine", labels: ["env": "test"], stop_signal: "SIGUSR1")
 
         let labelsArgs = ComposeUp.LabelsArgs.build(makeContext(service: svc))
+        let userOnlyLabels = userLabels(svc)
         let lifecycleArgs = ComposeUp.LifecycleArgs.build(makeContext(service: svc))
 
-        // Labels side: exactly one --label pair
-        let labelPairs = stride(from: 0, to: labelsArgs.count - 1, by: 2).map { i in
-            (labelsArgs[i], labelsArgs[i + 1])
+        // Labels side: exactly one user-declared --label pair (synthetic
+        // CHAOS-1496 fingerprint labels are excluded via `userLabels`).
+        let userPairs = stride(from: 0, to: userOnlyLabels.count - 1, by: 2).map { i in
+            (userOnlyLabels[i], userOnlyLabels[i + 1])
         }
-        #expect(labelPairs.count == 1)
-        #expect(labelPairs[0].0 == "--label")
-        #expect(labelPairs[0].1 == "env=test")
+        #expect(userPairs.count == 1)
+        #expect(userPairs[0].0 == "--label")
+        #expect(userPairs[0].1 == "env=test")
 
         // Lifecycle side: --stop-signal warn-skipped after CHAOS-1397 Tier 0 R2
         // (apple/container does not accept --stop-signal). The original
@@ -136,7 +167,7 @@ struct LabelsArgsTests {
     @Test("label value containing '=' is preserved verbatim")
     func labelValueWithEqualsPreserved() {
         let svc = Service(image: "alpine", labels: ["annotation": "key=value"])
-        let args = build(svc)
+        let args = userLabels(svc)
         #expect(args.count == 2)
         #expect(args[1] == "annotation=key=value")
     }

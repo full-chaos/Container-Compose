@@ -111,6 +111,32 @@ extension ComposeUp {
             let expectedEnvironment = expectedEnvironmentForService(service)
             let expectedCommand = service.command
 
+            // CHAOS-1496: precompute expected fingerprint values for the new
+            // label-primary divergence checks. Each is computed with the same
+            // canonical form `LabelsArgs.fingerprintLabels` used at create
+            // time, so a hash match implies byte-equal compose-spec content.
+            let expectedImageLabel: String? = service.image.map {
+                resolveVariable($0, with: environmentVariables)
+            }
+            let expectedEntrypointHash = ComposeUp.SpecFingerprint.canonicalEntrypointHash(
+                entrypoint: service.entrypoint,
+                command: service.command
+            )
+            // Use the (a)-only merge so the hash matches the label written at
+            // create time. See `mergeServiceEnvForFingerprint` for why the
+            // (b)-layer (containerIps rewrite) is intentionally excluded.
+            let expectedFingerprintEnv = mergeServiceEnvForFingerprint(service)
+            let expectedEnvHash: String? = expectedFingerprintEnv.isEmpty
+                ? nil
+                : ComposeUp.SpecFingerprint.canonicalEnvHash(expectedFingerprintEnv)
+            let expectedPortsHash = ComposeUp.SpecFingerprint.canonicalPortsHash(
+                service.ports,
+                environmentVariables: environmentVariables
+            )
+            let expectedNetworksHash = ComposeUp.SpecFingerprint.canonicalNetworksHash(
+                Array(expectedNetworkNames)
+            )
+
             if let reason = Self.specDivergenceReason(
                 existing: existing,
                 expected: service,
@@ -120,7 +146,12 @@ extension ComposeUp {
                 expectedEnvironment: expectedEnvironment,
                 expectedCommand: expectedCommand,
                 serviceNetworkCanonicalNames: serviceNetworkCanonicalNames,
-                implicitDefaultNetwork: self.implicitDefaultNetworkName
+                implicitDefaultNetwork: self.implicitDefaultNetworkName,
+                expectedImageLabel: expectedImageLabel,
+                expectedEntrypointHash: expectedEntrypointHash,
+                expectedEnvHash: expectedEnvHash,
+                expectedPortsHash: expectedPortsHash,
+                expectedNetworksHash: expectedNetworksHash
             ) {
                 decisions[serviceName] = .recreate(reason: reason)
                 continue
@@ -246,26 +277,40 @@ extension ComposeUp {
         }
     }
 
-    /// CHAOS-1492 / 1493 divergence detection.
+    /// CHAOS-1492 / 1493 / 1496 divergence detection.
     ///
     /// Returns a non-nil reason string when the existing container's spec has
     /// drifted from what `compose up` would launch today, in which case the
     /// caller (`resolveAdoption`) flips the decision from `.adopt` to `.recreate`.
     ///
     /// Check order (Oracle Q3 ranking — highest user-impact first):
-    ///   1. Image (CHAOS-1492 v1)
+    ///   1. Image label (CHAOS-1496) PRIMARY → image string (CHAOS-1492 v1) FALLBACK.
     ///   2. DNS resolver IPs (CHAOS-1493) — sidecar IP drift kills `/etc/resolv.conf`.
-    ///   3-6. Networks / ports / env / command (CHAOS-1493 wave 3).
+    ///   3. Networks hash (CHAOS-1496) PRIMARY → network attachments SET (CHAOS-1493 wave 3) FALLBACK.
+    ///   4. Ports hash (CHAOS-1496) PRIMARY → published ports SET (CHAOS-1493 wave 3) FALLBACK.
+    ///   5. Env hash (CHAOS-1496) PRIMARY → environment SUBSET (CHAOS-1493 wave 3) FALLBACK.
+    ///   6. Entrypoint hash (CHAOS-1496) PRIMARY → command (CHAOS-1493 wave 3) FALLBACK.
     ///
-    /// Build-only services (no `image:` field) skip the image check — their
+    /// CHAOS-1496 PRIMARY checks read `compose.spec.*` labels written by
+    /// `LabelsArgs.fingerprintLabels` at create time. When a label is absent
+    /// (pre-CHAOS-1496 container), the primary check returns nil and the
+    /// existing snapshot-based FALLBACK runs unchanged — no spurious recreate
+    /// for upgraded containers. When a label is present and matches, no
+    /// divergence is signaled by the primary; the fallback still runs as a
+    /// belt-and-suspenders sanity check (the two should agree by construction
+    /// for any container created post-CHAOS-1496). When a label is present
+    /// and mismatches, the primary returns a clear reason and the fallback is
+    /// skipped (we already know the spec drifted).
+    ///
+    /// Build-only services (no `image:` field) skip the image checks — their
     /// effective image reference comes from the build pipeline, not the
     /// compose file. They still get the other drift checks below.
     ///
     /// `expectedSidecarIPs` is the current sidecar's per-network resolver
     /// IP map (`SidecarHandle.perNetworkIPs`). Pass an empty map (the default)
     /// when no embedded DNS sidecar is in play this `up` — the DNS check is
-    /// then skipped silently. Existing CHAOS-1492 unit tests of this function
-    /// rely on the default and stay backward-compatible.
+    /// then skipped silently. Existing CHAOS-1492/1493 unit tests of this
+    /// function rely on the defaults and stay backward-compatible.
     ///
     /// CHAOS-1495: `serviceNetworkCanonicalNames` carries the raw→canonical
     /// mapping built by `serviceNetworkCanonicalNamesMap`. Required so DNS
@@ -286,9 +331,18 @@ extension ComposeUp {
         expectedEnvironment: [String: String] = [:],
         expectedCommand: [String]? = nil,
         serviceNetworkCanonicalNames: [String: String] = [:],
-        implicitDefaultNetwork: String? = nil
+        implicitDefaultNetwork: String? = nil,
+        expectedImageLabel: String? = nil,
+        expectedEntrypointHash: String? = nil,
+        expectedEnvHash: String? = nil,
+        expectedPortsHash: String? = nil,
+        expectedNetworksHash: String? = nil
     ) -> String? {
-        // 1. Image
+        // 1A. Image label (CHAOS-1496) — PRIMARY
+        if let reason = imageLabelDivergence(existing: existing, expectedImageLabel: expectedImageLabel) {
+            return reason
+        }
+        // 1B. Image string (CHAOS-1492 v1) — FALLBACK
         if let expectedRaw = expected.image {
             let existingImage = existing.configuration.image.reference
             let expectedQualified = qualifyImageReference(expectedRaw)
@@ -309,7 +363,12 @@ extension ComposeUp {
             return reason
         }
 
-        // 3. Network attachments (CHAOS-1493 wave 3)
+        // 3A. Networks hash (CHAOS-1496) — PRIMARY
+        if let reason = networksHashDivergence(existing: existing, expectedNetworksHash: expectedNetworksHash) {
+            return reason
+        }
+
+        // 3B. Network attachments SET (CHAOS-1493 wave 3) — FALLBACK
         if let reason = networkDivergenceReason(
             existing: existing,
             expectedNetworkNames: expectedNetworkNames
@@ -317,7 +376,12 @@ extension ComposeUp {
             return reason
         }
 
-        // 4. Published ports (CHAOS-1493 wave 3)
+        // 4A. Ports hash (CHAOS-1496) — PRIMARY
+        if let reason = portsHashDivergence(existing: existing, expectedPortsHash: expectedPortsHash) {
+            return reason
+        }
+
+        // 4B. Published ports SET (CHAOS-1493 wave 3) — FALLBACK
         if let reason = portsDivergenceReason(
             existing: existing,
             expectedPublishedPorts: expectedPublishedPorts
@@ -325,7 +389,12 @@ extension ComposeUp {
             return reason
         }
 
-        // 5. Environment (CHAOS-1493 wave 3)
+        // 5A. Env hash (CHAOS-1496) — PRIMARY
+        if let reason = envHashDivergence(existing: existing, expectedEnvHash: expectedEnvHash) {
+            return reason
+        }
+
+        // 5B. Environment SUBSET (CHAOS-1493 wave 3) — FALLBACK
         if let reason = envDivergenceReason(
             existing: existing,
             expectedEnvironment: expectedEnvironment
@@ -333,7 +402,12 @@ extension ComposeUp {
             return reason
         }
 
-        // 6. Command (CHAOS-1493 wave 3)
+        // 6A. Entrypoint hash (CHAOS-1496) — PRIMARY
+        if let reason = entrypointHashDivergence(existing: existing, expectedEntrypointHash: expectedEntrypointHash) {
+            return reason
+        }
+
+        // 6B. Command (CHAOS-1493 wave 3) — FALLBACK
         if let reason = commandDivergenceReason(
             existing: existing,
             expectedCommand: expectedCommand,
@@ -590,6 +664,129 @@ extension ComposeUp {
             : [existingExec] + existingArgs
         if existingCommand != expectedCommand {
             return "command diverged: existing=\(existingCommand) expected=\(expectedCommand)"
+        }
+        return nil
+    }
+
+    // MARK: - CHAOS-1496 label-primary divergence helpers
+    //
+    // Each helper reads a `compose.spec.*` label from the existing container
+    // and compares it to the corresponding expected fingerprint computed from
+    // the current compose-spec content. Three outcomes:
+    //
+    //   - Label PRESENT and MATCHES expected   → return nil (no divergence).
+    //   - Label PRESENT and MISMATCHES expected → return a clear reason string.
+    //   - Label ABSENT (pre-CHAOS-1496 container or skip-condition triggered
+    //     at create time) → return nil (caller falls through to the existing
+    //     snapshot-based FALLBACK check, preserving CHAOS-1492/1493 semantics).
+    //
+    // The expected* parameter is also nil when the corresponding compose-spec
+    // content is empty (`canonicalXxxHash` returned nil because there is
+    // nothing to fingerprint). In that case the check simply returns nil and
+    // the fallback runs.
+    //
+    // All helpers stay PURE (read-only) and depend only on the existing
+    // snapshot's labels dict + the precomputed expected hash, mirroring the
+    // pattern of the existing CHAOS-1493 `dnsDivergenceReason` helper.
+
+    /// CHAOS-1496 image-label divergence (PRIMARY for image drift).
+    ///
+    /// Compares the resolved `service.image` reference against the
+    /// `compose.spec.image` label written by `LabelsArgs.fingerprintLabels`
+    /// at create time. Match → nil. Mismatch → reason. Absent → nil (caller
+    /// falls through to the existing string-comparison + `qualifyImageReference`
+    /// check from CHAOS-1492 v1).
+    private static func imageLabelDivergence(
+        existing: ContainerSnapshot,
+        expectedImageLabel: String?
+    ) -> String? {
+        guard let expectedImageLabel else { return nil }
+        guard let labelValue = existing.configuration.labels["compose.spec.image"] else { return nil }
+        if labelValue != expectedImageLabel {
+            return "compose.spec.image mismatch — image reference changed: \(labelValue) -> \(expectedImageLabel)"
+        }
+        return nil
+    }
+
+    /// CHAOS-1496 entrypoint-hash divergence (PRIMARY for entrypoint/command drift).
+    ///
+    /// Compares the SHA256 of the canonical `(entrypoint ?? []) + (command ?? [])`
+    /// against the `compose.spec.entrypoint.hash` label. The hash collapses both
+    /// fields into one string-equality check, replacing the existing
+    /// `commandDivergenceReason`'s reconstruction-aware comparison for
+    /// post-CHAOS-1496 containers. Absent → nil (caller falls through to the
+    /// existing reconstruction logic).
+    private static func entrypointHashDivergence(
+        existing: ContainerSnapshot,
+        expectedEntrypointHash: String?
+    ) -> String? {
+        guard let expectedEntrypointHash else { return nil }
+        guard let labelValue = existing.configuration.labels["compose.spec.entrypoint.hash"] else { return nil }
+        if labelValue != expectedEntrypointHash {
+            return "compose.spec.entrypoint.hash mismatch — entrypoint or command changed"
+        }
+        return nil
+    }
+
+    /// CHAOS-1496 env-hash divergence (PRIMARY for env drift).
+    ///
+    /// Compares the SHA256 of the canonical user-declared env (post-`${VAR}`
+    /// substitution, pre-`containerIps` rewrite) against the
+    /// `compose.spec.env.hash` label. The (a)-only form is intentional —
+    /// see `mergeServiceEnvForFingerprint` for why the (b)-layer must NOT
+    /// be hashed (chicken-and-egg with `containerIps` populated only after
+    /// `resolveAdoption` runs). Absent → nil (caller falls through to the
+    /// existing SUBSET-semantics `envDivergenceReason`).
+    private static func envHashDivergence(
+        existing: ContainerSnapshot,
+        expectedEnvHash: String?
+    ) -> String? {
+        guard let expectedEnvHash else { return nil }
+        guard let labelValue = existing.configuration.labels["compose.spec.env.hash"] else { return nil }
+        if labelValue != expectedEnvHash {
+            return "compose.spec.env.hash mismatch — environment changed"
+        }
+        return nil
+    }
+
+    /// CHAOS-1496 ports-hash divergence (PRIMARY for published-ports drift).
+    ///
+    /// Compares the SHA256 of the sorted, `composePortToRunArg`-canonicalized
+    /// `service.ports` list against the `compose.spec.ports.hash` label.
+    /// Absent → nil (caller falls through to the existing SET-equality
+    /// `portsDivergenceReason`).
+    private static func portsHashDivergence(
+        existing: ContainerSnapshot,
+        expectedPortsHash: String?
+    ) -> String? {
+        guard let expectedPortsHash else { return nil }
+        guard let labelValue = existing.configuration.labels["compose.spec.ports.hash"] else { return nil }
+        if labelValue != expectedPortsHash {
+            return "compose.spec.ports.hash mismatch — published ports changed"
+        }
+        return nil
+    }
+
+    /// CHAOS-1496 networks-hash divergence (PRIMARY for network-attachment drift).
+    ///
+    /// Compares the SHA256 of the sorted resolved network names against the
+    /// `compose.spec.networks.hash` label. Resolved names mirror the inline
+    /// formula at the label-write site (env-substitution + top-level
+    /// `networks.<k>.name` override). Absent → nil (caller falls through to
+    /// the existing SET-equality `networkDivergenceReason`).
+    ///
+    /// CHAOS-1495 will introduce `resolveCanonicalNetworkName` in
+    /// `Helper Functions.swift`; until that lands the inline formula is used
+    /// at both the write site (`LabelsArgs.fingerprintLabels`) and the read
+    /// site (via `expectedNetworkNamesForService`).
+    private static func networksHashDivergence(
+        existing: ContainerSnapshot,
+        expectedNetworksHash: String?
+    ) -> String? {
+        guard let expectedNetworksHash else { return nil }
+        guard let labelValue = existing.configuration.labels["compose.spec.networks.hash"] else { return nil }
+        if labelValue != expectedNetworksHash {
+            return "compose.spec.networks.hash mismatch — network attachments changed"
         }
         return nil
     }

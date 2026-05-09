@@ -46,6 +46,28 @@ extension ComposeUp {
         /// compose file declares its own networks, or no service needs the
         /// fallback).
         let implicitDefaultNetwork: String?
+
+        /// CHAOS-1496: pre-computed merged environment for the service —
+        /// specifically the (a)-layer output of
+        /// `ComposeUp.mergeServiceEnvForFingerprint(_:)`: post `${VAR}`
+        /// substitution but BEFORE peer-service-name → IP rewriting via
+        /// `containerIps`. Threaded through so `LabelsArgs.fingerprintLabels`
+        /// can emit a deterministic `compose.spec.env.hash` label without
+        /// re-doing the merge (and without duplicating the merge logic
+        /// statically).
+        ///
+        /// MUST NOT include peer-IP-resolved values: `resolveAdoption`'s
+        /// `envHashDivergence` re-computes the same (a)-only form at adoption
+        /// time, when `containerIps` is empty (per CHAOS-1493 ordering).
+        /// Hashing the (b)-layer (full) form here would spuriously diverge
+        /// every service whose env references a peer service by name.
+        ///
+        /// Defaults to an empty dictionary so existing test fixtures that
+        /// build `ArgsContext` directly are unaffected — they simply skip
+        /// the env-fingerprint emission, matching the "absent when not
+        /// applicable" rule used elsewhere in `LabelsArgs.build`.
+        let fingerprintEnv: [String: String]
+
         let supportsHealthcheckFlags: Bool
         let supportsBlkioFlags: Bool
 
@@ -61,6 +83,7 @@ extension ComposeUp {
             dockerCompose: DockerCompose,
             composeFilename: String?,
             dnsSidecar: SidecarHandle? = nil,
+            fingerprintEnv: [String: String] = [:],
             supportsHealthcheckFlags: Bool = true,
             supportsBlkioFlags: Bool = false,
             supportsRestartFlag: Bool = false,
@@ -75,6 +98,7 @@ extension ComposeUp {
             self.dockerCompose = dockerCompose
             self.composeFilename = composeFilename
             self.dnsSidecar = dnsSidecar
+            self.fingerprintEnv = fingerprintEnv
             self.supportsHealthcheckFlags = supportsHealthcheckFlags
             self.supportsBlkioFlags = supportsBlkioFlags
             self.supportsRestartFlag = supportsRestartFlag
