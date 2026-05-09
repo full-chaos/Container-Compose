@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1496-fingerprint-labels",
+  "commit": "08b72c8aa0a77f7ad9374d0cd23386292df406d0",
+  "short": "08b72c8",
+  "target": "08b72c8",
+  "message": "feat(compose): CHAOS-1496 generalized create-spec fingerprint labels \u2014 image + entrypoint/env/ports/networks hash labels for label-primary divergence detection",
+  "published_at": "2026-05-09T00:45:47.897579+00:00"
+}
