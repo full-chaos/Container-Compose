@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "dd64e209a4e39e0705c3d2656af7554356a7600a",
-  "short": "dd64e20",
+  "commit": "2b508b5bc7edb7c31ade42781144303aa3fb3ece",
+  "short": "2b508b5",
   "target": "current",
-  "message": "fix(compose): CHAOS-1494 implicit-network DNS injection \u2014 services without explicit service.networks now receive sidecar --dns and matching labels (#161)",
-  "published_at": "2026-05-09T00:37:25.267298+00:00"
+  "message": "feat(compose): CHAOS-1496 generalized create-spec fingerprint labels \u2014 image + entrypoint/env/ports/networks hash labels for label-primary divergence detection (#160)",
+  "published_at": "2026-05-09T00:46:59.668703+00:00"
 }
