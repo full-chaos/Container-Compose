@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "8381551c492bea181039b3df5a482e81c33c3846",
-  "short": "8381551",
+  "commit": "0f677fa325b047305d9ecf9575d7971ff013ac51",
+  "short": "0f677fa",
   "target": "current",
-  "message": "fix(compose): CHAOS-1497 honor deprecated 'external: { name: X }' form \u2014 5-site fallback to network.external?.name + Case 3c test (#162)",
-  "published_at": "2026-05-09T12:20:00.669328+00:00"
+  "message": "fix(compose): CHAOS-1498 implicit-default-network medium case \u2014 services omitting service.networks now attach to <project>-default even when other networks are declared (#163)",
+  "published_at": "2026-05-09T12:52:25.028726+00:00"
 }
