@@ -1,0 +1,8 @@
+{
+  "branch": "worktree-chaos-1498-implicit-default-medium-case",
+  "commit": "ace7964136ad4720877fd8f3ae5e22b1cda4963d",
+  "short": "ace7964",
+  "target": "ace7964",
+  "message": "fix(compose): CHAOS-1498 implicit-default-network medium case \u2014 services omitting service.networks now attach to <project>-default even when other networks are declared",
+  "published_at": "2026-05-09T12:47:12.694245+00:00"
+}
