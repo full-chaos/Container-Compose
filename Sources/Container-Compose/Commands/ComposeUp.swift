@@ -162,18 +162,17 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             return
         }
 
-        // CHAOS-1494: Decide whether this project needs a synthesized implicit
-        // default network BEFORE we create top-level networks. The synthesis
-        // trigger is intentionally conservative — we only add the implicit
-        // network when the compose file declares no top-level `networks:` AND
-        // at least one selected service would otherwise miss sidecar DNS
-        // (i.e. has neither `service.networks` nor `network_mode`).
-        // The medium case (compose declares networks but a service omits
-        // `service.networks`) is tracked separately and intentionally NOT
-        // addressed here; see CHAOS-1498.
+        // CHAOS-1494/1498: Decide whether this project needs a synthesized
+        // implicit default network BEFORE we create top-level networks. The
+        // synthesis trigger fires whenever at least one selected service has
+        // neither `service.networks` nor `network_mode` — regardless of
+        // whether the compose file declares its own top-level `networks:`.
+        // Per docker-compose semantics, services that omit `service.networks`
+        // attach to the project's `<projectName>-default` network so they
+        // can reach peer services + the embedded DNS sidecar even when
+        // the project also defines other networks (CHAOS-1498).
         implicitDefaultNetworkName = Self.computeImplicitDefaultNetworkName(
             services: services,
-            dockerCompose: dockerCompose,
             projectName: resolvedName
         )
 
@@ -190,13 +189,16 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             print("--- Networks Processed ---\n")
         }
 
-        // CHAOS-1494: create the synthesized implicit default network when
-        // applicable. `setupNetwork` routes through
+        // CHAOS-1494/1498: create the synthesized implicit default network
+        // when applicable. `setupNetwork` routes through
         // `BridgeContainerClientRuntime.createNetwork`, which is idempotent on
-        // `RuntimeError.alreadyExists`, so re-runs no-op cleanly.
+        // `RuntimeError.alreadyExists`, so re-runs no-op cleanly. This
+        // creation step runs AFTER the top-level networks loop above so the
+        // implicit network coexists with any user-declared networks
+        // (CHAOS-1498 medium case).
         if let implicitName = implicitDefaultNetworkName {
             print("\n--- Processing Implicit Default Network ---")
-            print("Info: synthesizing implicit default network '\(implicitName)' for services without explicit 'service.networks' (CHAOS-1494).")
+            print("Info: synthesizing implicit default network '\(implicitName)' for services without explicit 'service.networks' (CHAOS-1494/1498).")
             try await setupNetwork(name: implicitName, config: nil)
             print("--- Implicit Default Network Processed ---\n")
         }
@@ -542,20 +544,22 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         return names
     }
 
-    /// CHAOS-1494: decides whether the project needs a synthesized implicit
-    /// default network, and if so returns its name (`<projectName>-default`).
+    /// CHAOS-1494/1498: decides whether the project needs a synthesized
+    /// implicit default network, and if so returns its name
+    /// (`<projectName>-default`).
     ///
-    /// Trigger (intersection of CHAOS-1494 lead constraint #1 and Oracle b1):
-    ///   1. The compose file declares no top-level `networks:` (nil OR empty).
-    ///   2. At least one selected service has `service.networks == nil` AND
-    ///      `service.network_mode == nil` — i.e. would otherwise miss
-    ///      sidecar DNS injection.
+    /// Trigger: at least one selected service has `service.networks == nil`
+    /// AND `service.network_mode == nil` — i.e. would otherwise miss sidecar
+    /// DNS injection. The presence of user-declared top-level `networks:` is
+    /// NOT a gate; per docker-compose semantics a service that omits
+    /// `service.networks` always lands on the project's default network even
+    /// when other networks are declared (CHAOS-1498 medium case).
     ///
-    /// Returns `nil` when neither condition holds (preserves today's behavior
-    /// for projects that already declare networks, and avoids creating an
-    /// unused network when every selected service overrides attachment via
-    /// `network_mode`). Profile filtering happens at the caller via
-    /// `selectServices(from:)` so only post-filter services are considered.
+    /// Returns `nil` when every selected service overrides attachment via
+    /// `service.networks` or `network_mode` (no implicit needed; avoids
+    /// creating an unused network). Profile filtering happens at the caller
+    /// via `selectServices(from:)` so only post-filter services are
+    /// considered.
     ///
     /// `apple/container` reserves the bare network name `default` for its
     /// built-in 192.168.65.0/24 bridge (`com.apple.container.resource.role:
@@ -563,13 +567,16 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// `<projectName>-default` form sidesteps the collision and scopes the
     /// network to this project, mirroring the `<project>-<service>` container
     /// naming convention.
+    ///
+    /// Originally CHAOS-1494 also required `dockerCompose.networks` to be
+    /// nil/empty so the surgical fix did not disturb projects that already
+    /// declared their own networks. CHAOS-1498 lifts that gate — the medium
+    /// case now correctly synthesizes the implicit network alongside
+    /// user-declared ones.
     internal static func computeImplicitDefaultNetworkName(
         services: [(serviceName: String, service: Service)],
-        dockerCompose: DockerCompose,
         projectName: String
     ) -> String? {
-        let topLevelNetworksEmpty = (dockerCompose.networks?.isEmpty ?? true)
-        guard topLevelNetworksEmpty else { return nil }
         let needsImplicit = services.contains { _, service in
             service.networks == nil && service.network_mode == nil
         }
