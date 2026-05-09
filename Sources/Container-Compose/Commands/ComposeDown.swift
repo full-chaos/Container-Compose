@@ -86,6 +86,17 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
             isFullProjectDown: self.services.isEmpty
         )
 
+        // CHAOS-1494: clean up the synthesized implicit default network on a
+        // full project down. The network is project-scoped and has no other
+        // lifecycle owner; leaving it would orphan a `<projectName>-default`
+        // entry in apple/container's network registry across `down`/`up`
+        // cycles. The delete is idempotent (RuntimeError.notFound caught
+        // silently) so we do not need to predict whether the current compose
+        // state would have synthesized it — we always try, only on full
+        // project down. Partial-down preserves the network because sibling
+        // services may still use it.
+        await removeImplicitDefaultNetworkIfFullProjectDown()
+
         if removeVolumes {
             await removeNamedVolumes(
                 from: dockerCompose,
@@ -266,6 +277,26 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
             }
         }
         print("--- Networks Removed ---\n")
+    }
+
+    /// CHAOS-1494: idempotent removal of the synthesized implicit default
+    /// network. Mirrors `stopEmbeddedDNSResolverIfFullProjectDown` — fires
+    /// only on full project down (when no specific services are targeted)
+    /// and silently no-ops when the network is absent. Network name is
+    /// deterministic from the project name (`<projectName>-default`), so we
+    /// don't need to recompute the synthesis trigger from compose state.
+    private func removeImplicitDefaultNetworkIfFullProjectDown() async {
+        guard self.services.isEmpty, let projectName else { return }
+        let implicitName = "\(projectName)-default"
+        do {
+            try await RuntimeEnvironment.current.removeNetwork(id: implicitName)
+            print("Removed implicit default network: \(implicitName)")
+        } catch RuntimeError.notFound {
+            // No-op — either the project never synthesized one or it was
+            // already torn down by a prior `down`.
+        } catch {
+            print("Error removing implicit default network '\(implicitName)': \(error)")
+        }
     }
 
     /// Helper for `removeProjectNetworks`: collects all top-level network

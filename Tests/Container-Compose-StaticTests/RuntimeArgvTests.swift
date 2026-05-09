@@ -91,7 +91,20 @@ struct RuntimeArgvTests {
         try await recordedFirstArgv(
             timeout: timeout,
             runtime: runtime,
-            matching: { $0.starts(with: ["container", "run"]) && !$0.contains("--help") },
+            matching: { argv in
+                argv.starts(with: ["container", "run"])
+                    && !argv.contains("--help")
+                    // CHAOS-1494: skip the embedded DNS sidecar's `container
+                    // run` argv so callers continue to receive the SERVICE's
+                    // argv. The sidecar argv contains the literal
+                    // `-compose-dns` substring (its container name is
+                    // `<project>-compose-dns`). Without this filter, every
+                    // up/run/create test that uses a compose without explicit
+                    // top-level `networks:` would receive the sidecar argv
+                    // because CHAOS-1494 synthesizes an implicit project
+                    // network for those, which in turn launches the sidecar.
+                    && !argv.contains(where: { $0.hasSuffix("-compose-dns") })
+            },
             description: "container run",
             parse: parse
         )

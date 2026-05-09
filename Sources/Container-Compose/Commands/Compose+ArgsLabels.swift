@@ -30,6 +30,13 @@ extension ComposeUp {
     /// resolver. Network names route through `resolveCanonicalNetworkName(_:dockerCompose:environmentVariables:)`
     /// (CHAOS-1495) so label keys, `--dns` lookup, divergence-read sets, and the
     /// sidecar's `perNetworkIPs` keys all agree on the same canonical string.
+    ///
+    /// CHAOS-1494: when a service has no `service.networks`, mirror the
+    /// implicit-default-network attachment from `NetworkingArgs.build` and
+    /// emit a `compose.dns.resolvers.<implicit>=<ip>` label so divergence
+    /// detection works for implicit-network services on re-runs. The
+    /// implicit name (`<projectName>-default`) is already canonical, so it
+    /// does NOT need to route through `resolveCanonicalNetworkName`.
     enum LabelsArgs {
         static func build(_ ctx: ArgsContext) -> [String] {
             var args: [String] = []
@@ -38,19 +45,33 @@ extension ComposeUp {
                     args.append(contentsOf: ["--label", "\(key)=\(value)"])
                 }
             }
-            if let dnsSidecar = ctx.dnsSidecar, let serviceNetworks = ctx.service.networks {
+            if let dnsSidecar = ctx.dnsSidecar {
                 var dnsLabels: [(network: String, ip: String)] = []
-                for (name, _) in serviceNetworks.entries {
-                    // CHAOS-1495: route through the shared canonical resolver so
-                    // label keys agree with `--dns` lookup, divergence-read sets,
-                    // and the sidecar's `perNetworkIPs` keys.
-                    let networkToConnect = resolveCanonicalNetworkName(
-                        name,
-                        dockerCompose: ctx.dockerCompose,
-                        environmentVariables: ctx.environmentVariables
-                    )
-                    if let sidecarIP = dnsSidecar.perNetworkIPs[networkToConnect] {
-                        dnsLabels.append((networkToConnect, sidecarIP))
+                if let serviceNetworks = ctx.service.networks {
+                    for (name, _) in serviceNetworks.entries {
+                        // CHAOS-1495: route through the shared canonical resolver so
+                        // label keys agree with `--dns` lookup, divergence-read sets,
+                        // and the sidecar's `perNetworkIPs` keys.
+                        let networkToConnect = resolveCanonicalNetworkName(
+                            name,
+                            dockerCompose: ctx.dockerCompose,
+                            environmentVariables: ctx.environmentVariables
+                        )
+                        if let sidecarIP = dnsSidecar.perNetworkIPs[networkToConnect] {
+                            dnsLabels.append((networkToConnect, sidecarIP))
+                        }
+                    }
+                } else if let implicitNetwork = ctx.implicitDefaultNetwork,
+                          ctx.service.network_mode == nil {
+                    // CHAOS-1494: mirror the implicit-network attachment in
+                    // NetworkingArgs so the divergence detector can match the
+                    // sidecar IP across re-runs for services that omit
+                    // `service.networks`. The implicit name is project-scoped
+                    // (`<projectName>-default`) and synthesized in
+                    // `ComposeUp.run()`, so it's already canonical and does not
+                    // route through `resolveCanonicalNetworkName`.
+                    if let sidecarIP = dnsSidecar.perNetworkIPs[implicitNetwork] {
+                        dnsLabels.append((implicitNetwork, sidecarIP))
                     }
                 }
                 for (network, ip) in dnsLabels.sorted(by: { $0.network < $1.network }) {

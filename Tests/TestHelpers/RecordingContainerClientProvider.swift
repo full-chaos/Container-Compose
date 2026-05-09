@@ -16,6 +16,12 @@
 
 import ContainerAPIClient
 import ContainerResource
+import ContainerizationExtras
+import ContainerizationOCI
+import Foundation
+import SystemPackage
+@testable import ContainerComposeCore
+import ContainerResource
 import ContainerizationOCI
 import Foundation
 @testable import ContainerComposeCore
@@ -31,6 +37,18 @@ import Foundation
 /// network does not exist. This is the contract that makes
 /// `RuntimeArgvTests`'s `cmd.run()` calls reach the `RunCommandRunner` seam
 /// without first crashing on a missing container snapshot.
+///
+/// CHAOS-1494: there is ONE exception to the throw-on-`get` rule. When the
+/// requested id matches the embedded DNS sidecar naming convention
+/// (`<projectName>-compose-dns`), `get(id:)` returns a synthesized running
+/// snapshot attached to the project's implicit default network. CHAOS-1494
+/// makes `ComposeUp.run()` synthesize an implicit project default network
+/// for compose files with no top-level `networks:` declaration AND start the
+/// sidecar on it. Without this auto-stub, every existing test that uses a
+/// minimal compose file would block forever in `EmbeddedDNSSidecar.start`'s
+/// post-create poll waiting for the sidecar to come up. Tests that need to
+/// observe a missing/unhealthy sidecar use a custom provider (see
+/// `ComposeUpDNSStabilityTests`) and don't go through this fake.
 public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     /// One entry per method call. Filters are serialized via `String(describing:)`
@@ -105,6 +123,12 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func get(id: String) async throws -> ContainerSnapshot {
         entries.append(.get(id: id))
+        // CHAOS-1494: auto-stub the embedded DNS sidecar so
+        // `EmbeddedDNSSidecar.start`'s probe-then-adopt path completes
+        // without timing out. See type-level docs for rationale.
+        if let sidecarSnapshot = try? Self.makeRunningSidecarSnapshot(for: id) {
+            return sidecarSnapshot
+        }
         // Throw to mimic "container not found". Call sites use `try?` to
         // coerce this to `nil`, which is the same code path as a real
         // not-found response from `ContainerClient.get(id:)`.
@@ -215,5 +239,48 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         let containerPort = port.count > 1 ? "\(port.containerPort)-\(port.containerPort + port.count - 1)" : "\(port.containerPort)"
         let proto = port.proto == .udp ? "/udp" : ""
         return "\(port.hostAddress):\(hostPort):\(containerPort)\(proto)"
+    }
+
+    /// CHAOS-1494: synthesize a running embedded-DNS-sidecar snapshot when
+    /// `id` matches the sidecar naming convention (`<projectName>-compose-dns`).
+    /// Returns `nil` for non-sidecar ids so the caller falls through to the
+    /// throw-on-not-found path. The synthesized attachment uses the project's
+    /// implicit default network name (`<projectName>-default`) which is what
+    /// `ComposeUp.computeImplicitDefaultNetworkName` emits when the compose
+    /// file declares no top-level `networks:` (the dominant pattern in
+    /// `RuntimeArgvTests` and similar argv-shape suites). Tests that exercise
+    /// projects WITH explicit top-level networks use a custom provider
+    /// (see `ComposeUpDNSStabilityTests`) and don't reach this path.
+    private static func makeRunningSidecarSnapshot(for id: String) throws -> ContainerSnapshot? {
+        let suffix = "-compose-dns"
+        guard id.hasSuffix(suffix), id.count > suffix.count else { return nil }
+        let projectName = String(id.dropLast(suffix.count))
+        let implicitNetwork = "\(projectName)-default"
+        let descriptor = Descriptor(
+            mediaType: "application/vnd.oci.image.manifest.v1+json",
+            digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            size: 0
+        )
+        let image = ImageDescription(reference: EmbeddedDNSSidecar.image, descriptor: descriptor)
+        let process = ProcessConfiguration(
+            executable: "/coredns",
+            arguments: ["-conf", "/etc/coredns/Corefile"],
+            environment: [],
+            workingDirectory: "/"
+        )
+        let configuration = ContainerConfiguration(id: id, image: image, process: process)
+        let attachment = ContainerResource.Attachment(
+            network: implicitNetwork,
+            hostname: id,
+            ipv4Address: try CIDRv4("10.0.0.5/24"),
+            ipv4Gateway: try IPv4Address("10.0.0.1"),
+            ipv6Address: nil,
+            macAddress: nil
+        )
+        return ContainerSnapshot(
+            configuration: configuration,
+            status: .running,
+            networks: [attachment]
+        )
     }
 }
