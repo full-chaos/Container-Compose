@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1497-external-name-fallback",
+  "commit": "67c8f11793d59fa69b8fa3d774c87d42eecad345",
+  "short": "67c8f11",
+  "target": "67c8f11",
+  "message": "fix(compose): CHAOS-1497 honor deprecated 'external: { name: X }' form \u2014 5-site fallback to network.external?.name + Case 3c test",
+  "published_at": "2026-05-09T12:14:12.686542+00:00"
+}
