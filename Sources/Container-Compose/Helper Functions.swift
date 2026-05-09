@@ -427,6 +427,11 @@ public func resolveCanonicalNetworkName(
     if let override = dockerCompose?.networks?[serviceNetworkKey]??.name {
         return override
     }
+    // CHAOS-1497: deprecated compose-spec form `external: { name: bar }` —
+    // honor the nested override when there's no top-level `name:`.
+    if let externalOverride = dockerCompose?.networks?[serviceNetworkKey]??.external?.name {
+        return externalOverride
+    }
     return resolveVariable(serviceNetworkKey, with: environmentVariables)
 }
 

@@ -254,7 +254,10 @@ public struct ComposeDown: AsyncParsableCommand, ComposeCommand {
                 continue
             }
 
-            let actualNetworkName = networkConfig?.name ?? networkName
+            // CHAOS-1497: also honor deprecated `external: { name: ... }` form.
+            let actualNetworkName = networkConfig?.name
+                ?? networkConfig?.external?.name
+                ?? networkName
 
             if !isFullProjectDown {
                 if outsideTargetNetworks.contains(networkName) {

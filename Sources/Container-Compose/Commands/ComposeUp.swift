@@ -526,7 +526,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         var names: [String] = []
         if let networks = dockerCompose.networks {
             names.append(contentsOf: networks.keys.sorted().map { networkName in
-                networks[networkName]??.name ?? networkName
+                // CHAOS-1497: also honor deprecated `external: { name: ... }` form.
+                networks[networkName]??.name
+                    ?? networks[networkName]??.external?.name
+                    ?? networkName
             })
         }
         // CHAOS-1494: append the synthesized implicit default network when
@@ -659,7 +662,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     }
 
     private func setupNetwork(name networkName: String, config networkConfig: Network?) async throws {
-        let actualNetworkName = networkConfig?.name ?? networkName  // Use explicit name or key as name
+        // CHAOS-1497: also honor deprecated `external: { name: ... }` form.
+        let actualNetworkName = networkConfig?.name
+            ?? networkConfig?.external?.name
+            ?? networkName  // Use explicit name or key as name
 
         if let externalNetwork = networkConfig?.external, externalNetwork.isExternal {
             print("Info: Network '\(networkName)' is declared as external.")
