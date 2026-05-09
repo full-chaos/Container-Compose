@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b5e214afa9bb22f5316c3d078a35d5a6ef4ad4c8",
-  "short": "b5e214a",
+  "commit": "31480c4bf5c82b50e98733823c45ddb89de3f7ca",
+  "short": "31480c4",
   "target": "current",
-  "message": "fix(compose): CHAOS-1499 bootstrap-sentinel gate for envDivergenceReason \u2014 pre-1499 containers no longer spurious-recreate from peer-IP env values (#164)",
-  "published_at": "2026-05-09T13:12:57.031958+00:00"
+  "message": "Update README with project origin and macOS note (#165)",
+  "published_at": "2026-05-09T14:15:01.291626+00:00"
 }
