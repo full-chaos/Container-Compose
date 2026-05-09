@@ -58,7 +58,7 @@ import Testing
 @testable import ContainerComposeCore
 import TestHelpers
 
-@Suite("ComposeUp implicit-network DNS injection (CHAOS-1494)", .serialized)
+@Suite("ComposeUp implicit-network DNS injection (CHAOS-1494/1498)", .serialized)
 struct ComposeUpImplicitNetworkDNSTests {
 
     // MARK: - Pure helper unit tests
@@ -66,50 +66,54 @@ struct ComposeUpImplicitNetworkDNSTests {
     @Test("computeImplicitDefaultNetworkName returns synthesized name when no networks declared and a service omits service.networks")
     func computeImplicitWhenNeeded() {
         let service = Service(image: "alpine:latest")
-        let dockerCompose = DockerCompose(
-            version: nil, name: nil,
-            services: ["web": service],
-            volumes: nil, networks: nil,
-            configs: nil, secrets: nil
-        )
         let result = ComposeUp.computeImplicitDefaultNetworkName(
             services: [(serviceName: "web", service: service)],
-            dockerCompose: dockerCompose,
             projectName: "cc-test-1494-helper"
         )
         #expect(result == "cc-test-1494-helper-default")
     }
 
-    @Test("computeImplicitDefaultNetworkName returns nil when compose declares top-level networks")
-    func noImplicitWhenTopLevelNetworksDeclared() {
+    @Test("computeImplicitDefaultNetworkName synthesizes name even when compose declares top-level networks (CHAOS-1498 medium case)")
+    func implicitWhenTopLevelNetworksDeclaredAndServiceOmits() {
+        // CHAOS-1498: a service that omits `service.networks` must still get
+        // the synthesized implicit network even when the compose file
+        // declares its own top-level networks. This is the medium case
+        // CHAOS-1494 intentionally deferred; widening the gate here is the
+        // entire fix.
         let service = Service(image: "alpine:latest")
-        let dockerCompose = DockerCompose(
-            version: nil, name: nil,
-            services: ["web": service],
-            volumes: nil,
-            networks: ["mynet": Network()],
-            configs: nil, secrets: nil
-        )
         let result = ComposeUp.computeImplicitDefaultNetworkName(
             services: [(serviceName: "web", service: service)],
-            dockerCompose: dockerCompose,
-            projectName: "cc-test-1494-helper"
+            projectName: "cc-test-1498-medium"
         )
-        #expect(result == nil, "medium case (networks declared, service has no service.networks) is intentionally not addressed in CHAOS-1494; tracked as CHAOS-1498")
+        #expect(result == "cc-test-1498-medium-default",
+                "service omitting service.networks must trigger implicit synthesis regardless of top-level networks declarations")
+    }
+
+    @Test("computeImplicitDefaultNetworkName returns synthesized name when only one of several services omits service.networks (CHAOS-1498 acceptance fixture)")
+    func implicitInThreeServiceMediumCase() {
+        // CHAOS-1498 acceptance: A on mynet, B on mynet, C omits networks.
+        // The presence of A/B with explicit attachment must not suppress
+        // the implicit synthesis required by C.
+        let serviceA = Service(image: "alpine:latest", networks: ServiceNetworks.list(["mynet"]))
+        let serviceB = Service(image: "alpine:latest", networks: ServiceNetworks.list(["mynet"]))
+        let serviceC = Service(image: "alpine:latest")
+        let result = ComposeUp.computeImplicitDefaultNetworkName(
+            services: [
+                (serviceName: "a", service: serviceA),
+                (serviceName: "b", service: serviceB),
+                (serviceName: "c", service: serviceC)
+            ],
+            projectName: "cc-test-1498-three"
+        )
+        #expect(result == "cc-test-1498-three-default",
+                "any selected service omitting service.networks must trigger implicit synthesis even if peers attach explicitly")
     }
 
     @Test("computeImplicitDefaultNetworkName returns nil when every service has explicit service.networks")
     func noImplicitWhenAllServicesExplicit() {
         let service = Service(image: "alpine:latest", networks: ServiceNetworks.list(["mynet"]))
-        let dockerCompose = DockerCompose(
-            version: nil, name: nil,
-            services: ["web": service],
-            volumes: nil, networks: nil,
-            configs: nil, secrets: nil
-        )
         let result = ComposeUp.computeImplicitDefaultNetworkName(
             services: [(serviceName: "web", service: service)],
-            dockerCompose: dockerCompose,
             projectName: "cc-test-1494-helper"
         )
         #expect(result == nil)
@@ -118,15 +122,8 @@ struct ComposeUpImplicitNetworkDNSTests {
     @Test("computeImplicitDefaultNetworkName returns nil when only services use network_mode")
     func noImplicitWhenAllServicesUseNetworkMode() {
         let service = Service(image: "alpine:latest", network_mode: "host")
-        let dockerCompose = DockerCompose(
-            version: nil, name: nil,
-            services: ["web": service],
-            volumes: nil, networks: nil,
-            configs: nil, secrets: nil
-        )
         let result = ComposeUp.computeImplicitDefaultNetworkName(
             services: [(serviceName: "web", service: service)],
-            dockerCompose: dockerCompose,
             projectName: "cc-test-1494-helper"
         )
         #expect(result == nil, "network_mode overrides project-network attachment, so no implicit network is needed")
@@ -135,16 +132,8 @@ struct ComposeUpImplicitNetworkDNSTests {
     @Test("computeImplicitDefaultNetworkName returns synthesized name even with explicit empty networks: {} top-level")
     func implicitWhenNetworksMapIsEmpty() {
         let service = Service(image: "alpine:latest")
-        let dockerCompose = DockerCompose(
-            version: nil, name: nil,
-            services: ["web": service],
-            volumes: nil,
-            networks: [:],
-            configs: nil, secrets: nil
-        )
         let result = ComposeUp.computeImplicitDefaultNetworkName(
             services: [(serviceName: "web", service: service)],
-            dockerCompose: dockerCompose,
             projectName: "cc-test-1494-empty"
         )
         #expect(result == "cc-test-1494-empty-default", "explicit empty `networks: {}` should also trigger implicit synthesis")
@@ -221,6 +210,67 @@ struct ComposeUpImplicitNetworkDNSTests {
         let expectedLabel = "compose.dns.resolvers.\(implicitNet)=\(ipA)"
         #expect(serviceArgv.contains(expectedLabel),
                 "service argv must record the sidecar IP via the per-network label so divergence detection works on re-up")
+    }
+
+    // MARK: - Medium case: top-level networks AND service omits service.networks (CHAOS-1498)
+
+    @Test("Service omitting service.networks attaches to implicit network even when project declares its own top-level networks (CHAOS-1498)")
+    func mediumCaseServiceOmittingNetworksAttachesToImplicit() async throws {
+        // CHAOS-1498 acceptance fixture: project has top-level `mynet`,
+        // service C omits `service.networks`. With the gate widened in
+        // computeImplicitDefaultNetworkName, the production flow now sets
+        // ArgsContext.implicitDefaultNetwork = "<project>-default" for this
+        // shape; here we verify the per-service argv builders react
+        // correctly — emitting --network <implicit> --dns <ip> and the
+        // matching DNS-resolver label even though `mynet` is also declared.
+        let project = "cc-test-1498-medargs"
+        let implicitNet = "\(project)-default"
+        let sidecarIP = "10.0.0.5"
+
+        let serviceC = Service(image: "alpine:latest")  // no service.networks
+        let dockerCompose = DockerCompose(
+            version: nil, name: project,
+            services: ["c": serviceC],
+            volumes: nil,
+            networks: ["mynet": Network()],  // user-declared top-level
+            configs: nil, secrets: nil
+        )
+        let sidecarHandle = SidecarHandle(
+            projectName: project,
+            containerName: EmbeddedDNSSidecar.sidecarContainerName(for: project),
+            configRoot: EmbeddedDNSSidecar.configRootPath(for: project),
+            perNetworkIPs: ["mynet": "10.0.1.5", implicitNet: sidecarIP],
+            wasAdopted: false
+        )
+        let ctx = ComposeUp.ArgsContext(
+            service: serviceC,
+            serviceName: "c",
+            projectName: project,
+            containerName: "\(project)-c",
+            detach: true,
+            environmentVariables: [:],
+            dockerCompose: dockerCompose,
+            composeFilename: nil,
+            dnsSidecar: sidecarHandle,
+            implicitDefaultNetwork: implicitNet
+        )
+
+        let networkingArgs = ComposeUp.NetworkingArgs.build(ctx)
+        let labelsArgs = ComposeUp.LabelsArgs.build(ctx)
+
+        let networkIdx = try #require(networkingArgs.firstIndex(of: "--network"),
+                                      "service omitting service.networks in medium case must receive --network attachment")
+        #expect(networkingArgs.indices.contains(networkIdx + 1) && networkingArgs[networkIdx + 1] == implicitNet,
+                "medium-case implicit attachment must use the synthesized <project>-default name, not the user-declared 'mynet'")
+
+        let dnsIdx = try #require(networkingArgs.firstIndex(of: "--dns"),
+                                  "medium-case service must receive --dns pointing at the sidecar's IP on the implicit network")
+        #expect(networkingArgs.indices.contains(dnsIdx + 1) && networkingArgs[dnsIdx + 1] == sidecarIP,
+                "--dns must use the sidecar IP on the implicit network, not on 'mynet'")
+
+        let expectedLabel = "compose.dns.resolvers.\(implicitNet)=\(sidecarIP)"
+        #expect(labelsArgs.contains(expectedLabel),
+                "medium-case service argv must record the DNS-resolver label for the implicit network so divergence detection works on re-up")
     }
 
     // MARK: - Empty list is explicit-empty, not implicit
