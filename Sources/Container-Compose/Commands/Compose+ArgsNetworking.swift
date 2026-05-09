@@ -62,6 +62,20 @@ extension ComposeUp {
                         warnUnsupportedRuntimeFieldOnce("service.networks.ipv6_address", "Note: 'networks.<name>.ipv6_address' is parsed but not supported by Apple container; ignored.")
                     }
                 }
+            } else if let implicitNetwork = ctx.implicitDefaultNetwork,
+                      ctx.service.network_mode == nil {
+                // CHAOS-1494: services that omit `service.networks` (and don't
+                // override via `network_mode`) attach to the project's
+                // synthesized implicit default network so they share L3
+                // reachability with the embedded DNS sidecar. Without this
+                // attachment, services would land on apple/container's built-in
+                // `default` bridge (192.168.65.0/24), which is unreachable from
+                // project-scoped networks (192.168.66.0/24+) where the sidecar
+                // lives, and DNS would silently fail on first `up`.
+                args.append(contentsOf: ["--network", implicitNetwork])
+                if let sidecarIP = ctx.dnsSidecar?.perNetworkIPs[implicitNetwork] {
+                    embeddedDNSArgs.append(contentsOf: ["--dns", sidecarIP])
+                }
             }
 
             if !embeddedDNSArgs.isEmpty, let dnsSidecar = ctx.dnsSidecar {

@@ -90,6 +90,18 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// extension can read it for DNS-divergence checks. Mutated only from inside
     /// `ComposeUp.run()` per the existing CHAOS-1490 lifecycle contract.
     var dnsSidecar: SidecarHandle?
+
+    /// CHAOS-1494: synthesized implicit project default network name (e.g.
+    /// `<projectName>-default`) for services that omit `service.networks` so
+    /// they can attach to a project network where the embedded DNS sidecar
+    /// lives. `nil` when the compose file declares its own top-level
+    /// `networks:` (in which case the user-declared networks govern
+    /// attachment) OR when no selected service needs the implicit fallback
+    /// (every service has explicit `service.networks` or `network_mode`).
+    /// Computed once near the top of `run()` and read by per-service argv
+    /// builders + adoption divergence checks. `internal` so
+    /// `Compose+Adoption.swift`'s extension can read it.
+    var implicitDefaultNetworkName: String?
     private var dnsZoneServices: [CoreDNSConfig.ServiceRecord] = []
     private var containerConsoleColors: [String: NamedColor] = [:]
     private var didWarnServiceModelsUnsupported = false
@@ -150,12 +162,27 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             return
         }
 
+        // CHAOS-1494: Decide whether this project needs a synthesized implicit
+        // default network BEFORE we create top-level networks. The synthesis
+        // trigger is intentionally conservative — we only add the implicit
+        // network when the compose file declares no top-level `networks:` AND
+        // at least one selected service would otherwise miss sidecar DNS
+        // (i.e. has neither `service.networks` nor `network_mode`).
+        // The medium case (compose declares networks but a service omits
+        // `service.networks`) is tracked separately and intentionally NOT
+        // addressed here; see CHAOS-1498.
+        implicitDefaultNetworkName = Self.computeImplicitDefaultNetworkName(
+            services: services,
+            dockerCompose: dockerCompose,
+            projectName: resolvedName
+        )
+
         // Process top-level networks BEFORE adoption + sidecar so the sidecar
         // launch (which `--network`-attaches to project networks) sees them.
         // Network create is idempotent — BridgeContainerClientRuntime.createNetwork
         // catches `RuntimeError.alreadyExists` so re-runs no-op cleanly.
 
-        if let networks = dockerCompose.networks {
+        if let networks = dockerCompose.networks, !networks.isEmpty {
             print("\n--- Processing Networks ---")
             for (networkName, networkConfig) in networks {
                 try await setupNetwork(name: networkName, config: networkConfig)
@@ -163,7 +190,18 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             print("--- Networks Processed ---\n")
         }
 
-        let projectNetworks = projectNetworkNames(from: dockerCompose)
+        // CHAOS-1494: create the synthesized implicit default network when
+        // applicable. `setupNetwork` routes through
+        // `BridgeContainerClientRuntime.createNetwork`, which is idempotent on
+        // `RuntimeError.alreadyExists`, so re-runs no-op cleanly.
+        if let implicitName = implicitDefaultNetworkName {
+            print("\n--- Processing Implicit Default Network ---")
+            print("Info: synthesizing implicit default network '\(implicitName)' for services without explicit 'service.networks' (CHAOS-1494).")
+            try await setupNetwork(name: implicitName, config: nil)
+            print("--- Implicit Default Network Processed ---\n")
+        }
+
+        let projectNetworks = projectNetworkNames(from: dockerCompose, includingImplicit: implicitDefaultNetworkName)
 
         // CHAOS-1492 / 1493: adoption is decided AFTER the sidecar launches so
         // `specDivergenceReason` can compare each service's recorded DNS labels
@@ -475,11 +513,65 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// resolves correctly via the env. Env-substituting top-level keys would
     /// require coordinated changes in `setupNetwork`'s `actualNetworkName`
     /// derivation; deferred.
-    private func projectNetworkNames(from dockerCompose: DockerCompose) -> [String] {
-        guard let networks = dockerCompose.networks else { return [] }
-        return networks.keys.sorted().map { networkName in
-            networks[networkName]??.name ?? networkName
+    ///
+    /// CHAOS-1494: extended to optionally include the project's synthesized
+    /// implicit default network so the embedded DNS sidecar attaches to it
+    /// alongside any user-declared top-level networks. The implicit name is
+    /// project-scoped (`<projectName>-default`) and pre-canonicalized, so it
+    /// does NOT need to route through `resolveCanonicalNetworkName`.
+    private func projectNetworkNames(
+        from dockerCompose: DockerCompose,
+        includingImplicit implicitName: String? = nil
+    ) -> [String] {
+        var names: [String] = []
+        if let networks = dockerCompose.networks {
+            names.append(contentsOf: networks.keys.sorted().map { networkName in
+                networks[networkName]??.name ?? networkName
+            })
         }
+        // CHAOS-1494: append the synthesized implicit default network when
+        // present. Avoid double-listing if the user happened to declare a
+        // top-level network with the same name (defensive; the synthesis
+        // gate already prevents this in normal flow).
+        if let implicitName, !names.contains(implicitName) {
+            names.append(implicitName)
+        }
+        return names
+    }
+
+    /// CHAOS-1494: decides whether the project needs a synthesized implicit
+    /// default network, and if so returns its name (`<projectName>-default`).
+    ///
+    /// Trigger (intersection of CHAOS-1494 lead constraint #1 and Oracle b1):
+    ///   1. The compose file declares no top-level `networks:` (nil OR empty).
+    ///   2. At least one selected service has `service.networks == nil` AND
+    ///      `service.network_mode == nil` — i.e. would otherwise miss
+    ///      sidecar DNS injection.
+    ///
+    /// Returns `nil` when neither condition holds (preserves today's behavior
+    /// for projects that already declare networks, and avoids creating an
+    /// unused network when every selected service overrides attachment via
+    /// `network_mode`). Profile filtering happens at the caller via
+    /// `selectServices(from:)` so only post-filter services are considered.
+    ///
+    /// `apple/container` reserves the bare network name `default` for its
+    /// built-in 192.168.65.0/24 bridge (`com.apple.container.resource.role:
+    /// builtin`) and rejects `container network create default`. The
+    /// `<projectName>-default` form sidesteps the collision and scopes the
+    /// network to this project, mirroring the `<project>-<service>` container
+    /// naming convention.
+    internal static func computeImplicitDefaultNetworkName(
+        services: [(serviceName: String, service: Service)],
+        dockerCompose: DockerCompose,
+        projectName: String
+    ) -> String? {
+        let topLevelNetworksEmpty = (dockerCompose.networks?.isEmpty ?? true)
+        guard topLevelNetworksEmpty else { return nil }
+        let needsImplicit = services.contains { _, service in
+            service.networks == nil && service.network_mode == nil
+        }
+        guard needsImplicit else { return nil }
+        return "\(projectName)-default"
     }
 
     private mutating func updateEmbeddedDNSZone(service: Service, serviceName: String, ip: String?) throws {
@@ -783,7 +875,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             dnsSidecar: dnsSidecar,
             supportsHealthcheckFlags: supportsHealthcheckFlags,
             supportsBlkioFlags: supportsBlkioFlags,
-            supportsRestartFlag: supportsRestartFlag
+            supportsRestartFlag: supportsRestartFlag,
+            implicitDefaultNetwork: implicitDefaultNetworkName
         )
         runCommandArgs.append(contentsOf: LifecycleArgs.build(ctx))
         runCommandArgs.append(contentsOf: SecurityArgs.build(ctx))

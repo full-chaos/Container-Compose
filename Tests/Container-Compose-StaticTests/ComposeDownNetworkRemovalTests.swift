@@ -150,8 +150,8 @@ struct ComposeDownNetworkRemovalTests {
                 "must not remove external network; got \(entries)")
     }
 
-    @Test("Full down with no networks declared makes no removeNetwork calls")
-    func fullDownWithNoNetworksIsNoOp() async throws {
+    @Test("Full down with no networks declared removes the synthesized implicit default network (CHAOS-1494)")
+    func fullDownWithNoNetworksRemovesImplicitDefault() async throws {
         let projectName = "cc-test-no-nets-\(UUID().uuidString.lowercased())"
         let directory = try Self.makeProject(yaml: """
             services:
@@ -172,11 +172,27 @@ struct ComposeDownNetworkRemovalTests {
         }
 
         let entries = await runtime.entriesSnapshot()
-        let touchedNetworks = entries.contains(where: {
-            if case .removeNetwork = $0 { return true }
-            return false
+
+        // CHAOS-1494: when the compose declares no top-level `networks:` AND a
+        // service omits `service.networks`, `compose up` synthesizes
+        // `<projectName>-default`. Symmetric `compose down` must remove that
+        // synthesized network on full-project down so the runtime's network
+        // registry doesn't accumulate stale entries across down/up cycles.
+        #expect(
+            Self.containsRemoveNetwork(entries, id: "\(projectName)-default"),
+            "full down must call removeNetwork for the synthesized implicit default network; got \(entries)"
+        )
+
+        // No OTHER network removals should occur — the compose declared no
+        // user-defined networks, so the only one to clean up is the implicit one.
+        let removedNetworkIDs: Set<String> = Set(entries.compactMap { entry in
+            if case .removeNetwork(let id) = entry { return id }
+            return nil
         })
-        #expect(!touchedNetworks, "no top-level networks declared, must not call removeNetwork; got \(entries)")
+        #expect(
+            removedNetworkIDs == ["\(projectName)-default"],
+            "only the synthesized implicit default network should be removed; got \(removedNetworkIDs)"
+        )
     }
 
     // MARK: - Partial project down (shared-network semantics)

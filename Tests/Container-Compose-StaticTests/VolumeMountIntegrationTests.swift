@@ -19,6 +19,7 @@ import Foundation
 import Yams
 import ContainerAPIClient
 import ContainerResource
+import ContainerizationExtras
 import ContainerizationOCI
 @testable import ContainerComposeCore
 import TestHelpers
@@ -70,6 +71,51 @@ struct VolumeMountIntegrationTests {
         func get(id: String) async throws -> ContainerSnapshot {
             // Return a minimal running snapshot so waitUntilServiceIsRunning
             // exits on the first poll rather than timing out after 30 s.
+            //
+            // CHAOS-1494: when `id` matches the embedded DNS sidecar naming
+            // convention, attach the snapshot to the project's implicit
+            // default network and use the sidecar image so
+            // `EmbeddedDNSSidecar.adoptIfMatching` accepts it. Without this,
+            // CHAOS-1494's implicit-network synthesis (which fires for any
+            // compose file with no top-level `networks:`) would block in
+            // `waitForRunningSidecar` waiting for an unrelated network
+            // attachment that this fake never provides.
+            let suffix = "-compose-dns"
+            if id.hasSuffix(suffix), id.count > suffix.count {
+                let projectName = String(id.dropLast(suffix.count))
+                let implicitNetwork = "\(projectName)-default"
+                let sidecarProcess = ProcessConfiguration(
+                    executable: "/coredns",
+                    arguments: ["-conf", "/etc/coredns/Corefile"],
+                    environment: [String](),
+                    workingDirectory: "/"
+                )
+                let sidecarConfig = ContainerConfiguration(
+                    id: id,
+                    image: ImageDescription(
+                        reference: EmbeddedDNSSidecar.image,
+                        descriptor: Descriptor(
+                            mediaType: "application/vnd.oci.image.manifest.v1+json",
+                            digest: "sha256:\(String(repeating: "0", count: 64))",
+                            size: 0
+                        )
+                    ),
+                    process: sidecarProcess
+                )
+                let sidecarAttachment = ContainerResource.Attachment(
+                    network: implicitNetwork,
+                    hostname: id,
+                    ipv4Address: try CIDRv4("10.0.0.5/24"),
+                    ipv4Gateway: try IPv4Address("10.0.0.1"),
+                    ipv6Address: nil,
+                    macAddress: nil
+                )
+                return ContainerSnapshot(
+                    configuration: sidecarConfig,
+                    status: .running,
+                    networks: [sidecarAttachment]
+                )
+            }
             let process = ProcessConfiguration(executable: "/bin/sh", arguments: [], environment: [String](), workingDirectory: "/")
             let config = ContainerConfiguration(
                 id: id,

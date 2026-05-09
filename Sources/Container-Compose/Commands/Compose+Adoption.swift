@@ -50,13 +50,15 @@ public enum AdoptionDecision: Equatable, Sendable, Codable {
 
 extension ComposeUp {
     /// CHAOS-1492: Probe each service's effective container name and decide
-    /// whether to adopt the existing container, recreate it, or create
-    /// from scratch.
+    /// whether to adopt the existing container (`.adopt`), recreate it
+    /// (`.recreate(reason:)`), or create a fresh one (`.create`).
     ///
-    /// Decision rules (matches docker compose v2 semantics):
+    /// Decisions:
     ///   1. No existing container → `.create`
-    ///   2. Existing + `--force-recreate` → `.recreate("--force-recreate")`
-    ///   3. Existing + spec divergence (v1: image only) → `.recreate(...)`
+    ///   2. `--force-recreate` → `.recreate("--force-recreate")` (without
+    ///      consulting `specDivergenceReason`)
+    ///   3. Existing + diverging spec → `.recreate(reason)` from
+    ///      `specDivergenceReason`
     ///   4. Existing + matching → `.adopt` (and emits "Adopting..." line)
     ///
     /// `internal` so the static suite's `ComposeUpAdoptionTests` can drive
@@ -91,7 +93,19 @@ extension ComposeUp {
             // The canonical-name map is the source of truth — we derive the
             // network-name SET from it instead of iterating `service.networks`
             // twice with the same resolution rules.
-            let serviceNetworkCanonicalNames = serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose)
+            //
+            // CHAOS-1494: when `service.networks` is nil and the project
+            // synthesized an implicit default network, augment the canonical
+            // map with `[implicit: implicit]` so both the expected-set and
+            // the DNS-divergence lookup see the implicit attachment. The
+            // implicit name is project-scoped and already canonical, so
+            // raw==canonical for it.
+            var serviceNetworkCanonicalNames = serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose)
+            if service.networks == nil,
+               let implicit = self.implicitDefaultNetworkName,
+               service.network_mode == nil {
+                serviceNetworkCanonicalNames[implicit] = implicit
+            }
             let expectedNetworkNames = Set(serviceNetworkCanonicalNames.values)
             let expectedPublishedPorts = expectedPublishedPortsForService(service)
             let expectedEnvironment = expectedEnvironmentForService(service)
@@ -105,7 +119,8 @@ extension ComposeUp {
                 expectedPublishedPorts: expectedPublishedPorts,
                 expectedEnvironment: expectedEnvironment,
                 expectedCommand: expectedCommand,
-                serviceNetworkCanonicalNames: serviceNetworkCanonicalNames
+                serviceNetworkCanonicalNames: serviceNetworkCanonicalNames,
+                implicitDefaultNetwork: self.implicitDefaultNetworkName
             ) {
                 decisions[serviceName] = .recreate(reason: reason)
                 continue
@@ -124,14 +139,27 @@ extension ComposeUp {
     /// Returns an empty set when `service.networks` is nil so the downstream
     /// check skips silently.
     ///
+    /// CHAOS-1494: when `service.networks` is nil and `service.network_mode`
+    /// is also nil, fall back to the project's synthesized implicit default
+    /// network (when present). This mirrors the implicit-attachment branch
+    /// in `NetworkingArgs.build` so the divergence detector sees the same
+    /// expected set the create path emits.
+    ///
     /// Internal but kept for the unit tests in `ComposeUpAdoptionTests`. Real
     /// callers in `resolveAdoption` go through `serviceNetworkCanonicalNamesMap`
     /// and derive the set from `.values` to avoid iterating twice.
     internal func expectedNetworkNamesForService(
         _ service: Service,
-        dockerCompose: DockerCompose?
+        dockerCompose: DockerCompose?,
+        implicitDefaultNetwork: String? = nil
     ) -> Set<String> {
-        Set(serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose).values)
+        var names = Set(serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose).values)
+        if service.networks == nil,
+           let implicit = implicitDefaultNetwork,
+           service.network_mode == nil {
+            names.insert(implicit)
+        }
+        return names
     }
 
     /// CHAOS-1495: Builds the per-service canonical-name map that downstream
@@ -141,7 +169,9 @@ extension ComposeUp {
     /// and the `--network` argv all agree on.
     ///
     /// Returns an empty map when `service.networks` is nil. Callers treat the
-    /// empty map as "no DNS divergence check possible for this service."
+    /// empty map as "no DNS divergence check possible for this service" — the
+    /// CHAOS-1494 implicit-network case is handled by the caller (it augments
+    /// the map with `[implicit: implicit]`).
     internal func serviceNetworkCanonicalNamesMap(
         _ service: Service,
         dockerCompose: DockerCompose?
@@ -187,9 +217,7 @@ extension ComposeUp {
     ///
     /// Replaces the blanket `stopOldStuff(services, remove: true)`
     /// previously invoked unconditionally at the top of `run()`.
-    /// `stopOldStuff` itself is left intact for callers that genuinely
-    /// want a teardown sweep (e.g. recovery paths in
-    /// `Compose+VolumeMigration.swift`).
+    /// `internal` so `ComposeUpAdoptionTests` can drive it directly.
     internal func applyRecreations(
         _ services: [(serviceName: String, service: Service)],
         decisions: [String: AdoptionDecision]
@@ -199,25 +227,19 @@ extension ComposeUp {
 
         for (serviceName, service) in services {
             guard case .recreate(let reason) = decisions[serviceName] else { continue }
-
             let containerName = effectiveContainerName(
                 projectName: projectName,
                 serviceName: serviceName,
                 explicit: service.container_name
             )
-
             print("Recreating container: \(containerName) (reason: \(reason))")
-
-            guard let container = try? await provider.get(id: containerName) else { continue }
-
             do {
-                try await provider.stop(id: container.id, opts: .default)
+                try await provider.stop(id: containerName, opts: .default)
             } catch {
                 print("Error Stopping Container: \(error)")
             }
-
             do {
-                try await provider.delete(id: container.id, force: false)
+                try await provider.delete(id: containerName, force: false)
             } catch {
                 print("Error Removing Container: \(error)")
             }
@@ -240,21 +262,21 @@ extension ComposeUp {
     /// compose file. They still get the other drift checks below.
     ///
     /// `expectedSidecarIPs` is the current sidecar's per-network resolver
-    /// IP map (`SidecarHandle.perNetworkIPs`), keyed by the canonical network
-    /// name. Pass an empty map (the default) when no embedded DNS sidecar is
-    /// in play this `up` — the DNS check is then skipped silently. Existing
-    /// CHAOS-1492 unit tests of this function rely on the default and stay
-    /// backward-compatible.
+    /// IP map (`SidecarHandle.perNetworkIPs`). Pass an empty map (the default)
+    /// when no embedded DNS sidecar is in play this `up` — the DNS check is
+    /// then skipped silently. Existing CHAOS-1492 unit tests of this function
+    /// rely on the default and stay backward-compatible.
     ///
-    /// `serviceNetworkCanonicalNames` (CHAOS-1495) maps each raw service-level
-    /// network reference to its canonical name (the one used as the label-key
-    /// suffix and as the `expectedSidecarIPs` lookup key). Real callers in
-    /// `resolveAdoption` precompute this via `serviceNetworkCanonicalNamesMap`
-    /// so env-substituted (`${PROJECT_NET}`) and aliased (`name:`) networks
-    /// resolve correctly. Empty map (the default) falls back to identity
-    /// resolution — raw key == canonical — which preserves the pre-CHAOS-1495
-    /// behavior of CHAOS-1492/1493 tests that use simple network names without
-    /// env or alias indirection.
+    /// CHAOS-1495: `serviceNetworkCanonicalNames` carries the raw→canonical
+    /// mapping built by `serviceNetworkCanonicalNamesMap`. Required so DNS
+    /// divergence finds the right sidecar IP for env-substituted / aliased
+    /// network names. Default empty map preserves backward-compat for unit
+    /// tests that pass simple network names.
+    ///
+    /// CHAOS-1494: `implicitDefaultNetwork` carries the project's synthesized
+    /// implicit default network name (when applicable) so DNS divergence can
+    /// emit a CHAOS-1494-specific upgrade message for pre-1494 containers
+    /// that were never attached to a project network at all.
     internal static func specDivergenceReason(
         existing: ContainerSnapshot,
         expected: Service,
@@ -263,7 +285,8 @@ extension ComposeUp {
         expectedPublishedPorts: Set<String> = [],
         expectedEnvironment: [String: String] = [:],
         expectedCommand: [String]? = nil,
-        serviceNetworkCanonicalNames: [String: String] = [:]
+        serviceNetworkCanonicalNames: [String: String] = [:],
+        implicitDefaultNetwork: String? = nil
     ) -> String? {
         // 1. Image
         if let expectedRaw = expected.image {
@@ -274,12 +297,14 @@ extension ComposeUp {
             }
         }
 
-        // 2. DNS resolver drift (CHAOS-1493 v1 fix; CHAOS-1495 canonical-name plumbing)
+        // 2. DNS resolver drift (CHAOS-1493 v1 fix; CHAOS-1495 canonical-name
+        // plumbing; CHAOS-1494 implicit-network coverage).
         if let reason = dnsDivergenceReason(
             existing: existing,
             expected: expected,
             expectedSidecarIPs: expectedSidecarIPs,
-            serviceNetworkCanonicalNames: serviceNetworkCanonicalNames
+            serviceNetworkCanonicalNames: serviceNetworkCanonicalNames,
+            implicitDefaultNetwork: implicitDefaultNetwork
         ) {
             return reason
         }
@@ -348,26 +373,50 @@ extension ComposeUp {
     /// to identity (raw==canonical) for legacy callers — safe whenever no env or
     /// alias indirection is in play, which is the assumption of the existing
     /// CHAOS-1492/1493 unit tests.
+    ///
+    /// CHAOS-1494: when a service omits `service.networks` and the project
+    /// synthesized an implicit default network, treat the implicit network as
+    /// the single attachment for divergence purposes — mirroring the
+    /// implicit-attachment branches in `NetworkingArgs.build` and
+    /// `LabelsArgs.build`. Pre-CHAOS-1494 containers won't have the implicit
+    /// label and produce a specific upgrade message so the recreate is
+    /// auditable.
     private static func dnsDivergenceReason(
         existing: ContainerSnapshot,
         expected: Service,
         expectedSidecarIPs: [String: String],
-        serviceNetworkCanonicalNames: [String: String]
+        serviceNetworkCanonicalNames: [String: String] = [:],
+        implicitDefaultNetwork: String? = nil
     ) -> String? {
         guard !expectedSidecarIPs.isEmpty else { return nil }
-        guard let serviceNetworks = expected.networks else { return nil }
+
+        // CHAOS-1494: build the iteration set. When `service.networks` is
+        // declared, walk it and resolve raw→canonical via the supplied map
+        // (or identity fallback). Otherwise fall back to the implicit default
+        // network (when synthesized AND no `network_mode` overrides
+        // attachment), matching `NetworkingArgs.build` and `LabelsArgs.build`.
+        let iterationItems: [(rawName: String, canonical: String)]
+        let isImplicitOnly: Bool
+        if let serviceNetworks = expected.networks {
+            iterationItems = serviceNetworks.entries.map { entry in
+                let canonical = serviceNetworkCanonicalNames[entry.name] ?? entry.name
+                return (entry.name, canonical)
+            }
+            isImplicitOnly = false
+        } else if let implicit = implicitDefaultNetwork, expected.network_mode == nil {
+            // Implicit name is project-scoped and already canonical
+            // (`<projectName>-default`); raw==canonical.
+            iterationItems = [(implicit, implicit)]
+            isImplicitOnly = true
+        } else {
+            return nil
+        }
 
         let labels = existing.configuration.labels
         let snapshotNameservers = existing.configuration.dns?.nameservers ?? []
         let snapshotNameserverSet = Set(snapshotNameservers)
 
-        for (rawNetworkName, _) in serviceNetworks.entries {
-            // CHAOS-1495: prefer the caller-supplied canonical mapping; fall back
-            // to identity (raw==canonical) for legacy callers that never went
-            // through `serviceNetworkCanonicalNamesMap` (the existing
-            // CHAOS-1492/1493 unit tests, which use simple network names).
-            let canonical = serviceNetworkCanonicalNames[rawNetworkName] ?? rawNetworkName
-
+        for (_, canonical) in iterationItems {
             // Sidecar only serves networks it actually attached to; if no IP is
             // recorded for this canonical name, the network is out of scope for
             // DNS divergence (e.g. service attached to a non-sidecar network).
@@ -391,6 +440,13 @@ extension ComposeUp {
             }
 
             // 3. Conservative fallback — first `up` after upgrading.
+            // CHAOS-1494: distinct message when the missing label is the
+            // implicit-network one so reviewers can tell pre-1493 (had
+            // explicit `service.networks` but no labels) from pre-1494
+            // (had no `service.networks`, never attached to a project net).
+            if isImplicitOnly {
+                return "upgrading from pre-CHAOS-1494 container — recreating to attach to implicit project default network '\(canonical)' for DNS resolution"
+            }
             return "upgrading from pre-CHAOS-1493 container — recreating to attach DNS resolver metadata for network '\(canonical)'"
         }
 

@@ -158,7 +158,21 @@ struct ComposeUpAdoptionTests {
             process: process
         )
         return ContainerSnapshot(configuration: config, status: .running, networks: [])
+        return ContainerSnapshot(configuration: config, status: .running, networks: [])
     }
+
+    /// CHAOS-1494: builds a running-sidecar `ContainerSnapshot` whose shape
+    /// satisfies `EmbeddedDNSSidecar.adoptIfMatching`'s checks (status =
+    /// running, image = `EmbeddedDNSSidecar.image`, every expected network
+    /// attached). E2E tests that don't declare top-level `networks:` now
+    /// trigger CHAOS-1494's implicit-network synthesis, which means
+    /// `EmbeddedDNSSidecar.start` runs against the test provider and waits
+    /// for the sidecar to come up. Stubbing this snapshot lets the start
+    /// path adopt-in-place and skip the post-start poll.
+    // CHAOS-1494: per-suite `makeRunningSidecarSnapshot` was removed in favor
+    // of the auto-stub in `RecordingContainerClientProvider.get(id:)` which
+    // recognizes the `<projectName>-compose-dns` naming convention and returns
+    // a synthesized running snapshot. See that file for rationale.
 
     /// CHAOS-1493: extended snapshot factory for divergence tests — covers
     /// labels, DNS resolver IPs, environment, command arguments, published
@@ -722,10 +736,20 @@ struct ComposeUpAdoptionTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let inner = RecordingContainerClientProvider()
+        // CHAOS-1494: post-CHAOS-1494 adopted containers carry an attachment
+        // to the synthesized implicit project network and the matching DNS
+        // resolver label, so they don't appear divergent on re-up. The
+        // synthetic `RecordingContainerClientProvider.get` auto-stub for the
+        // sidecar uses 10.0.0.5 on the implicit network, so the label here
+        // mirrors that IP.
+        let implicitNet = "\(projectName)-default"
+        let sidecarIP = "10.0.0.5"
         let provider = StubbingContainerProvider(inner, stubs: [
-            containerName: Self.makeRunningSnapshot(
+            containerName: Self.makeSnapshotWith(
                 id: containerName,
-                imageReference: "docker.io/library/alpine:latest"
+                imageReference: "docker.io/library/alpine:latest",
+                labels: ["compose.dns.resolvers.\(implicitNet)": sidecarIP],
+                networks: [AttachmentConfiguration(network: implicitNet, options: AttachmentOptions(hostname: containerName))]
             )
         ])
         let runtime = RecordingRuntime()

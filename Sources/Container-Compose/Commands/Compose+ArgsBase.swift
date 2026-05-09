@@ -38,6 +38,14 @@ extension ComposeUp {
         let composeFilename: String?
         let dnsSidecar: SidecarHandle?
 
+        /// CHAOS-1494: implicit project default network synthesized when the
+        /// compose file declares no top-level `networks:` block. Builders use
+        /// this fallback for services that omit `service.networks` so they can
+        /// still attach to the project network where the embedded DNS sidecar
+        /// lives. `nil` when no implicit network was synthesized (either the
+        /// compose file declares its own networks, or no service needs the
+        /// fallback).
+        let implicitDefaultNetwork: String?
         let supportsHealthcheckFlags: Bool
         let supportsBlkioFlags: Bool
 
@@ -55,7 +63,8 @@ extension ComposeUp {
             dnsSidecar: SidecarHandle? = nil,
             supportsHealthcheckFlags: Bool = true,
             supportsBlkioFlags: Bool = false,
-            supportsRestartFlag: Bool = false
+            supportsRestartFlag: Bool = false,
+            implicitDefaultNetwork: String? = nil
         ) {
             self.service = service
             self.serviceName = serviceName
@@ -69,6 +78,7 @@ extension ComposeUp {
             self.supportsHealthcheckFlags = supportsHealthcheckFlags
             self.supportsBlkioFlags = supportsBlkioFlags
             self.supportsRestartFlag = supportsRestartFlag
+            self.implicitDefaultNetwork = implicitDefaultNetwork
         }
     }
 }
