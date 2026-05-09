@@ -234,6 +234,34 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         entries
     }
 
+    // MARK: - Unordered / parallel-friendly assertions (CHAOS-1446)
+
+    /// Returns `true` iff the FIRST recorded entry matching
+    /// `firstPredicate` was recorded BEFORE the FIRST entry matching
+    /// `secondPredicate`. Returns `false` if either predicate is unmatched.
+    ///
+    /// Use this when parallel scheduling makes inter-service event ordering
+    /// non-deterministic but you still need to assert intra-service ordering
+    /// (e.g., "stop fires before delete for the SAME container, even if
+    /// another service's stop interleaves").
+    public func happensBefore(
+        _ firstPredicate: @Sendable (Entry) -> Bool,
+        _ secondPredicate: @Sendable (Entry) -> Bool
+    ) -> Bool {
+        guard let firstIdx = entries.firstIndex(where: firstPredicate),
+              let secondIdx = entries.firstIndex(where: secondPredicate) else {
+            return false
+        }
+        return firstIdx < secondIdx
+    }
+
+    /// All recorded entries matching `predicate`, in recorded (time) order.
+    /// Use when set/multiset assertions are sufficient and inter-event
+    /// ordering between matching events should be ignored by the caller.
+    public func unorderedEntries(matching predicate: @Sendable (Entry) -> Bool) -> [Entry] {
+        entries.filter(predicate)
+    }
+
     private static func publishArg(for port: RuntimePublishedPort) -> String {
         let hostPort = port.count > 1 ? "\(port.hostPort)-\(port.hostPort + port.count - 1)" : "\(port.hostPort)"
         let containerPort = port.count > 1 ? "\(port.containerPort)-\(port.containerPort + port.count - 1)" : "\(port.containerPort)"
