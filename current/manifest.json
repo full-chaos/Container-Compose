@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "5dd1a9f847cbb9f7cf52123fbc75ed1e64910d28",
-  "short": "5dd1a9f",
+  "commit": "d7efd8052818df0dba74a0a385e010621febf1f6",
+  "short": "d7efd80",
   "target": "current",
-  "message": "fix(compose): CHAOS-1493 stable DNS for adopted services \u2014 sidecar adoption + DNS-divergence service recreate + extended specDivergenceReason (#158)",
-  "published_at": "2026-05-08T22:00:29.656587+00:00"
+  "message": "fix(compose): CHAOS-1495 network-name key alignment \u2014 env-substituted / aliased / external network audit + tests (#159)",
+  "published_at": "2026-05-09T00:18:20.638854+00:00"
 }
