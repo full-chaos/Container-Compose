@@ -863,6 +863,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             ? false
             : await LifecycleArgs.supportsRestartFlag(for: "run")
 
+        // CHAOS-1496: pre-compute the (a)-layer fingerprint env so
+        // `LabelsArgs.fingerprintLabels` can hash it without re-doing the
+        // merge. NOT the same as `combinedEnv` above (which has the (b)
+        // containerIps rewrite applied) — see `mergeServiceEnvForFingerprint`
+        // for the rationale.
+        let fingerprintEnv = mergeServiceEnvForFingerprint(service)
+
         let ctx = ArgsContext(
             service: service,
             serviceName: serviceName,
@@ -873,6 +880,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             dockerCompose: dockerCompose,
             composeFilename: composeFilename,
             dnsSidecar: dnsSidecar,
+            fingerprintEnv: fingerprintEnv,
             supportsHealthcheckFlags: supportsHealthcheckFlags,
             supportsBlkioFlags: supportsBlkioFlags,
             supportsRestartFlag: supportsRestartFlag,
@@ -898,11 +906,27 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         return runCommandArgs
     }
 
-    /// Builds the merged env: .env files → service env_file paths → service
-    /// environment map → ${VAR} substitution → service-name → IP rewrite.
-    /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
-    /// extension can compute the expected env for service-level divergence checks.
-    func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
+    /// CHAOS-1496: extracted from `mergeAndExpandServiceEnv` so the env-hash
+    /// fingerprint label can capture USER-DECLARED env only — the post-merge
+    /// state after `${VAR}` substitution but BEFORE peer-service-name → IP
+    /// rewriting via `containerIps`.
+    ///
+    /// Why split: `containerIps` is populated INCREMENTALLY in `configService`
+    /// (see `updateEnvironmentWithServiceIP`) AFTER each service launches.
+    /// `resolveAdoption` runs BEFORE the first `configService` call (per
+    /// CHAOS-1493 ordering inside the sidecar-onward do-catch in `run()`),
+    /// so at adoption time `containerIps` is empty. If the env hash baked in
+    /// peer-IP values at create time and then re-computed against an empty
+    /// `containerIps` at adoption time, every service whose env references a
+    /// peer service by name (e.g. `DB_HOST: postgres`) would spuriously
+    /// diverge on every `up` and trigger a recreate cascade. Peer-IP drift
+    /// is already covered by `dnsDivergenceReason` (CHAOS-1493) and the new
+    /// image-label check (CHAOS-1496); double-encoding it here breaks
+    /// CHAOS-1492 adoption.
+    ///
+    /// `internal` so `Compose+Adoption.swift` can reuse the same merge for
+    /// the new `envHashDivergence` label-primary check.
+    func mergeServiceEnvForFingerprint(_ service: Service) -> [String: String] {
         var combinedEnv = mergeServiceEnvironment(
             baseline: environmentVariables,
             serviceEnvFile: service.env_file,
@@ -915,6 +939,20 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             let variableName = String(value.replacingOccurrences(of: "${", with: "").dropLast())
             return combinedEnv[variableName] ?? value
         })
+
+        return combinedEnv
+    }
+
+    /// Builds the merged env: .env files → service env_file paths → service
+    /// environment map → ${VAR} substitution → service-name → IP rewrite.
+    /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
+    /// extension can compute the expected env for service-level divergence checks.
+    /// CHAOS-1496: split into `mergeServiceEnvForFingerprint` (the (a) layer)
+    /// + a final containerIps rewrite (the (b) layer) so the fingerprint
+    /// label scheme can hash the (a) layer in isolation. Argv emission of
+    /// `-e KEY=VALUE` continues to use the full form below.
+    func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
+        var combinedEnv = mergeServiceEnvForFingerprint(service)
 
         combinedEnv = combinedEnv.mapValues({ value in
             containerIps[value] ?? value
