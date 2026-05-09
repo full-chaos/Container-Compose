@@ -18,7 +18,7 @@
         <link rel="prev" href="../guides/runtime-protocol/">
       
       
-        <link rel="next" href="../upstream-fork-status/">
+        <link rel="next" href="../coverage/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -2371,7 +2371,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../upstream-fork-status/" class="md-nav__link">
+      <a href="../upstream-fork-status.md" class="md-nav__link">
         
   
   
@@ -2925,7 +2925,7 @@
 <strong>Author:</strong> Sisyphus (audit + synthesis)
 <strong>Scope:</strong> Compose-spec coverage in Container-Compose vs. CLI / runtime surface of <code>apple/container</code>
 <strong>Method:</strong> Six parallel scouts across <code>coverage.html</code>, source-code gap markers, argv emission, doc inventory, apple/container source, and CLI doc standards
-<strong>Status:</strong> Canonical companion to <a href="../coverage.html"><code>coverage.html</code></a> (data) and <a href="../upstream-fork-status/"><code>upstream-fork-status.md</code></a> (fork dependencies)</p>
+<strong>Status:</strong> Canonical companion to <a href="../coverage.html"><code>coverage.html</code></a> (data) and <a href="./upstream-fork-status.md"><code>upstream-fork-status.md</code></a> (fork dependencies)</p>
 </blockquote>
 <hr />
 <h2 id="1-tldr">1. TL;DR<a class="headerlink" href="#1-tldr" title="Permanent link">&para;</a></h2>
@@ -3849,7 +3849,7 @@
 <h2 id="11-references">11. References<a class="headerlink" href="#11-references" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Coverage matrix data: <a href="../coverage.html"><code>coverage.html</code></a> (canonical), regenerable to <code>coverage.json</code> via <code>scripts/regen-coverage.sh</code></li>
-<li>Fork dependencies: <a href="../upstream-fork-status/"><code>upstream-fork-status.md</code></a></li>
+<li>Fork dependencies: <a href="./upstream-fork-status.md"><code>upstream-fork-status.md</code></a></li>
 <li>Plan that drained the prior no-upstream queue: <a href="../plans/no-upstream-refactor-and-linear/"><code>docs/plans/no-upstream-refactor-and-linear.md</code></a></li>
 <li>apple/container CLI flag definitions (verified at audit time): <code>.build/checkouts/container/Sources/Services/ContainerAPIService/Client/Flags.swift</code> lines 21-405</li>
 <li>apple/container subcommand-local flags: <code>.build/checkouts/container/Sources/ContainerCommands/Container/{ContainerRun,ContainerCreate,ContainerExec}.swift</code>, <code>Network/NetworkCreate.swift</code></li>

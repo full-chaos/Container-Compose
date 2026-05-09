@@ -25,10 +25,6 @@
          <lastmod>2026-05-09</lastmod>
     </url>
     <url>
-         <loc>https://full-chaos.github.io/container-compose/current/site/upstream-fork-status/</loc>
-         <lastmod>2026-05-09</lastmod>
-    </url>
-    <url>
          <loc>https://full-chaos.github.io/container-compose/current/site/cli/api-clients/</loc>
          <lastmod>2026-05-09</lastmod>
     </url>
@@ -150,6 +146,10 @@
     </url>
     <url>
          <loc>https://full-chaos.github.io/container-compose/current/site/guides/troubleshooting/</loc>
+         <lastmod>2026-05-09</lastmod>
+    </url>
+    <url>
+         <loc>https://full-chaos.github.io/container-compose/current/site/initiatives/compose-ingress/</loc>
          <lastmod>2026-05-09</lastmod>
     </url>
     <url>

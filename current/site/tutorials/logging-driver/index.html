@@ -2041,7 +2041,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../upstream-fork-status/" class="md-nav__link">
+      <a href="../../upstream-fork-status.md" class="md-nav__link">
         
   
   
@@ -2310,7 +2310,7 @@
 <h2 id="current-support-status">Current support status<a class="headerlink" href="#current-support-status" title="Permanent link">&para;</a></h2>
 <p>It is important to note that <code>logging.driver</code> and <code>logging.options</code> are currently <strong>warn-skipped</strong> in Container-Compose (see CHAOS-1329). This means that the tool parses the YAML correctly but does not yet wire these specific flags to the underlying <code>container run</code> command.</p>
 <p>The rest of the compose file, including images, commands, and labels, will function as expected. Your containers will start and run, but they will use the default logging behavior of the Apple Container runtime regardless of the settings in the <code>logging</code> block.</p>
-<p>For more details on the implementation roadmap and current gaps, refer to the <a href="../../upstream-fork-status/#2c-logging-drivers">Upstream/Fork Status</a> documentation.</p>
+<p>For more details on the implementation roadmap and current gaps, refer to the <a href="../upstream-fork-status.md#2c-logging-drivers">Upstream/Fork Status</a> documentation.</p>
 <h2 id="verifying-logs">Verifying logs<a class="headerlink" href="#verifying-logs" title="Permanent link">&para;</a></h2>
 <p>Even though custom drivers are not yet applied, you can still view the logs of your services using the standard <code>logs</code> command.</p>
 <div class="language-bash highlight"><span class="filename">terminal</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>container-compose<span class="w"> </span>logs<span class="w"> </span>app

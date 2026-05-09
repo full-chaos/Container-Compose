@@ -2041,7 +2041,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../upstream-fork-status/" class="md-nav__link">
+      <a href="../../upstream-fork-status.md" class="md-nav__link">
         
   
   
@@ -2325,7 +2325,7 @@
 <h2 id="current-status-of-network-aliases">Current status of network aliases<a class="headerlink" href="#current-status-of-network-aliases" title="Permanent link">&para;</a></h2>
 <p>While the multi-network connectivity works as expected, it is important to note that service-level <code>aliases</code> are currently <strong>warn-skipped</strong> (see CHAOS-1331). </p>
 <p>In standard Docker Compose, aliases allow services to reach each other using custom DNS names. In the current version of Container-Compose, services can still reach each other using their service names (e.g., <code>api</code> or <code>worker</code>), but the additional names specified in the <code>aliases</code> list will not be resolvable.</p>
-<p>For more information on network feature parity, see the <a href="../../upstream-fork-status/#2a-network-aliases">Upstream/Fork Status</a> documentation.</p>
+<p>For more information on network feature parity, see the <a href="../upstream-fork-status.md#2a-network-aliases">Upstream/Fork Status</a> documentation.</p>
 <h2 id="verifying-connectivity">Verifying connectivity<a class="headerlink" href="#verifying-connectivity" title="Permanent link">&para;</a></h2>
 <p>You can verify that the networks were created and the containers are attached by using the Apple Container CLI.</p>
 <div class="language-bash highlight"><span class="filename">terminal</span><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>container<span class="w"> </span>network<span class="w"> </span>ls

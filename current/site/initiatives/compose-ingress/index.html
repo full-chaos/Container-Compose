@@ -6,19 +6,15 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Practical guide to compose-spec features that do not work in Container-Compose today, organized by user pain.">
+        <meta name="description" content="Limited Docker Compose support for Apple Container.">
       
       
         <meta name="author" content="Container-Compose contributors">
       
       
-        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/guides/limitations-and-gotchas/">
+        <link rel="canonical" href="https://full-chaos.github.io/container-compose/current/site/initiatives/compose-ingress/">
       
       
-        <link rel="prev" href="../migration-from-docker-compose/">
-      
-      
-        <link rel="next" href="../troubleshooting/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -26,7 +22,7 @@
     
     
       
-        <title>Limitations and Gotchas - Container-Compose</title>
+        <title>Initiative: compose-ingress - Container-Compose</title>
       
     
     
@@ -78,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#limitations-and-gotchas" class="md-skip">
+        <a href="#initiative-compose-ingress" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Limitations and Gotchas
+              Initiative: compose-ingress
             
           </span>
         </div>
@@ -305,13 +301,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../migration-from-docker-compose/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../guides/migration-from-docker-compose/" class="md-tabs__link">
           
   
   
@@ -1639,10 +1633,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1660,22 +1652,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1688,7 +1677,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Guides
@@ -1702,7 +1691,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../migration-from-docker-compose/" class="md-nav__link">
+      <a href="../../guides/migration-from-docker-compose/" class="md-nav__link">
         
   
   
@@ -1722,32 +1711,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Limitations and Gotchas
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../guides/limitations-and-gotchas/" class="md-nav__link">
         
   
   
@@ -1758,143 +1725,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#docker-socket-mounts-traefik-watchtower-portainer-cadvisor" class="md-nav__link">
-    <span class="md-ellipsis">
-      Docker socket mounts (Traefik, Watchtower, Portainer, cAdvisor)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#network-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      Network features
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#resource-limits" class="md-nav__link">
-    <span class="md-ellipsis">
-      Resource limits
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#linuxwindows-specific-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Linux/Windows-specific fields
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#security-and-isolation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Security and isolation
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#swarm-orchestration" class="md-nav__link">
-    <span class="md-ellipsis">
-      Swarm orchestration
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deprecated-compose-spec-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Deprecated compose-spec fields
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#secrets-and-configs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Secrets and configs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#logging-drivers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Logging drivers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#volume-drivers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Volume drivers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#macos-15-sequoia-dns" class="md-nav__link">
-    <span class="md-ellipsis">
-      macOS 15 (Sequoia) DNS
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-warnings-appear" class="md-nav__link">
-    <span class="md-ellipsis">
-      How warnings appear
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      See also
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1907,7 +1737,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
         
   
   
@@ -1930,7 +1760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../error-codes/" class="md-nav__link">
+      <a href="../../guides/error-codes/" class="md-nav__link">
         
   
   
@@ -1953,7 +1783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runtime-protocol/" class="md-nav__link">
+      <a href="../../guides/runtime-protocol/" class="md-nav__link">
         
   
   
@@ -2155,117 +1985,114 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#docker-socket-mounts-traefik-watchtower-portainer-cadvisor" class="md-nav__link">
+  <a href="#goal" class="md-nav__link">
     <span class="md-ellipsis">
-      Docker socket mounts (Traefik, Watchtower, Portainer, cAdvisor)
+      Goal
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#network-features" class="md-nav__link">
+  <a href="#why-this-lives-in-compose-not-upstream" class="md-nav__link">
     <span class="md-ellipsis">
-      Network features
+      Why this lives in compose, not upstream
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#resource-limits" class="md-nav__link">
+  <a href="#architectural-shape" class="md-nav__link">
     <span class="md-ellipsis">
-      Resource limits
+      Architectural shape
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architectural shape">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-compose-resident-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pattern: compose-resident sidecar
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface-label-driven-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Surface: label-driven routing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-docker-engine-api-read-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optional: Docker Engine API read surface
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#foundation-xpc-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Foundation: XPC sessions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#future-direction-pivot-to-applecontainer-plugin" class="md-nav__link">
+    <span class="md-ellipsis">
+      Future direction: pivot to apple/container plugin
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phasing-proposed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Phasing (proposed)
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#linuxwindows-specific-fields" class="md-nav__link">
+  <a href="#reference-shape-well-scoped-upstream-staged-prs" class="md-nav__link">
     <span class="md-ellipsis">
-      Linux/Windows-specific fields
+      Reference shape: well-scoped upstream-staged PRs
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#security-and-isolation" class="md-nav__link">
+  <a href="#open-questions" class="md-nav__link">
     <span class="md-ellipsis">
-      Security and isolation
+      Open questions
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#swarm-orchestration" class="md-nav__link">
+  <a href="#references" class="md-nav__link">
     <span class="md-ellipsis">
-      Swarm orchestration
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deprecated-compose-spec-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Deprecated compose-spec fields
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#secrets-and-configs" class="md-nav__link">
-    <span class="md-ellipsis">
-      Secrets and configs
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#logging-drivers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Logging drivers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#volume-drivers" class="md-nav__link">
-    <span class="md-ellipsis">
-      Volume drivers
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#macos-15-sequoia-dns" class="md-nav__link">
-    <span class="md-ellipsis">
-      macOS 15 (Sequoia) DNS
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-warnings-appear" class="md-nav__link">
-    <span class="md-ellipsis">
-      How warnings appear
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      See also
+      References
     </span>
   </a>
   
@@ -2287,7 +2114,7 @@
 
 
   
-    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/guides/limitations-and-gotchas.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/full-chaos/container-compose/edit/main/docs/initiatives/compose-ingress.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -2295,136 +2122,168 @@
   
 
 
-<h1 id="limitations-and-gotchas">Limitations and Gotchas<a class="headerlink" href="#limitations-and-gotchas" title="Permanent link">&para;</a></h1>
-<p>Container-Compose is a translator from compose-spec to <code>apple/container</code>. Where Apple's runtime has no equivalent, fields are decoded and warned. Below is the practical impact, organized by feature.</p>
-<p>This page is symptom-first. For the full tier-by-tier gap inventory, see <a href="../../feature-parity/">Feature Parity</a>. For a workflow-oriented migration walkthrough, see <a href="../migration-from-docker-compose/">Migration from Docker Compose</a>.</p>
-<hr />
-<h2 id="docker-socket-mounts-traefik-watchtower-portainer-cadvisor">Docker socket mounts (Traefik, Watchtower, Portainer, cAdvisor)<a class="headerlink" href="#docker-socket-mounts-traefik-watchtower-portainer-cadvisor" title="Permanent link">&para;</a></h2>
-<p><strong>The pattern that breaks:</strong></p>
+<h1 id="initiative-compose-ingress">Initiative: compose-ingress<a class="headerlink" href="#initiative-compose-ingress" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Status: Planned — parent Linear ticket
+<a href="https://linear.app/fullchaos/issue/CHAOS-1500/compose-ingress-traefik-style-http-routing-docker-engine-api-surface"><strong>CHAOS-1500</strong></a>.</p>
+<p>See also: <a href="../upstream-fork-status.md"><code>docs/upstream-fork-status.md</code></a> — the
+strategic stance on fork freeze + upstream relationship that motivates this
+initiative living compose-side rather than as an apple/container ask.</p>
+</blockquote>
+<h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
+<p>Build a <strong>Traefik-style HTTP routing/ingress capability</strong> inside
+container-compose, plus (in scope, sequenced after the routing core) a
+<strong>Docker-Engine-API-compatible read surface</strong> so ecosystem tools (Traefik
+docker provider, OpenTelemetry <code>dockerstats</code>, Grafana Alloy
+<code>loki.source.docker</code>) can attach to a compose project the same way they attach
+to a Docker daemon.</p>
+<h2 id="why-this-lives-in-compose-not-upstream">Why this lives in compose, not upstream<a class="headerlink" href="#why-this-lives-in-compose-not-upstream" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/apple/container/issues/1476"><code>apple/container#1476</code></a> — the
+upstream FR titled <em>"[Request]: HTTP REST surface compatible with the Docker
+Engine API for ecosystem tools (Traefik, OTel, Alloy)"</em> — was <strong>closed</strong>.
+Apple declined to host that surface in <code>apple/container</code> itself.</p>
+<p>Rather than re-litigate the upstream conversation, container-compose owns the
+capability:</p>
+<ul>
+<li>Compose already models all the inputs the ecosystem tools want (services,
+  networks, ports, labels) — that's the shape Traefik / OTel / Alloy already
+  know how to consume.</li>
+<li>Compose controls the lifecycle (<code>compose up</code> / <code>compose down</code>), so a
+  sidecar-managed router or HTTP surface fits naturally next to the existing
+  embedded DNS sidecar.</li>
+<li>We can iterate on the surface freely without coordinating with upstream
+  cadence.</li>
+</ul>
+<p>This is consistent with the broader strategy captured in
+<code>docs/upstream-fork-status.md</code>: forward motion happens in compose; only
+foundational, easy-to-accept refactors (the URL → <code>SystemPackage.FilePath</code>
+migration, DNS alias FRs, IPAM enrichment) are tickled upstream as
+trust-builders.</p>
+<h2 id="architectural-shape">Architectural shape<a class="headerlink" href="#architectural-shape" title="Permanent link">&para;</a></h2>
+<h3 id="pattern-compose-resident-sidecar">Pattern: compose-resident sidecar<a class="headerlink" href="#pattern-compose-resident-sidecar" title="Permanent link">&para;</a></h3>
+<p>The existing
+<a href="../../Sources/Container-Compose/Runtime/EmbeddedDNSSidecar.swift"><code>EmbeddedDNSSidecar</code></a>
+is the architectural template:</p>
+<ul>
+<li>Lives as a sibling container in the compose project network.</li>
+<li>Lifecycle is bound to <code>compose up</code> / <code>compose down</code>.</li>
+<li>Configured via well-known labels written onto compose-managed containers
+  (<code>compose.dns.resolvers.&lt;network&gt;=&lt;sidecar-ip&gt;</code>).</li>
+<li>Probe-then-adopt for idempotent re-runs (CHAOS-1493).</li>
+</ul>
+<p><code>compose-ingress</code> follows the same shape:</p>
+<ul>
+<li>Optional sidecar started by <code>compose up</code> when any service declares ingress
+  intent.</li>
+<li>Reads compose service / network / port / label state to compute the routing
+  table.</li>
+<li>Updates routes dynamically as services come/go.</li>
+</ul>
+<h3 id="surface-label-driven-routing">Surface: label-driven routing<a class="headerlink" href="#surface-label-driven-routing" title="Permanent link">&para;</a></h3>
+<p>Likely a <code>compose.ingress.*</code> label namespace (compose-native, not literal
+Traefik labels — but spiritually equivalent), e.g.:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">traefik</span><span class="p">:</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">traefik:v3.0</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/run/docker.sock:/var/run/docker.sock</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">api</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-api:latest</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="nt">compose.ingress.enable</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;true&quot;</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="nt">compose.ingress.routers.api.rule</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Host(`api.localhost`)&quot;</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">      </span><span class="nt">compose.ingress.routers.api.service</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;api&quot;</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">      </span><span class="nt">compose.ingress.services.api.loadbalancer.server.port</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;8080&quot;</span>
 </span></code></pre></div>
-<p><strong>Why it fails:</strong> There is no Docker daemon on the host. <code>apple/container</code> runs containers in lightweight per-container VMs managed by its own runtime. Nothing serves the Docker Engine API at <code>/var/run/docker.sock</code>. Mounting that path into a container gives the container a socket that does not exist.</p>
-<p><strong>Container-Compose's own daemon socket is not a substitute.</strong> The optional HTTP daemon at <code>~/.container-compose/api.sock</code> speaks the Container REST API, not the Docker Engine API. Mounting it as <code>/var/run/docker.sock</code> will not satisfy Docker-API clients.</p>
-<p><strong>Concrete example:</strong> A Traefik service configured with the <code>docker</code> provider will start, but Traefik's docker provider will fail to connect and list zero containers. Labels like <code>traefik.http.routers.myapp.rule=Host(...)</code> will be silently ignored.</p>
-<p><strong>Workaround today:</strong> Configure Traefik with the <a href="https://doc.traefik.io/traefik/providers/file/">file provider</a> (static config) instead of the docker provider. Define routes in a mounted config file rather than container labels. For other tools, run reverse-proxy or monitoring logic outside the container stack, or use host-level agents.</p>
-<p><strong>Future direction:</strong> Docker Engine API compatibility is tracked as Linear <code>CHAOS-1340</code> (epic) via the <a href="https://github.com/socktainer/socktainer">Socktainer</a> community project. Apple's <code>container</code> maintainer redirected Docker-API requests there when closing the upstream FR. Container-Compose has not yet integrated Socktainer. See <a href="../../plans/socktainer-pivot-summary/"><code>docs/plans/socktainer-pivot-summary.md</code></a> for the current status.</p>
-<p><strong>Affected ecosystem tools:</strong> Traefik (docker provider), Watchtower, Portainer, cAdvisor, autoheal, dockerproxy, docker-gen, ouroboros, diun.</p>
-<hr />
-<h2 id="network-features">Network features<a class="headerlink" href="#network-features" title="Permanent link">&para;</a></h2>
-<p>The following network fields are warn-skipped (CHAOS-1334, blocked on <code>apple/container</code> upstream):</p>
+<p>The exact grammar is a design question; the principle is <strong>compose-native
+labels, Traefik-shaped semantics</strong>.</p>
+<h3 id="optional-docker-engine-api-read-surface">Optional: Docker Engine API read surface<a class="headerlink" href="#optional-docker-engine-api-read-surface" title="Permanent link">&para;</a></h3>
+<p>For ecosystem tools that already speak <code>/var/run/docker.sock</code>, expose a
+read-only subset of the Docker Engine API scoped to a compose project:</p>
 <ul>
-<li><strong>Network-level <code>aliases:</code></strong> — cross-service references must use the container name <code>&lt;project&gt;-&lt;service&gt;</code> directly.</li>
-<li><strong>Static IP assignment</strong> (<code>networks.&lt;n&gt;.ipv4_address</code> / <code>ipv6_address</code>) — the <code>--ip</code> and <code>--ip6</code> flags are not accepted by <code>apple/container</code>. Remove these fields or switch to service-name-based discovery.</li>
-<li><strong><code>networks.&lt;n&gt;.driver_opts</code></strong> — parsed but not passed to the runtime.</li>
-<li><strong><code>networks.&lt;n&gt;.ipam.*</code></strong> — subnet, gateway, and IP range configuration are not wired.</li>
-<li><strong><code>networks.&lt;n&gt;.enable_ipv6</code></strong> — parsed and ignored.</li>
-<li><strong><code>service.network_mode: host</code></strong> — containers run in lightweight VMs, so "host" networking is not the macOS host network in the Docker sense.</li>
+<li><code>GET /containers/json</code></li>
+<li><code>GET /containers/{id}/json</code></li>
+<li><code>GET /networks</code></li>
+<li><code>GET /events</code> (streaming)</li>
 </ul>
-<hr />
-<h2 id="resource-limits">Resource limits<a class="headerlink" href="#resource-limits" title="Permanent link">&para;</a></h2>
-<p>Only <code>cpus</code> and <code>memory</code> (and their <code>deploy.resources.limits</code> equivalents) take effect. Everything else is warn-skipped: the container starts without the constraint applied, and a warning prints to stdout.</p>
-<p>Warn-skipped resource fields:</p>
+<p>This was the original ask in <code>apple/container#1476</code>. Hosting it compose-side
+keeps the scope narrower (project-scoped instead of host-wide) and avoids the
+upstream concerns that closed the FR.</p>
+<h3 id="foundation-xpc-sessions">Foundation: XPC sessions<a class="headerlink" href="#foundation-xpc-sessions" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/apple/container/pull/1524"><code>apple/container#1524</code></a> (open)
+adds XPC session handlers with disconnect callbacks. This plumbing — though
+landed for unrelated reasons — is exactly the kind of foundation a
+side-channel HTTP surface needs to subscribe to container lifecycle events
+without modifying core. Track this PR; it may unblock the API-surface portion
+of the initiative without further upstream coordination.</p>
+<h3 id="future-direction-pivot-to-applecontainer-plugin">Future direction: pivot to apple/container plugin<a class="headerlink" href="#future-direction-pivot-to-applecontainer-plugin" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/apple/container/discussions/1410"><code>apple/container#1410</code></a>
+("Expanding Support for Plugins", open Ideas discussion) traces the history
+of compose's relationship with apple/container:</p>
 <ul>
-<li><code>shm_size</code></li>
-<li><code>pids_limit</code> / <code>deploy.resources.limits.pids</code></li>
-<li><code>mem_swappiness</code></li>
-<li><code>memswap_limit</code></li>
-<li><code>mem_reservation</code> / <code>deploy.resources.reservations.memory</code></li>
-<li><code>cpu_shares</code></li>
-<li><code>cpuset</code></li>
-<li><code>cpu_period</code>, <code>cpu_quota</code></li>
-<li><code>cpu_rt_period</code>, <code>cpu_rt_runtime</code></li>
-<li><code>oom_kill_disable</code>, <code>oom_score_adj</code></li>
-<li><code>blkio_config.*</code></li>
+<li><code>#239</code> (compose support inside apple/container) did not merge — the
+  request was to ship compose as a <strong>plugin</strong> rather than built-in.</li>
+<li><code>#603</code> / <code>#635</code> exposed command-line tools as a programmatic interface
+  that plugins can import instead of reconstructing commands.</li>
+<li>Open problem (per the discussion): passing <code>OptionGroups</code> / common flags
+  down to plugins.</li>
 </ul>
-<p>Tracking: CHAOS-1375.</p>
-<hr />
-<h2 id="linuxwindows-specific-fields">Linux/Windows-specific fields<a class="headerlink" href="#linuxwindows-specific-fields" title="Permanent link">&para;</a></h2>
-<p>These fields are decoded and classified as not applicable on macOS (Tier 4 in <a href="../../feature-parity/">Feature Parity</a>):</p>
+<p><strong>Strategic implication for compose-ingress:</strong> once apple/container's plugin
+architecture matures enough to host a routing/HTTP-surface plugin cleanly,
+<strong>compose-ingress should pivot to live as an apple/container plugin</strong> (not
+just inside container-compose). Until then, build compose-side using the
+sidecar pattern — but <strong>design with eventual plugin migration in mind</strong>:</p>
 <ul>
-<li><code>cgroup</code>, <code>cgroup_parent</code></li>
-<li><code>device_cgroup_rules</code></li>
-<li><code>storage_opt</code></li>
-<li><code>isolation</code></li>
-<li><code>credential_spec</code></li>
-<li><code>label_file</code></li>
+<li>Keep the routing core decoupled from compose-specific orchestration
+  (so it can be re-hosted as a plugin without rewriting).</li>
+<li>Prefer compose-spec-native input shapes (services / networks / labels)
+  that map cleanly onto whatever the plugin API ends up looking like.</li>
+<li>Track <code>#1410</code> and the related plugin PRs (<code>#603</code>, <code>#635</code>, <code>#717</code>,
+  <code>#1524</code>) for the inflection point where the pivot becomes feasible.</li>
 </ul>
-<p>Remove them from your compose file to silence warnings. Behavior is otherwise unchanged.</p>
-<hr />
-<h2 id="security-and-isolation">Security and isolation<a class="headerlink" href="#security-and-isolation" title="Permanent link">&para;</a></h2>
-<p>The following fields are warn-skipped because <code>apple/container</code> has no equivalent flags:</p>
+<h2 id="phasing-proposed">Phasing (proposed)<a class="headerlink" href="#phasing-proposed" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Phase A — Routing core.</strong> Embedded sidecar + label grammar + HTTP
+   reverse-proxy (likely Caddy/Traefik/nginx as the in-sidecar engine).</li>
+<li><strong>Phase B — TLS termination.</strong> ACME/local CA integration; per-router TLS
+   options.</li>
+<li><strong>Phase C — Docker Engine API surface.</strong> Read-only project-scoped
+   <code>/containers/json</code>, <code>/networks</code>, <code>/events</code>. Subscribers: external Traefik,
+   OTel, Alloy.</li>
+<li><strong>Phase D — TCP / non-HTTP routes.</strong> Optional; demand-driven.</li>
+</ol>
+<h2 id="reference-shape-well-scoped-upstream-staged-prs">Reference shape: well-scoped upstream-staged PRs<a class="headerlink" href="#reference-shape-well-scoped-upstream-staged-prs" title="Permanent link">&para;</a></h2>
+<p>For the trust-building track that runs in parallel, two recent examples show
+the cadence:</p>
 <ul>
-<li><code>--ipc</code>, <code>--pid</code>, <code>--uts</code> (namespace modes)</li>
-<li><code>--security-opt</code></li>
-<li><code>userns_mode</code> (<code>--userns</code>)</li>
-<li><code>cap_add</code> / <code>cap_drop</code> (partial — parsed but not fully applied)</li>
-<li><code>devices</code> (<code>--device</code> host passthrough)</li>
-<li><code>sysctls</code></li>
-<li><code>mac_address</code></li>
-<li><code>gpus</code></li>
+<li><a href="https://github.com/full-chaos/container/pull/19"><code>full-chaos/container#19</code></a>
+  — DNS fix (CHAOS-1478), default-config peer-name DNS resolves.</li>
+<li><a href="https://github.com/full-chaos/container/pull/15"><code>full-chaos/container#15</code></a>
+  — richer IPAM at network creation time (CHAOS-1334).</li>
 </ul>
-<p>Note that container isolation in <code>apple/container</code> already comes from per-container VMs, so the security model differs from Docker's shared-kernel namespace approach. Many of these fields address Linux namespace concerns that do not map to the VM model.</p>
-<hr />
-<h2 id="swarm-orchestration">Swarm orchestration<a class="headerlink" href="#swarm-orchestration" title="Permanent link">&para;</a></h2>
-<p>The following <code>deploy</code> fields are decoded but ignored — they belong to a different orchestrator class:</p>
+<p>Both are small, scoped, and shaped to land upstream. The same discipline
+applies to URL→FilePath migration PRs (CHAOS-1448 epic). <code>compose-ingress</code>
+itself is <strong>not</strong> an upstream ask — it stays compose-side per the rationale
+above — but the trust-building track adjacent to it is what eventually
+unblocks larger upstream-bound work.</p>
+<h2 id="open-questions">Open questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>deploy.mode</code></li>
-<li><code>deploy.replicas</code></li>
-<li><code>deploy.placement</code></li>
-<li><code>deploy.update_config</code></li>
-<li><code>deploy.rollback_config</code></li>
-<li><code>deploy.endpoint_mode</code></li>
+<li>Routing engine: embed Traefik / Caddy / nginx, or hand-roll a minimal
+  HTTP router? (Traefik is the closest match to the rejected upstream FR's
+  framing.)</li>
+<li>Label grammar: Traefik-compatible verbatim, or compose-native <code>compose.ingress.*</code>?</li>
+<li>API-surface auth model: project-scoped, host-bound only, or
+  authenticated for cross-project tooling?</li>
+<li>Relationship to existing CHAOS-1349 / -1356 (auth model) and CHAOS-1359
+  (TCP transport opt-in) work that already landed in compose's API path —
+  reuse vs net-new?</li>
 </ul>
-<p>For replica-style fan-out, use the top-level <code>scale:</code> field on a service instead:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">worker</span><span class="p">:</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myworker:latest</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="nt">scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
-</span></code></pre></div>
-<hr />
-<h2 id="deprecated-compose-spec-fields">Deprecated compose-spec fields<a class="headerlink" href="#deprecated-compose-spec-fields" title="Permanent link">&para;</a></h2>
-<p><code>links</code>, <code>external_links</code>, and <code>volumes_from</code> are not implemented. Use <code>depends_on</code> and named volumes or bind mounts instead.</p>
-<hr />
-<h2 id="secrets-and-configs">Secrets and configs<a class="headerlink" href="#secrets-and-configs" title="Permanent link">&para;</a></h2>
-<p><strong>File-sourced (<code>file:</code>) works.</strong> The file contents are bind-mounted into the container at the specified target path.</p>
-<p><strong>Runtime-managed and external do not work:</strong></p>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>POST /secrets</code> (runtime-managed secrets without a file source) is not implemented.</li>
-<li><code>external: true</code> on secrets or configs is not supported.</li>
-</ul>
-<p><strong>Workaround:</strong> Read from your secrets manager in an entrypoint script and write to the expected path at container start. Or use environment variables:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">app</span><span class="p">:</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="nt">DB_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${DB_PASSWORD}&quot;</span>
-</span></code></pre></div>
-<hr />
-<h2 id="logging-drivers">Logging drivers<a class="headerlink" href="#logging-drivers" title="Permanent link">&para;</a></h2>
-<p>Only the default logging driver works. Specifying a non-default <code>logging.driver</code> is parsed and warned. See <a href="../../tutorials/logging-driver/"><code>docs/tutorials/logging-driver.md</code></a>.</p>
-<hr />
-<h2 id="volume-drivers">Volume drivers<a class="headerlink" href="#volume-drivers" title="Permanent link">&para;</a></h2>
-<p>Only the <code>local</code> driver works. <code>driver_opts:</code> is parsed but not wired (CHAOS-1335). Workaround: bind-mount NFS shares directly from the macOS host instead of using a volume driver.</p>
-<hr />
-<h2 id="macos-15-sequoia-dns">macOS 15 (Sequoia) DNS<a class="headerlink" href="#macos-15-sequoia-dns" title="Permanent link">&para;</a></h2>
-<p>Service-name resolution requires manual DNS configuration on macOS 15. macOS 26 (Tahoe) handles this natively. Upgrade to Tahoe for the best experience.</p>
-<hr />
-<h2 id="how-warnings-appear">How warnings appear<a class="headerlink" href="#how-warnings-appear" title="Permanent link">&para;</a></h2>
-<p>When you <code>up</code> a stack with unsupported fields, you'll see lines like:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&#39;service.shm_size&#39; is parsed but not supported by Apple container; ignored.
-</span></code></pre></div>
-<p>The container still starts. To see all warn sites in the source, search for <code>Detected, But Not Supported</code> and <code>is parsed but not supported</code> in <code>Sources/Container-Compose/Commands/</code>.</p>
-<hr />
-<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../../feature-parity/">Feature Parity Inventory</a> — full tier-by-tier gap breakdown</li>
-<li><a href="../upstream-fork-status.md">Upstream / Fork Status</a> — what is blocked on <code>apple/container</code></li>
-<li><a href="../migration-from-docker-compose/">Migration from Docker Compose</a> — workflow-oriented migration guide</li>
-<li><a href="../troubleshooting/">Troubleshooting</a> — symptom-to-fix reference</li>
-<li><a href="../../plans/socktainer-pivot-summary/">Socktainer Pivot Summary</a> — Docker API compatibility roadmap</li>
+<li>apple/container#1410 (open Ideas discussion — plugin architecture future): <a href="https://github.com/apple/container/discussions/1410">https://github.com/apple/container/discussions/1410</a></li>
+<li>apple/container#1476 (closed — original Engine API FR): <a href="https://github.com/apple/container/issues/1476">https://github.com/apple/container/issues/1476</a></li>
+<li>apple/container#1524 (open — XPC sessions, foundation for side-channel API): <a href="https://github.com/apple/container/pull/1524">https://github.com/apple/container/pull/1524</a></li>
+<li>apple/container#239 (compose support FR that didn't merge — referenced from #1410): <a href="https://github.com/apple/container/pull/239">https://github.com/apple/container/pull/239</a></li>
+<li>full-chaos/container#19 (DNS fix example): <a href="https://github.com/full-chaos/container/pull/19">https://github.com/full-chaos/container/pull/19</a></li>
+<li>full-chaos/container#15 (IPAM example): <a href="https://github.com/full-chaos/container/pull/15">https://github.com/full-chaos/container/pull/15</a></li>
+<li><code>docs/upstream-fork-status.md</code> — strategic stance on fork freeze + upstream relationship.</li>
+<li><code>Sources/Container-Compose/Runtime/EmbeddedDNSSidecar.swift</code> — sidecar architectural template.</li>
 </ul>
 
 
@@ -2432,9 +2291,6 @@
 
 
 
-
-  
-  
 
 
 

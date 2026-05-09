@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "31480c4bf5c82b50e98733823c45ddb89de3f7ca",
-  "short": "31480c4",
+  "commit": "ad6360eedd79591b03a3ab989470b5f79d6d935a",
+  "short": "ad6360e",
   "target": "current",
-  "message": "Update README with project origin and macOS note (#165)",
-  "published_at": "2026-05-09T14:15:01.291626+00:00"
+  "message": "Add ingress memory and plan (#166)",
+  "published_at": "2026-05-09T14:42:56.719715+00:00"
 }
