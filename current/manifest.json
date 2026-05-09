@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "d7efd8052818df0dba74a0a385e010621febf1f6",
-  "short": "d7efd80",
+  "commit": "dd64e209a4e39e0705c3d2656af7554356a7600a",
+  "short": "dd64e20",
   "target": "current",
-  "message": "fix(compose): CHAOS-1495 network-name key alignment \u2014 env-substituted / aliased / external network audit + tests (#159)",
-  "published_at": "2026-05-09T00:18:20.638854+00:00"
+  "message": "fix(compose): CHAOS-1494 implicit-network DNS injection \u2014 services without explicit service.networks now receive sidecar --dns and matching labels (#161)",
+  "published_at": "2026-05-09T00:37:25.267298+00:00"
 }
