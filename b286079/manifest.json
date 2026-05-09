@@ -1,0 +1,8 @@
+{
+  "branch": "chris/chaos-1494-implicit-net-dns",
+  "commit": "b2860795703cb0b0140cdc5fb0b8d614def27619",
+  "short": "b286079",
+  "target": "b286079",
+  "message": "fix(compose): CHAOS-1494 implicit-network DNS injection \u2014 services without explicit service.networks now receive sidecar --dns and matching labels",
+  "published_at": "2026-05-09T00:20:29.680943+00:00"
+}
