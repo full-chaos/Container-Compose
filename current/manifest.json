@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "2b508b5bc7edb7c31ade42781144303aa3fb3ece",
-  "short": "2b508b5",
+  "commit": "8381551c492bea181039b3df5a482e81c33c3846",
+  "short": "8381551",
   "target": "current",
-  "message": "feat(compose): CHAOS-1496 generalized create-spec fingerprint labels \u2014 image + entrypoint/env/ports/networks hash labels for label-primary divergence detection (#160)",
-  "published_at": "2026-05-09T00:46:59.668703+00:00"
+  "message": "fix(compose): CHAOS-1497 honor deprecated 'external: { name: X }' form \u2014 5-site fallback to network.external?.name + Case 3c test (#162)",
+  "published_at": "2026-05-09T12:20:00.669328+00:00"
 }
