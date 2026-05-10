@@ -37,7 +37,8 @@ struct RemoteRuntimeWiringTests {
                 var command = ComposeStart()
                 try await command.startServices(
                     [(serviceName: "web", service: Service(image: "nginx:1"))],
-                    projectName: "remoteproj"
+                    projectName: "remoteproj",
+                    cwd: "/tmp"
                 )
             }
         }

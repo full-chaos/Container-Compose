@@ -117,16 +117,46 @@ public struct ComposeBuild: AsyncParsableCommand, ComposeCommand, @unchecked Sen
             return
         }
 
+        // Resolve parallel limit (CHAOS-1446 Phase 2 + Lead Decision D1).
+        // Throws ValidationError on invalid CLI/env values — surface up-front
+        // so misconfiguration aborts before any builds start.
+        let parallelLimit = try ParallelLimitResolver.resolved(cli: projectFlags.parallel)
+
+        // Snapshot non-Sendable instance state into local lets so the parallel
+        // body closure does not capture mutable `self`. `noCache` and the
+        // logging args are immutable per invocation; `environmentVariables`
+        // and `self` (for the `buildService` extension call) are sufficient.
+        let noCacheSnapshot = self.noCache
+        let loggingArgs = self.logging.passThroughCommands()
+
+        // Capture `self` BY VALUE into a `let` so the parallel-body closure
+        // does not bind to the inout `self` of this `mutating run()`.
+        // ComposeBuild is `@unchecked Sendable` (line 31), so the value
+        // copy is safe to capture across the @Sendable closure boundary.
+        let buildContext = self
+
         print("Building services")
-        for (serviceName, service) in servicesToBuild {
-            _ = try await buildService(
+
+        // Fan out per service. Build is fail-fast — there is no
+        // `--ignore-build-failures` in compose-spec, so a single failure
+        // aborts the rest via withThrowingTaskGroup's automatic cancellation.
+        // The thrown ServiceTaggedError preserves which service failed.
+        let items = servicesToBuild.map { tup -> (key: String, value: Service) in
+            (key: tup.serviceName, value: tup.service)
+        }
+
+        _ = try await runBoundedThrowingFanOut(items: items, limit: parallelLimit) { serviceName, service in
+            // `service.build` was non-nil at filter time (servicesToBuild).
+            // Force-unwrap is safe here because the filter at servicesToBuild
+            // construction guaranteed it.
+            _ = try await buildContext.buildService(
                 service.build!,
                 for: service,
                 serviceName: serviceName,
                 environmentVariables: environmentVariables,
                 rebuild: true,
-                noCache: noCache,
-                passThroughCommands: logging.passThroughCommands()
+                noCache: noCacheSnapshot,
+                passThroughCommands: loggingArgs
             )
         }
         print("Build complete")

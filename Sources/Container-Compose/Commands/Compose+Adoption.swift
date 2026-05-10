@@ -71,6 +71,7 @@ extension ComposeUp {
         var decisions: [String: AdoptionDecision] = [:]
         let provider = ContainerClientEnvironment.current
 
+        let env = await loopState.snapshotEnvironment()
         for (serviceName, service) in services {
             let containerName = effectiveContainerName(
                 projectName: projectName,
@@ -100,15 +101,15 @@ extension ComposeUp {
             // the DNS-divergence lookup see the implicit attachment. The
             // implicit name is project-scoped and already canonical, so
             // raw==canonical for it.
-            var serviceNetworkCanonicalNames = serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose)
+            var serviceNetworkCanonicalNames = serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose, environment: env)
             if service.networks == nil,
                let implicit = self.implicitDefaultNetworkName,
                service.network_mode == nil {
                 serviceNetworkCanonicalNames[implicit] = implicit
             }
             let expectedNetworkNames = Set(serviceNetworkCanonicalNames.values)
-            let expectedPublishedPorts = expectedPublishedPortsForService(service)
-            let expectedEnvironment = expectedEnvironmentForService(service)
+            let expectedPublishedPorts = expectedPublishedPortsForService(service, environment: env)
+            let expectedEnvironment = await expectedEnvironmentForService(service)
             let expectedCommand = service.command
 
             // CHAOS-1496: precompute expected fingerprint values for the new
@@ -116,7 +117,7 @@ extension ComposeUp {
             // canonical form `LabelsArgs.fingerprintLabels` used at create
             // time, so a hash match implies byte-equal compose-spec content.
             let expectedImageLabel: String? = service.image.map {
-                resolveVariable($0, with: environmentVariables)
+                resolveVariable($0, with: env)
             }
             let expectedEntrypointHash = ComposeUp.SpecFingerprint.canonicalEntrypointHash(
                 entrypoint: service.entrypoint,
@@ -125,13 +126,13 @@ extension ComposeUp {
             // Use the (a)-only merge so the hash matches the label written at
             // create time. See `mergeServiceEnvForFingerprint` for why the
             // (b)-layer (containerIps rewrite) is intentionally excluded.
-            let expectedFingerprintEnv = mergeServiceEnvForFingerprint(service)
+            let expectedFingerprintEnv = mergeServiceEnvForFingerprint(service, environment: env)
             let expectedEnvHash: String? = expectedFingerprintEnv.isEmpty
                 ? nil
                 : ComposeUp.SpecFingerprint.canonicalEnvHash(expectedFingerprintEnv)
             let expectedPortsHash = ComposeUp.SpecFingerprint.canonicalPortsHash(
                 service.ports,
-                environmentVariables: environmentVariables
+                environmentVariables: env
             )
             let expectedNetworksHash = ComposeUp.SpecFingerprint.canonicalNetworksHash(
                 Array(expectedNetworkNames)
@@ -182,9 +183,10 @@ extension ComposeUp {
     internal func expectedNetworkNamesForService(
         _ service: Service,
         dockerCompose: DockerCompose?,
-        implicitDefaultNetwork: String? = nil
+        implicitDefaultNetwork: String? = nil,
+        environment: [String: String] = [:]
     ) -> Set<String> {
-        var names = Set(serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose).values)
+        var names = Set(serviceNetworkCanonicalNamesMap(service, dockerCompose: dockerCompose, environment: environment).values)
         if service.networks == nil,
            let implicit = implicitDefaultNetwork,
            service.network_mode == nil {
@@ -205,7 +207,8 @@ extension ComposeUp {
     /// the map with `[implicit: implicit]`).
     internal func serviceNetworkCanonicalNamesMap(
         _ service: Service,
-        dockerCompose: DockerCompose?
+        dockerCompose: DockerCompose?,
+        environment: [String: String]
     ) -> [String: String] {
         guard let serviceNetworks = service.networks else { return [:] }
         var map: [String: String] = [:]
@@ -213,7 +216,7 @@ extension ComposeUp {
             map[name] = resolveCanonicalNetworkName(
                 name,
                 dockerCompose: dockerCompose,
-                environmentVariables: environmentVariables
+                environmentVariables: environment
             )
         }
         return map
@@ -224,11 +227,11 @@ extension ComposeUp {
     /// that `canonicalPortSpec(_:)` produces from an apple/container `PublishPort`,
     /// so SET equality between expected and existing is meaningful. Returns an
     /// empty set when `service.ports` is nil.
-    private func expectedPublishedPortsForService(_ service: Service) -> Set<String> {
+    private func expectedPublishedPortsForService(_ service: Service, environment: [String: String]) -> Set<String> {
         guard let ports = service.ports else { return [] }
         var canonical: Set<String> = []
         for portSpec in ports {
-            let resolved = resolveVariable(portSpec, with: environmentVariables)
+            let resolved = resolveVariable(portSpec, with: environment)
             canonical.insert(composePortToRunArg(resolved))
         }
         return canonical
@@ -238,8 +241,8 @@ extension ComposeUp {
     /// through `mergeAndExpandServiceEnv` so the merge order matches what
     /// `assembleRunArgs` produces today. Empty result (no env declared) skips
     /// the divergence check.
-    private func expectedEnvironmentForService(_ service: Service) -> [String: String] {
-        return mergeAndExpandServiceEnv(service)
+    private func expectedEnvironmentForService(_ service: Service) async -> [String: String] {
+        return await mergeAndExpandServiceEnv(service)
     }
 
     /// CHAOS-1492: Walk the decision map and stop+remove any container

@@ -72,6 +72,26 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
     private let logHandles: [FileHandle]?
     private let containerEvents: [ContainerEvent]
 
+    /// CHAOS-1446 Phase 3: ids the recorder should treat as already-existing
+    /// containers (returns a synthetic stopped snapshot from `get(id:)`).
+    /// Tests that drive `compose start` / `compose stop` / `compose restart`
+    /// past the "container not found" early-return seed this set with the
+    /// expected service container names so the per-service start/stop logic
+    /// actually invokes `runner.run` / `provider.stop` and the resulting
+    /// argv / .stop entries become observable for ordering assertions.
+    private var stubbedRunningContainerIDs: Set<String> = []
+
+    /// CHAOS-1446 Phase 3 BLOCK fix: number of `stop(id:)` invocations
+    /// currently in-flight on this actor. Incremented on entry, decremented
+    /// via `defer` on exit. Mirrors the Phase 1 RecordingRunner pattern.
+    private var inFlightStops: Int = 0
+
+    /// CHAOS-1446 Phase 3 BLOCK fix: high-water mark of `inFlightStops`.
+    /// `parallelStopDiamondFanOut` asserts this is `>= 2` after running the
+    /// diamond fixture (UltraBrain Critical #8) — a serial implementation
+    /// would clamp this at 1 even with the ordering invariants holding.
+    private var peakStopConcurrency: Int = 0
+
     public init(
         imageReferences: [String] = [],
         logHandles: [FileHandle]? = nil,
@@ -129,6 +149,13 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         if let sidecarSnapshot = try? Self.makeRunningSidecarSnapshot(for: id) {
             return sidecarSnapshot
         }
+        // CHAOS-1446 Phase 3: synthesize a `.stopped` snapshot for ids
+        // explicitly stubbed via `stubRunningContainer(id:)`. Status `.stopped`
+        // works for both ComposeStop (which doesn't gate on status) and
+        // ComposeStart (which only starts containers that aren't .running).
+        if stubbedRunningContainerIDs.contains(id) {
+            return Self.makeStubStoppedSnapshot(for: id)
+        }
         // Throw to mimic "container not found". Call sites use `try?` to
         // coerce this to `nil`, which is the same code path as a real
         // not-found response from `ContainerClient.get(id:)`.
@@ -141,6 +168,25 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func stop(id: String, opts: ContainerStopOptions) async throws {
         entries.append(.stop(id: id))
+
+        // CHAOS-1446 Phase 3 BLOCK fix: track concurrency for the diamond
+        // fan-out assertion. Increment BEFORE the explicit `Task.sleep`
+        // below so racing stop(id:) calls observe each other's in-flight
+        // increments while the actor is suspended.
+        inFlightStops += 1
+        peakStopConcurrency = max(peakStopConcurrency, inFlightStops)
+        defer { inFlightStops -= 1 }
+
+        // Brief explicit suspension to enable actor reentrancy. Identical
+        // pattern + justification to Phase 2's RecordingRunner.run() change:
+        // a bare `Task.yield()` is sufficient for direct multi-task call
+        // patterns, but for fan-out scenarios where bodies arrive at the
+        // actor after intermediate awaits (here: provider.get → provider.stop
+        // chain), the yield-resume happens before the next stop(id:) lands
+        // in the mailbox. 100µs sleep keeps the actor occupied just long
+        // enough for late arrivals to land under reentrancy. Existing tests
+        // are unaffected (same observable contract, ~100µs slower per call).
+        try? await Task.sleep(nanoseconds: 100_000)
     }
 
     public func delete(id: String, force: Bool) async throws {
@@ -183,6 +229,17 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
 
     public func imageList() async throws -> [ClientImage] {
         entries.append(.imageList)
+
+        // CHAOS-1446 Phase 2: yield once before returning so concurrent
+        // imageList() invocations from racing pull/build bodies can interleave
+        // under actor reentrancy. Without this yield, the recorder serializes
+        // every imageList() to completion (no awaits inside), which staggers
+        // the downstream `runner.run(...)` calls in `pullImage` and prevents
+        // tests like `parallelPullsAchieveConcurrency` from observing
+        // peakConcurrency >= 2 at the runner. Mirrors the same reentrancy
+        // pattern Phase 1 added to `RecordingRunner.run(...)`.
+        await Task.yield()
+
         return imageReferences.map { reference in
             ClientImage(description: ImageDescription(
                 reference: reference,
@@ -234,6 +291,57 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
         entries
     }
 
+    // MARK: - Unordered / parallel-friendly assertions (CHAOS-1446)
+
+    /// Returns `true` iff the FIRST recorded entry matching
+    /// `firstPredicate` was recorded BEFORE the FIRST entry matching
+    /// `secondPredicate`. Returns `false` if either predicate is unmatched.
+    ///
+    /// Use this when parallel scheduling makes inter-service event ordering
+    /// non-deterministic but you still need to assert intra-service ordering
+    /// (e.g., "stop fires before delete for the SAME container, even if
+    /// another service's stop interleaves").
+    public func happensBefore(
+        _ firstPredicate: @Sendable (Entry) -> Bool,
+        _ secondPredicate: @Sendable (Entry) -> Bool
+    ) -> Bool {
+        guard let firstIdx = entries.firstIndex(where: firstPredicate),
+              let secondIdx = entries.firstIndex(where: secondPredicate) else {
+            return false
+        }
+        return firstIdx < secondIdx
+    }
+
+    /// All recorded entries matching `predicate`, in recorded (time) order.
+    /// Use when set/multiset assertions are sufficient and inter-event
+    /// ordering between matching events should be ignored by the caller.
+    public func unorderedEntries(matching predicate: @Sendable (Entry) -> Bool) -> [Entry] {
+        entries.filter(predicate)
+    }
+
+    /// CHAOS-1446 Phase 3: register `id` so subsequent `get(id:)` calls
+    /// return a synthetic `.stopped` ContainerSnapshot instead of throwing
+    /// "container not found". Used by `compose start` / `compose stop` /
+    /// `compose restart` ordering tests so the per-service start/stop logic
+    /// actually invokes `runner.run("container start")` /
+    /// `provider.stop(id:)` and the resulting argv / .stop entries become
+    /// observable for happens-before assertions.
+    public func stubRunningContainer(id: String) {
+        stubbedRunningContainerIDs.insert(id)
+    }
+
+    /// CHAOS-1446 Phase 3 BLOCK fix: high-water mark of concurrent
+    /// `stop(id:)` invocations on this actor. Used by
+    /// `parallelStopDiamondFanOut` to assert reverse-DAG fan-out actually
+    /// achieves parallelism (`>= expected`, loose bound to avoid scheduler-
+    /// timing flakes). `>= 1` whenever any stop was issued; `>= 2` requires
+    /// concurrent invocations and the actor's `Task.sleep` reentrancy point.
+    public func peakConcurrency() -> Int { peakStopConcurrency }
+
+    /// CHAOS-1446 Phase 3 BLOCK fix: number of `stop(id:)` invocations
+    /// currently in-flight on this actor. Equals 0 when the actor is idle.
+    public func currentInFlightStops() -> Int { inFlightStops }
+
     private static func publishArg(for port: RuntimePublishedPort) -> String {
         let hostPort = port.count > 1 ? "\(port.hostPort)-\(port.hostPort + port.count - 1)" : "\(port.hostPort)"
         let containerPort = port.count > 1 ? "\(port.containerPort)-\(port.containerPort + port.count - 1)" : "\(port.containerPort)"
@@ -281,6 +389,33 @@ public actor RecordingContainerClientProvider: ContainerClientProvider {
             configuration: configuration,
             status: .running,
             networks: [attachment]
+        )
+    }
+
+    /// CHAOS-1446 Phase 3: synthetic `.stopped` ContainerSnapshot for any
+    /// id stubbed via `stubRunningContainer(id:)`. Status `.stopped` lets
+    /// both ComposeStop (which doesn't gate on status) and ComposeStart
+    /// (which only starts containers that aren't `.running`) execute their
+    /// real per-service work, exposing `.stop` entries and `"container
+    /// start"` runner argvs that ordering tests can assert on.
+    private static func makeStubStoppedSnapshot(for id: String) -> ContainerSnapshot {
+        let descriptor = Descriptor(
+            mediaType: "application/vnd.oci.image.manifest.v1+json",
+            digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            size: 0
+        )
+        let image = ImageDescription(reference: "alpine:latest", descriptor: descriptor)
+        let process = ProcessConfiguration(
+            executable: "/bin/sh",
+            arguments: [],
+            environment: [],
+            workingDirectory: "/"
+        )
+        let configuration = ContainerConfiguration(id: id, image: image, process: process)
+        return ContainerSnapshot(
+            configuration: configuration,
+            status: .stopped,
+            networks: []
         )
     }
 }

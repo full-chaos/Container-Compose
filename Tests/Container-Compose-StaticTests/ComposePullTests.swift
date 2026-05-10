@@ -237,10 +237,19 @@ struct ComposePullTests {
             }
         }
 
+        // CHAOS-1446 Phase 2 follow-up deflake: `compose pull` is parallel,
+        // so the order in which `swiftAPI("ImagePull")` argvs land in the
+        // recorder is non-deterministic. The test's semantic intent is
+        // unchanged — `--include-deps api` MUST pull both `api` (the target)
+        // AND `db` (api's dependency), and MUST NOT pull `web` (unrelated).
+        // Set-equality captures all three constraints in one assertion: the
+        // set of recorded pulls equals exactly the expected dep+target set,
+        // proving each is present (= count) AND nothing extraneous slipped
+        // through (e.g., `web`).
         let pulledImages = await recorder.swiftAPIArgvs(named: "ImagePull").compactMap(\.first)
-        #expect(pulledImages == [
+        #expect(Set(pulledImages) == [
             "docker.io/library/postgres:16",
             "docker.io/example/api:latest",
-        ])
+        ], "--include-deps must pull the target + its deps and nothing else; got \(pulledImages)")
     }
 }

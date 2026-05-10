@@ -63,15 +63,29 @@ public struct ComposeRestart: AsyncParsableCommand, ComposeCommand {
             servicesArg: services
         )
 
-        // Phase 1: Stop in REVERSE topo-sort order (dependents first).
-        print("--- Stopping services ---")
-        let composeStop = ComposeStop()
-        try await composeStop.stopServices(resolvedServices.reversed(), projectName: projectName)
+        // CHAOS-1446 Phase 3: full-stop barrier before any start (UltraBrain
+        // HIGH #8). The `try await` between Phase 1 and Phase 2 IS the barrier
+        // — Phase 2 cannot begin until Phase 1's TaskGroup has fully drained,
+        // so no service is being restarted while another's dependency is
+        // still down. Forward-order input is preserved on both phases; the
+        // reverse-DAG for stop is computed inside ComposeStop.stopServices().
 
-        // Phase 2: Start in forward topo-sort order (dependencies first).
+        // Phase 1: stop ALL services in reverse-DAG order (parallel within
+        // dependency constraints). Returns only after every stop completes.
+        print("--- Stopping services ---")
+        // ComposeStop is bare-init'd here (its serial helpers don't read
+        // from `self`), so we don't pay ArgumentParser's parsed-properties tax.
+        let composeStop = ComposeStop()
+        try await composeStop.stopServices(resolvedServices, projectName: projectName)
+
+        // Phase 2: start ALL services in forward-DAG order (parallel within
+        // dependency constraints). ComposeStart is bare-init'd, so we MUST
+        // pass `cwd` explicitly — ComposeStart's `self.cwd` would crash on
+        // the unparsed @OptionGroup `process` access. Use ComposeRestart's
+        // own `cwd`, which IS parsed.
         print("--- Starting services ---")
         let composeStart = ComposeStart()
-        try await composeStart.startServices(resolvedServices, projectName: projectName)
+        try await composeStart.startServices(resolvedServices, projectName: projectName, cwd: cwd)
 
         print("--- Restart complete ---")
     }

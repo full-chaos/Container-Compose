@@ -24,7 +24,7 @@ struct RuntimeBuildPullTests {
 
     // MARK: - Pull
 
-    @Test("MockRuntime.pull emits started+completed per spec by default")
+    @Test("MockRuntime.pull emits started+completed per spec, regardless of inter-service order")
     func pull_default_startedCompletedPerSpec() async throws {
         let runtime = MockRuntime()
         let specs = [
@@ -36,15 +36,24 @@ struct RuntimeBuildPullTests {
         var events: [RuntimePullEvent] = []
         for await event in stream { events.append(event) }
 
+        // CHAOS-1446 / UltraBrain Critical #5: do not pin inter-service event
+        // order — a future parallel `Runtime.pull(specs:)` conformer would
+        // legitimately interleave events across services. We assert the
+        // INVARIANTS: total event count, multiset of (service, kind) pairs,
+        // and per-service intra-ordering (.started precedes .completed).
         #expect(events.count == 4)
-        #expect(events[0].kind == .started)
-        #expect(events[0].service == "web")
-        #expect(events[1].kind == .completed)
-        #expect(events[1].service == "web")
-        #expect(events[2].kind == .started)
-        #expect(events[2].service == "db")
-        #expect(events[3].kind == .completed)
-        #expect(events[3].service == "db")
+
+        let pairs = Set(events.map { ServiceKindPair(service: $0.service, kind: $0.kind) })
+        #expect(pairs == [
+            ServiceKindPair(service: "web", kind: .started),
+            ServiceKindPair(service: "web", kind: .completed),
+            ServiceKindPair(service: "db", kind: .started),
+            ServiceKindPair(service: "db", kind: .completed),
+        ])
+
+        // Intra-service ordering invariant (must hold even under parallel emission).
+        #expect(pullEventHappensBefore(events, service: "web", kind: .started, before: .completed))
+        #expect(pullEventHappensBefore(events, service: "db", kind: .started, before: .completed))
     }
 
     @Test("MockRuntime.pull emits failed when injection matches and stops on ignoreFailures=false")
@@ -67,7 +76,7 @@ struct RuntimeBuildPullTests {
         #expect(events[1].message == "registry unreachable")
     }
 
-    @Test("MockRuntime.pull continues past failure when ignoreFailures=true")
+    @Test("MockRuntime.pull continues past failure when ignoreFailures=true (set-equality on outcomes)")
     func pull_ignoreFailuresContinues() async throws {
         let runtime = MockRuntime()
         await runtime.injectPullFailure(reference: "nginx:1.27", message: "boom")
@@ -77,10 +86,31 @@ struct RuntimeBuildPullTests {
         ]
         let stream = try await runtime.pull(specs: specs, ignoreFailures: true)
 
-        var kinds: [RuntimePullEvent.Kind] = []
-        for await event in stream { kinds.append(event.kind) }
+        var events: [RuntimePullEvent] = []
+        for await event in stream { events.append(event) }
 
-        #expect(kinds == [.started, .failed, .started, .completed])
+        // CHAOS-1446 / UltraBrain Critical #5: assert the per-service outcomes
+        // by (service, kind) multiset rather than positional indices, so a
+        // future parallel emission ordering does not break the test. The
+        // intra-service `.started -> .failed/.completed` invariants are
+        // preserved separately via `pullEventHappensBefore`.
+        #expect(events.count == 4)
+
+        let pairs = Set(events.map { ServiceKindPair(service: $0.service, kind: $0.kind) })
+        #expect(pairs == [
+            ServiceKindPair(service: "web", kind: .started),
+            ServiceKindPair(service: "web", kind: .failed),
+            ServiceKindPair(service: "db", kind: .started),
+            ServiceKindPair(service: "db", kind: .completed),
+        ])
+
+        // The injected failure surface must propagate.
+        let webFailed = events.first { $0.service == "web" && $0.kind == .failed }
+        #expect(webFailed?.message == "boom")
+
+        // Per-service intra-ordering (must survive any inter-service shuffling).
+        #expect(pullEventHappensBefore(events, service: "web", kind: .started, before: .failed))
+        #expect(pullEventHappensBefore(events, service: "db", kind: .started, before: .completed))
     }
 
     @Test("MockRuntime.pull on empty specs finishes immediately with no events")
@@ -95,7 +125,7 @@ struct RuntimeBuildPullTests {
 
     // MARK: - Build
 
-    @Test("MockRuntime.build emits notSupported per spec by default")
+    @Test("MockRuntime.build emits notSupported per spec by default, regardless of inter-service order")
     func build_default_notSupported() async throws {
         let runtime = MockRuntime()
         let specs = [
@@ -107,10 +137,13 @@ struct RuntimeBuildPullTests {
         var events: [RuntimeBuildEvent] = []
         for await event in stream { events.append(event) }
 
+        // CHAOS-1446 / UltraBrain Critical #5: set-equality on (service, kind)
+        // pairs replaces strict positional asserts. A future parallel build
+        // conformer would legitimately interleave; the contract is just
+        // “one .notSupported per requested service”.
         #expect(events.count == 2)
         #expect(events.allSatisfy { $0.kind == .notSupported })
-        #expect(events[0].service == "web")
-        #expect(events[1].service == "db")
+        #expect(Set(events.map(\.service)) == ["web", "db"])
     }
 
     @Test("MockRuntime.build with injected successful outcome emits started+completed")
@@ -184,4 +217,33 @@ struct RuntimeBuildPullTests {
         #expect(event.kind == .notSupported)
         #expect(event.message == "build context unavailable")
     }
+}
+
+// MARK: - Helpers (CHAOS-1446)
+
+/// (service, kind) pair used as a Set element so test assertions can compare
+/// MULTISETS of pull/build outcomes without pinning inter-service ordering.
+/// Built here (not on the event types themselves) so the production types
+/// remain free of test-only conformances.
+fileprivate struct ServiceKindPair: Hashable {
+    let service: String
+    let kind: RuntimePullEvent.Kind
+}
+
+/// Returns `true` iff the FIRST event matching `(service, kind: first)`
+/// happens BEFORE the FIRST event matching `(service, kind: before)` in
+/// recorded order. Used to assert intra-service ordering invariants
+/// (e.g., `.started` precedes `.completed`/`.failed` for the same service)
+/// without constraining inter-service interleaving.
+fileprivate func pullEventHappensBefore(
+    _ events: [RuntimePullEvent],
+    service: String,
+    kind first: RuntimePullEvent.Kind,
+    before second: RuntimePullEvent.Kind
+) -> Bool {
+    guard let firstIdx = events.firstIndex(where: { $0.service == service && $0.kind == first }),
+          let secondIdx = events.firstIndex(where: { $0.service == service && $0.kind == second }) else {
+        return false
+    }
+    return firstIdx < secondIdx
 }

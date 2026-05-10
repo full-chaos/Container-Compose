@@ -20,10 +20,9 @@ import SystemPackage
 
 // Owns the named-volume preparation seam — runtime-registry idempotency,
 // legacy-fallback merge, and the .img block-image migration skip path. The
-// matching stored state (`preparedNamedVolumes`,
-// `existingNamedVolumeRegistryCache`, `existingNamedVolumeRegistryCacheLoaded`)
-// lives on `ComposeUp` itself because Swift extensions cannot add stored
-// properties.
+// The matching stored state now lives on the LoopState actor (see
+// Sources/Container-Compose/Commands/LoopState.swift), accessed through
+// ComposeUp.loopState.
 extension ComposeUp {
     internal static let testNamedVolumeSourceOverrideEnv = "CONTAINER_COMPOSE_TEST_NAMED_VOLUME_SOURCE"
 
@@ -142,7 +141,7 @@ extension ComposeUp {
 
     // MARK: - Runtime registration
 
-    internal mutating func prepareNamedVolumeSource(named volumeName: String, from dockerCompose: DockerCompose) async throws -> PreparedVolumeSource {
+    internal func prepareNamedVolumeSource(named volumeName: String, from dockerCompose: DockerCompose) async throws -> PreparedVolumeSource {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
         let volumeConfig = dockerCompose.volumes?[volumeName] ?? nil
@@ -152,7 +151,7 @@ extension ComposeUp {
         if driver != "local" {
             let volumePath = legacyVolumeFallbackPath(projectName: projectName, actualVolumeName: actualVolumeName)
             let volumeKey = "legacy:\(actualVolumeName)"
-            if preparedNamedVolumes.insert(volumeKey).inserted {
+            if await loopState.tryInsertPreparedKey(volumeKey) {
                 writeWarningToStandardError(
                     "Warning: named volume '\(actualVolumeName)' requests driver '\(driver)', which apple/container does not support for compose volume CRUD yet; using legacy hardlink fallback at '\(volumePath)'."
                 )
@@ -162,7 +161,7 @@ extension ComposeUp {
         }
 
         let volumeKey = "runtime:\(actualVolumeName)"
-        if preparedNamedVolumes.insert(volumeKey).inserted {
+        if await loopState.tryInsertPreparedKey(volumeKey) {
             if volumeConfig?.external?.isExternal == true {
                 do {
                     _ = try await RuntimeEnvironment.current.inspectVolume(name: actualVolumeName)
@@ -179,9 +178,9 @@ extension ComposeUp {
                     )
                 _ = try await Self.ensureNamedVolumeRegistered(
                     spec: spec,
-                    existing: existingNamedVolumeRegistryCache[actualVolumeName]
+                    existing: await loopState.cachedRuntimeVolume(name: actualVolumeName)
                 )
-                existingNamedVolumeRegistryCache[actualVolumeName] = RuntimeVolume(name: actualVolumeName, driver: spec.driver, labels: spec.labels)
+                await loopState.cacheRuntimeVolume(name: actualVolumeName, volume: RuntimeVolume(name: actualVolumeName, driver: spec.driver, labels: spec.labels))
             }
             try await migrateLegacyNamedVolumeDataIfNeeded(projectName: projectName, actualVolumeName: actualVolumeName)
         }
@@ -194,12 +193,12 @@ extension ComposeUp {
     /// subsequent calls within the same `up` are no-ops. If listing fails
     /// (e.g. backend unreachable), the cache is left empty and the create
     /// path will still attempt a create+catch-alreadyExists.
-    private mutating func ensureExistingVolumeRegistryCacheLoaded() async {
-        guard !existingNamedVolumeRegistryCacheLoaded else { return }
-        existingNamedVolumeRegistryCacheLoaded = true
+    private func ensureExistingVolumeRegistryCacheLoaded() async {
         do {
-            let listed = try await RuntimeEnvironment.current.listVolumes()
-            existingNamedVolumeRegistryCache = Dictionary(uniqueKeysWithValues: listed.map { ($0.name, $0) })
+            try await loopState.loadCacheOnce {
+                let listed = try await RuntimeEnvironment.current.listVolumes()
+                return Dictionary(uniqueKeysWithValues: listed.map { ($0.name, $0) })
+            }
         } catch {
             writeWarningToStandardError(
                 "Warning: could not list existing volumes from runtime; falling back to create-and-catch-alreadyExists. Error: \(error)"

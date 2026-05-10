@@ -160,8 +160,19 @@ extension ComposeCommand {
         resolvedServices = try Service.topoSortConfiguredServices(resolvedServices)
 
         if !servicesArg.isEmpty {
-            resolvedServices = resolvedServices.filter { serviceName, service in
-                servicesArg.contains(serviceName) || servicesArg.contains { service.dependedBy.contains($0) }
+            // CHAOS-1446 Phase 2 follow-up: read transitive dependents from a
+            // forward-edge inversion of `dependsOn.serviceNames` rather than
+            // `Service.dependedBy`. Per UltraBrain MEDIUM #2 + the precedent in
+            // DependencyGraph.swift, `topoSortConfiguredServices` discards the
+            // `dependedBy.append` mutation when a service is visited a second
+            // time (DFS early-return at L795 fires before the append at L803),
+            // so reading `dependedBy` here gave non-deterministic results
+            // depending on `DockerCompose.services` Dictionary hash order.
+            let requested = Set(servicesArg)
+            let reverseGraph = buildReverseDependencyGraph(services: resolvedServices)
+            resolvedServices = resolvedServices.filter { serviceName, _ in
+                requested.contains(serviceName)
+                    || (reverseGraph[serviceName] ?? []).contains(where: requested.contains)
             }
         }
 
