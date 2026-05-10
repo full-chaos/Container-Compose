@@ -1487,7 +1487,7 @@ struct ParallelOrchestrationTests {
     @Test("attachedModeParallelism — attached mode fan-out",
           .disabled("Attached mode calls waitForever() which uses an infinite AsyncStream that does not honor Task.cancel(). ComposeUp.run() never returns in attached mode, making the test surface untestable without a cancellation-aware wait replacement."))
     func attachedModeParallelism() async throws {
-        // TODO(CHAOS-1506): Once waitForever() is replaced with a
+        // TODO(CHAOS-1507): Once waitForever() is replaced with a
         // cancellation-aware equivalent (e.g. withTaskCancellationHandler
         // wrapping an AsyncStream that checks Task.isCancelled), this test
         // can:
