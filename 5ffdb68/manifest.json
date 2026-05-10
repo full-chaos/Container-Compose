@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1446-phase-4c-cleanup",
+  "commit": "5ffdb68079cfc1ee137e033c976abebc56517dea",
+  "short": "5ffdb68",
+  "target": "5ffdb68",
+  "message": "chore(test): correct CHAOS-1506 \u2192 CHAOS-1507 follow-up reference",
+  "published_at": "2026-05-10T16:36:17.711368+00:00"
+}
