@@ -1209,8 +1209,13 @@ struct ParallelOrchestrationTests {
                     argv: ["container", "run", "--detach", "--name", "\(projectName)-base", "postgres:16"]
                 )
                 _ = try await recorder.run(request, onStdout: nil, onStderr: nil)
-                await coordinator.publishMilestone(.started, for: "base")
+                // Record "base-started" BEFORE publishMilestone so dependents
+                // (gated on awaitMilestone) cannot resume and record their own
+                // -run events until base-started is already in the order.
+                // OrderRecorder is an actor so calls serialize; awaiters of the
+                // .started milestone necessarily observe base-started first.
                 await order.record("base-started")
+                await coordinator.publishMilestone(.started, for: "base")
             }
             // api — depends on base (.started)
             group.addTask {
@@ -1254,50 +1259,57 @@ struct ParallelOrchestrationTests {
 
     @Test("concurrentFailureExactlyOnceSidecarTeardown — failure catch drains coordinator before sidecar stop")
     func concurrentFailureExactlyOnceSidecarTeardown() async throws {
-        struct ImagePrepFailed: Error {}
         let coordinator = DependencyCoordinator()
         let recorder = RecordingRunner()
         let order = OrderRecorder()
         let projectName = "cc-test-fail-teardown-\(UUID().uuidString.prefix(8))"
         let sidecarName = "\(projectName)-compose-dns"
 
-        // Simulate Phase B with two services where one fails.
-        // After the group throws, the catch block must mirror
+        // Simulate the failure-path tear-down ordering contract from
         // ComposeUp.run() L344-372:
         //   1. dependencyCoordinator.cancelAll() — drain suspended waiters
         //   2. EmbeddedDNSSidecar.stop — sidecar teardown (stop + delete)
-        // No production code injection needed — the ordering contract is
-        // verified via the OrderRecorder and RecordingRunner's argv log.
-        do {
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                // good-svc: depends on bad-svc, suspends on coordinator
-                group.addTask {
-                    try await coordinator.awaitMilestone(for: "bad-svc", milestone: .started)
-                }
-                // bad-svc: image prep fails immediately
-                group.addTask {
-                    throw ImagePrepFailed()
-                }
-                try await group.waitForAll()
-            }
-            Issue.record("Expected group to throw")
-        } catch {
-            // Mirror ComposeUp.run()'s catch ordering:
-            // Step 1: cancelAll (drain depends_on waiters)
-            await order.record("cancelAll")
-            await coordinator.cancelAll()
-
-            // Step 2: sidecar stop (best-effort teardown)
-            await order.record("sidecar-stop")
-            _ = try? await recorder.run(
-                RunRequest(kind: .awaitOnly, argv: ["container", "stop", sidecarName]),
-                onStdout: nil, onStderr: nil
-            )
-            _ = try? await recorder.run(
-                RunRequest(kind: .awaitOnly, argv: ["container", "delete", sidecarName]),
-                onStdout: nil, onStderr: nil
-            )
+        //
+        // We register a real suspended waiter via a detached `Task { ... }`
+        // (mirrors the pattern at L1001-1029, `coordinatorCancelAllDrainsAllWaiters`)
+        // — `withThrowingTaskGroup` does NOT propagate cancellation through
+        // an `awaitMilestone` continuation cleanly (the group's structured
+        // wait deadlocks on the suspended actor continuation), so the
+        // detached-task pattern is the canonical way to assert the drain.
+        let waiterTask = Task<Void, Error> {
+            try await coordinator.awaitMilestone(for: "bad-svc", milestone: .started)
         }
+        // Yield until the waiter is actually queued on the coordinator before
+        // simulating the catch-path tear-down — otherwise cancelAll could fire
+        // before the waiter registers and the test would race.
+        while await coordinator.currentWaiterCount() < 1 {
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+
+        // Simulate the catch block from ComposeUp.run().
+        // Step 1: cancelAll (drain depends_on waiters)
+        await order.record("cancelAll")
+        await coordinator.cancelAll()
+
+        // Step 2: sidecar stop (best-effort teardown)
+        await order.record("sidecar-stop")
+        _ = try? await recorder.run(
+            RunRequest(kind: .awaitOnly, argv: ["container", "stop", sidecarName]),
+            onStdout: nil, onStderr: nil
+        )
+        _ = try? await recorder.run(
+            RunRequest(kind: .awaitOnly, argv: ["container", "delete", sidecarName]),
+            onStdout: nil, onStderr: nil
+        )
+
+        // Verify the suspended waiter was drained with CancellationError.
+        var waiterError: Error?
+        do {
+            try await waiterTask.value
+        } catch {
+            waiterError = error
+        }
+        #expect(waiterError is CancellationError, "suspended awaitMilestone waiter must throw CancellationError after cancelAll; got \(String(describing: waiterError))")
 
         // (a) cancelAll MUST fire before sidecar stop.
         let events = await order.snapshot()
