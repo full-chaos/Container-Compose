@@ -1,0 +1,8 @@
+{
+  "branch": "feature/chaos-1446-parallel-up",
+  "commit": "fe3618bf69464fa538ff4515996df08f53675ba5",
+  "short": "fe3618b",
+  "target": "fe3618b",
+  "message": "CHAOS-1446: Phase 4B \u2014 parallel compose up via withThrowingTaskGroup",
+  "published_at": "2026-05-10T12:06:34.408929+00:00"
+}
