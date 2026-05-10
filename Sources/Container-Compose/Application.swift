@@ -21,7 +21,18 @@ public struct Main: AsyncParsableCommand {
     private static let commandName: String = "container-compose"
     public static let version: String = "0.11.0"
     public static var versionString: String {
-        "\(commandName) version \(version)"
+        // CHAOS-1446 follow-on: append `+<sha>` (and a `-<kind>` suffix when not a
+        // tagged release build) so non-release binaries identify the exact commit
+        // they were built from. See `BuildInfo.swift` for the overwrite contract
+        // (Makefile target `version-stamp`).
+        var suffix = ""
+        if BuildInfo.buildKind != "release" {
+            suffix += "-\(BuildInfo.buildKind)"
+        }
+        if !BuildInfo.gitCommit.isEmpty {
+            suffix += "+\(BuildInfo.gitCommit)"
+        }
+        return "\(commandName) version \(version)\(suffix)"
     }
     public static let configuration: CommandConfiguration = .init(
         commandName: Self.commandName,
