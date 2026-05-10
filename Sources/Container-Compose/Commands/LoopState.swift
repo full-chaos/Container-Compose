@@ -27,6 +27,13 @@ public actor LoopState {
     private(set) var existingNamedVolumeRegistryCache: [String: RuntimeVolume] = [:]
     private var existingNamedVolumeRegistryCacheLoaded: Bool = false
 
+    /// Project-level environment baseline (.env file + any process-derived
+    /// overlays loaded at the top of `ComposeUp.run()`). Lives on the actor
+    /// so the parallel service-start TaskGroup cannot race on
+    /// `updateEnvironmentForServiceIP`'s peer-name → IP rewrites.
+    /// CHAOS-1446 Phase 4B; mirrors the `containerIps` field's invariants.
+    private(set) var environmentVariables: [String: String] = [:]
+
     func assignColor(for serviceName: String, available: Set<NamedColor>) -> NamedColor {
         var serviceColor: NamedColor = available.randomElement()!
 
@@ -77,5 +84,39 @@ public actor LoopState {
         let result = try await loader()
         existingNamedVolumeRegistryCache = result
         existingNamedVolumeRegistryCacheLoaded = true
+    }
+
+    // MARK: - environmentVariables (CHAOS-1446 Phase 4B)
+
+    /// Replace the project-level environment baseline. Called once near the
+    /// top of `ComposeUp.run()` after `loadEnvFile(...)` returns.
+    func setEnvironment(_ env: [String: String]) {
+        environmentVariables = env
+    }
+
+    /// Returns a value snapshot of the current project-level environment.
+    /// Callers that read `environmentVariables` repeatedly inside a single
+    /// per-service code path SHOULD capture-once with this snapshot and
+    /// thread the local copy down — the actor's read+rewrite race window
+    /// is closed only when each reader uses a stable snapshot.
+    func snapshotEnvironment() -> [String: String] {
+        environmentVariables
+    }
+
+    /// CHAOS-1446 Phase 4B: rewrite every entry whose VALUE equals
+    /// `serviceName` to point at the resolved IP (or leave unchanged when
+    /// IP resolution failed). Mirrors the inline mutation that
+    /// `ComposeUp.updateEnvironmentWithServiceIP` performed pre-Phase 4B,
+    /// but routed through the actor so concurrent service-start tasks can
+    /// no longer race on the dictionary.
+    ///
+    /// `ip == nil` is the error-tolerant path: we leave the placeholder
+    /// VALUE alone so the env var still resolves to a string (the service
+    /// name itself) — same observable behaviour as the pre-1446 inline
+    /// `self.environmentVariables[key] = ip ?? value`.
+    func updateEnvironmentForServiceIP(serviceName: String, ip: String?) {
+        for (key, value) in environmentVariables where value == serviceName {
+            environmentVariables[key] = ip ?? value
+        }
     }
 }

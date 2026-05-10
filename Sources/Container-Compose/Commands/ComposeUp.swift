@@ -83,9 +83,6 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     private var fileManager: FileManager { FileManager.default }
     var projectName: String?
     /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
-    /// extension can read it for the divergence-check expected-value computations.
-    var environmentVariables: [String: String] = [:]
-    /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
     /// extension can read it for DNS-divergence checks. Mutated only from inside
     /// `ComposeUp.run()` per the existing CHAOS-1490 lifecycle contract.
     var dnsSidecar: SidecarHandle?
@@ -138,7 +135,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         try dockerCompose.validate()
 
         // Load environment variables from .env file
-        environmentVariables = loadEnvFile(path: envFilePath)
+        await loopState.setEnvironment(loadEnvFile(path: envFilePath))
 
         // Handle 'version' field
         if let version = dockerCompose.version {
@@ -250,13 +247,39 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             }
 
             // Process each service defined in the docker-compose.yml
-            print("\n--- Processing Services ---")
+            // CHAOS-1446 Phase 4B: parallel service-start orchestration via
+            // `withThrowingTaskGroup`. Bound by `--parallel` (default 16). Per-service
+            // dependency ordering is handled inside `configService` by the existing
+            // polling-based `waitForServiceDependencies` — services with no
+            // depends_on launch immediately; dependents poll until their deps reach
+            // their declared condition. DependencyCoordinator-driven in-memory
+            // milestone hooks are a Phase 4C optimization.
+            let parallelLimit = try ParallelLimitResolver.resolved(
+                cli: projectFlags.parallel,
+                env: ProcessInfo.processInfo.environment
+            )
 
+            print("\n--- Processing Services (parallel: \(parallelLimit)) ---")
             print(services.map(\.serviceName))
-            for (serviceName, service) in services {
-                try await configService(service, serviceName: serviceName, from: dockerCompose)
+
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                let semaphore = AsyncSemaphore(value: parallelLimit)
+                for (serviceName, service) in services {
+                    group.addTask { [self] in
+                        try await semaphore.acquire()
+                        defer { Task { await semaphore.release() } }
+                        try await configService(service, serviceName: serviceName, from: dockerCompose)
+                    }
+                }
+                try await group.waitForAll()
             }
         } catch {
+            // CHAOS-1446 Phase 4B: drain the DNS zone coordinator before the
+            // sidecar teardown so any in-flight `publish(record:)` from a Phase 4B
+            // child task observes the closed flag and throws upstream rather than
+            // silently writing a stale zone after the sidecar is gone (CR-6).
+            await dnsCoordinator?.close()
+
             // Best-effort sidecar teardown. Read `self.dnsSidecar` at catch time
             // (not via prior capture) so we see whatever value `start(...)` left
             // before throwing. `EmbeddedDNSSidecar.stop` is idempotent on the
@@ -362,11 +385,12 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 throw ComposeError.imageNotFound(serviceName)
             }
 
+            let env = await remoteEnvironment(for: service)
             let config = RuntimeCreateConfiguration(
                 imageReference: Self.qualifyImageReference(image),
                 cpus: Int(service.cpus_top ?? 1),
                 hostname: service.hostname,
-                environment: remoteEnvironment(for: service),
+                environment: env,
                 command: service.command ?? [],
                 workingDirectory: service.working_dir,
                 publishedPorts: remotePublishedPorts(for: service),
@@ -383,8 +407,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
     }
 
-    private func remoteEnvironment(for service: Service) -> [String] {
-        var merged = environmentVariables
+    private func remoteEnvironment(for service: Service) async -> [String] {
+        var merged = await loopState.snapshotEnvironment()
         for (key, value) in service.environment ?? [:] {
             merged[key] = value
         }
@@ -504,12 +528,10 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     // MARK: Compose Top Level Functions
 
-    private mutating func updateEnvironmentWithServiceIP(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
+    private func updateEnvironmentWithServiceIP(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
         let ip = try await getIPForRunningService(serviceName, explicitContainerName: explicitContainerName)
         await loopState.setIP(serviceName: serviceName, ip: ip)
-        for (key, value) in environmentVariables.map({ ($0, $1) }) where value == serviceName {
-            self.environmentVariables[key] = ip ?? value
-        }
+        await loopState.updateEnvironmentForServiceIP(serviceName: serviceName, ip: ip)
         return ip
     }
 
@@ -701,7 +723,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     }
 
     // MARK: Compose Service Level Functions
-    private mutating func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
+    private func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
         try await waitForServiceDependencies(service, serviceName: serviceName, from: dockerCompose)
@@ -812,13 +834,14 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     /// Resolves the image tag for a service: builds it if `build:` is set,
     /// pulls it if only `image:` is set, throws if neither is configured.
-    private mutating func resolveServiceImage(_ service: Service, serviceName: String) async throws -> String {
+    private func resolveServiceImage(_ service: Service, serviceName: String) async throws -> String {
         if let buildConfig = service.build {
+            let env = await loopState.snapshotEnvironment()
             return try await buildService(
                 buildConfig,
                 for: service,
                 serviceName: serviceName,
-                environmentVariables: environmentVariables,
+                environmentVariables: env,
                 rebuild: rebuild,
                 noCache: noCache
             )
@@ -839,7 +862,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     /// Assembles the full `container run` argv: volumes, merged env, the
     /// per-concern Compose+Args*.swift builders, and the image+entrypoint tail.
-    private mutating func assembleRunArgs(
+    private func assembleRunArgs(
         service: Service,
         serviceName: String,
         containerName: String,
@@ -859,7 +882,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             }
         }
 
-        let combinedEnv = await mergeAndExpandServiceEnvUsingLoopState(service)
+        let combinedEnv = await mergeAndExpandServiceEnv(service)
         for (key, value) in combinedEnv {
             runCommandArgs.append(contentsOf: ["-e", "\(key)=\(value)"])
         }
@@ -882,7 +905,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         // merge. NOT the same as `combinedEnv` above (which has the (b)
         // containerIps rewrite applied) — see `mergeServiceEnvForFingerprint`
         // for the rationale.
-        let fingerprintEnv = mergeServiceEnvForFingerprint(service)
+        let env = await loopState.snapshotEnvironment()
+        let fingerprintEnv = mergeServiceEnvForFingerprint(service, environment: env)
 
         let ctx = ArgsContext(
             service: service,
@@ -890,7 +914,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             projectName: projectName,
             containerName: containerName,
             detach: detach,
-            environmentVariables: environmentVariables,
+            environmentVariables: env,
             dockerCompose: dockerCompose,
             composeFilename: composeFilename,
             dnsSidecar: dnsSidecar,
@@ -940,9 +964,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     ///
     /// `internal` so `Compose+Adoption.swift` can reuse the same merge for
     /// the new `envHashDivergence` label-primary check.
-    func mergeServiceEnvForFingerprint(_ service: Service) -> [String: String] {
+    func mergeServiceEnvForFingerprint(_ service: Service, environment: [String: String]) -> [String: String] {
         var combinedEnv = mergeServiceEnvironment(
-            baseline: environmentVariables,
+            baseline: environment,
             serviceEnvFile: service.env_file,
             serviceEnvironment: service.environment,
             projectDirectory: effectiveProjectDirectory
@@ -965,22 +989,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// + a final containerIps rewrite (the (b) layer) so the fingerprint
     /// label scheme can hash the (a) layer in isolation. Argv emission of
     /// `-e KEY=VALUE` continues to use the full form below.
-    func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
-        mergeAndExpandServiceEnv(service, resolvedIPs: [:])
-    }
-
-    private func mergeAndExpandServiceEnv(_ service: Service, resolvedIPs: [String: String]) -> [String: String] {
-        var combinedEnv = mergeServiceEnvForFingerprint(service)
-
-        combinedEnv = combinedEnv.mapValues({ value in
-            resolvedIPs[value] ?? value
-        })
-
-        return combinedEnv
-    }
-
-    private func mergeAndExpandServiceEnvUsingLoopState(_ service: Service) async -> [String: String] {
-        let combinedEnv = mergeServiceEnvForFingerprint(service)
+    func mergeAndExpandServiceEnv(_ service: Service) async -> [String: String] {
+        let env = await loopState.snapshotEnvironment()
+        let combinedEnv = mergeServiceEnvForFingerprint(service, environment: env)
 
         var rewrittenEnv: [String: String] = [:]
         for (key, value) in combinedEnv {
@@ -1019,7 +1030,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// Picks a console color for the service and dispatches the streaming
     /// `container run` Task. The Task is fire-and-forget; readiness/IP are
     /// polled by the caller via `waitUntilServiceIsRunning`.
-    private mutating func launchService(serviceName: String, runCommandArgs: [String]) async {
+    private func launchService(serviceName: String, runCommandArgs: [String]) async {
         let serviceColor = await loopState.assignColor(
             for: serviceName,
             available: Self.availableContainerConsoleColors
@@ -1053,8 +1064,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     }
 
 
-    private mutating func configVolume(_ volume: String, from dockerCompose: DockerCompose) async throws -> [String] {
-        let resolvedVolume = resolveVariable(volume, with: environmentVariables)
+    private func configVolume(_ volume: String, from dockerCompose: DockerCompose) async throws -> [String] {
+        let env = await loopState.snapshotEnvironment()
+        let resolvedVolume = resolveVariable(volume, with: env)
 
         var runCommandArgs: [String] = []
 

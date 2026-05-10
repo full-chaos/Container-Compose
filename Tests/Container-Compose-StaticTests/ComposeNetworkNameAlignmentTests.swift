@@ -248,8 +248,7 @@ struct ComposeNetworkNameAlignmentTests {
         // Site C — divergence-read SET
         var cmd = try ComposeUp.parse([])
         cmd.projectName = "cc-test-1495-c1"
-        cmd.environmentVariables = env
-        let names = cmd.expectedNetworkNamesForService(svc, dockerCompose: cc)
+        let names = cmd.expectedNetworkNamesForService(svc, dockerCompose: cc, environment: env)
         #expect(names == Set(["default-net"]))
 
         // Site D regression — stale label IP MUST be detected
@@ -258,7 +257,7 @@ struct ComposeNetworkNameAlignmentTests {
             imageReference: "docker.io/library/alpine:latest",
             labels: ["compose.dns.resolvers.default-net": "10.0.0.99"] // pre-drift IP
         )
-        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc)
+        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc, environment: env)
         #expect(canonicalMap == ["${PROJECT_NET}": "default-net"])
         let reason = ComposeUp.specDivergenceReason(
             existing: stale,
@@ -351,7 +350,7 @@ struct ComposeNetworkNameAlignmentTests {
             imageReference: "docker.io/library/alpine:latest",
             labels: ["compose.dns.resolvers.bar": "10.0.0.99"]
         )
-        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc)
+        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc, environment: [:])
         #expect(canonicalMap == ["foo": "bar"])
         let reason = ComposeUp.specDivergenceReason(
             existing: stale,
@@ -435,7 +434,7 @@ struct ComposeNetworkNameAlignmentTests {
             existing: stale,
             expected: svc,
             expectedSidecarIPs: ["foo": sidecarIP],
-            serviceNetworkCanonicalNames: cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc)
+            serviceNetworkCanonicalNames: cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc, environment: [:])
         )
         #expect(reason != nil)
         #expect(reason?.contains("'foo'") == true)
@@ -479,7 +478,7 @@ struct ComposeNetworkNameAlignmentTests {
             imageReference: "docker.io/library/alpine:latest",
             labels: ["compose.dns.resolvers.bar": "10.0.0.99"]
         )
-        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc)
+        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc, environment: [:])
         #expect(canonicalMap == ["foo": "bar"])
         let reason = ComposeUp.specDivergenceReason(
             existing: stale,
@@ -545,7 +544,7 @@ struct ComposeNetworkNameAlignmentTests {
             imageReference: "docker.io/library/alpine:latest",
             labels: ["compose.dns.resolvers.bar": "10.0.0.99"]
         )
-        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc)
+        let canonicalMap = cmd.serviceNetworkCanonicalNamesMap(svc, dockerCompose: cc, environment: [:])
         #expect(canonicalMap == ["foo": "bar"])
         let reason = ComposeUp.specDivergenceReason(
             existing: stale,

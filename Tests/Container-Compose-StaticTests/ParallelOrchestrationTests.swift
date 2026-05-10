@@ -50,6 +50,45 @@ fileprivate actor ConcurrencyMeter {
     func total() -> Int { totalEntries }
 }
 
+// MARK: - CHAOS-1446 Phase 4C deferred tests
+//
+// The following parallelism-validation tests for `compose up` are deferred
+// from Phase 4B (8079203 / Phase 4A baseline + this commit) to Phase 4C, when
+// `DependencyCoordinator` in-memory milestone hooks replace the polling-based
+// dependency wait. Phase 4B uses `withThrowingTaskGroup` + `AsyncSemaphore`
+// over the existing `configService` body, so depends_on ordering is still
+// served by the polling fallback in `Compose+Wait.swift` — sufficient for
+// correctness today, sub-optimal for latency.
+//
+// TODO(CHAOS-1446 Phase 4C): composeUpStartFanOutObservesPeakConcurrency
+//   Diamond fixture (base ← api, worker). Drive ComposeUp through
+//   RecordingContainerClientProvider with a stalling RecordingRunner; assert
+//   peakConcurrency >= 2 across api+worker `container run` calls and that
+//   both run AFTER base reaches the running state.
+//
+// TODO(CHAOS-1446 Phase 4C): concurrentFailureExactlyOnceSidecarTeardown
+//   Two-service fixture where one fails image prep. Assert
+//   EmbeddedDNSSidecar.stop is invoked exactly once during the catch path,
+//   regardless of which child task failed first.
+//
+// TODO(CHAOS-1446 Phase 4C): adoptedServiceNilIPDoesNotDeadlock
+//   Adoption fixture where an upstream service is `.adopt`. Assert the
+//   dependent service makes progress and the up call completes without
+//   hitting the 60s waitForCondition timeout.
+//
+// TODO(CHAOS-1446 Phase 4C): perEdgeDependsOnConditions
+//   Service A depends_on B (.healthy) and C (.started). Assert A only
+//   launches once B is healthy AND C is started, not before.
+//
+// TODO(CHAOS-1446 Phase 4C): optionalDepWarningPreservesEdgeSemantics
+//   `depends_on: { foo: { required: false } }` where foo fails. Assert
+//   warning is printed and the dependent service still launches.
+//
+// TODO(CHAOS-1446 Phase 4C): attachedModeParallelism
+//   Attached-mode (no --detach): ensure parallel service streaming works
+//   without garbling output. May require .disabled with comment if the
+//   polling-based wait masks the test signal under attached mode.
+
 @Suite("ParallelOrchestration")
 struct ParallelOrchestrationTests {
 

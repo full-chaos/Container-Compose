@@ -141,7 +141,7 @@ extension ComposeUp {
 
     // MARK: - Runtime registration
 
-    internal mutating func prepareNamedVolumeSource(named volumeName: String, from dockerCompose: DockerCompose) async throws -> PreparedVolumeSource {
+    internal func prepareNamedVolumeSource(named volumeName: String, from dockerCompose: DockerCompose) async throws -> PreparedVolumeSource {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
         let volumeConfig = dockerCompose.volumes?[volumeName] ?? nil
@@ -193,7 +193,7 @@ extension ComposeUp {
     /// subsequent calls within the same `up` are no-ops. If listing fails
     /// (e.g. backend unreachable), the cache is left empty and the create
     /// path will still attempt a create+catch-alreadyExists.
-    private mutating func ensureExistingVolumeRegistryCacheLoaded() async {
+    private func ensureExistingVolumeRegistryCacheLoaded() async {
         do {
             try await loopState.loadCacheOnce {
                 let listed = try await RuntimeEnvironment.current.listVolumes()
