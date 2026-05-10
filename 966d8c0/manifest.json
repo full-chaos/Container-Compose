@@ -1,0 +1,8 @@
+{
+  "branch": "chore-make-test-json-fix",
+  "commit": "966d8c0d3de368537f9127435d750be1c5d9d9dd",
+  "short": "966d8c0",
+  "target": "966d8c0",
+  "message": "chore(ci): fail loudly when test filter matches < 1500 tests",
+  "published_at": "2026-05-10T19:37:37.800440+00:00"
+}
