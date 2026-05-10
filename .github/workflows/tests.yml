@@ -55,9 +55,21 @@ jobs:
           - suite: Static
             target: Container_Compose_StaticTests
             extra_args: "--parallel"
+            # Silent-skip guard (CHAOS-1507 follow-up). Swift 6.3.1 normalizes
+            # target-name dashes to underscores in the filter grammar; a typo or
+            # regression to the dashed form `Container-Compose-StaticTests`
+            # silently matches zero tests and exits 0. Fail loudly if fewer
+            # than `min_tests` ran. Floor chosen well below the current 1806
+            # so additions/removals don't trigger noise.
+            min_tests: 1500
           - suite: Dynamic
             target: Container_Compose_DynamicTests
             extra_args: ""
+            # CI runners do not ship apple/container, so every dynamic test
+            # self-skips via `.enabled(if: RuntimeAvailability.isAvailable())`.
+            # Swift Testing reports the run as `0 tests`. No floor is
+            # enforceable here; we still build the target to catch compile drift.
+            min_tests: 0
 
     steps:
     - name: Checkout code
@@ -88,7 +100,22 @@ jobs:
       run: swift build --build-tests
 
     - name: Run ${{ matrix.suite }} tests
-      run: swift test --filter "${{ matrix.target }}" ${{ matrix.extra_args }}
+      shell: bash
+      run: |
+        set -o pipefail
+        log_file="test-output-${{ matrix.suite }}.log"
+        swift test --filter "${{ matrix.target }}" ${{ matrix.extra_args }} 2>&1 | tee "$log_file"
+        test_exit=${PIPESTATUS[0]}
+        # Swift Testing prints e.g. `Test run with 1806 tests in 151 suites passed`.
+        # XCTest prints e.g. `Executed N tests`. Capture either form.
+        count=$(grep -oE 'Test run with [0-9]+ tests|Executed [0-9]+ tests' "$log_file" | grep -oE '[0-9]+' | tail -1 || true)
+        count=${count:-0}
+        echo "::notice::Suite ${{ matrix.suite }} executed $count tests (min ${{ matrix.min_tests }})"
+        if [ "$count" -lt "${{ matrix.min_tests }}" ]; then
+          echo "::error::Filter '${{ matrix.target }}' executed $count tests (expected >= ${{ matrix.min_tests }}). Did the Swift Testing target-name normalization change, or did the filter typo into a zero-match form?"
+          exit 2
+        fi
+        exit $test_exit
 
     - name: Upload test artifacts on failure
       if: failure()

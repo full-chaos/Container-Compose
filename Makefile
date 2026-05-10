@@ -91,7 +91,19 @@ test:
 # ComposeUp block-image migration guard, ShutdownWatchdog). Under --parallel
 # they race on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
 test-json:
-	swift test --filter Container_Compose_StaticTests --no-parallel
+	@set -o pipefail; \
+	mkdir -p .build; \
+	log_file=.build/test-json.log; \
+	swift test --filter Container_Compose_StaticTests --no-parallel 2>&1 | tee "$$log_file"; \
+	test_exit=$$?; \
+	count=$$(grep -oE 'Test run with [0-9]+ tests|Executed [0-9]+ tests' "$$log_file" | grep -oE '[0-9]+' | tail -1 || true); \
+	count=$${count:-0}; \
+	echo "test-json: executed $$count tests"; \
+	if [ "$$count" -lt 1500 ]; then \
+		echo "ERROR: filter executed only $$count tests (expected >= 1500). Did the Swift Testing target-name normalization change?"; \
+		exit 2; \
+	fi; \
+	exit $$test_exit
 
 # Regenerate coverage.json from the inline JSON in coverage.html.
 coverage:

@@ -409,6 +409,12 @@ automation) is parsing results. From the [Makefile](./Makefile):
   race on the shared FD and `readDataToEndOfFile()` hangs indefinitely — do
   not re-introduce `--parallel` to this target.
 - Exit code is the plain `swift test` exit code (0 = pass, non-zero = fail).
+- **Silent-skip guard.** Both `make test-json` and the CI workflow assert that
+  the static suite executes **>= 1500 tests** (current count: ~1806). If the
+  filter typo'd back to a zero-match form (e.g. the dashed `Container-Compose-StaticTests`)
+  the guard prints an `ERROR: filter executed only N tests` message and exits
+  2 — defending against the same footgun that caused CI to be a silent no-op
+  between the Swift 6.3.1 upgrade and the CHAOS-1507 follow-up.
 
 Previously, `VolumeMountIntegrationTests` could leak real Docker Hub pulls when its environment wraps missed `RunnerEnvironment.$current`. Fixed by wrapping `RecordingRunner()` in every test. All test `projectName` values are now prefixed `cc-test-` (e.g. `cc-test-vol-up-<uuid>`) to make test-originated container names unambiguous. When sweeping this convention to other static-suite test files, use the same `cc-test-` prefix. Leaving this note as a defensive reminder.
 
