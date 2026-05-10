@@ -24,3 +24,4 @@ coverage.json
 # The CI workflow regenerates this from the canonical coverage.html at repo root.
 /docs/coverage.html
 .sisyphus/run**/**
+.sisyphus/plans/**
