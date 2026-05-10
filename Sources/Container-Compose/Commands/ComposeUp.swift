@@ -100,6 +100,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     var implicitDefaultNetworkName: String?
     var loopState: LoopState = LoopState()
     private var dnsCoordinator: DNSZoneCoordinator?
+    /// CHAOS-1505: stored so the outer catch block can call `cancelAll()` to
+    /// drain suspended depends_on waiters before DNS / sidecar teardown.
+    private var dependencyCoordinator: DependencyCoordinator?
 
     /// CHAOS-1492: per-service adoption decisions, populated by
     /// `resolveAdoption(_:)` at the top of `run()`. Consulted by
@@ -247,33 +250,102 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             }
 
             // Process each service defined in the docker-compose.yml
-            // CHAOS-1446 Phase 4B: parallel service-start orchestration via
-            // `withThrowingTaskGroup`. Bound by `--parallel` (default 16). Per-service
-            // dependency ordering is handled inside `configService` by the existing
-            // polling-based `waitForServiceDependencies` — services with no
-            // depends_on launch immediately; dependents poll until their deps reach
-            // their declared condition. DependencyCoordinator-driven in-memory
-            // milestone hooks are a Phase 4C optimization.
+            // CHAOS-1446 Phase 4C: two-phase parallel orchestration.
+            //
+            // Phase A — image preparation via `runBoundedThrowingFanOut`.
+            // Pulls or builds every service's image up-front, bounded by
+            // `--parallel`. No depends_on ordering here — images are
+            // independent of each other.
+            //
+            // Phase B — service start via `withThrowingTaskGroup` +
+            // `AsyncSemaphore.withPermit`. By the time Phase B starts,
+            // Phase A image preparation has already completed, so
+            // `resolveServiceImage` inside `configServiceStart` short-circuits.
+            // Per-service dependency ordering uses DependencyCoordinator
+            // milestone hooks (CHAOS-1505) — each child task awaits its
+            // declared depends_on edges via awaitMilestone before calling
+            // configServiceStart, then publishes .started after
+            // configServiceStart returns, replacing the prior polling-based
+            // waitForServiceDependencies with sub-polling-interval event-
+            // driven waits. CHAOS-1502: switched to `semaphore.withPermit`
+            // to close the brief stale-permit window the prior
+            // `defer { Task { await semaphore.release() } }` variant exposed.
             let parallelLimit = try ParallelLimitResolver.resolved(
                 cli: projectFlags.parallel,
                 env: ProcessInfo.processInfo.environment
             )
+            let upCtx = self
 
+            // --- Phase A: Preparing Images ---
+            print("\n--- Preparing Images ---")
+            let imagePrepItems = services.map { (key: $0.serviceName, value: $0.service) }
+            _ = try await runBoundedThrowingFanOut(items: imagePrepItems, limit: parallelLimit) { name, service in
+                try await upCtx.prepareImage(for: service, serviceName: name)
+            }
+            print("--- Images Prepared ---\n")
+
+            // --- Phase B: Processing Services ---
             print("\n--- Processing Services (parallel: \(parallelLimit)) ---")
             print(services.map(\.serviceName))
+
+            let dependencyCoordinator = DependencyCoordinator()
+            self.dependencyCoordinator = dependencyCoordinator
+            let forwardGraph = buildForwardDependencyGraph(services: services)
 
             try await withThrowingTaskGroup(of: Void.self) { group in
                 let semaphore = AsyncSemaphore(value: parallelLimit)
                 for (serviceName, service) in services {
                     group.addTask { [self] in
-                        try await semaphore.acquire()
-                        defer { Task { await semaphore.release() } }
-                        try await configService(service, serviceName: serviceName, from: dockerCompose)
+                        try await semaphore.withPermit {
+                            // Wait for declared dependencies via the coordinator's
+                            // per-edge milestone hooks. CHAOS-1505 replaces the
+                            // polling fallback (waitForServiceDependencies) with
+                            // sub-polling-interval event-driven waits. Adopted
+                            // upstreams publish .started after their own
+                            // `waitUntilServiceIsRunning` returns, so the
+                            // coordinator path serves them too — no separate
+                            // polling fallback needed in the dependent.
+                            for dep in forwardGraph[serviceName] ?? [] {
+                                let entry = service.dependsOn?.entries[dep]
+                                let condition = entry?.condition ?? .serviceStarted
+                                let required = entry?.required ?? true
+                                do {
+                                    try await dependencyCoordinator.awaitMilestone(
+                                        for: dep,
+                                        milestone: milestone(for: condition)
+                                    )
+                                } catch {
+                                    if required {
+                                        throw error
+                                    }
+                                    print(
+                                        "Warning: optional dependency '\(dep)' for service " +
+                                        "'\(serviceName)' did not satisfy condition " +
+                                        "'\(condition.rawValue)': \(error.localizedDescription)"
+                                    )
+                                }
+                            }
+
+                            try await configServiceStart(service, serviceName: serviceName, from: dockerCompose)
+
+                            // Publish .started so dependents may proceed.
+                            // Publication is unconditional even if
+                            // configServiceStart returned early (e.g. adopted
+                            // service, provider-only) — a service that returned
+                            // without throwing is "started enough" for
+                            // dependents that requested .started.
+                            await dependencyCoordinator.publishMilestone(.started, for: serviceName)
+                        }
                     }
                 }
                 try await group.waitForAll()
             }
         } catch {
+            // CHAOS-1505: drain any suspended depends_on waiters BEFORE DNS /
+            // sidecar teardown so child tasks observing the failure cannot
+            // publish records or use stale handles after teardown begins.
+            await dependencyCoordinator?.cancelAll()
+
             // CHAOS-1446 Phase 4B: drain the DNS zone coordinator before the
             // sidecar teardown so any in-flight `publish(record:)` from a Phase 4B
             // child task observes the closed flag and throws upstream rather than
@@ -723,10 +795,28 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     }
 
     // MARK: Compose Service Level Functions
-    private func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
+
+    /// Phase A entry point — pulls or builds the service's image without
+    /// waiting on `depends_on` gates. Safe to fan out across all services in
+    /// parallel via `runBoundedThrowingFanOut`. Calling `resolveServiceImage`
+    /// again from Phase B's `configServiceStart` is idempotent — the pull/build
+    /// short-circuits when the image is already present.
+    private func prepareImage(for service: Service, serviceName: String) async throws {
+        // Provider-only services (no image, no build) have nothing to prep.
+        if service.provider != nil, service.image == nil, service.build == nil {
+            return
+        }
+        // Adopted services already have a running container — skip image pull.
+        if adoptionDecisions[serviceName] == .adopt {
+            return
+        }
+        _ = try await resolveServiceImage(service, serviceName: serviceName)
+    }
+
+    private func configServiceStart(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
-        try await waitForServiceDependencies(service, serviceName: serviceName, from: dockerCompose)
+        // CHAOS-1505: depends_on waits moved to TaskGroup body via DependencyCoordinator.
 
         // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
         warnUnsupportedContainerParityFields(service)
@@ -829,6 +919,17 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                     "'\(entry.condition.rawValue)': \(error.localizedDescription)"
                 )
             }
+        }
+    }
+
+    /// Maps a compose-spec `DependsOnCondition` to the coordinator's
+    /// `ServiceMilestone` so each depends_on edge awaits the correct
+    /// readiness tier.
+    private func milestone(for condition: DependsOnCondition) -> ServiceMilestone {
+        switch condition {
+        case .serviceStarted: return .started
+        case .serviceHealthy: return .healthy
+        case .serviceCompletedSuccessfully: return .completedSuccessfully
         }
     }
 
