@@ -393,16 +393,22 @@ schema changes that ripple into `up`/`down`/`build`.
 Prefer `make test-json` over raw `swift test` when an agent (or any
 automation) is parsing results. From the [Makefile](./Makefile):
 
-- Routes the static suite through swift-testing's event stream and emits
-  structured JSON via `swift run test-report` — agent-parseable, no
-  `tail -N` truncation games.
-- Skips `Container-Compose-DynamicTests` automatically (equivalent to
-  `--filter Container-Compose-StaticTests` but with the right tooling).
-- Forbids `--parallel`. Several static suites (`LifecycleArgsTests`,
-  `ResourceArgsTests`, `GpusBlkioTests`) `dup2` global `STDOUT_FILENO`
-  to a `Pipe` to capture printed warnings; under `--parallel` they race
-  on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
-- Exit codes: `0` = all passed, `1` = any failed, `2` = no events emitted.
+- Runs the static suite via `swift test --filter Container_Compose_StaticTests`
+  (underscore form — Swift 6.3.1 normalizes the dashed target name and the
+  legacy `Container-Compose-StaticTests` filter matches **zero tests**).
+  See PR #170 + the CHAOS-1507 follow-up.
+- The previous JSONL + `swift run test-report` pipeline was removed because
+  `--experimental-event-stream-output` now hangs indefinitely under Swift
+  6.3.1 when no socket reader is attached. Plain swift-testing stdout is the
+  canonical agent-readable surface again.
+- Forbids `--parallel`. Multiple suites `dup2` global `STDOUT_FILENO` to a
+  `Pipe` to capture printed warnings: `LifecycleArgsTests`, `ResourceArgsTests`,
+  `GpusBlkioTests`, `SecurityArgsTests`, `NetworkArgsTests`, the ComposePort
+  runtime-argv tests, ComposeDown orphan-volume recovery, the ComposeUp
+  block-image migration guard, and `ShutdownWatchdog`. Under `--parallel` they
+  race on the shared FD and `readDataToEndOfFile()` hangs indefinitely — do
+  not re-introduce `--parallel` to this target.
+- Exit code is the plain `swift test` exit code (0 = pass, non-zero = fail).
 
 Previously, `VolumeMountIntegrationTests` could leak real Docker Hub pulls when its environment wraps missed `RunnerEnvironment.$current`. Fixed by wrapping `RecordingRunner()` in every test. All test `projectName` values are now prefixed `cc-test-` (e.g. `cc-test-vol-up-<uuid>`) to make test-originated container names unambiguous. When sweeping this convention to other static-suite test files, use the same `cc-test-` prefix. Leaving this note as a defensive reminder.
 
@@ -442,8 +448,9 @@ the broad `--no-parallel` workaround from CHAOS-1314.
 - **Don't break the topo sort.** `Service.topoSortConfiguredServices` is on
   the hot path of `up`. Cycle detection there must keep throwing.
 - **Commits.** Small, focused commits. Rebuild with `make build` and run
-  `make test-json` (or full `swift test` if your change touches dynamics)
-  before pushing.
+  `make test-json` (which is `swift test --filter Container_Compose_StaticTests`
+  under Swift 6.3.1; see PR #170 / CHAOS-1507) or full `swift test` if your
+  change touches dynamics before pushing.
 - **Background agents for long-running tasks.** Always dispatch test runs
   (prefer `make test-json` for structured, agent-parseable output; raw
   `swift test` only when you need the full run including
@@ -503,9 +510,11 @@ make build           # release config, copies binary to .build/release/
 make install         # symlinks into /usr/local/bin (sudo may be required)
 
 # Run tests
-make test-json                                     # static suite, structured JSON (preferred for agents)
+make test-json                                     # static suite only (Swift 6.3.1 underscore filter; preferred for agents)
 swift test                                         # full run including Container-Compose-DynamicTests
 swift test --filter LifecycleArgsTests             # single suite (replace with target)
+# Equivalent to `make test-json` if you need to invoke directly:
+swift test --filter Container_Compose_StaticTests  # underscore form — dashes match 0 tests under Swift 6.3.1 (see PR #170)
 
 # Use locally
 .build/release/container-compose up -f path/to/docker-compose.yml
