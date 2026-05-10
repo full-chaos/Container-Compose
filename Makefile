@@ -72,21 +72,26 @@ build-tests:
 test:
 	swift test
 
-# Run the static suite under swift-testing's event stream and emit a structured
-# report. Useful for agent-driven test reading or CI parsing. Defaults to
-# fast-feedback path: skipping the dynamic Apple-container target (use
-# `make test` for the full run including dynamics).
+# Run the static test suite only — fast feedback path for agents and CI-equivalent
+# local checks. Dynamic tests are gated by RuntimeAvailability so this filter is
+# the canonical way to skip them on hosts without apple/container.
 #
-# NOTE: --parallel intentionally NOT used. The static suite contains tests
-# (ResourceArgsTests, LifecycleArgsTests, GpusBlkioTests) that `dup2` global
-# STDOUT_FILENO to a Pipe to capture printed warnings; under --parallel they
-# race on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
+# CHAOS-1507 follow-up ("make test-json hang"): under Swift 6.3.1 the prior
+# implementation used `--experimental-event-stream-output` to feed a JSONL file
+# into `swift run test-report`. That socket-backed event stream now hangs
+# indefinitely when no reader attaches in time, and `--skip Container-Compose-DynamicTests`
+# silently matches nothing because Swift 6.3.1 normalizes target dashes to
+# underscores in the test filter grammar. Both have been removed; we use the
+# underscore form `--filter Container_Compose_StaticTests` instead.
 #
-# Exit code mirrors the report: 0 = all passed, 1 = any failed, 2 = no events.
+# NOTE: --parallel intentionally NOT used. Multiple suites `dup2` global
+# STDOUT_FILENO to a Pipe to capture printed warnings (ResourceArgsTests,
+# LifecycleArgsTests, GpusBlkioTests, SecurityArgsTests, NetworkArgsTests,
+# ComposePort runtime-argv tests, ComposeDown orphan-volume recovery,
+# ComposeUp block-image migration guard, ShutdownWatchdog). Under --parallel
+# they race on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
 test-json:
-	rm -f .build/test-events.jsonl
-	-swift test --skip Container-Compose-DynamicTests --experimental-event-stream-output .build/test-events.jsonl
-	swift run test-report .build/test-events.jsonl --format json
+	swift test --filter Container_Compose_StaticTests --no-parallel
 
 # Regenerate coverage.json from the inline JSON in coverage.html.
 coverage:
@@ -108,7 +113,7 @@ help:
 	@echo "  debug             Debug build of $(binary_name)"
 	@echo "  build-tests       Compile tests without running (CI-equivalent)"
 	@echo "  test              Run all tests (dynamic ones self-skip without Apple container)"
-	@echo "  test-json         Run static tests + emit structured JSON report (skips dynamic; for agents/CI)"
+	@echo "  test-json         Run static suite only (Swift 6.3.1 underscore filter; CI-equivalent agent-friendly target)"
 	@echo "  coverage          Regenerate coverage.json from coverage.html"
 	@echo "  clean             Remove .build/"
 	@echo "  install           Build + install to \$$(bindir) (default $(bindir))"
