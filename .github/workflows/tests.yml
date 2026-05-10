@@ -53,10 +53,10 @@ jobs:
       matrix:
         include:
           - suite: Static
-            target: Container-Compose-StaticTests
+            target: Container_Compose_StaticTests
             extra_args: "--parallel"
           - suite: Dynamic
-            target: Container-Compose-DynamicTests
+            target: Container_Compose_DynamicTests
             extra_args: ""
 
     steps:
