@@ -247,20 +247,41 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             }
 
             // Process each service defined in the docker-compose.yml
-            // CHAOS-1446 Phase 4B: parallel service-start orchestration via
-            // `withThrowingTaskGroup`. Bound by `--parallel` (default 16). Per-service
-            // dependency ordering is handled inside `configService` by the existing
-            // polling-based `waitForServiceDependencies` — services with no
-            // depends_on launch immediately; dependents poll until their deps reach
-            // their declared condition. DependencyCoordinator-driven in-memory
-            // milestone hooks are a Phase 4C optimization. CHAOS-1502: switched to
-            // `semaphore.withPermit` to close the brief stale-permit window the
-            // prior `defer { Task { await semaphore.release() } }` variant exposed.
+            // CHAOS-1446 Phase 4C: two-phase parallel orchestration.
+            //
+            // Phase A — image preparation via `runBoundedThrowingFanOut`.
+            // Pulls or builds every service's image up-front, bounded by
+            // `--parallel`. No depends_on ordering here — images are
+            // independent of each other.
+            //
+            // Phase B — service start via `withThrowingTaskGroup` +
+            // `AsyncSemaphore.withPermit`. By the time Phase B starts,
+            // Phase A image preparation has already completed, so
+            // `resolveServiceImage` inside `configServiceStart` short-circuits.
+            // Per-service dependency ordering is handled inside
+            // `configServiceStart` by the existing polling-based
+            // `waitForServiceDependencies` — services with no depends_on
+            // launch immediately; dependents poll until their deps reach
+            // their declared condition. DependencyCoordinator-driven
+            // in-memory milestone hooks are a Phase 4C optimization
+            // (CHAOS-1505). CHAOS-1502: switched to `semaphore.withPermit`
+            // to close the brief stale-permit window the prior
+            // `defer { Task { await semaphore.release() } }` variant exposed.
             let parallelLimit = try ParallelLimitResolver.resolved(
                 cli: projectFlags.parallel,
                 env: ProcessInfo.processInfo.environment
             )
+            let upCtx = self
 
+            // --- Phase A: Preparing Images ---
+            print("\n--- Preparing Images ---")
+            let imagePrepItems = services.map { (key: $0.serviceName, value: $0.service) }
+            _ = try await runBoundedThrowingFanOut(items: imagePrepItems, limit: parallelLimit) { name, service in
+                try await upCtx.prepareImage(for: service, serviceName: name)
+            }
+            print("--- Images Prepared ---\n")
+
+            // --- Phase B: Processing Services ---
             print("\n--- Processing Services (parallel: \(parallelLimit)) ---")
             print(services.map(\.serviceName))
 
@@ -269,7 +290,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 for (serviceName, service) in services {
                     group.addTask { [self] in
                         try await semaphore.withPermit {
-                            try await configService(service, serviceName: serviceName, from: dockerCompose)
+                            try await configServiceStart(service, serviceName: serviceName, from: dockerCompose)
                         }
                     }
                 }
@@ -725,7 +746,25 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     }
 
     // MARK: Compose Service Level Functions
-    private func configService(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
+
+    /// Phase A entry point — pulls or builds the service's image without
+    /// waiting on `depends_on` gates. Safe to fan out across all services in
+    /// parallel via `runBoundedThrowingFanOut`. Calling `resolveServiceImage`
+    /// again from Phase B's `configServiceStart` is idempotent — the pull/build
+    /// short-circuits when the image is already present.
+    private func prepareImage(for service: Service, serviceName: String) async throws {
+        // Provider-only services (no image, no build) have nothing to prep.
+        if service.provider != nil, service.image == nil, service.build == nil {
+            return
+        }
+        // Adopted services already have a running container — skip image pull.
+        if adoptionDecisions[serviceName] == .adopt {
+            return
+        }
+        _ = try await resolveServiceImage(service, serviceName: serviceName)
+    }
+
+    private func configServiceStart(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
         try await waitForServiceDependencies(service, serviceName: serviceName, from: dockerCompose)
