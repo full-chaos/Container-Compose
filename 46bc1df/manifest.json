@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1508-deflake-v2-gate",
+  "commit": "46bc1dfeb1b5d8628041779cf606625c122d996f",
+  "short": "46bc1df",
+  "target": "46bc1df",
+  "message": "fix(tests,ci): CHAOS-1508 v3 (db-primer pattern) + drop CI --parallel pending CHAOS-1509",
+  "published_at": "2026-05-10T22:56:59.073106+00:00"
+}
