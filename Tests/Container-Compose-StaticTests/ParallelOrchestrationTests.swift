@@ -50,43 +50,6 @@ fileprivate actor ConcurrencyMeter {
     func total() -> Int { totalEntries }
 }
 
-/// Deterministic primer used by `parallelPullFailFastCancelsSiblings`
-/// (CHAOS-1508 v2). The fan-out test’s siblings each `signal()` when they
-/// enter their body; the failing task `waitForAll()` before throwing, so
-/// the throw is guaranteed to happen AFTER every sibling has started its
-/// cancellation-observation loop. Removes the scheduling-order race that
-/// caused the v1 fix to flake under serial full-suite execution — with
-/// `limit < items.count`, semaphore queueing could otherwise starve the
-/// failing task and prevent its throw from ever firing.
-fileprivate actor SiblingEntryGate {
-    private var entered = 0
-    private let expected: Int
-    private var waiter: CheckedContinuation<Void, Never>?
-
-    init(expected: Int) {
-        precondition(expected >= 1, "SiblingEntryGate requires expected >= 1; got \(expected)")
-        self.expected = expected
-    }
-
-    /// Called by a sibling on body entry. Resumes the waiting failing task
-    /// once `expected` siblings have signaled.
-    func signal() {
-        entered += 1
-        if entered >= expected, let waiter {
-            self.waiter = nil
-            waiter.resume()
-        }
-    }
-
-    /// Called by the failing task. Returns once `expected` siblings have
-    /// signaled — immediately if the threshold is already reached.
-    func waitForAll() async {
-        if entered >= expected { return }
-        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-            self.waiter = c
-        }
-    }
-}
 
 // MARK: - CHAOS-1503 parallelism-validation tests
 //
@@ -161,43 +124,42 @@ struct ParallelOrchestrationTests {
         struct PullFailed: Error {}
         let runMeter = ConcurrencyMeter()
 
-        // CHAOS-1508 v2 deflake (gate-based primer):
+        // CHAOS-1508 v3 deflake (db-primer + cancellation-aware sleep):
         //
         // History:
-        //   * Original (CHAOS-1446): single 5s Task.sleep per sibling,
-        //     relied on group cancelAll interrupting sleep within 5s.
-        //     Flaked under serial full-suite load (CHAOS-1508 filed).
-        //   * v1 (Task.yield polling): starved db when executor refused
-        //     to switch tasks under Task.yield (soft yield, not honored).
-        //   * v1.5 (brief Task.sleep loop, limit=2): fixed --parallel but
-        //     still flaked --no-parallel — with limit=2, scheduling could
-        //     place TWO siblings ahead of db at the semaphore, leaving db
-        //     queued (no permit, never throws, cancellation never propagates).
+        //   * Original (CHAOS-1446, limit=2, 5s sibling sleep): flaked under
+        //     serial full-suite load when 5s expired before cancellation arrived.
+        //   * v1 (#173, Task.yield polling): `Task.yield` is a soft yield, the
+        //     executor could starve `db` so it never threw.
+        //   * v1.5 (Task.sleep loop, limit=2): under serial load `db` got queued
+        //     at the limit=2 semaphore while two siblings held the permits, so
+        //     `db` never ran and the polling loop exhausted its budget.
+        //   * v2 (#174, SiblingEntryGate primer): worked locally under both
+        //     modes but hung CI's `--parallel` job for 30+ minutes — the gate's
+        //     `withCheckedContinuation` deadlocks when CI's heavily-loaded
+        //     cooperative executor delays scheduling all siblings.
         //
-        // v2 design — deterministic regardless of scheduling order:
-        //   * `limit: items.count` (=4): every body gets a permit immediately,
-        //     no semaphore queueing, no scheduling-order race.
-        //   * `SiblingEntryGate` (fileprivate actor): each sibling `signal()`s
-        //     when its body starts; db `waitForAll()` before throwing.
-        //     Guarantees siblings have entered their cancellation-observation
-        //     loop before db's throw triggers the group's cancelAll.
-        //   * Siblings poll Task.isCancelled with 10ms Task.sleep; sleep
-        //     interrupt (fast path) and the next isCancelled check (slow path)
-        //     both exit the loop.
-        //   * 1000 × 10ms = 10s iteration ceiling guards against pathological
-        //     cancellation-propagation regressions — Issue.record fires with a
-        //     clear diagnostic and the test fails loudly instead of hanging.
-        //
-        // Note: `@Suite(.serialized)` is NOT viable here. swift-testing already
-        // serializes under `swift test --no-parallel` (the `make test-json`
-        // default), so the trait is a no-op in that mode. The fix has to live
-        // in the test logic.
+        // v3: copy the proven pattern from `fanOutCancelsOnFirstFailure`
+        // (line ~890 in this file) which has run reliably across CI for the
+        // whole CHAOS-1446 family of PRs.
+        //   * `limit: items.count` (=4): every body gets a permit immediately.
+        //     No semaphore queueing race.
+        //   * `db` does a brief 50ms `Task.sleep` BEFORE throwing. With 4 bodies
+        //     in flight under any mode, 50ms is more than enough for every
+        //     sibling to reach its own `Task.sleep` waiting on cancellation.
+        //   * Siblings sleep up to 30 seconds (10x the previous 5s ceiling) and
+        //     catch the CancellationError that the group's `cancelAll` raises
+        //     when `db` throws. No actor primer, no continuation, no possible
+        //     deadlock — every wait is on a real timer that the executor will
+        //     interrupt on cancellation.
         //
         // Deterministic invariants:
         //   * exactly one body (db) reaches `runMeter.enter()`.
-        //   * every in-flight sibling observes cancellation and increments
-        //     cancelledMeter (cancelled == 3 expected; assertion uses >= 1 for
-        //     forward compatibility if limit ever changes).
+        //   * at least one sibling observes the CancellationError and
+        //     increments `cancelledMeter`.
+        // If cancellation truly fails to propagate within 30s the sibling's
+        // sleep returns normally and `cancelledMeter.total() == 0` triggers
+        // the explicit assertion below — a real fail-fast regression.
         let cancelledMeter = ConcurrencyMeter()
 
         let items: [(key: String, value: String)] = [
@@ -208,37 +170,31 @@ struct ParallelOrchestrationTests {
         ]
 
         do {
-            let entryGate = SiblingEntryGate(expected: items.count - 1)  // 3 siblings
             _ = try await runBoundedThrowingFanOut(items: items, limit: items.count) { key, _ in
                 if key == "db" {
-                    // Wait until every sibling has entered its cancellation-
-                    // observation loop. Resumes the moment the last sibling
-                    // calls `signal()`. Deterministic — no Task.sleep race.
-                    await entryGate.waitForAll()
+                    // 50ms primer: ensures every sibling has reached its
+                    // Task.sleep below before db throws. Without this, db could
+                    // throw and cancel siblings before they even enter their
+                    // body (resulting in cancelledMeter == 0).
+                    try? await Task.sleep(nanoseconds: 50_000_000)
                     await runMeter.enter()
                     throw PullFailed()
                 }
 
-                // Sibling: signal entry, then wait for cancellation.
-                await entryGate.signal()
-
-                var iterations = 0
+                // Sibling: sleep until cancellation interrupts. 30s ceiling is
+                // generous — normal cancel propagation is sub-millisecond; we
+                // only need the ceiling to bound runtime if propagation is truly
+                // broken (in which case `cancelledMeter` will be 0 and the
+                // assertion below fires loudly).
                 do {
-                    while !Task.isCancelled {
-                        if iterations > 1_000 {
-                            Issue.record("Cancellation did not propagate to sibling '\(key)' after \(iterations) iterations — fail-fast regressed")
-                            throw CancellationError()
-                        }
-                        try await Task.sleep(nanoseconds: 10_000_000)  // 10ms
-                        iterations += 1
-                    }
+                    try await Task.sleep(nanoseconds: 30_000_000_000)
                 } catch is CancellationError {
-                    // Cancellation observed via sleep interrupt (fast path) or
-                    // via our own regression throw above. Either way fall through
-                    // to cancelledMeter increment + re-throw.
+                    await cancelledMeter.enter()
+                    throw CancellationError()
                 }
-                await cancelledMeter.enter()
-                throw CancellationError()
+                // Sleep completed without cancellation — do NOT increment any
+                // meter. The `cancelledMeter >= 1` assertion will catch this
+                // as a fail-fast regression.
             }
             Issue.record("Expected fan-out to throw")
         } catch let tagged as ServiceTaggedError {
