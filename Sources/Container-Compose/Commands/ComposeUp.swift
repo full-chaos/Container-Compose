@@ -253,7 +253,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             // polling-based `waitForServiceDependencies` — services with no
             // depends_on launch immediately; dependents poll until their deps reach
             // their declared condition. DependencyCoordinator-driven in-memory
-            // milestone hooks are a Phase 4C optimization.
+            // milestone hooks are a Phase 4C optimization. CHAOS-1502: switched to
+            // `semaphore.withPermit` to close the brief stale-permit window the
+            // prior `defer { Task { await semaphore.release() } }` variant exposed.
             let parallelLimit = try ParallelLimitResolver.resolved(
                 cli: projectFlags.parallel,
                 env: ProcessInfo.processInfo.environment
@@ -266,9 +268,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 let semaphore = AsyncSemaphore(value: parallelLimit)
                 for (serviceName, service) in services {
                     group.addTask { [self] in
-                        try await semaphore.acquire()
-                        defer { Task { await semaphore.release() } }
-                        try await configService(service, serviceName: serviceName, from: dockerCompose)
+                        try await semaphore.withPermit {
+                            try await configService(service, serviceName: serviceName, from: dockerCompose)
+                        }
                     }
                 }
                 try await group.waitForAll()
