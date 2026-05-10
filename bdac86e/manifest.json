@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1508-deflake-v2-gate",
+  "commit": "bdac86eaab0ad2c88aa19bead696e31bd72acec3",
+  "short": "bdac86e",
+  "target": "bdac86e",
+  "message": "fix(tests): CHAOS-1508 v2 deflake parallelPullFailFastCancelsSiblings via SiblingEntryGate primer + limit=items.count",
+  "published_at": "2026-05-10T22:07:05.132457+00:00"
+}
