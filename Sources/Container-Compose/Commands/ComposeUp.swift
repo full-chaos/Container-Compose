@@ -100,6 +100,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     var implicitDefaultNetworkName: String?
     var loopState: LoopState = LoopState()
     private var dnsCoordinator: DNSZoneCoordinator?
+    /// CHAOS-1505: stored so the outer catch block can call `cancelAll()` to
+    /// drain suspended depends_on waiters before DNS / sidecar teardown.
+    private var dependencyCoordinator: DependencyCoordinator?
 
     /// CHAOS-1492: per-service adoption decisions, populated by
     /// `resolveAdoption(_:)` at the top of `run()`. Consulted by
@@ -258,13 +261,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             // `AsyncSemaphore.withPermit`. By the time Phase B starts,
             // Phase A image preparation has already completed, so
             // `resolveServiceImage` inside `configServiceStart` short-circuits.
-            // Per-service dependency ordering is handled inside
-            // `configServiceStart` by the existing polling-based
-            // `waitForServiceDependencies` — services with no depends_on
-            // launch immediately; dependents poll until their deps reach
-            // their declared condition. DependencyCoordinator-driven
-            // in-memory milestone hooks are a Phase 4C optimization
-            // (CHAOS-1505). CHAOS-1502: switched to `semaphore.withPermit`
+            // Per-service dependency ordering uses DependencyCoordinator
+            // milestone hooks (CHAOS-1505) — each child task awaits its
+            // declared depends_on edges via awaitMilestone before calling
+            // configServiceStart, then publishes .started after
+            // configServiceStart returns, replacing the prior polling-based
+            // waitForServiceDependencies with sub-polling-interval event-
+            // driven waits. CHAOS-1502: switched to `semaphore.withPermit`
             // to close the brief stale-permit window the prior
             // `defer { Task { await semaphore.release() } }` variant exposed.
             let parallelLimit = try ParallelLimitResolver.resolved(
@@ -285,18 +288,64 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             print("\n--- Processing Services (parallel: \(parallelLimit)) ---")
             print(services.map(\.serviceName))
 
+            let dependencyCoordinator = DependencyCoordinator()
+            self.dependencyCoordinator = dependencyCoordinator
+            let forwardGraph = buildForwardDependencyGraph(services: services)
+
             try await withThrowingTaskGroup(of: Void.self) { group in
                 let semaphore = AsyncSemaphore(value: parallelLimit)
                 for (serviceName, service) in services {
                     group.addTask { [self] in
                         try await semaphore.withPermit {
+                            // Wait for declared dependencies via the coordinator's
+                            // per-edge milestone hooks. CHAOS-1505 replaces the
+                            // polling fallback (waitForServiceDependencies) with
+                            // sub-polling-interval event-driven waits. Adopted
+                            // upstreams publish .started after their own
+                            // `waitUntilServiceIsRunning` returns, so the
+                            // coordinator path serves them too — no separate
+                            // polling fallback needed in the dependent.
+                            for dep in forwardGraph[serviceName] ?? [] {
+                                let entry = service.dependsOn?.entries[dep]
+                                let condition = entry?.condition ?? .serviceStarted
+                                let required = entry?.required ?? true
+                                do {
+                                    try await dependencyCoordinator.awaitMilestone(
+                                        for: dep,
+                                        milestone: milestone(for: condition)
+                                    )
+                                } catch {
+                                    if required {
+                                        throw error
+                                    }
+                                    print(
+                                        "Warning: optional dependency '\(dep)' for service " +
+                                        "'\(serviceName)' did not satisfy condition " +
+                                        "'\(condition.rawValue)': \(error.localizedDescription)"
+                                    )
+                                }
+                            }
+
                             try await configServiceStart(service, serviceName: serviceName, from: dockerCompose)
+
+                            // Publish .started so dependents may proceed.
+                            // Publication is unconditional even if
+                            // configServiceStart returned early (e.g. adopted
+                            // service, provider-only) — a service that returned
+                            // without throwing is "started enough" for
+                            // dependents that requested .started.
+                            await dependencyCoordinator.publishMilestone(.started, for: serviceName)
                         }
                     }
                 }
                 try await group.waitForAll()
             }
         } catch {
+            // CHAOS-1505: drain any suspended depends_on waiters BEFORE DNS /
+            // sidecar teardown so child tasks observing the failure cannot
+            // publish records or use stale handles after teardown begins.
+            await dependencyCoordinator?.cancelAll()
+
             // CHAOS-1446 Phase 4B: drain the DNS zone coordinator before the
             // sidecar teardown so any in-flight `publish(record:)` from a Phase 4B
             // child task observes the closed flag and throws upstream rather than
@@ -767,7 +816,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     private func configServiceStart(_ service: Service, serviceName: String, from dockerCompose: DockerCompose) async throws {
         guard let projectName else { throw ComposeError.invalidProjectName }
 
-        try await waitForServiceDependencies(service, serviceName: serviceName, from: dockerCompose)
+        // CHAOS-1505: depends_on waits moved to TaskGroup body via DependencyCoordinator.
 
         // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
         warnUnsupportedContainerParityFields(service)
@@ -870,6 +919,17 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                     "'\(entry.condition.rawValue)': \(error.localizedDescription)"
                 )
             }
+        }
+    }
+
+    /// Maps a compose-spec `DependsOnCondition` to the coordinator's
+    /// `ServiceMilestone` so each depends_on edge awaits the correct
+    /// readiness tier.
+    private func milestone(for condition: DependsOnCondition) -> ServiceMilestone {
+        switch condition {
+        case .serviceStarted: return .started
+        case .serviceHealthy: return .healthy
+        case .serviceCompletedSuccessfully: return .completedSuccessfully
         }
     }
 
