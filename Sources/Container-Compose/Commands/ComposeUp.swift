@@ -85,7 +85,6 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
     /// extension can read it for the divergence-check expected-value computations.
     var environmentVariables: [String: String] = [:]
-    private var containerIps: [String: String] = [:]
     /// CHAOS-1493: relaxed from `private` to `internal` so `Compose+Adoption.swift`'s
     /// extension can read it for DNS-divergence checks. Mutated only from inside
     /// `ComposeUp.run()` per the existing CHAOS-1490 lifecycle contract.
@@ -102,21 +101,8 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// builders + adoption divergence checks. `internal` so
     /// `Compose+Adoption.swift`'s extension can read it.
     var implicitDefaultNetworkName: String?
-    private var dnsZoneServices: [CoreDNSConfig.ServiceRecord] = []
-    private var containerConsoleColors: [String: NamedColor] = [:]
-    private var didWarnServiceModelsUnsupported = false
-    private var didWarnServiceProviderUnsupported = false
-    // The next three are mutated from `Compose+VolumeMigration.swift`. Swift
-    // extensions can't add stored properties, so they live here and must be
-    // at least `internal` for the extension's mutating methods to compile.
-    var preparedNamedVolumes: Set<String> = []
-    /// CHAOS-1398/CHAOS-1405: snapshot of volumes already in the runtime
-    /// registry, loaded once per `up` and consulted before each `createVolume`
-    /// call so the create path doesn't re-trigger apple/container's
-    /// "volume.img already exists" filesystem error on re-runs, while still
-    /// retaining metadata for config-drift warnings.
-    var existingNamedVolumeRegistryCache: [String: RuntimeVolume] = [:]
-    var existingNamedVolumeRegistryCacheLoaded: Bool = false
+    var loopState: LoopState = LoopState()
+    private var dnsCoordinator: DNSZoneCoordinator?
 
     /// CHAOS-1492: per-service adoption decisions, populated by
     /// `resolveAdoption(_:)` at the top of `run()`. Consulted by
@@ -128,6 +114,19 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     private static let availableContainerConsoleColors: Set<NamedColor> = [
         .blue, .cyan, .magenta, .lightBlack, .lightBlue, .lightCyan, .lightYellow, .yellow, .lightGreen, .green,
     ]
+
+    private enum CodingKeys: String, CodingKey {
+        case services
+        case detach
+        case composeFilename
+        case rebuild
+        case noCache
+        case forceRecreate
+        case profile
+        case process
+        case projectFlags
+        case logging
+    }
 
     public mutating func run() async throws {
         // Decode + recursively merge includes (Phase 3E) and resolve extends
@@ -228,6 +227,9 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                     runner: RunnerEnvironment.current,
                     clientProvider: ContainerClientEnvironment.current
                 )
+                if let dnsSidecar {
+                    dnsCoordinator = DNSZoneCoordinator(handle: dnsSidecar)
+                }
                 print("--- Embedded DNS Resolver Started ---\n")
             }
 
@@ -504,7 +506,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
     private mutating func updateEnvironmentWithServiceIP(_ serviceName: String, explicitContainerName: String?) async throws -> String? {
         let ip = try await getIPForRunningService(serviceName, explicitContainerName: explicitContainerName)
-        self.containerIps[serviceName] = ip
+        await loopState.setIP(serviceName: serviceName, ip: ip)
         for (key, value) in environmentVariables.map({ ($0, $1) }) where value == serviceName {
             self.environmentVariables[key] = ip ?? value
         }
@@ -591,19 +593,13 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         return "\(projectName)-default"
     }
 
-    private mutating func updateEmbeddedDNSZone(service: Service, serviceName: String, ip: String?) throws {
-        guard let dnsSidecar, let ip else { return }
-        dnsZoneServices.removeAll { $0.name == serviceName }
-        dnsZoneServices.append(CoreDNSConfig.ServiceRecord(
+    private func updateEmbeddedDNSZone(service: Service, serviceName: String, ip: String?) async throws {
+        guard let dnsCoordinator, let ip else { return }
+        try await dnsCoordinator.publish(record: CoreDNSConfig.ServiceRecord(
             name: serviceName,
             ip: ip,
             aliases: dnsAliases(for: service)
         ))
-
-        try EmbeddedDNSSidecar.refreshZone(
-            handle: dnsSidecar,
-            services: dnsZoneServices
-        )
     }
 
     private func dnsAliases(for service: Service) -> [String] {
@@ -713,13 +709,11 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         // CHAOS-1303 / CHAOS-1421: Parity fields — decode-only; warn (deduped) and skip at runtime.
         warnUnsupportedContainerParityFields(service)
 
-        if let models = service.models, !models.isEmpty, !didWarnServiceModelsUnsupported {
+        if let models = service.models, !models.isEmpty, await loopState.warnModelsOnce() {
             print("'service.models' Detected, But Not Supported")
-            didWarnServiceModelsUnsupported = true
         }
-        if service.provider != nil, !didWarnServiceProviderUnsupported {
+        if service.provider != nil, await loopState.warnProviderOnce() {
             print("'service.provider' Detected, But Not Supported")
-            didWarnServiceProviderUnsupported = true
         }
 
         // Provider-only services (no image, no build) are gated out: the
@@ -763,7 +757,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
 
             printNetworksDiagnostic(service: service, serviceName: serviceName)
 
-            launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
+            await launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
         }
 
         let resolvedIP: String?
@@ -782,7 +776,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         // so a silent failure here would produce stale zone data and broken
         // service discovery. Log to stderr with a clear prefix and rethrow.
         do {
-            try updateEmbeddedDNSZone(service: service, serviceName: serviceName, ip: resolvedIP)
+            try await updateEmbeddedDNSZone(service: service, serviceName: serviceName, ip: resolvedIP)
         } catch {
             FileHandle.standardError.write(Data(
                 "Error: failed to refresh embedded DNS resolver zone for service '\(serviceName)': \(error)\n".utf8
@@ -865,7 +859,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             }
         }
 
-        let combinedEnv = mergeAndExpandServiceEnv(service)
+        let combinedEnv = await mergeAndExpandServiceEnvUsingLoopState(service)
         for (key, value) in combinedEnv {
             runCommandArgs.append(contentsOf: ["-e", "\(key)=\(value)"])
         }
@@ -972,13 +966,28 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// label scheme can hash the (a) layer in isolation. Argv emission of
     /// `-e KEY=VALUE` continues to use the full form below.
     func mergeAndExpandServiceEnv(_ service: Service) -> [String: String] {
+        mergeAndExpandServiceEnv(service, resolvedIPs: [:])
+    }
+
+    private func mergeAndExpandServiceEnv(_ service: Service, resolvedIPs: [String: String]) -> [String: String] {
         var combinedEnv = mergeServiceEnvForFingerprint(service)
 
         combinedEnv = combinedEnv.mapValues({ value in
-            containerIps[value] ?? value
+            resolvedIPs[value] ?? value
         })
 
         return combinedEnv
+    }
+
+    private func mergeAndExpandServiceEnvUsingLoopState(_ service: Service) async -> [String: String] {
+        let combinedEnv = mergeServiceEnvForFingerprint(service)
+
+        var rewrittenEnv: [String: String] = [:]
+        for (key, value) in combinedEnv {
+            rewrittenEnv[key] = await loopState.ip(for: value) ?? value
+        }
+
+        return rewrittenEnv
     }
 
     /// `deploy` is parsed but mostly orchestrator-only; emit the same
@@ -1010,16 +1019,11 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
     /// Picks a console color for the service and dispatches the streaming
     /// `container run` Task. The Task is fire-and-forget; readiness/IP are
     /// polled by the caller via `waitUntilServiceIsRunning`.
-    private mutating func launchService(serviceName: String, runCommandArgs: [String]) {
-        var serviceColor: NamedColor = Self.availableContainerConsoleColors.randomElement()!
-
-        if Array(Set(containerConsoleColors.values)).sorted(by: { $0.rawValue < $1.rawValue }) != Self.availableContainerConsoleColors.sorted(by: { $0.rawValue < $1.rawValue }) {
-            while containerConsoleColors.values.contains(serviceColor) {
-                serviceColor = Self.availableContainerConsoleColors.randomElement()!
-            }
-        }
-
-        self.containerConsoleColors[serviceName] = serviceColor
+    private mutating func launchService(serviceName: String, runCommandArgs: [String]) async {
+        let serviceColor = await loopState.assignColor(
+            for: serviceName,
+            available: Self.availableContainerConsoleColors
+        )
 
         Task { [self, serviceColor] in
             @Sendable
