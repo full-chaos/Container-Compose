@@ -1,0 +1,8 @@
+{
+  "branch": "feature/chaos-1446-parallel-up",
+  "commit": "8079203703f820ce93e9cf32ba80c3e82c712312",
+  "short": "8079203",
+  "target": "8079203",
+  "message": "CHAOS-1446: Phase 4A \u2014 LoopState actor + DNSZoneCoordinator wiring",
+  "published_at": "2026-05-10T01:58:40.493042+00:00"
+}
