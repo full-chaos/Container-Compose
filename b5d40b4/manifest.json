@@ -1,0 +1,8 @@
+{
+  "branch": "feature/chaos-1446-parallel-up",
+  "commit": "b5d40b43ebf247e5ab4e2959fa6bd32e8b7a74a7",
+  "short": "b5d40b4",
+  "target": "b5d40b4",
+  "message": "build: add BuildInfo + Makefile version-stamp for non-release SHA tagging",
+  "published_at": "2026-05-10T12:37:43.274239+00:00"
+}
