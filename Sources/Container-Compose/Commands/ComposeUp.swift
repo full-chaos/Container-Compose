@@ -507,11 +507,16 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         }
     }
 
-    func waitForever() async -> Never {
-        for await _ in AsyncStream<Void>(unfolding: {}) {
-            // This will never run
+    /// CHAOS-1507: cancellation-aware "wait until cancelled". Used by
+    /// attached-mode `compose up` (no --detach) to keep `run()` alive
+    /// while user-spawned containers stream their logs. Returns when
+    /// the surrounding Task is cancelled (SIGINT, `task.cancel()`).
+    func waitForever() async {
+        do {
+            try await Task.sleep(nanoseconds: UInt64.max)
+        } catch {
+            // CancellationError — expected exit path on Task.cancel().
         }
-        fatalError("unreachable")
     }
 
     /// Look up the per-attachment IPv4 address for the named service's container.

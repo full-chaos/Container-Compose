@@ -1485,22 +1485,89 @@ struct ParallelOrchestrationTests {
     }
 
     @Test("attachedModeParallelism — attached mode fan-out",
-          .disabled("Attached mode calls waitForever() which uses an infinite AsyncStream that does not honor Task.cancel(). ComposeUp.run() never returns in attached mode, making the test surface untestable without a cancellation-aware wait replacement."))
+          .timeLimit(.minutes(1)))
     func attachedModeParallelism() async throws {
-        // TODO(CHAOS-1507): Once waitForever() is replaced with a
-        // cancellation-aware equivalent (e.g. withTaskCancellationHandler
-        // wrapping an AsyncStream that checks Task.isCancelled), this test
-        // can:
-        //   1. Launch ComposeUp.run() (no --detach) in a `Task { ... }`
-        //   2. Sleep briefly to let Phase B fan out
-        //   3. Snapshot RecordingRunner.peakConcurrency() and run-argv count
-        //   4. Cancel the task to unblock run()
-        //   5. Assert peak >= 2 and at least 2 services spawned
-        //
-        // For now, the coordinator-level test
-        // `composeUpStartFanOutObservesPeakConcurrency` validates the same
-        // Phase B fan-out behavior. Attached mode shares the identical
-        // TaskGroup + coordinator code path — only the post-Phase-B
-        // `waitForever()` call differs.
+        // CHAOS-1507: with cancellation-aware waitForever(), attached-mode
+        // `compose up` (no --detach) can be exercised end-to-end. We launch
+        // ComposeUp.run() in a Task, poll RecordingRunner until all 3
+        // service `container run` argvs land, snapshot peak concurrency,
+        // then cancel the task to unblock waitForever().
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cc-test-attached-parallelism-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // 3 independent services — no depends_on — so Phase B can fan out
+        // freely and peakConcurrency is bounded only by RunCommandRunner
+        // reentrancy.
+        let yaml = """
+        services:
+          alpha:
+            image: nginx:1
+          beta:
+            image: redis:7
+          gamma:
+            image: postgres:16
+        """
+        let compose = dir.appendingPathComponent("docker-compose.yml")
+        try yaml.write(to: compose, atomically: true, encoding: .utf8)
+
+        let projectName = "cc-test-attached-\(UUID().uuidString.prefix(8))"
+        let recorder = RecordingRunner()
+        let provider = RecordingContainerClientProvider()
+
+        // Wrap ComposeUp.run() in a Task so we can observe Phase B progress
+        // while the surrounding `await waitForever()` is still parked.
+        let task = Task<Void, Error> {
+            try await RunnerEnvironment.$current.withValue(recorder) {
+                try await ContainerClientEnvironment.$current.withValue(provider) {
+                    var cmd = try ComposeUp.parse([
+                        "--cwd", dir.path,
+                        "-p", String(projectName),
+                        "-f", compose.path,
+                    ])
+                    try await cmd.run()
+                }
+            }
+        }
+
+        // Poll for all 3 `container run` argvs (5s timeout). 50ms tick keeps
+        // the test responsive without busy-spinning.
+        let deadline = Date().addingTimeInterval(5.0)
+        var runArgvs: [[String]] = []
+        while Date() < deadline {
+            runArgvs = await recorder.unorderedRunCalls(matching: ["container", "run"])
+            if runArgvs.count >= 3 { break }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        #expect(runArgvs.count >= 3,
+                "expected 3 service `container run` argvs within 5s; got \(runArgvs.count)")
+
+        let peak = await recorder.peakConcurrency()
+        #expect(peak >= 2,
+                "expected attached-mode Phase B to fan out; peakConcurrency was \(peak)")
+
+        // Cancel waitForever() and ensure the task unblocks promptly. Accept
+        // either a clean return (waitForever swallows CancellationError) or
+        // a propagated CancellationError from an upstream awaited child.
+        task.cancel()
+        let unblock = Task<Void, Error> {
+            do {
+                try await task.value
+            } catch is CancellationError {
+                // Expected on Task.cancel().
+            }
+        }
+        let timeout = Task<Void, Error> {
+            try await Task.sleep(nanoseconds: 1_500_000_000)
+            throw CancellationError()
+        }
+        do {
+            try await unblock.value
+            timeout.cancel()
+        } catch {
+            timeout.cancel()
+            Issue.record("ComposeUp.run() did not unblock within ~1s after task.cancel(): \(error)")
+        }
     }
 }
