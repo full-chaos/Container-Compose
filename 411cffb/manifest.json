@@ -1,0 +1,8 @@
+{
+  "branch": "chore-make-test-json-fix",
+  "commit": "411cffb83deeaeabb85851650d2ad24806e5bae0",
+  "short": "411cffb",
+  "target": "411cffb",
+  "message": "docs(agents): update test invocation guidance for Swift 6.3.1",
+  "published_at": "2026-05-10T17:17:35.744277+00:00"
+}
