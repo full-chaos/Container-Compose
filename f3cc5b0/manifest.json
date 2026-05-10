@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1507-waitforever-cancellable",
+  "commit": "f3cc5b06cb336b5fdc9c7a736e8d17da8229fbc3",
+  "short": "f3cc5b0",
+  "target": "f3cc5b0",
+  "message": "test(compose-up): CHAOS-1507 enable attachedModeParallelism end-to-end",
+  "published_at": "2026-05-10T17:02:37.825055+00:00"
+}
