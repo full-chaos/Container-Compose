@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1508-deflake-parallel-pull",
+  "commit": "6e73ca5c3492950c26d68c9bfe73e1b22c75fd4f",
+  "short": "6e73ca5",
+  "target": "6e73ca5",
+  "message": "fix(tests): CHAOS-1508 deflake parallelPullFailFastCancelsSiblings via brief Task.sleep loop",
+  "published_at": "2026-05-10T21:24:32.870666+00:00"
+}
