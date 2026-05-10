@@ -203,8 +203,29 @@ public struct ProductionRunner: RunCommandRunner {
 
     /// Pick the right cached binary for an argv whose first element is the
     /// program name (`"container"` or `"container-compose"`).
+    ///
+    /// Absolute paths (e.g. `"/bin/sh"`) are honored as-is and bypass the cache.
+    /// Production callsites always pass an unqualified program name, so this
+    /// branch is a no-op in production; it exists so test code can drive
+    /// `ProductionRunner` against a real `/bin/sh` subprocess without being
+    /// silently re-routed to the apple/container CLI.
+    ///
+    /// Empty argv is a programmer error: every `RunRequest` must carry at
+    /// least one element. Fail loudly via `RuntimeError.backendFailure`
+    /// rather than silently routing an empty-args invocation to the
+    /// `container` binary (which would launch the CLI with no arguments and
+    /// print its help banner — a confusing diagnostic for what is really a
+    /// caller bug).
     fileprivate static func resolveBinary(forArgv argv: [String]) throws -> URL {
-        let cached: Result<URL, RuntimeError> = (argv.first == "container-compose") ? selfBin : containerBin
+        guard let first = argv.first else {
+            throw RuntimeError.backendFailure(
+                message: "ProductionRunner.resolveBinary: argv is empty"
+            )
+        }
+        if first.hasPrefix("/") {
+            return URL(fileURLWithPath: first)
+        }
+        let cached: Result<URL, RuntimeError> = (first == "container-compose") ? selfBin : containerBin
         return try cached.get()
     }
 

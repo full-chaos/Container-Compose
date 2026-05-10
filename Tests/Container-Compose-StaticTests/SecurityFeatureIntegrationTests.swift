@@ -60,6 +60,17 @@ import Yams
 @Suite("Security feature integration tests — YAML → SecurityArgs.build() → argv", .serialized)
 struct SecurityFeatureIntegrationTests {
 
+    /// Reset the process-wide warn-once dedup set before each test so the
+    /// `captureStdout(...).contains("Note: ...")` assertions don't flake based
+    /// on which sibling suite ran first. Peer suite `SecurityArgsTests` also
+    /// exercises `service.privileged`, `service.security_opt`, and
+    /// `service.group_add` via `SecurityArgs.build()`, which would otherwise
+    /// consume the one-shot warning under serial execution. Mirrors the
+    /// pattern established in `LifecycleArgsTests.init`.
+    init() {
+        resetUnsupportedRuntimeFieldWarningsForTesting()
+    }
+
     // MARK: - Helpers
 
     /// Decode a `DockerCompose` from YAML and return the named service.
