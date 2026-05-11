@@ -560,17 +560,31 @@ public func effectiveContainerName(
     return "\(projectName)-\(serviceName)"
 }
 
-/// Derives a project name from the current working directory. It replaces any '.' characters with
-/// '_' to ensure compatibility with container naming conventions.
+/// Derives a project name from the current working directory.
+///
+/// Per compose-spec (Naming): "Project names must contain only lowercase
+/// letters, decimal digits, dashes, and underscores, and must begin with a
+/// lowercase letter or decimal digit." `.` is replaced with `_` (the container
+/// runtime forbids dots in resource names), and the result is lowercased so
+/// directories like `CHAOS-1506-repro/` produce the spec-compliant
+/// `chaos-1506-repro` rather than an uppercase form that apple/container's
+/// network/container ID validators reject.
+///
+/// Note: CLI overrides (`-p`/`--project-name`) bypass this normalization —
+/// explicit user input is honored as-is to preserve intent. See
+/// `resolveProjectName` for precedence.
+///
+/// CHAOS-1511 — adds `.lowercased()` to align with docker compose's auto-derive
+/// behavior. Conservative scope: dots → underscores + lowercase only; broader
+/// regex sanitization (forbidden chars, leading-digit rule) can be a follow-up.
 ///
 /// - Parameter cwd: The current working directory path.
-/// - Returns: A sanitized project name suitable for container naming.
+/// - Returns: A sanitized, lowercased project name suitable for container naming.
 public func deriveProjectName(cwd: String) -> String {
-    // We need to replace '.' with _ because it is not supported in the container name
-    // We need to replace '.' with '_' because it is not supported in the container name.
     let lastComponent = FilePath(cwd).lastComponent?.string ?? cwd
-    let projectName = lastComponent.replacingOccurrences(of: ".", with: "_")
-    return projectName
+    return lastComponent
+        .replacingOccurrences(of: ".", with: "_")
+        .lowercased()
 }
 
 /// Resolves the effective project name with `docker compose` precedence:
