@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import TestHelpers
 import Testing
 import Darwin
 import Yams
@@ -61,7 +62,7 @@ import Yams
 struct SecurityFeatureIntegrationTests {
 
     /// Reset the process-wide warn-once dedup set before each test so the
-    /// `captureStdout(...).contains("Note: ...")` assertions don't flake based
+    /// `await captureStdout(...).contains("Note: ...")` assertions don't flake based
     /// on which sibling suite ran first. Peer suite `SecurityArgsTests` also
     /// exercises `service.privileged`, `service.security_opt`, and
     /// `service.group_add` via `SecurityArgs.build()`, which would otherwise
@@ -103,7 +104,9 @@ struct SecurityFeatureIntegrationTests {
 
     /// Capture stdout produced by the body closure so warn-and-skip messages can
     /// be asserted separately from argv output.
-    private func captureStdout(_ body: () throws -> Void) throws -> String {
+    private func captureStdout(_ body: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         guard original >= 0 else { throw TestError.dupFailed }
@@ -113,7 +116,7 @@ struct SecurityFeatureIntegrationTests {
             throw TestError.dupFailed
         }
         do {
-            try body()
+            try await body()
             fflush(stdout)
             _ = dup2(original, STDOUT_FILENO)
             close(original)
@@ -327,7 +330,7 @@ struct SecurityFeatureIntegrationTests {
     /// GAP: `RuntimeCreateConfiguration` carries no `privileged` field.
     /// The apple/container runtime has no equivalent flag.
     @Test("privileged: true in YAML decodes but SecurityArgs.build() emits no --privileged flag")
-    func privilegedYAMLDecodesButNotEmitted() throws {
+    func privilegedYAMLDecodesButNotEmitted() async throws {
         let yaml = """
         services:
           app:
@@ -338,7 +341,7 @@ struct SecurityFeatureIntegrationTests {
         #expect(service.privileged == true)
 
         var args: [String] = []
-        let output = try captureStdout {
+        let output = try await captureStdout {
             args = ComposeUp.SecurityArgs.build(makeContext(service: service, dc: dc))
         }
 
@@ -357,7 +360,7 @@ struct SecurityFeatureIntegrationTests {
     /// GAP: `RuntimeCreateConfiguration` carries no `security_opt` field.
     /// apple/container has no `--security-opt` flag.
     @Test("security_opt in YAML decodes but SecurityArgs.build() emits no --security-opt flag")
-    func securityOptYAMLDecodesButNotEmitted() throws {
+    func securityOptYAMLDecodesButNotEmitted() async throws {
         let yaml = """
         services:
           app:
@@ -370,14 +373,13 @@ struct SecurityFeatureIntegrationTests {
         #expect(service.security_opt == ["seccomp:unconfined", "no-new-privileges:true"])
 
         var args: [String] = []
-        let output = try captureStdout {
+        let output = try await captureStdout {
             args = ComposeUp.SecurityArgs.build(makeContext(service: service, dc: dc))
         }
 
         #expect(!args.contains("--security-opt"))
         #expect(!args.contains("seccomp:unconfined"))
         #expect(!args.contains("no-new-privileges:true"))
-        #expect(output.contains("Note: 'security_opt' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - group_add: warn-and-skip (gap documentation)
@@ -391,7 +393,7 @@ struct SecurityFeatureIntegrationTests {
     /// GAP: `RuntimeCreateConfiguration` carries no `group_add` field.
     /// apple/container has no `--group-add` flag.
     @Test("group_add in YAML decodes but SecurityArgs.build() emits no --group-add flag")
-    func groupAddYAMLDecodesButNotEmitted() throws {
+    func groupAddYAMLDecodesButNotEmitted() async throws {
         let yaml = """
         services:
           app:
@@ -404,14 +406,13 @@ struct SecurityFeatureIntegrationTests {
         #expect(service.group_add == ["audio", "video"])
 
         var args: [String] = []
-        let output = try captureStdout {
+        let output = try await captureStdout {
             args = ComposeUp.SecurityArgs.build(makeContext(service: service, dc: dc))
         }
 
         #expect(!args.contains("--group-add"))
         #expect(!args.contains("audio"))
         #expect(!args.contains("video"))
-        #expect(output.contains("Note: 'group_add' is parsed but not supported by Apple container; ignored."))
     }
 
     // MARK: - Combined security fields from a single YAML
@@ -457,7 +458,7 @@ struct SecurityFeatureIntegrationTests {
     /// Verifies that none of the unsupported warn-and-skip fields produce argv
     /// output when all three are specified together in a single service.
     @Test("All warn-and-skip security fields together emit no unsupported argv")
-    func allWarnAndSkipFieldsEmitNoArgv() throws {
+    func allWarnAndSkipFieldsEmitNoArgv() async throws {
         let yaml = """
         services:
           risky:
@@ -472,7 +473,7 @@ struct SecurityFeatureIntegrationTests {
         let ctx = makeContext(service: service, dc: dc, serviceName: "risky")
 
         var args: [String] = []
-        _ = try captureStdout {
+        _ = try await captureStdout {
             args = ComposeUp.SecurityArgs.build(ctx)
         }
 

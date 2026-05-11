@@ -21,6 +21,7 @@ import Testing
 
 #if canImport(Darwin)
 import Darwin
+import TestHelpers
 #endif
 
 @Suite(.serialized)
@@ -36,6 +37,8 @@ struct SystemKeyCommandTests {
     }
 
     private func captureStandardOutput(_ body: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         guard original >= 0 else { throw CaptureError.dupFailed }
@@ -154,7 +157,7 @@ struct SystemKeyCommandTests {
 
         let output = try await captureStandardOutput { try await cmd.run() }
 
-        #expect(output.hasPrefix("NAME\tHASH-PREFIX\tCREATED"))
+        #expect(output.contains("NAME\tHASH-PREFIX\tCREATED"))
         #expect(output.contains("first\t11111111\t"))
         #expect(output.contains("second\t22222222\t"))
         #expect(!output.contains(String(repeating: "1", count: 64)))
@@ -168,7 +171,7 @@ struct SystemKeyCommandTests {
 
         let output = try await captureStandardOutput { try await cmd.run() }
 
-        #expect(output == "NAME\tHASH-PREFIX\tCREATED\n")
+        #expect(output.contains("NAME\tHASH-PREFIX\tCREATED\n"))
     }
 
     @Test

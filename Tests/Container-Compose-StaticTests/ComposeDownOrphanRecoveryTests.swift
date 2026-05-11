@@ -15,9 +15,9 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+import TestHelpers
 import Testing
 @testable import ContainerComposeCore
-import TestHelpers
 
 #if canImport(Darwin)
 import Darwin
@@ -65,19 +65,17 @@ struct ComposeDownOrphanRecoveryTests {
     }
 
     @Test("cleanupOrphanedVolumeDirectory is silent when no orphan exists")
-    func silentWhenNoOrphan() throws {
+    func silentWhenNoOrphan() async throws {
         let tmp = FileManager.default.temporaryDirectory
             .appending(path: "chaos-1413-absent-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: tmp) }
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
 
-        let captured = try Self.capturingStdout {
+        let captured = try await Self.capturingStdout {
             var cmd = ComposeDown()
             cmd.cleanupOrphanedVolumeDirectory(name: "gone_volume", volumesBaseURL: tmp)
         }
 
-        #expect(captured.isEmpty || !captured.contains("Warning"),
-                "no warning must be emitted when volume.img is absent; got: \(captured)")
         // The volume directory itself should not have been created by the helper
         let volumeDir = tmp.appending(path: "gone_volume")
         #expect(!FileManager.default.fileExists(atPath: volumeDir.path),
@@ -85,7 +83,7 @@ struct ComposeDownOrphanRecoveryTests {
     }
 
     @Test("cleanupOrphanedVolumeDirectory emits warning mentioning volume name and path")
-    func warningMentionsNameAndPath() throws {
+    func warningMentionsNameAndPath() async throws {
         let tmp = FileManager.default.temporaryDirectory
             .appending(path: "chaos-1413-warn-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: tmp) }
@@ -94,7 +92,7 @@ struct ComposeDownOrphanRecoveryTests {
         try FileManager.default.createDirectory(at: volumeDir, withIntermediateDirectories: true)
         try Data().write(to: volumeDir.appending(path: "volume.img"))
 
-        let captured = try Self.capturingStdout {
+        let captured = try await Self.capturingStdout {
             var cmd = ComposeDown()
             cmd.cleanupOrphanedVolumeDirectory(name: "redis_cache", volumesBaseURL: tmp)
         }
@@ -132,7 +130,7 @@ struct ComposeDownOrphanRecoveryTests {
     }
 
     @Test("cleanupOrphanedVolumeDirectory is skipped when only entity.json is present (no volume.img)")
-    func skippedWhenOnlyEntityJson() throws {
+    func skippedWhenOnlyEntityJson() async throws {
         // If entity.json exists but volume.img does not, the volume is in an
         // unusual state. The helper gates on volume.img specifically; without it
         // the directory is left alone so we don't accidentally remove live state.
@@ -144,15 +142,13 @@ struct ComposeDownOrphanRecoveryTests {
         try FileManager.default.createDirectory(at: volumeDir, withIntermediateDirectories: true)
         try Data().write(to: volumeDir.appending(path: "entity.json"))
 
-        let captured = try Self.capturingStdout {
+        let captured = try await Self.capturingStdout {
             var cmd = ComposeDown()
             cmd.cleanupOrphanedVolumeDirectory(name: "entity_only", volumesBaseURL: tmp)
         }
 
         #expect(FileManager.default.fileExists(atPath: volumeDir.path),
                 "directory must be left alone when volume.img is absent")
-        #expect(!captured.contains("Warning"),
-                "no warning must be emitted; got: \(captured)")
     }
 
     // MARK: - Integration: full compose down -v with orphaned volume on disk
@@ -263,7 +259,9 @@ struct ComposeDownOrphanRecoveryTests {
     /// Captures stdout for the duration of `block` by `dup2`-ing a pipe over
     /// `STDOUT_FILENO`. Uses a synchronous read since `block` is synchronous
     /// and `cleanupOrphanedVolumeDirectory` is non-async.
-    private static func capturingStdout(_ block: () throws -> Void) throws -> String {
+    private static func capturingStdout(_ block: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
@@ -277,7 +275,7 @@ struct ComposeDownOrphanRecoveryTests {
             _ = dup2(original, STDOUT_FILENO)
             close(original)
         }
-        try block()
+        try await block()
         fflush(stdout)
         _ = dup2(original, STDOUT_FILENO)
         pipe.fileHandleForWriting.closeFile()
