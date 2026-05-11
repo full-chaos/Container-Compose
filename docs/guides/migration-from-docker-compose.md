@@ -405,7 +405,8 @@ when two compose services build multi-stage Dockerfiles in parallel that
 share `builder`-stage content (e.g. both pip-install to `/install`). The
 trace shows apple/container emitting inconsistent platform identifiers
 (`linux/arm64` ↔ `linux/arm64/v8`) across stages of one build — a
-buildkit-shim normalization bug tracked upstream.
+buildkit-shim normalization bug tracked upstream at
+[apple/container#1542](https://github.com/apple/container/issues/1542).
 
 **Workaround**: serialize image preparation at the compose fan-out layer:
 

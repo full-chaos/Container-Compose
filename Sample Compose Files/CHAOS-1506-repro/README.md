@@ -92,5 +92,9 @@ upstream lands.
 
 ## Upstream
 
-apple/container issue (link pending; ready-to-paste draft lives at
-`.sisyphus/plans/CHAOS-1506-upstream-issue.md` locally — gitignored).
+- apple/container issue: https://github.com/apple/container/issues/1542
+- Linear: https://linear.app/fullchaos/issue/CHAOS-1506
+
+Once apple/container#1542 closes, the `--parallel 1` workaround
+documented in `docs/guides/migration-from-docker-compose.md` can be
+removed.
