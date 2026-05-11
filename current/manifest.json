@@ -1,8 +1,8 @@
 {
   "branch": "main",
-  "commit": "b0949036f48dde33d501db279853f6df46be7e93",
-  "short": "b094903",
+  "commit": "bdb6fae024406ab2fcc64d71906473dab5119ede",
+  "short": "bdb6fae",
   "target": "current",
-  "message": "fix(tests): CHAOS-1508 deflake parallelPullFailFastCancelsSiblings via brief Task.sleep loop (#173)",
-  "published_at": "2026-05-10T21:44:47.097003+00:00"
+  "message": "fix(tests): CHAOS-1508 v2 deflake parallelPullFailFastCancelsSiblings via SiblingEntryGate + limit=items.count (#174)",
+  "published_at": "2026-05-11T00:33:35.487988+00:00"
 }
