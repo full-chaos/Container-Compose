@@ -1,0 +1,8 @@
+{
+  "branch": "feature/chaos-1506-parity-and-docs",
+  "commit": "d055a7da80e97404e042935e0a118ce89d1a8268",
+  "short": "d055a7d",
+  "target": "d055a7d",
+  "message": "docs(repro): CHAOS-1506 add apple/container-only shell repro",
+  "published_at": "2026-05-11T19:57:52.418430+00:00"
+}
