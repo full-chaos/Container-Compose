@@ -1,0 +1,8 @@
+{
+  "branch": "chaos-1508-deflake-v2-gate",
+  "commit": "70767e75d70a2bb7f176a96a491a4f7d34be72af",
+  "short": "70767e7",
+  "target": "70767e7",
+  "message": "docs(ci): restore parallel static test job",
+  "published_at": "2026-05-11T00:14:33.235538+00:00"
+}
