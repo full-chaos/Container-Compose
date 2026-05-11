@@ -84,12 +84,9 @@ test:
 # underscores in the test filter grammar. Both have been removed; we use the
 # underscore form `--filter Container_Compose_StaticTests` instead.
 #
-# NOTE: --parallel intentionally NOT used. Multiple suites `dup2` global
-# STDOUT_FILENO to a Pipe to capture printed warnings (ResourceArgsTests,
-# LifecycleArgsTests, GpusBlkioTests, SecurityArgsTests, NetworkArgsTests,
-# ComposePort runtime-argv tests, ComposeDown orphan-volume recovery,
-# ComposeUp block-image migration guard, ShutdownWatchdog). Under --parallel
-# they race on the shared FD and `readDataToEndOfFile()` hangs indefinitely.
+# NOTE: `CapturedOutput` now serializes the global dup2 capture window, so
+# --parallel is safe again for the static suite. We still keep `test-json`
+# on `--no-parallel` for deterministic logs and to avoid noisy interleaving.
 test-json:
 	@set -o pipefail; \
 	mkdir -p .build; \

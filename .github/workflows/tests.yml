@@ -38,7 +38,11 @@ jobs:
   # suite cannot pin the wall-clock time for fast static feedback.
   #
   # - Static (`Container-Compose-StaticTests`): pure, deterministic, uses
-  #   RecordingRuntime / MockRuntime. Runs with --parallel for speed.
+#   RecordingRuntime / MockRuntime. Runs with --parallel now that
+#   `CapturedOutput` serializes the global dup2 capture window. The
+#   remaining suite-level `.serialized` annotations keep the old
+#   warning-capture tests deterministic under Swift Testing's parallel
+#   scheduler.
   # - Dynamic (`Container-Compose-DynamicTests`): integration tests against
   #   a real apple/container daemon. CI runners do not ship apple/container,
   #   so dynamic suites apply `.enabled(if: RuntimeAvailability.isAvailable())`

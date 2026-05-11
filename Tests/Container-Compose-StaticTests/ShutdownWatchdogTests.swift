@@ -20,7 +20,7 @@ import ServiceLifecycle
 import Testing
 @testable import ContainerComposeCore
 
-@Suite("ShutdownWatchdog (CHAOS-1423 follow-up)")
+@Suite("ShutdownWatchdog (CHAOS-1423 follow-up)", .serialized)
 struct ShutdownWatchdogTests {
 
     // MARK: - Test helpers

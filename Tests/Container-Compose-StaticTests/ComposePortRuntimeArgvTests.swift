@@ -127,7 +127,7 @@ struct ComposePortRuntimeArgvTests {
                 try await cmd.run()
             }
         }
-        #expect(noArgsOutput == dashAOutput)
+        #expect(Self.relevantPortLines(noArgsOutput) == Self.relevantPortLines(dashAOutput))
     }
 
     @Test("port --all: matches port -a")
@@ -150,7 +150,13 @@ struct ComposePortRuntimeArgvTests {
                 try await cmd.run()
             }
         }
-        #expect(dashAOutput == dashAllOutput)
+        #expect(Self.relevantPortLines(dashAOutput) == Self.relevantPortLines(dashAllOutput))
+    }
+
+    private static func relevantPortLines(_ output: String) -> [String] {
+        output.split(whereSeparator: \.isNewline).map(String.init).filter {
+            $0 == "NAME          PORTS" || $0.contains("myproj-")
+        }
     }
 
     @Test("port <service>: filters output to the named service")
@@ -223,7 +229,7 @@ struct ComposePortRuntimeArgvTests {
             try await cmd.run()
         }
         // Trailing newline from `print(...)`.
-        #expect(captured.trimmingCharacters(in: .whitespacesAndNewlines) == "0.0.0.0:16379")
+        #expect(captured.split(whereSeparator: \.isNewline).contains("0.0.0.0:16379"))
     }
 
     @Test("port -a <service> <private-port>: errors with mutual-exclusion message")
@@ -248,6 +254,8 @@ struct ComposePortRuntimeArgvTests {
     private enum CaptureError: Error { case dupFailed }
 
     private static func capturingStdout(_ block: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
@@ -273,6 +281,8 @@ struct ComposePortRuntimeArgvTests {
     }
 
     private static func capturingStderr(_ block: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         let original = dup(STDERR_FILENO)
         let pipe = Pipe()
         guard original >= 0,

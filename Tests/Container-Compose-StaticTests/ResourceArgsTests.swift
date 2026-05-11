@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -53,7 +54,9 @@ struct ResourceArgsTests {
         ComposeUp.ResourceArgs.build(try ctx(service))
     }
 
-    private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
+    private func capturedArgs(_ service: Service) async throws -> (output: String, args: [String]) {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
@@ -86,8 +89,8 @@ struct ResourceArgsTests {
         case dupFailed
     }
 
-    private func expectWarnSkipped(_ service: Service, flag: String, field: String) throws {
-        let captured = try capturedArgs(service)
+    private func expectWarnSkipped(_ service: Service, flag: String, field: String) async throws {
+        let captured = try await capturedArgs(service)
         #expect(!captured.args.contains(flag))
         #expect(captured.output.contains("Note: '\(field)' is parsed but not supported by Apple container; ignored."))
     }
@@ -161,9 +164,9 @@ struct ResourceArgsTests {
     // .serialized so declaration order is execution order.
 
     @Test("mem_reservation maps to --memory as degraded fallback when no mem_limit")
-    func memReservationFallsBackToMemory() throws {
+    func memReservationFallsBackToMemory() async throws {
         let svc = Service(image: "alpine", mem_reservation: "256m")
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--memory"))
         let idx = try #require(captured.args.firstIndex(of: "--memory"))
         #expect(captured.args[idx + 1] == "256m")
@@ -172,7 +175,7 @@ struct ResourceArgsTests {
     }
 
     @Test("deploy.resources.reservations.memory maps to --memory as degraded fallback when no limit")
-    func deployReservationMemoryFallsBackToMemory() throws {
+    func deployReservationMemoryFallsBackToMemory() async throws {
         let svc = try decodeService("""
           image: alpine
           deploy:
@@ -180,7 +183,7 @@ struct ResourceArgsTests {
               reservations:
                 memory: "256m"
         """)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--memory"))
         let idx = try #require(captured.args.firstIndex(of: "--memory"))
         #expect(captured.args[idx + 1] == "256m")
@@ -188,7 +191,7 @@ struct ResourceArgsTests {
     }
 
     @Test("deploy.resources.reservations.cpus maps to --cpus as degraded fallback when no limit")
-    func deployReservationCpusFallsBackToCpus() throws {
+    func deployReservationCpusFallsBackToCpus() async throws {
         let svc = try decodeService("""
           image: alpine
           deploy:
@@ -196,7 +199,7 @@ struct ResourceArgsTests {
               reservations:
                 cpus: "0.5"
         """)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--cpus"))
         let idx = try #require(captured.args.firstIndex(of: "--cpus"))
         #expect(captured.args[idx + 1] == "0.5")
@@ -211,9 +214,9 @@ struct ResourceArgsTests {
     // The argv-only follow-up tests verify precedence without re-asserting on warning state.
 
     @Test("mem_limit + mem_reservation: reservation greater than limit warns as invalid input")
-    func memLimitWithReservationExceedsLimitWarnsInvalid() throws {
+    func memLimitWithReservationExceedsLimitWarnsInvalid() async throws {
         let svc = Service(image: "alpine", mem_limit: "256m", mem_reservation: "512m")
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--memory"))
         let idx = try #require(captured.args.firstIndex(of: "--memory"))
         #expect(captured.args[idx + 1] == "256m")
@@ -224,7 +227,7 @@ struct ResourceArgsTests {
     }
 
     @Test("cpus_top + deploy.reservations.cpus: reservation greater than limit warns as invalid input")
-    func cpusTopWithReservationExceedsLimitWarnsInvalid() throws {
+    func cpusTopWithReservationExceedsLimitWarnsInvalid() async throws {
         let svc = try decodeService("""
           image: alpine
           cpus: 1.0
@@ -233,7 +236,7 @@ struct ResourceArgsTests {
               reservations:
                 cpus: "2.0"
         """)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--cpus"))
         let idx = try #require(captured.args.firstIndex(of: "--cpus"))
         #expect(captured.args[idx + 1] == "1.0")
@@ -244,7 +247,7 @@ struct ResourceArgsTests {
     }
 
     @Test("deploy.limits.memory + deploy.reservations.memory: reservation greater than limit still uses limit")
-    func deployLimitMemoryWithReservationExceedsLimitUsesLimit() throws {
+    func deployLimitMemoryWithReservationExceedsLimitUsesLimit() async throws {
         let svc = try decodeService("""
           image: alpine
           deploy:
@@ -254,7 +257,7 @@ struct ResourceArgsTests {
               reservations:
                 memory: "512m"
         """)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--memory"))
         let idx = try #require(captured.args.firstIndex(of: "--memory"))
         #expect(captured.args[idx + 1] == "256m")
@@ -263,7 +266,7 @@ struct ResourceArgsTests {
     }
 
     @Test("deploy.limits.cpus + deploy.reservations.cpus: reservation greater than limit still uses limit")
-    func deployLimitCpusWithReservationExceedsLimitUsesLimit() throws {
+    func deployLimitCpusWithReservationExceedsLimitUsesLimit() async throws {
         let svc = try decodeService("""
           image: alpine
           deploy:
@@ -273,7 +276,7 @@ struct ResourceArgsTests {
               reservations:
                 cpus: "2.0"
         """)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--cpus"))
         let idx = try #require(captured.args.firstIndex(of: "--cpus"))
         #expect(captured.args[idx + 1] == "1.0")
@@ -282,9 +285,9 @@ struct ResourceArgsTests {
     }
 
     @Test("mem_limit + mem_reservation: --memory limit wins, ignored-reservation warning fires")
-    func memLimitWithReservationWarnsIgnored() throws {
+    func memLimitWithReservationWarnsIgnored() async throws {
         let svc = Service(image: "alpine", mem_limit: "1g", mem_reservation: "256m")
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--memory"))
         let idx = try #require(captured.args.firstIndex(of: "--memory"))
         #expect(captured.args[idx + 1] == "1g")
@@ -315,7 +318,7 @@ struct ResourceArgsTests {
     }
 
     @Test("cpus_top + deploy.reservations.cpus: --cpus limit wins, ignored-reservation warning fires")
-    func cpusTopWithReservationWarnsIgnored() throws {
+    func cpusTopWithReservationWarnsIgnored() async throws {
         let svc = try decodeService("""
           image: alpine
           cpus: 2.0
@@ -324,7 +327,7 @@ struct ResourceArgsTests {
               reservations:
                 cpus: "0.5"
         """)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(captured.args.contains("--cpus"))
         let idx = try #require(captured.args.firstIndex(of: "--cpus"))
         #expect(captured.args[idx + 1] == "2.0")
@@ -355,33 +358,33 @@ struct ResourceArgsTests {
     }
 
     @Test("mem_swappiness warn-skips --memory-swappiness")
-    func memSwappinessFlag() throws {
+    func memSwappinessFlag() async throws {
         let svc = Service(image: "alpine", mem_swappiness: 60)
-        try expectWarnSkipped(svc, flag: "--memory-swappiness", field: "mem_swappiness")
+        try await expectWarnSkipped(svc, flag: "--memory-swappiness", field: "mem_swappiness")
     }
 
     @Test("memswap_limit warn-skips --memory-swap")
-    func memswapLimitFlag() throws {
+    func memswapLimitFlag() async throws {
         let svc = Service(image: "alpine", memswap_limit: "1g")
-        try expectWarnSkipped(svc, flag: "--memory-swap", field: "memswap_limit")
+        try await expectWarnSkipped(svc, flag: "--memory-swap", field: "memswap_limit")
     }
 
     @Test("pids_limit warn-skips --pids-limit")
-    func pidsLimitFlag() throws {
+    func pidsLimitFlag() async throws {
         let svc = Service(image: "alpine", pids_limit: 200)
-        try expectWarnSkipped(svc, flag: "--pids-limit", field: "pids_limit")
+        try await expectWarnSkipped(svc, flag: "--pids-limit", field: "pids_limit")
     }
 
     @Test("shm_size warn-skips --shm-size")
-    func shmSizeFlag() throws {
+    func shmSizeFlag() async throws {
         let svc = Service(image: "alpine", shm_size: "128m")
-        try expectWarnSkipped(svc, flag: "--shm-size", field: "shm_size")
+        try await expectWarnSkipped(svc, flag: "--shm-size", field: "shm_size")
     }
 
     @Test("oom_kill_disable true warn-skips --oom-kill-disable flag")
-    func oomKillDisableTrue() throws {
+    func oomKillDisableTrue() async throws {
         let svc = Service(image: "alpine", oom_kill_disable: true)
-        try expectWarnSkipped(svc, flag: "--oom-kill-disable", field: "oom_kill_disable")
+        try await expectWarnSkipped(svc, flag: "--oom-kill-disable", field: "oom_kill_disable")
     }
 
     @Test("oom_kill_disable false does not emit --oom-kill-disable flag")
@@ -392,57 +395,57 @@ struct ResourceArgsTests {
     }
 
     @Test("oom_score_adj warn-skips --oom-score-adj")
-    func oomScoreAdjFlag() throws {
+    func oomScoreAdjFlag() async throws {
         let svc = Service(image: "alpine", oom_score_adj: 300)
-        try expectWarnSkipped(svc, flag: "--oom-score-adj", field: "oom_score_adj")
+        try await expectWarnSkipped(svc, flag: "--oom-score-adj", field: "oom_score_adj")
     }
 
     @Test("cpu_shares warn-skips --cpu-shares")
-    func cpuSharesFlag() throws {
+    func cpuSharesFlag() async throws {
         let svc = Service(image: "alpine", cpu_shares: 512)
-        try expectWarnSkipped(svc, flag: "--cpu-shares", field: "cpu_shares")
+        try await expectWarnSkipped(svc, flag: "--cpu-shares", field: "cpu_shares")
     }
 
     @Test("cpuset warn-skips --cpuset-cpus")
-    func cpusetFlag() throws {
+    func cpusetFlag() async throws {
         let svc = Service(image: "alpine", cpuset: "0-3")
-        try expectWarnSkipped(svc, flag: "--cpuset-cpus", field: "cpuset")
+        try await expectWarnSkipped(svc, flag: "--cpuset-cpus", field: "cpuset")
     }
 
     @Test("cpu_period warn-skips --cpu-period")
-    func cpuPeriodFlag() throws {
+    func cpuPeriodFlag() async throws {
         let svc = Service(image: "alpine", cpu_period: 100000)
-        try expectWarnSkipped(svc, flag: "--cpu-period", field: "cpu_period")
+        try await expectWarnSkipped(svc, flag: "--cpu-period", field: "cpu_period")
     }
 
     @Test("cpu_quota warn-skips --cpu-quota")
-    func cpuQuotaFlag() throws {
+    func cpuQuotaFlag() async throws {
         let svc = Service(image: "alpine", cpu_quota: 50000)
-        try expectWarnSkipped(svc, flag: "--cpu-quota", field: "cpu_quota")
+        try await expectWarnSkipped(svc, flag: "--cpu-quota", field: "cpu_quota")
     }
 
     @Test("cpu_rt_period warn-skips --cpu-rt-period")
-    func cpuRtPeriodFlag() throws {
+    func cpuRtPeriodFlag() async throws {
         let svc = Service(image: "alpine", cpu_rt_period: 1000000)
-        try expectWarnSkipped(svc, flag: "--cpu-rt-period", field: "cpu_rt_period")
+        try await expectWarnSkipped(svc, flag: "--cpu-rt-period", field: "cpu_rt_period")
     }
 
     @Test("cpu_rt_runtime warn-skips --cpu-rt-runtime")
-    func cpuRtRuntimeFlag() throws {
+    func cpuRtRuntimeFlag() async throws {
         let svc = Service(image: "alpine", cpu_rt_runtime: 950000)
-        try expectWarnSkipped(svc, flag: "--cpu-rt-runtime", field: "cpu_rt_runtime")
+        try await expectWarnSkipped(svc, flag: "--cpu-rt-runtime", field: "cpu_rt_runtime")
     }
 
     @Test("cpu_count warn-skips --cpu-count")
-    func cpuCountFlag() throws {
+    func cpuCountFlag() async throws {
         let svc = Service(image: "alpine", cpu_count: 4)
-        try expectWarnSkipped(svc, flag: "--cpu-count", field: "cpu_count")
+        try await expectWarnSkipped(svc, flag: "--cpu-count", field: "cpu_count")
     }
 
     @Test("cpu_percent warn-skips --cpu-percent")
-    func cpuPercentFlag() throws {
+    func cpuPercentFlag() async throws {
         let svc = Service(image: "alpine", cpu_percent: 75)
-        try expectWarnSkipped(svc, flag: "--cpu-percent", field: "cpu_percent")
+        try await expectWarnSkipped(svc, flag: "--cpu-percent", field: "cpu_percent")
     }
 
     // MARK: - Ulimits

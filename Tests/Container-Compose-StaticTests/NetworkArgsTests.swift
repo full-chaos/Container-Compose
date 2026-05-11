@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -65,7 +66,9 @@ struct NetworkArgsTests {
         ComposeUp.NetworkingArgs.build(ctx(service, env: env))
     }
 
-    private func captureStandardOutput<T>(_ body: () throws -> T) throws -> (T, String) {
+    private func captureStandardOutput<T>(_ body: () async throws -> T) async throws -> (T, String) {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         guard original >= 0 else { throw CaptureError.dupFailed }
@@ -77,7 +80,7 @@ struct NetworkArgsTests {
         }
 
         do {
-            let value = try body()
+            let value = try await body()
             fflush(stdout)
             restoreStandardOutput(original: original, pipe: pipe)
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -152,9 +155,9 @@ struct NetworkArgsTests {
     // MARK: - domainname
 
     @Test("domainname warns and emits no unsupported --domainname flag")
-    func domainnameWarnsAndEmitsNoUnsupportedFlag() throws {
+    func domainnameWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", domainname: "example.com")
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--domainname"))
         #expect(!result.contains("example.com"))
         #expect(output.contains("Note: 'domainname' is parsed but not supported by Apple container; ignored."))
@@ -163,9 +166,9 @@ struct NetworkArgsTests {
     // MARK: - expose
 
     @Test("expose list warns and emits no unsupported --expose flag")
-    func exposeListWarnsAndEmitsNoUnsupportedFlag() throws {
+    func exposeListWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", expose: ["8080/tcp", "9090/udp"])
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--expose"))
         #expect(!result.contains("8080/tcp"))
         #expect(!result.contains("9090/udp"))
@@ -175,19 +178,19 @@ struct NetworkArgsTests {
     // MARK: - mac_address
 
     @Test("mac_address warns and emits no unsupported --mac-address flag")
-    func macAddressWarnsAndEmitsNoUnsupportedFlag() throws {
+    func macAddressWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", mac_address: "02:42:ac:11:00:02")
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--mac-address"))
         #expect(output.contains("Note: 'mac_address' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("networks ipv4_address warns and emits no unsupported --ip flag")
-    func serviceNetworkIPv4WarnsAndEmitsNoUnsupportedFlag() throws {
+    func serviceNetworkIPv4WarnsAndEmitsNoUnsupportedFlag() async throws {
         let config = ServiceNetworkConfig(ipv4_address: "10.0.0.5")
         let serviceNetworks = ServiceNetworks(entries: [("mynet", config)])
         let svc = Service(image: "alpine", networks: serviceNetworks)
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
 
         #expect(result.contains("--network"))
         #expect(!result.contains("--ip"))
@@ -195,11 +198,11 @@ struct NetworkArgsTests {
     }
 
     @Test("networks ipv6_address warns and emits no unsupported --ip6 flag")
-    func serviceNetworkIPv6WarnsAndEmitsNoUnsupportedFlag() throws {
+    func serviceNetworkIPv6WarnsAndEmitsNoUnsupportedFlag() async throws {
         let config = ServiceNetworkConfig(ipv6_address: "2001:db8::5")
         let serviceNetworks = ServiceNetworks(entries: [("mynet", config)])
         let svc = Service(image: "alpine", networks: serviceNetworks)
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
 
         #expect(result.contains("--network"))
         #expect(!result.contains("--ip6"))
@@ -232,25 +235,25 @@ struct NetworkArgsTests {
     // MARK: - ipc / pid / uts
 
     @Test("ipc warns and emits no unsupported --ipc flag")
-    func ipcWarnsAndEmitsNoUnsupportedFlag() throws {
+    func ipcWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", ipc: "host")
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--ipc"))
         #expect(output.contains("Note: 'ipc' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("pid warns and emits no unsupported --pid flag")
-    func pidWarnsAndEmitsNoUnsupportedFlag() throws {
+    func pidWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", pid: "host")
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--pid"))
         #expect(output.contains("Note: 'pid' is parsed but not supported by Apple container; ignored."))
     }
 
     @Test("uts warns and emits no unsupported --uts flag")
-    func utsWarnsAndEmitsNoUnsupportedFlag() throws {
+    func utsWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", uts: "host")
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--uts"))
         #expect(output.contains("Note: 'uts' is parsed but not supported by Apple container; ignored."))
     }
@@ -310,9 +313,9 @@ struct NetworkArgsTests {
     }
 
     @Test("hostname warns and emits no unsupported --hostname flag")
-    func hostnameWarnsAndEmitsNoUnsupportedFlag() throws {
+    func hostnameWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", hostname: "myhostname")
-        let (result, output) = try captureStandardOutput { args(for: svc) }
+        let (result, output) = try await captureStandardOutput { args(for: svc) }
         #expect(!result.contains("--hostname"))
         #expect(!result.contains("myhostname"))
         #expect(output.contains("Note: 'hostname' is parsed but not yet implemented (CHAOS-1474). The container's runtime --name remains the only locally-set hostname."))

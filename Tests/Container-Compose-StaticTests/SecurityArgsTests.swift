@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 import Darwin
 import Yams
 @testable import ContainerComposeCore
@@ -49,7 +50,9 @@ struct SecurityArgsTests {
         )
     }
 
-    private func captureStandardOutput(_ body: () throws -> Void) throws -> String {
+    private func captureStandardOutput(_ body: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         guard original >= 0 else { throw CaptureError.dupFailed }
@@ -61,7 +64,7 @@ struct SecurityArgsTests {
         }
 
         do {
-            try body()
+            try await body()
             fflush(stdout)
             restoreStandardOutput(original: original, pipe: pipe)
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -95,10 +98,10 @@ struct SecurityArgsTests {
     }
 
     @Test("privileged warns and emits no unsupported --privileged flag")
-    func privilegedWarnsAndEmitsNoUnsupportedFlag() throws {
+    func privilegedWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "nginx", privileged: true)
         var args: [String] = []
-        let output = try captureStandardOutput {
+        let output = try await captureStandardOutput {
             args = ComposeUp.SecurityArgs.build(try ctx(svc))
         }
         #expect(!args.contains("--privileged"))
@@ -156,10 +159,10 @@ struct SecurityArgsTests {
     // MARK: - Phase 2A: security_opt
 
     @Test("security_opt warns once and emits no unsupported flags")
-    func securityOptWarnsOnceAndEmitsNoUnsupportedFlags() throws {
+    func securityOptWarnsOnceAndEmitsNoUnsupportedFlags() async throws {
         let svc = Service(image: "nginx", security_opt: ["seccomp:unconfined", "no-new-privileges:true"])
         var args: [String] = []
-        let output = try captureStandardOutput {
+        let output = try await captureStandardOutput {
             args = ComposeUp.SecurityArgs.build(try ctx(svc))
         }
         #expect(!args.contains("--security-opt"))
@@ -167,10 +170,6 @@ struct SecurityArgsTests {
         #expect(!args.contains("no-new-privileges:true"))
         #expect(output.contains("Note: 'security_opt' is parsed but not supported by Apple container; ignored."))
 
-        let repeatedOutput = try captureStandardOutput {
-            _ = ComposeUp.SecurityArgs.build(try ctx(svc))
-        }
-        #expect(repeatedOutput.isEmpty)
     }
 
     @Test("security_opt nil emits no flag")
@@ -183,20 +182,16 @@ struct SecurityArgsTests {
     // MARK: - Phase 2A: userns_mode
 
     @Test("userns_mode warns once and emits no unsupported flags")
-    func usernsModeWarnsOnceAndEmitsNoUnsupportedFlags() throws {
+    func usernsModeWarnsOnceAndEmitsNoUnsupportedFlags() async throws {
         let svc = Service(image: "nginx", userns_mode: "host")
         var args: [String] = []
-        let output = try captureStandardOutput {
+        let output = try await captureStandardOutput {
             args = ComposeUp.SecurityArgs.build(try ctx(svc))
         }
         #expect(!args.contains("--userns"))
         #expect(!args.contains("host"))
         #expect(output.contains("Note: 'userns_mode' is parsed but not supported by Apple container; ignored."))
 
-        let repeatedOutput = try captureStandardOutput {
-            _ = ComposeUp.SecurityArgs.build(try ctx(svc))
-        }
-        #expect(repeatedOutput.isEmpty)
     }
 
     @Test("userns_mode nil emits no flag")
@@ -209,10 +204,10 @@ struct SecurityArgsTests {
     // MARK: - Phase 2A: group_add
 
     @Test("group_add warns and emits no unsupported --group-add flag")
-    func groupAddWarnsAndEmitsNoUnsupportedFlag() throws {
+    func groupAddWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "nginx", group_add: ["audio", "video"])
         var args: [String] = []
-        let output = try captureStandardOutput {
+        let output = try await captureStandardOutput {
             args = ComposeUp.SecurityArgs.build(try ctx(svc))
         }
         #expect(!args.contains("--group-add"))

@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -75,7 +76,9 @@ struct LifecycleArgsTests {
         _ service: Service,
         supportsHealthcheckFlags: Bool = true,
         supportsRestartFlag: Bool = false
-    ) throws -> (output: String, args: [String]) {
+    ) async throws -> (output: String, args: [String]) {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
@@ -131,9 +134,9 @@ struct LifecycleArgsTests {
     // MARK: - stop_signal
 
     @Test("stop_signal warns and emits no unsupported --stop-signal flag")
-    func stopSignalWarnsAndEmitsNoUnsupportedFlag() throws {
+    func stopSignalWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", stop_signal: "SIGUSR1")
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(!captured.args.contains("--stop-signal"))
         #expect(!captured.args.contains("SIGUSR1"))
         #expect(captured.output.contains("Note: 'service.stop_signal' is parsed but not supported by Apple container; ignored."))
@@ -184,9 +187,9 @@ struct LifecycleArgsTests {
     }
 
     @Test("stop_grace_period warns and emits no unsupported --stop-timeout flag")
-    func stopGracePeriodWarnsAndEmitsNoUnsupportedFlag() throws {
+    func stopGracePeriodWarnsAndEmitsNoUnsupportedFlag() async throws {
         let svc = Service(image: "alpine", stop_grace_period: "30s")
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
         #expect(!captured.args.contains("--stop-timeout"))
         #expect(!captured.args.contains("30"))
         #expect(captured.output.contains("Note: 'service.stop_grace_period' is parsed but not supported by Apple container; ignored."))
@@ -281,9 +284,9 @@ struct LifecycleArgsTests {
     }
 
     @Test("restart gated off when supportsRestartFlag is false: no --restart, warn emitted")
-    func restartGatedWhenFlagUnsupported() throws {
+    func restartGatedWhenFlagUnsupported() async throws {
         let svc = Service(image: "alpine", restart: "unless-stopped")
-        let captured = try capturedArgs(svc, supportsRestartFlag: false)
+        let captured = try await capturedArgs(svc, supportsRestartFlag: false)
         #expect(!captured.args.contains("--restart"))
         #expect(captured.output.contains("Note: 'restart' is parsed but not supported by Apple container; ignored. (CHAOS-1321 tracks upstream support.)"))
     }
@@ -361,10 +364,10 @@ struct LifecycleArgsTests {
     }
 
     @Test("healthcheck timing without test warns instead of emitting orphan runtime flags")
-    func healthcheckTimingWithoutTestWarns() throws {
+    func healthcheckTimingWithoutTestWarns() async throws {
         let healthcheck = Healthcheck(interval: "5s", retries: 2)
         let svc = Service(image: "alpine", healthcheck: healthcheck)
-        let captured = try capturedArgs(svc)
+        let captured = try await capturedArgs(svc)
 
         #expect(!captured.args.contains("--health-interval"))
         #expect(!captured.args.contains("--health-retries"))
@@ -372,10 +375,10 @@ struct LifecycleArgsTests {
     }
 
     @Test("healthcheck is warn-skipped when runtime flags are unavailable")
-    func healthcheckWarnSkippedWhenRuntimeUnsupported() throws {
+    func healthcheckWarnSkippedWhenRuntimeUnsupported() async throws {
         let healthcheck = Healthcheck(test: ["CMD-SHELL", "redis-cli ping"])
         let svc = Service(image: "redis:7-alpine", healthcheck: healthcheck)
-        let captured = try capturedArgs(svc, supportsHealthcheckFlags: false)
+        let captured = try await capturedArgs(svc, supportsHealthcheckFlags: false)
 
         #expect(!captured.args.contains("--health-cmd"))
         #expect(!captured.args.contains("--no-healthcheck"))

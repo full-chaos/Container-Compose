@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -47,7 +48,9 @@ struct StorageArgsTests {
         )
     }
 
-    private func captureStandardOutput(_ body: () throws -> Void) throws -> String {
+    private func captureStandardOutput(_ body: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         guard original >= 0 else { throw CaptureError.dupFailed }
@@ -59,7 +62,7 @@ struct StorageArgsTests {
         }
 
         do {
-            try body()
+            try await body()
             fflush(stdout)
             restoreStandardOutput(original: original, pipe: pipe)
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -128,7 +131,7 @@ struct StorageArgsTests {
     // MARK: - warn-and-skip: devices and sysctls
 
     @Test("devices and sysctls emit no flags and warn")
-    func devicesAndSysctlsEmitNoFlagsAndWarn() throws {
+    func devicesAndSysctlsEmitNoFlagsAndWarn() async throws {
         let service = Service(
             image: "alpine:latest",
             sysctls: [
@@ -142,7 +145,7 @@ struct StorageArgsTests {
         )
         let ctx = try makeContext(service: service)
 
-        let output = try captureStandardOutput {
+        let output = try await captureStandardOutput {
             let args = ComposeUp.StorageArgs.build(ctx)
             #expect(!args.contains("--device"))
             #expect(!args.contains("--sysctl"))

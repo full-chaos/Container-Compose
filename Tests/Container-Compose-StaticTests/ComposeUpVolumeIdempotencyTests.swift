@@ -190,6 +190,8 @@ struct ComposeUpVolumeIdempotencyTests {
     /// Captures stdout for the duration of `block` by `dup2`-ing a pipe over
     /// `STDOUT_FILENO`. Mirrors the established pattern in `LifecycleArgsTests`.
     private static func capturingStdout(_ block: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
