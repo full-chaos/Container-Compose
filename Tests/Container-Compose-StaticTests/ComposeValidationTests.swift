@@ -204,10 +204,15 @@ struct ComposeValidationTests {
         #expect(throws: Never.self) { try compose.validate() }
     }
 
-    // MARK: - imageBuildConflict
+    // MARK: - image + build coexistence (CHAOS-1510)
+    //
+    // Per compose-spec, `image:` alongside `build:` is valid — `image:` is the
+    // tag for the built image. The prior CHAOS-1417/1442 contract that rejected
+    // this combination was a deliberate over-validation; CHAOS-1510 reverses it
+    // to align with `docker compose` semantics.
 
-    @Test("Service with both image and build throws imageBuildConflict")
-    func serviceBothImageAndBuildThrows() throws {
+    @Test("Service with both image and build is accepted (CHAOS-1510)")
+    func serviceBothImageAndBuildAccepted() throws {
         let yaml = """
         services:
           app:
@@ -215,20 +220,18 @@ struct ComposeValidationTests {
             build: .
         """
         let compose = try decode(yaml)
-        #expect(throws: ComposeValidationError.imageBuildConflict(serviceName: "app")) {
-            try compose.validate()
-        }
+        #expect(throws: Never.self) { try compose.validate() }
     }
 
-    @Test("Service with only image and no build does not throw imageBuildConflict")
-    func serviceOnlyImageNoConflict() throws {
+    @Test("Service with only image and no build is accepted")
+    func serviceOnlyImageAccepted() throws {
         let service = Service(image: "nginx:latest")
         let compose = makeCompose(services: ["web": service])
         #expect(throws: Never.self) { try compose.validate() }
     }
 
-    @Test("Service with only build and no image does not throw imageBuildConflict")
-    func serviceOnlyBuildNoConflict() throws {
+    @Test("Service with only build and no image is accepted")
+    func serviceOnlyBuildAccepted() throws {
         let yaml = """
         services:
           app:
@@ -237,21 +240,6 @@ struct ComposeValidationTests {
         """
         let compose = try decode(yaml)
         #expect(throws: Never.self) { try compose.validate() }
-    }
-
-    @Test("imageBuildConflict errorDescription mentions service name")
-    func imageBuildConflictDescriptionMentionsServiceName() {
-        let err = ComposeValidationError.imageBuildConflict(serviceName: "myservice")
-        #expect(err.errorDescription?.contains("myservice") == true)
-    }
-
-    @Test("imageBuildConflict equality by service name")
-    func imageBuildConflictEquality() {
-        let a = ComposeValidationError.imageBuildConflict(serviceName: "web")
-        let b = ComposeValidationError.imageBuildConflict(serviceName: "web")
-        let c = ComposeValidationError.imageBuildConflict(serviceName: "api")
-        #expect(a == b)
-        #expect(a != c)
     }
 
     // MARK: - resourceConstraintOutOfRange (validate() logic)

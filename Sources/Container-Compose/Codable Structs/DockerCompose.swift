@@ -628,13 +628,13 @@ extension DockerCompose {
             throw ComposeValidationError.noServicesDefined
         }
 
-        // 2. Per-service checks: image/build conflict, image-or-build presence, ports, resources.
+        // 2. Per-service checks: image-or-build presence, ports, resources.
+        // CHAOS-1510: image+build coexistence is permitted per compose-spec —
+        // `image:` is the tag for the built image. The runtime side already
+        // honors this at Compose+BuildService.swift:68
+        // (`service.image ?? "\(serviceName):latest"`), reversing the prior
+        // CHAOS-1417/1442 decision that surfaced the combo as an error.
         for (name, service) in concrete {
-            // image + build conflict: both present is ambiguous
-            if service.image != nil && service.build != nil {
-                throw ComposeValidationError.imageBuildConflict(serviceName: name)
-            }
-
             // Must have at least one of image or build
             if service.image == nil && service.build == nil {
                 throw ComposeValidationError.serviceNeedsImageOrBuild(serviceName: name)
