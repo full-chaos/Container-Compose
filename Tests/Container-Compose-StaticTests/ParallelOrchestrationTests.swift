@@ -57,7 +57,7 @@ fileprivate actor ConcurrencyMeter {
 //   - CHAOS-1504 two-phase orchestration (prepareImage Phase A + configServiceStart Phase B)
 //   - CHAOS-1505 DependencyCoordinator-wired Phase B (event-driven depends_on waits)
 
-@Suite("ParallelOrchestration")
+@Suite("ParallelOrchestration", .serialized)
 struct ParallelOrchestrationTests {
 
     // MARK: - High-level scenarios
@@ -1423,6 +1423,8 @@ struct ParallelOrchestrationTests {
         // Capture stdout via the dup2-Pipe pattern (mirrors SecurityArgsTests,
         // GpusBlkioTests, etc.).
         let pipe = Pipe()
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         guard original >= 0,

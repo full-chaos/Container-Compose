@@ -41,6 +41,8 @@ struct ComposeUpNetworkCreationTests {
     /// `STDOUT_FILENO`. Mirrors the established pattern in
     /// `ComposeUpVolumeIdempotencyTests`.
     private static func capturingStdout(_ block: () async throws -> Void) async throws -> String {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()

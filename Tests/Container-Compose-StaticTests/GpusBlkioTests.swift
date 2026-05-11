@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import TestHelpers
 @testable import Yams
 @testable import ContainerComposeCore
 
@@ -51,7 +52,9 @@ struct GpusBlkioTests {
         ComposeUp.ResourceArgs.build(try ctx(service, supportsBlkioFlags: supportsBlkioFlags))
     }
 
-    private func capturedArgs(_ service: Service) throws -> (output: String, args: [String]) {
+    private func capturedArgs(_ service: Service) async throws -> (output: String, args: [String]) {
+        try await CapturedOutput.acquire()
+        defer { CapturedOutput.releaseFireAndForget() }
         fflush(stdout)
         let original = dup(STDOUT_FILENO)
         let pipe = Pipe()
@@ -84,8 +87,8 @@ struct GpusBlkioTests {
         case dupFailed
     }
 
-    private func expectWarnSkipped(_ service: Service, flags: [String], field: String) throws {
-        let captured = try capturedArgs(service)
+    private func expectWarnSkipped(_ service: Service, flags: [String], field: String) async throws {
+        let captured = try await capturedArgs(service)
         for flag in flags {
             #expect(!captured.args.contains(flag))
         }
@@ -206,9 +209,9 @@ struct GpusBlkioTests {
     // MARK: - ResourceArgs: Gpus warn-skip
 
     @Test("gpus: .all warn-skips --gpus all")
-    func gpusAllEmitsFlag() throws {
+    func gpusAllEmitsFlag() async throws {
         let svc = Service(image: "alpine", gpus: .all)
-        try expectWarnSkipped(svc, flags: ["--gpus"], field: "gpus")
+        try await expectWarnSkipped(svc, flags: ["--gpus"], field: "gpus")
     }
 
     @Test("gpus: requests with count, device_ids, capabilities emits no --gpus spec")
@@ -245,10 +248,10 @@ struct GpusBlkioTests {
     // MARK: - ResourceArgs: BlkioConfig warn-skip
 
     @Test("blkio_config weight warn-skips --blkio-weight")
-    func blkioWeightFlag() throws {
+    func blkioWeightFlag() async throws {
         let blkio = BlkioConfig(weight: 300)
         let svc = Service(image: "alpine", blkio_config: blkio)
-        try expectWarnSkipped(svc, flags: ["--blkio-weight"], field: "blkio_config")
+        try await expectWarnSkipped(svc, flags: ["--blkio-weight"], field: "blkio_config")
     }
 
     @Test("blkio_config weight emits --blkio-weight when supported")
