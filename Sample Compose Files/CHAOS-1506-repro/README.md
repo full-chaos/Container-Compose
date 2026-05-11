@@ -1,63 +1,53 @@
 # CHAOS-1506 reproduction sample
 
-Two services build the same multi-stage Dockerfile in parallel. This
-fixture demonstrates a confirmed apple/container upstream signal — inconsistent
-platform-string normalization across stages of one build — and serves as a
-starting point for the eventual repro of the `COPY --from=builder` race
-that motivated CHAOS-1506.
+apple/container's buildkit-shim emits inconsistent platform identifiers
+(`linux/arm64` ↔ `linux/arm64/v8`) across stages of a **single** build —
+even when the client never passes `--arch` or `--platform`. Under load
+this drift triggers the `COPY --from=builder /install /usr/local`
+failure that originally surfaced in production (Linear CHAOS-1506).
 
-## What this fixture proves today
-
-Running `container-compose up` against this directory consistently shows
-**platform-string drift** in the trace:
-
-```
-#8 [linux/arm64/v8 builder 2/4] COPY . .
-#9 [linux/arm64 builder 3/4] RUN ...
-```
-
-Container-Compose passes `--os linux --arch arm64` to apple/container's
-`BuildCommand` (Compose+BuildService.swift:128-141). It never passes `v8`.
-Yet apple/container's buildkit-shim emits both `linux/arm64` and
-`linux/arm64/v8` in the same build's trace — normalization is inconsistent
-across stages. This is the upstream signal that motivates the apple/container
-issue filed for CHAOS-1506.
-
-## What this fixture does NOT prove
-
-The actual `ERROR [runtime] COPY --from=builder /install /usr/local`
-failure that the original Linear issue captured did **not** reproduce
-across multiple attempts here. The race is timing- and load-dependent:
-- The original failure used a heavier Python pip-install workload that
-  produced large content-hash collisions and saturated the builder VM.
-- The lightweight fixture (mkdir + 1 MB random payload) completes the
-  builder stage too quickly to widen the race window.
-
-The race condition the platform drift implies remains plausible but is
-not deterministically reproducible at this fixture's scale.
-
-## Existing workaround
-
-Until upstream apple/container fixes the buildkit-shim, the documented
-workaround is to serialize image-prep at the compose fan-out layer:
+## Primary repro — apple/container only (for upstream filing)
 
 ```sh
-container-compose up --parallel 1
-# or
-COMPOSE_PARALLEL_LIMIT=1 container-compose up
+cd "Sample Compose Files/CHAOS-1506-repro"
+./repro.sh 5
 ```
 
-This makes `compose up`'s Phase A (image preparation — pulls and builds)
-single-flight, which avoids two concurrent `BuildCommand` clients dialing
-the same buildkit container. Trade-off: pulls also serialize, so users
-with mostly-pull compose files pay an unnecessary cost. If that proves
-problematic in practice, CHAOS-1506 may grow a finer-granularity
-`--serial-builds` flag — but the discipline is to ship that only after
-verifying the inner serialization actually adds value beyond `--parallel 1`.
+The script fires two `container build --no-cache` invocations in parallel
+per iteration against the same Dockerfile. **No container-compose
+involvement** — this is the form to attach to the apple/container issue
+since the upstream maintainers can reproduce it in their own tool.
 
-## Compose-spec coverage
+What you'll see (consistently, every iteration):
 
-This fixture also exercises two feature-parity fixes that landed alongside:
+```
+#6 [linux/arm64 builder 1/2] RUN mkdir -p /install ...
+#7 [linux/arm64/v8 runtime 1/2] COPY --from=builder /install /usr/local
+```
+
+Same build. Two stages. Two different platform strings. Apple/container
+is introducing the `v8` variant internally somewhere between argv parsing
+(`BuildCommand.swift:305` — `Set<Platform>`) and stage execution.
+
+Script exit codes:
+- `0` — all iterations completed (drift observed but no COPY failure)
+- `1` — at least one iteration failed (COPY error or non-zero build exit)
+
+## Compose-driven repro (how the bug originally surfaced)
+
+```sh
+cd "Sample Compose Files/CHAOS-1506-repro"
+container-compose up
+```
+
+Same upstream behavior, driven through `container-compose`'s parallel
+image-prep fan-out (`runBoundedThrowingFanOut`). Useful as context for
+how the bug originally surfaced in user workloads. **Not** the primary
+upstream artifact — apple's maintainers prefer reproducing in their own
+tooling.
+
+This fixture also exercises two compose-spec parity fixes that landed
+alongside CHAOS-1506:
 
 - **CHAOS-1510** — `image:` alongside `build:` is now accepted (per
   compose-spec, `image:` becomes the build tag).
@@ -66,17 +56,41 @@ This fixture also exercises two feature-parity fixes that landed alongside:
   `chaos-1506-repro` instead of failing apple/container's lowercase
   network-ID validator).
 
-## Run
+## Why the COPY failure doesn't always fire
+
+The platform-string drift is the **trigger**; the `COPY --from=builder`
+race is the **symptom under load**. This lightweight fixture (mkdir + 1
+MB random payload + alpine base) completes the builder stage too quickly
+to widen the race window. The original Linear failure used a heavier
+Python pip-install workload that produced large content-hash collisions
+and saturated the builder VM.
+
+To exercise the COPY race specifically, either:
+- Use a heavier Dockerfile (pip-install, large `RUN` stages with multi-MB
+  output), or
+- Bump the builder VM: `container builder stop && container builder start --cpus 4 --memory 8192`
+
+The platform drift alone is sufficient for upstream filing; the race
+the drift can trigger is documented in the original Linear trace.
+
+## Existing client workaround
+
+Until upstream apple/container fixes the buildkit-shim, container-compose
+users hit by the bug can serialize image preparation at the fan-out
+layer:
 
 ```sh
-cd "Sample Compose Files/CHAOS-1506-repro"
-container-compose up
-# Expect: builds complete with arm64/v8 platform drift visible.
-# The original COPY --from=builder failure may not appear without
-# additional load. See "What this fixture does NOT prove" above.
+container-compose up --parallel 1
+# or
+COMPOSE_PARALLEL_LIMIT=1 container-compose up
 ```
+
+This makes `compose up`'s image-prep phase single-flight, which avoids
+two concurrent `BuildCommand` clients dialing the same buildkit
+container. Pulls also serialize as a side effect — acceptable until
+upstream lands.
 
 ## Upstream
 
-apple/container issue (link pending — file with platform-drift evidence
-from this repro + the original Linear trace).
+apple/container issue (link pending; ready-to-paste draft lives at
+`.sisyphus/plans/CHAOS-1506-upstream-issue.md` locally — gitignored).
