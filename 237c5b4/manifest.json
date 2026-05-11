@@ -1,0 +1,8 @@
+{
+  "branch": "feature/chaos-1506-parity-and-docs",
+  "commit": "237c5b449677a92581be85ba5312b7a5fca30f61",
+  "short": "237c5b4",
+  "target": "237c5b4",
+  "message": "docs(build): CHAOS-1506 document --parallel 1 workaround + add repro fixture",
+  "published_at": "2026-05-11T19:49:11.627835+00:00"
+}
