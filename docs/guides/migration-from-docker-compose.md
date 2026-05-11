@@ -393,6 +393,38 @@ current directory. Note:
 - `build.ssh` is warn-skipped. Use multi-stage builds with baked-in SSH keys
   or pass credentials via `--secret` instead.
 
+### CHAOS-1506 — `ERROR [runtime] COPY --from=builder ...` on parallel builds
+
+apple/container's buildkit-shim has been observed to fail mid-build with:
+
+```
+=> ERROR [linux/arm64/v8 runtime 2/5] COPY --from=builder /install /usr/local
+```
+
+when two compose services build multi-stage Dockerfiles in parallel that
+share `builder`-stage content (e.g. both pip-install to `/install`). The
+trace shows apple/container emitting inconsistent platform identifiers
+(`linux/arm64` ↔ `linux/arm64/v8`) across stages of one build — a
+buildkit-shim normalization bug tracked upstream.
+
+**Workaround**: serialize image preparation at the compose fan-out layer:
+
+```sh
+container-compose up --parallel 1
+# or
+COMPOSE_PARALLEL_LIMIT=1 container-compose up
+```
+
+This makes `compose up`'s image-prep phase single-flight, avoiding two
+concurrent `BuildCommand` clients dialing the same buildkit container.
+Pull-and-build services serialize together; on compose files with many
+pull-only services, this slows startup. Remove the flag once the upstream
+fix lands.
+
+Repro fixture lives at `Sample Compose Files/CHAOS-1506-repro/` —
+demonstrates the platform-string drift consistently (the trigger), though
+the COPY failure itself is load- and timing-dependent.
+
 Build the images first, then start:
 
 ```sh

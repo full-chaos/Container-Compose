@@ -1,0 +1,21 @@
+# CHAOS-1506 reproduction.
+#
+# Two services in docker-compose.yml build this multi-stage Dockerfile in
+# parallel. The shared `builder` stage produces `/install` content; the
+# `runtime` stage then runs `COPY --from=builder /install /usr/local` —
+# the trace pattern from the Linear issue.
+#
+# The builder stage is deliberately LIGHT (mkdir + random payload) so the
+# 2 CPU / 2 GB default builder VM completes it in seconds. The original
+# failure was triggered by a heavier Python pip-install workload but the
+# COPY race is independent of how /install gets populated. Keeping it
+# light makes the fixture deterministic on a stock apple/container setup.
+
+FROM alpine:3.20 AS builder
+RUN mkdir -p /install && \
+    head -c 1048576 /dev/urandom > /install/payload && \
+    echo "chaos-1506 builder stage complete" > /install/marker
+
+FROM alpine:3.20 AS runtime
+COPY --from=builder /install /usr/local
+CMD ["cat", "/usr/local/marker"]

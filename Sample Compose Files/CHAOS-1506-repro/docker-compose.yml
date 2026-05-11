@@ -1,0 +1,32 @@
+# CHAOS-1506 reproduction.
+#
+# Two services build the same multi-stage Dockerfile in parallel. The trace
+# shows apple/container's buildkit-shim emitting inconsistent platform
+# identifiers (`linux/arm64` ↔ `linux/arm64/v8`) across stages of one build
+# — the upstream signal motivating the issue. The original `COPY --from=builder`
+# race that this signal can trigger is timing-dependent and does not always
+# fire at this fixture's scale; see README.md for details.
+#
+# This fixture deliberately uses `image:` alongside `build:` (CHAOS-1510:
+# accepted per compose-spec, with `image:` as the build tag) and a
+# `CHAOS-1506-repro/` parent directory (CHAOS-1511: auto-derived project
+# names are lowercased to `chaos-1506-repro` for apple/container's
+# network-ID validator).
+#
+# Repro: `container-compose up`
+# Existing workaround: `container-compose up --parallel 1`
+#                  or `COMPOSE_PARALLEL_LIMIT=1 container-compose up`
+# Upstream: apple/container issue (link pending).
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.shared
+    image: chaos-1506-api:latest
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.shared
+    image: chaos-1506-worker:latest
