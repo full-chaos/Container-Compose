@@ -401,13 +401,10 @@ automation) is parsing results. From the [Makefile](./Makefile):
   `--experimental-event-stream-output` now hangs indefinitely under Swift
   6.3.1 when no socket reader is attached. Plain swift-testing stdout is the
   canonical agent-readable surface again.
-- Forbids `--parallel`. Multiple suites `dup2` global `STDOUT_FILENO` to a
-  `Pipe` to capture printed warnings: `LifecycleArgsTests`, `ResourceArgsTests`,
-  `GpusBlkioTests`, `SecurityArgsTests`, `NetworkArgsTests`, the ComposePort
-  runtime-argv tests, ComposeDown orphan-volume recovery, the ComposeUp
-  block-image migration guard, and `ShutdownWatchdog`. Under `--parallel` they
-  race on the shared FD and `readDataToEndOfFile()` hangs indefinitely — do
-  not re-introduce `--parallel` to this target.
+- `make test-json` still runs without `--parallel` for deterministic logs, but
+  the static suite itself is now safe under `swift test --parallel` thanks to
+  `CapturedOutput` serializing the global dup2 capture window. Keep the
+  existing `.serialized` suites in place for the warning-capture tests.
 - Exit code is the plain `swift test` exit code (0 = pass, non-zero = fail).
 - **Silent-skip guard.** Both `make test-json` and the CI workflow assert that
   the static suite executes **>= 1500 tests** (current count: ~1806). If the

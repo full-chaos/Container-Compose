@@ -38,16 +38,11 @@ jobs:
   # suite cannot pin the wall-clock time for fast static feedback.
   #
   # - Static (`Container-Compose-StaticTests`): pure, deterministic, uses
-  #   RecordingRuntime / MockRuntime. Runs WITHOUT --parallel because
-  #   ~10 suites in this target dup2 the global STDOUT_FILENO to a Pipe to
-  #   capture printed warnings (ResourceArgsTests, LifecycleArgsTests,
-  #   GpusBlkioTests, SecurityArgsTests, NetworkArgsTests, ComposePort
-  #   runtime-argv, ComposeDown orphan-volume recovery, ComposeUp
-  #   block-image migration guard, ShutdownWatchdog). Under --parallel they
-  #   race on the shared FD and `readDataToEndOfFile()` hangs indefinitely
-  #   (matches Makefile `test-json` rationale and previous observed CI
-  #   hangs > 30 min). Restoring --parallel requires `@Suite(.serialized)`
-  #   on every offending suite first.
+#   RecordingRuntime / MockRuntime. Runs with --parallel now that
+#   `CapturedOutput` serializes the global dup2 capture window. The
+#   remaining suite-level `.serialized` annotations keep the old
+#   warning-capture tests deterministic under Swift Testing's parallel
+#   scheduler.
   # - Dynamic (`Container-Compose-DynamicTests`): integration tests against
   #   a real apple/container daemon. CI runners do not ship apple/container,
   #   so dynamic suites apply `.enabled(if: RuntimeAvailability.isAvailable())`
@@ -63,7 +58,7 @@ jobs:
         include:
           - suite: Static
             target: Container_Compose_StaticTests
-            extra_args: ""
+            extra_args: "--parallel"
             # Silent-skip guard (CHAOS-1507 follow-up). Swift 6.3.1 normalizes
             # target-name dashes to underscores in the filter grammar; a typo or
             # regression to the dashed form `Container-Compose-StaticTests`
