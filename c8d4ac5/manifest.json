@@ -1,0 +1,8 @@
+{
+  "branch": "hephaestus/review-findings-fixes",
+  "commit": "c8d4ac581d55bb9751eba1d2aa86224da033b43f",
+  "short": "c8d4ac5",
+  "target": "c8d4ac5",
+  "message": "fix: preserve adoption runtime failures",
+  "published_at": "2026-05-12T13:56:59.464193+00:00"
+}
