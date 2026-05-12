@@ -26,6 +26,7 @@ public actor LoopState {
     private(set) var preparedNamedVolumes: Set<String> = []
     private(set) var existingNamedVolumeRegistryCache: [String: RuntimeVolume] = [:]
     private var existingNamedVolumeRegistryCacheLoaded: Bool = false
+    private var serviceLaunchFailures: [String: String] = [:]
 
     /// Project-level environment baseline (.env file + any process-derived
     /// overlays loaded at the top of `ComposeUp.run()`). Lives on the actor
@@ -35,16 +36,20 @@ public actor LoopState {
     private(set) var environmentVariables: [String: String] = [:]
 
     func assignColor(for serviceName: String, available: Set<NamedColor>) -> NamedColor {
-        var serviceColor: NamedColor = available.randomElement()!
-
-        if Array(Set(containerConsoleColors.values)).sorted(by: { $0.rawValue < $1.rawValue }) != available.sorted(by: { $0.rawValue < $1.rawValue }) {
-            while containerConsoleColors.values.contains(serviceColor) {
-                serviceColor = available.randomElement()!
-            }
-        }
+        let used = Set(containerConsoleColors.values)
+        let unused = available.subtracting(used)
+        let serviceColor = (unused.randomElement() ?? available.randomElement())!
 
         containerConsoleColors[serviceName] = serviceColor
         return serviceColor
+    }
+
+    func recordLaunchFailure(for serviceName: String, message: String) {
+        serviceLaunchFailures[serviceName] = message
+    }
+
+    func launchFailure(for serviceName: String) -> String? {
+        serviceLaunchFailures[serviceName]
     }
 
     func warnModelsOnce() -> Bool {
