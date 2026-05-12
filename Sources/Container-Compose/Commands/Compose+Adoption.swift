@@ -79,11 +79,16 @@ extension ComposeUp {
                 explicit: service.container_name
             )
 
-            guard let existing = try? await provider.get(id: containerName) else {
-                decisions[serviceName] = .create
-                continue
+            let existing: ContainerSnapshot
+            do {
+                existing = try await provider.get(id: containerName)
+            } catch {
+                if case .notFound = RuntimeErrorMapper.map(error, id: containerName) {
+                    decisions[serviceName] = .create
+                    continue
+                }
+                throw error
             }
-
             if forceRecreate {
                 decisions[serviceName] = .recreate(reason: "--force-recreate")
                 continue

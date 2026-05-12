@@ -180,6 +180,28 @@ struct RuntimeErrorMapperTests {
         }
     }
 
+    @Test("Provider no-container errors map to notFound")
+    func providerNoContainerError_notFound() {
+        let error = NSError(
+            domain: "test",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "no container 'cc-test-app' (recorded fake)"]
+        )
+
+        #expect(RuntimeErrorMapper.map(error, id: "cc-test-app") == .notFound(id: "cc-test-app"))
+    }
+
+    @Test("Provider no-resource errors map to notFound")
+    func providerNoResourceError_notFound() {
+        let error = NSError(
+            domain: "test",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "no resource 'cc-test-app' (recorded fake)"]
+        )
+
+        #expect(RuntimeErrorMapper.map(error, id: "cc-test-app") == .notFound(id: "cc-test-app"))
+    }
+
     // MARK: - id fallback
 
     @Test("When id is nil and VolumeError embeds a name, that name is used")
