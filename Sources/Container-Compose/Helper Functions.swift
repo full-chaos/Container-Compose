@@ -308,9 +308,6 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
     // Combine process environment with loaded .env file variables, prioritizing process environment
     let combinedEnv = ProcessInfo.processInfo.environment.merging(envVars) { (current, _) in current }
 
-    // Regex to find ${VAR}, ${VAR:-default}, ${VAR:?error}
-    let regex = try! NSRegularExpression(pattern: #"\$\{([A-Za-z0-9_]+)(:?-(.*?))?(:\?(.*?))?\}"#, options: [])
-
     // Nested variable resolution (CHAOS-1420):
     // ${OUTER_${INNER}} is expanded inside-out. The inner regex below matches
     // innermost ${VAR} tokens (those whose name contains no further ${) and
@@ -322,7 +319,6 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
     // margin for legitimate use while keeping worst-case substitution passes
     // bounded and predictable. Eight levels would also be safe but is
     // unnecessary; we pick 4 as the smallest power-of-2 above practical need.
-    let innerRegex = try! NSRegularExpression(pattern: #"\$\{([A-Za-z0-9_]+)\}"#, options: [])
     for _ in 0..<resolveVariable_maxNestingDepth {
         // If no nested references remain, stop early.
         guard resolvedValue.contains("${") else { break }
@@ -332,7 +328,7 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
         var scratch = resolvedValue
         // Scan from the end backwards to preserve string positions.
         let scratchRange = NSRange(scratch.startIndex..<scratch.endIndex, in: scratch)
-        let innerMatches = innerRegex.matches(in: scratch, options: [], range: scratchRange)
+        let innerMatches = resolveVariableInnerRegex.matches(in: scratch, options: [], range: scratchRange)
         for match in innerMatches.reversed() {
             guard let fullRange = Range(match.range(at: 0), in: scratch),
                   let nameRange = Range(match.range(at: 1), in: scratch) else { continue }
@@ -352,26 +348,36 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
     }
 
     // Main substitution loop: resolves ${VAR}, ${VAR:-default}, ${VAR:?error}.
-    while let match = regex.firstMatch(in: resolvedValue, options: [], range: NSRange(resolvedValue.startIndex..<resolvedValue.endIndex, in: resolvedValue)) {
-        guard let varNameRange = Range(match.range(at: 1), in: resolvedValue) else { break }
-        let varName = String(resolvedValue[varNameRange])
+    while true {
+        let range = NSRange(resolvedValue.startIndex..<resolvedValue.endIndex, in: resolvedValue)
+        let matches = resolveVariableRegex.matches(in: resolvedValue, options: [], range: range)
+        guard !matches.isEmpty else { break }
 
-        if let envValue = combinedEnv[varName] {
-            // Variable found in environment, replace with its value
-            resolvedValue.replaceSubrange(Range(match.range(at: 0), in: resolvedValue)!, with: envValue)
-        } else if let defaultValueRange = Range(match.range(at: 3), in: resolvedValue) {
-            // Variable not found, but default value is provided, replace with default
-            let defaultValue = String(resolvedValue[defaultValueRange])
-            resolvedValue.replaceSubrange(Range(match.range(at: 0), in: resolvedValue)!, with: defaultValue)
-        } else if match.range(at: 5).location != NSNotFound, let errorMessageRange = Range(match.range(at: 5), in: resolvedValue) {
-            // Variable not found, and error-on-missing syntax used, print error and exit
-            let errorMessage = String(resolvedValue[errorMessageRange])
-            fputs("Error: Missing required environment variable '\(varName)': \(errorMessage)\n", stderr)
-            Application.exit(withError: "Error: Missing required environment variable '\(varName)': \(errorMessage)\n")
-        } else {
-            // Variable not found and no default/error specified, leave as is and break loop to avoid infinite loop
-            break
+        var didSubstitute = false
+        for match in matches.reversed() {
+            guard let fullRange = Range(match.range(at: 0), in: resolvedValue),
+                  let varNameRange = Range(match.range(at: 1), in: resolvedValue) else { continue }
+            let varName = String(resolvedValue[varNameRange])
+
+            if let envValue = combinedEnv[varName] {
+                // Variable found in environment, replace with its value.
+                resolvedValue.replaceSubrange(fullRange, with: envValue)
+                didSubstitute = true
+            } else if let defaultValueRange = Range(match.range(at: 3), in: resolvedValue) {
+                // Variable not found, but default value is provided, replace with default.
+                let defaultValue = String(resolvedValue[defaultValueRange])
+                resolvedValue.replaceSubrange(fullRange, with: defaultValue)
+                didSubstitute = true
+            } else if match.range(at: 5).location != NSNotFound, let errorMessageRange = Range(match.range(at: 5), in: resolvedValue) {
+                // Variable not found, and error-on-missing syntax used, print error and exit.
+                let errorMessage = String(resolvedValue[errorMessageRange])
+                fputs("Error: Missing required environment variable '\(varName)': \(errorMessage)\n", stderr)
+                Application.exit(withError: "Error: Missing required environment variable '\(varName)': \(errorMessage)\n")
+            }
+            // Unset variables with no default/error are intentionally left in place.
         }
+
+        guard didSubstitute else { break }
     }
 
     // Post-pass: restore $$ escapes to literal $.
@@ -385,6 +391,16 @@ public func resolveVariable(_ value: String, with envVars: [String: String]) -> 
 /// constant does not change correctness — only the depth of inside-out
 /// expansions attempted before giving up on further inner substitutions.
 internal let resolveVariable_maxNestingDepth = 4
+
+private let resolveVariableRegex = try! NSRegularExpression(
+    pattern: #"\$\{([A-Za-z0-9_]+)(:?-(.*?))?(:\?(.*?))?\}"#,
+    options: []
+)
+
+private let resolveVariableInnerRegex = try! NSRegularExpression(
+    pattern: #"\$\{([A-Za-z0-9_]+)\}"#,
+    options: []
+)
 
 /// CHAOS-1495: canonical resolution for a service-level network reference key.
 ///
@@ -742,6 +758,6 @@ public struct CommandResult {
     public let exitCode: Int32
 }
 
-extension NamedColor: @retroactive Codable {
+extension NamedColor: @retroactive Codable, @retroactive @unchecked Sendable {
 
 }
