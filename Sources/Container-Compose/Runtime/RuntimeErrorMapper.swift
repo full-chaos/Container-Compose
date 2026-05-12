@@ -126,6 +126,11 @@ enum RuntimeErrorMapper {
             }
         }
 
+        let description = error.localizedDescription.lowercased()
+        if description.contains("not found") || description.contains("no container") || description.contains("no resource") {
+            return .notFound(id: id ?? "unknown")
+        }
+
         // 5. Default fallback.
         return .backendFailure(message: error.localizedDescription)
     }

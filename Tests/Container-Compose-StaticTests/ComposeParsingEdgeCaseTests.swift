@@ -345,6 +345,12 @@ struct ComposeParsingEdgeCaseTests {
         #expect(result == "http://localhost:8080/api")
     }
 
+    @Test("Unset variable does not prevent later variables from resolving")
+    func unsetVariableDoesNotStopLaterSubstitutions() {
+        let result = resolveVariable("${UNSET}:${HOST}:${PORT:-8080}", with: ["HOST": "localhost"])
+        #expect(result == "${UNSET}:localhost:8080")
+    }
+
     // MARK: - Variable interpolation: nested references (CHAOS-1420)
 
     @Test("Nested variable references ${OUTER_${INNER}} expand inside-out (CHAOS-1420)")

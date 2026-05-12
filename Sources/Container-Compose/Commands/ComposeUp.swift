@@ -291,6 +291,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             let dependencyCoordinator = DependencyCoordinator()
             self.dependencyCoordinator = dependencyCoordinator
             let forwardGraph = buildForwardDependencyGraph(services: services)
+            let milestoneRequirements = buildMilestoneRequirements(services: services)
 
             try await withThrowingTaskGroup(of: Void.self) { group in
                 let semaphore = AsyncSemaphore(value: parallelLimit)
@@ -310,10 +311,15 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                                 let condition = entry?.condition ?? .serviceStarted
                                 let required = entry?.required ?? true
                                 do {
-                                    try await dependencyCoordinator.awaitMilestone(
-                                        for: dep,
-                                        milestone: milestone(for: condition)
-                                    )
+                                    if required {
+                                        try await dependencyCoordinator.awaitMilestone(
+                                            for: dep,
+                                            milestone: milestone(for: condition)
+                                        )
+                                    } else {
+                                        let depContainerName: String? = (dockerCompose.services[dep] ?? nil)?.container_name ?? nil
+                                        try await waitForCondition(dep, explicitContainerName: depContainerName, condition: condition)
+                                    }
                                 } catch {
                                     if required {
                                         throw error
@@ -335,6 +341,12 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                             // without throwing is "started enough" for
                             // dependents that requested .started.
                             await dependencyCoordinator.publishMilestone(.started, for: serviceName)
+                            try await publishRequiredMilestones(
+                                for: serviceName,
+                                service: service,
+                                requirements: milestoneRequirements[serviceName] ?? [],
+                                coordinator: dependencyCoordinator
+                            )
                         }
                     }
                 }
@@ -858,6 +870,7 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         // already-running container its first poll returns immediately.
         let isAdopting = (adoptionDecisions[serviceName] == .adopt)
 
+        let observesLaunchFailure: Bool
         if !isAdopting {
             let imageToRun = try await resolveServiceImage(service, serviceName: serviceName)
 
@@ -875,17 +888,24 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
             printNetworksDiagnostic(service: service, serviceName: serviceName)
 
             await launchService(serviceName: serviceName, runCommandArgs: runCommandArgs)
+            observesLaunchFailure = true
+        } else {
+            observesLaunchFailure = false
         }
 
         let resolvedIP: String?
         do {
-            try await waitUntilServiceIsRunning(serviceName, explicitContainerName: service.container_name)
-            resolvedIP = try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: service.container_name)
+            resolvedIP = try await waitForServiceReadiness(
+                serviceName,
+                explicitContainerName: service.container_name,
+                observesLaunchFailure: observesLaunchFailure
+            )
         } catch {
             // Container readiness/IP-resolution failures are surfaced but do not
-            // halt the project — other services may still come up successfully.
+            // halt silently; the task group cancels dependents and tears down
+            // coordinator waiters so startup errors are visible to callers.
             print(error)
-            return
+            throw error
         }
 
         // CHAOS-1475 MUST-FIX #2: do NOT swallow embedded-DNS-zone refresh
@@ -936,6 +956,88 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
         case .serviceHealthy: return .healthy
         case .serviceCompletedSuccessfully: return .completedSuccessfully
         }
+    }
+
+    /// Builds the set of post-start milestones each service must publish to
+    /// unblock selected dependents. Services with only `service_started`
+    /// dependents avoid extra health/completion polling.
+    private func buildMilestoneRequirements(
+        services: [(serviceName: String, service: Service)]
+    ) -> [String: Set<ServiceMilestone>] {
+        let selected = Set(services.map(\.serviceName))
+        var requirements: [String: Set<ServiceMilestone>] = [:]
+        for (_, service) in services {
+            for (depName, entry) in service.dependsOn?.entries ?? [:] where selected.contains(depName) && entry.required {
+                requirements[depName, default: []].insert(milestone(for: entry.condition))
+            }
+        }
+        return requirements
+    }
+
+    private func publishRequiredMilestones(
+        for serviceName: String,
+        service: Service,
+        requirements: Set<ServiceMilestone>,
+        coordinator: DependencyCoordinator
+    ) async throws {
+        if requirements.contains(.healthy) {
+            try await waitForCondition(
+                serviceName,
+                explicitContainerName: service.container_name,
+                condition: .serviceHealthy
+            )
+            await coordinator.publishMilestone(.healthy, for: serviceName)
+        }
+
+        if requirements.contains(.completedSuccessfully) {
+            try await waitForCondition(
+                serviceName,
+                explicitContainerName: service.container_name,
+                condition: .serviceCompletedSuccessfully
+            )
+            await coordinator.publishMilestone(.completedSuccessfully, for: serviceName)
+        }
+    }
+
+    private func waitForServiceReadiness(
+        _ serviceName: String,
+        explicitContainerName: String?,
+        observesLaunchFailure: Bool
+    ) async throws -> String? {
+        guard observesLaunchFailure else {
+            try await waitUntilServiceIsRunning(serviceName, explicitContainerName: explicitContainerName)
+            return try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: explicitContainerName)
+        }
+
+        guard let projectName else { return nil }
+        let containerName = effectiveContainerName(
+            projectName: projectName,
+            serviceName: serviceName,
+            explicit: explicitContainerName
+        )
+        let deadline = Date().addingTimeInterval(30)
+        let provider = ContainerClientEnvironment.current
+
+        while Date() < deadline {
+            if let message = await loopState.launchFailure(for: serviceName) {
+                throw RuntimeError.backendFailure(message: message)
+            }
+            try await Task.sleep(nanoseconds: 500_000_000)
+            let container = try? await provider.get(id: containerName)
+            if container?.status == .running {
+                return try await updateEnvironmentWithServiceIP(serviceName, explicitContainerName: explicitContainerName)
+            }
+        }
+
+        if let message = await loopState.launchFailure(for: serviceName) {
+            throw RuntimeError.backendFailure(message: message)
+        }
+        throw NSError(
+            domain: "ContainerWait", code: 1,
+            userInfo: [
+                NSLocalizedDescriptionKey: "Timed out waiting for container '\(containerName)' to be running."
+            ]
+        )
     }
 
     /// Resolves the image tag for a service: builds it if `build:` is set,
@@ -1161,11 +1263,25 @@ public struct ComposeUp: AsyncParsableCommand, ComposeCommand, @unchecked Sendab
                 argv: ["container", "run"] + runCommandArgs,
                 cwd: cwd
             )
-            let _ = try await RunnerEnvironment.current.run(
-                request,
-                onStdout: handleOutput,
-                onStderr: handleOutput
-            )
+            do {
+                let result = try await RunnerEnvironment.current.run(
+                    request,
+                    onStdout: handleOutput,
+                    onStderr: handleOutput
+                )
+                guard result.exitCode == 0 else {
+                    await loopState.recordLaunchFailure(
+                        for: serviceName,
+                        message: "container run for service '\(serviceName)' exited with status \(result.exitCode)"
+                    )
+                    return
+                }
+            } catch {
+                await loopState.recordLaunchFailure(
+                    for: serviceName,
+                    message: "container run for service '\(serviceName)' failed: \(error.localizedDescription)"
+                )
+            }
         }
     }
 
