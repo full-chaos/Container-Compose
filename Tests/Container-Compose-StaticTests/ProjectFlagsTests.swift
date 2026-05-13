@@ -96,8 +96,7 @@ struct ProjectFlagsTests {
             composeName: nil,
             projectDirectory: "/some/dir"
         )
-        // deriveProjectName replaces '.' with '_' but otherwise returns the
-        // last path component verbatim.
+        // deriveProjectName replaces '.' with '_' AND lowercases (CHAOS-1511).
         #expect(name == deriveProjectName(cwd: "/some/dir"))
         #expect(name == "dir")
     }
@@ -122,14 +121,15 @@ struct ProjectFlagsTests {
         #expect(name == "dir")
     }
 
-    @Test("resolveProjectName: directory with dot is sanitized to underscore")
+    @Test("resolveProjectName: directory with dot is sanitized and lowercased (CHAOS-1511)")
     func resolveProjectNameDotSanitization() {
         let name = resolveProjectName(
             cliOverride: nil,
             composeName: nil,
             projectDirectory: "/Users/me/My.Project"
         )
-        #expect(name == "My_Project")
+        // CHAOS-1511: deriveProjectName now lowercases per compose-spec.
+        #expect(name == "my_project")
     }
 
     // MARK: - resolveProjectDirectory

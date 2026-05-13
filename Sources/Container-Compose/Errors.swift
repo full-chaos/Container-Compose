@@ -85,12 +85,6 @@ public enum ComposeValidationError: Error, Equatable {
     /// A resource-constraint field (e.g. `deploy.resources.limits.cpus`)
     /// falls outside the allowed range.
     case resourceConstraintOutOfRange(field: String, value: String, min: Int, max: Int?)
-
-    /// A service declares both `image` and `build`, which is ambiguous.
-    /// The Compose spec says `image` acts as the tag for the built image, but
-    /// having both is often a user mistake and is surfaced as an error so they
-    /// can make their intent explicit.
-    case imageBuildConflict(serviceName: String)
 }
 
 extension ComposeValidationError: LocalizedError {
@@ -111,8 +105,6 @@ extension ComposeValidationError: LocalizedError {
             } else {
                 return "Resource constraint '\(field)' value '\(value)' must be ≥ \(min)."
             }
-        case .imageBuildConflict(let name):
-            return "Service '\(name)' declares both 'image' and 'build'. Remove one or use 'image' only as the tag for the built image (set it alongside 'build.context')."
         }
     }
 }

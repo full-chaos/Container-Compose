@@ -125,8 +125,9 @@ struct CoreDNSConfigTests {
 
     @Test("validateProjectName accepts underscore project names (CHAOS-1475)")
     func validateProjectNameAcceptsUnderscores() throws {
-        // Regression guard: deriveProjectName(cwd:) maps `.` → `_`, producing
-        // names like `my_app` that previously hard-failed at sidecar startup.
+        // Regression guard: deriveProjectName(cwd:) maps `.` → `_` and
+        // lowercases (CHAOS-1511), producing names like `my_app` that
+        // previously hard-failed at sidecar startup.
         try CoreDNSConfig.validateProjectName("my_app")
         try CoreDNSConfig.validateProjectName("my_long_app_name")
         try CoreDNSConfig.validateProjectName("_leading_underscore")

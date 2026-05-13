@@ -272,15 +272,13 @@ struct ComposeParsingEdgeCaseTests {
         #expect(app.build != nil)
     }
 
-    @Test("Service with both image and build is rejected by validate() (CHAOS-1417, CHAOS-1442)")
-    func imageAndBuildRejectedByValidation() throws {
-        // Container-Compose deliberately rejects the image+build combination
-        // even though compose-spec permits it (with `image` acting as the tag
-        // for the built image). Rationale per Errors.swift:114 — this combo
-        // often masks user mistakes, so we surface it as an error to make
-        // intent explicit. Pinning tests for this contract live in
-        // ComposeValidationTests.swift:209-255 (CHAOS-1417 / PR #101); this
-        // test exists as cross-coverage in the parsing edge-case suite.
+    @Test("Service with both image and build is accepted by validate() (CHAOS-1510)")
+    func imageAndBuildAcceptedByValidation() throws {
+        // CHAOS-1510: image+build coexistence is permitted per compose-spec —
+        // `image:` acts as the tag for the built image. Reverses the prior
+        // CHAOS-1417/1442 contract. Canonical assertions in
+        // ComposeValidationTests.swift "image + build coexistence"; this is
+        // cross-coverage from the parsing edge-case suite.
         let yaml = """
         services:
           app:
@@ -288,9 +286,10 @@ struct ComposeParsingEdgeCaseTests {
             build: ./app
         """
         let dc = try YAMLDecoder().decode(DockerCompose.self, from: yaml)
-        #expect(throws: ComposeValidationError.imageBuildConflict(serviceName: "app")) {
-            try dc.validate()
-        }
+        #expect(throws: Never.self) { try dc.validate() }
+        let app = dc.services["app"]!!
+        #expect(app.image == "myapp:latest")
+        #expect(app.build != nil)
     }
 
     // MARK: - Variable interpolation edge cases

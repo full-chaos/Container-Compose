@@ -21,15 +21,26 @@ import Foundation
 @Suite("Helper Functions Tests")
 struct HelperFunctionsTests {
     
-    @Test("Derive project name from current working directory - contains dot")
+    @Test("Derive project name: dots become underscores and result is lowercased (CHAOS-1511)")
     func testDeriveProjectName() throws {
+        // CHAOS-1511: deriveProjectName now lowercases per compose-spec.
+        // Dots still become underscores (container resource names forbid dots).
         var cwd = "/Users/user/Projects/My.Project"
         var projectName = deriveProjectName(cwd: cwd)
-        #expect(projectName == "My_Project")
+        #expect(projectName == "my_project")
 
         cwd = ".devcontainers"
         projectName = deriveProjectName(cwd: cwd)
         #expect(projectName == "_devcontainers")
+    }
+
+    @Test("Derive project name: uppercase directories are lowercased (CHAOS-1511)")
+    func testDeriveProjectNameLowercase() throws {
+        // CHAOS-1511 — apple/container's network ID validation rejects
+        // uppercase; align with `docker compose`'s downcase-on-derive behavior.
+        #expect(deriveProjectName(cwd: "/tmp/CHAOS-1506-repro") == "chaos-1506-repro")
+        #expect(deriveProjectName(cwd: "/tmp/MixedCase") == "mixedcase")
+        #expect(deriveProjectName(cwd: "/tmp/already-lowercase") == "already-lowercase")
     }
 
     @Test("Resolve explicit relative paths against base URL")
