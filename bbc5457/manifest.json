@@ -1,0 +1,8 @@
+{
+  "branch": "feature/chaos-1506-parity-and-docs",
+  "commit": "bbc5457b12510e8c430b7c43fb946bf2d56b187f",
+  "short": "bbc5457",
+  "target": "bbc5457",
+  "message": "docs(repro): CHAOS-1506 link upstream apple/container#1542",
+  "published_at": "2026-05-13T01:48:37.555889+00:00"
+}
