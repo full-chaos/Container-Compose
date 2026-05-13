@@ -1,0 +1,8 @@
+{
+  "branch": "dependabot/swift/github.com/apple/swift-certificates-1.19.1",
+  "commit": "df8b1f1f963f9cb2b88852eae921581b8695121b",
+  "short": "df8b1f1",
+  "target": "df8b1f1",
+  "message": "chore(deps): bump github.com/apple/swift-certificates",
+  "published_at": "2026-05-13T02:29:08.453580+00:00"
+}
