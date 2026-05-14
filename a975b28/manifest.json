@@ -1,0 +1,8 @@
+{
+  "branch": "dependabot/swift/github.com/hummingbird-project/hummingbird-2.23.0",
+  "commit": "a975b28fdd2cc7f3cc77ba7d4efcfd290ac93f68",
+  "short": "a975b28",
+  "target": "a975b28",
+  "message": "chore(deps): bump github.com/hummingbird-project/hummingbird",
+  "published_at": "2026-05-14T01:51:00.239900+00:00"
+}
