@@ -1,0 +1,8 @@
+{
+  "branch": "dependabot/swift/github.com/jpsim/yams-6.2.2",
+  "commit": "5a5fd53587bb41330d2b20eceedac96e13be8824",
+  "short": "5a5fd53",
+  "target": "5a5fd53",
+  "message": "chore(deps): bump github.com/jpsim/yams from 6.2.1 to 6.2.2",
+  "published_at": "2026-05-27T04:13:17.019467+00:00"
+}
