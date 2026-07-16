@@ -1,0 +1,8 @@
+{
+  "branch": "dependabot/swift/github.com/apple/swift-nio-ssl-2.37.2",
+  "commit": "de081fb8b8894dec3061eb44356328fee9f6aa29",
+  "short": "de081fb",
+  "target": "de081fb",
+  "message": "chore(deps): bump github.com/apple/swift-nio-ssl from 2.37.0 to 2.37.2",
+  "published_at": "2026-07-16T01:48:27.281663+00:00"
+}
