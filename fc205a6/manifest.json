@@ -1,0 +1,8 @@
+{
+  "branch": "dependabot/swift/github.com/apple/swift-certificates-1.19.4",
+  "commit": "fc205a65128393c39d0093bd2977345e6fed1c93",
+  "short": "fc205a6",
+  "target": "fc205a6",
+  "message": "chore(deps): bump github.com/apple/swift-certificates",
+  "published_at": "2026-07-29T01:48:28.562397+00:00"
+}
